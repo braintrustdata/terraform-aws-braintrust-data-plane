@@ -1,0 +1,8 @@
+[tools]
+tflint = "latest"
+pre-commit = "latest"
+
+[tasks]
+lint = ["terraform fmt", "tflint"]
+precommit = ["pre-commit run --all-files"]
+setup = ["pre-commit install"]
