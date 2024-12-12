@@ -27,3 +27,8 @@ output "main_vpc_private_subnet_3_id" {
   value       = module.main_vpc.private_subnet_3_id
   description = "ID of the third private subnet in the main VPC"
 }
+
+output "postgres_database_arn" {
+  value       = var.managed_postgres ? module.database[0].postgres_database_arn : null
+  description = "ARN of the main Braintrust Postgres database"
+}

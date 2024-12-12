@@ -84,3 +84,35 @@ variable "quarantine_public_subnet_1_az" {
   default     = null
   description = "Availability zone for the public subnet. Leave blank to choose the first available zone"
 }
+
+
+## Database
+variable "managed_postgres" {
+  description = "Create a managed RDS Postgres instance. Disable if you want to run your own."
+  type        = bool
+  default     = true
+}
+
+variable "postgres_instance_type" {
+  description = "Instance type for the RDS instance."
+  type        = string
+  default     = "db.t4g.xlarge"
+}
+
+variable "postgres_storage_size" {
+  description = "Storage size (in GB) for the RDS instance."
+  type        = number
+  default     = 100
+}
+
+variable "postgres_storage_type" {
+  description = "Storage type for the RDS instance."
+  type        = string
+  default     = "gp3"
+}
+
+variable "postgres_version" {
+  description = "PostgreSQL engine version for the RDS instance."
+  type        = string
+  default     = "15.5"
+}
