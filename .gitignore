@@ -35,3 +35,14 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Do not commit the terraform.tf and provider.tf files. This module should not have concrete 
+# backend or provider configs. Users will set that up themselves.
+terraform.tf
+provider.tf
+
+# Ignore the braintrust-sandbox directory as it is used for internal testing
+braintrust-sandbox/*
+
+# Ignore IntelliJ IDEA project files
+.idea

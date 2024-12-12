@@ -1,0 +1,17 @@
+# Example storing terraform state in S3.
+terraform {
+  backend "s3" {
+    region         = "<your AWS region>"  # Example: "us-east-1"
+    dynamodb_table = "<your dynamodb table name>"  # Example: "terraform-state-lock"
+    bucket         = "<s3-bucket-name>"  # Example: "yourcompany-terraform-state"
+    # The path in S3 to store the state of this terraform directory.
+    key = "braintrust"
+  }
+}
+
+# Uncomment to store terraform state locally. Only use this for local testing.
+# terraform {
+#   backend "local" {
+#     path = "terraform.tfstate"
+#   }
+# }
