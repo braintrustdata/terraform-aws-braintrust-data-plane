@@ -35,8 +35,9 @@ resource "aws_db_parameter_group" "main" {
   }
 
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements,pg_hint_plan,pg_cron"
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements,pg_hint_plan,pg_cron"
+    apply_method = "pending-reboot"
   }
 
   parameter {
