@@ -90,6 +90,10 @@ resource "aws_secretsmanager_secret_version" "database_secret" {
     username = "postgres"
     password = data.aws_secretsmanager_random_password.database_secret.random_password
   })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "aws_secretsmanager_secret" "database_secret" {
