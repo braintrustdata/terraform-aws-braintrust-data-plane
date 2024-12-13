@@ -19,6 +19,9 @@ resource "aws_db_instance" "main" {
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
 
   storage_encrypted = true
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "${var.deployment_name}-main-final-snapshot"
 }
 
 resource "aws_db_parameter_group" "main" {
