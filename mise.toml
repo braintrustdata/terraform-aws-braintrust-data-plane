@@ -4,6 +4,11 @@ pre-commit = "latest"
 terraform = "1"
 
 [tasks]
-lint = ["terraform fmt", "tflint"]
+setup = ["pre-commit install", "tflint --init"]
+lint = [
+    "terraform fmt", 
+    "tflint",
+    "tflint --chdir modules --recursive"
+]
 precommit = ["pre-commit run --all-files"]
-setup = ["pre-commit install"]
+
