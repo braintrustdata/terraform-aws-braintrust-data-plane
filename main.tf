@@ -47,6 +47,9 @@ module "database" {
     module.main_vpc.private_subnet_3_id
   ]
   database_security_group_ids = [module.main_vpc.default_security_group_id]
+
+  postgres_storage_iops       = var.postgres_storage_iops
+  postgres_storage_throughput = var.postgres_storage_throughput
 }
 
 module "redis" {

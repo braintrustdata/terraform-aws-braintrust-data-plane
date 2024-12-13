@@ -3,9 +3,13 @@ resource "aws_db_instance" "main" {
   engine         = "postgres"
   engine_version = var.postgres_version
 
-  instance_class    = var.postgres_instance_type
-  allocated_storage = var.postgres_storage_size
-  storage_type      = var.postgres_storage_type
+  instance_class = var.postgres_instance_type
+
+  storage_encrypted  = true
+  allocated_storage  = var.postgres_storage_size
+  storage_type       = var.postgres_storage_type
+  storage_throughput = var.postgres_storage_throughput
+  iops               = var.postgres_storage_iops
 
   db_name  = "postgres"
   username = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["username"]
@@ -18,7 +22,6 @@ resource "aws_db_instance" "main" {
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
 
-  storage_encrypted = true
 
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.deployment_name}-main-final-snapshot"

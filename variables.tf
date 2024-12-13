@@ -111,6 +111,18 @@ variable "postgres_storage_type" {
   default     = "gp3"
 }
 
+variable "postgres_storage_iops" {
+  description = "Storage IOPS for the RDS instance. Only applicable if storage_type is io1, io2, or gp3."
+  type        = number
+  default     = null
+}
+
+variable "postgres_storage_throughput" {
+  description = "Throughput for the RDS instance. Only applicable if storage_type is gp3."
+  type        = number
+  default     = null
+}
+
 variable "postgres_version" {
   description = "PostgreSQL engine version for the RDS instance."
   type        = string
