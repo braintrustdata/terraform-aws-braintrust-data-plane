@@ -85,7 +85,7 @@ data "aws_secretsmanager_random_password" "database_secret" {
 }
 
 resource "aws_secretsmanager_secret_version" "database_secret" {
-  secret_id = data.aws_secretsmanager_random_password.database_secret.id
+  secret_id = aws_secretsmanager_secret.database_secret.id
   secret_string = jsonencode({
     username = "postgres"
     password = data.aws_secretsmanager_random_password.database_secret.random_password
