@@ -37,7 +37,7 @@ variable "postgres_storage_throughput" {
 variable "postgres_version" {
   description = "PostgreSQL engine version for the RDS instance."
   type        = string
-  default     = "15.5"
+  default     = "15.7"
 }
 
 variable "database_subnet_ids" {
