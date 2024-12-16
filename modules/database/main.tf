@@ -22,9 +22,15 @@ resource "aws_db_instance" "main" {
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
 
-
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.deployment_name}-main-final-snapshot"
+  copy_tags_to_snapshot     = true
+  backup_retention_period   = 3
+  backup_window             = "00:00-00:30"
+  maintenance_window        = "Mon:08:00-Mon:11:00" # This is in UTC, so it is 12am-3am in PST
+
+  performance_insights_enabled          = true
+  performance_insights_retention_period = 7
 }
 
 resource "aws_db_parameter_group" "main" {
