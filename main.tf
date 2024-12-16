@@ -32,3 +32,36 @@ module "quarantine_vpc" {
   private_subnet_3_cidr = cidrsubnet(var.quarantine_vpc_cidr, 8, 3)
   private_subnet_3_az   = local.quarantine_private_subnet_3_az
 }
+
+module "database" {
+  source                 = "./modules/database"
+  count                  = var.managed_postgres ? 1 : 0
+  deployment_name        = var.deployment_name
+  postgres_instance_type = var.postgres_instance_type
+  postgres_storage_size  = var.postgres_storage_size
+  postgres_storage_type  = var.postgres_storage_type
+  postgres_version       = var.postgres_version
+  database_subnet_ids = [
+    module.main_vpc.private_subnet_1_id,
+    module.main_vpc.private_subnet_2_id,
+    module.main_vpc.private_subnet_3_id
+  ]
+  database_security_group_ids = [module.main_vpc.default_security_group_id]
+
+  postgres_storage_iops       = var.postgres_storage_iops
+  postgres_storage_throughput = var.postgres_storage_throughput
+}
+
+module "redis" {
+  source = "./modules/elasticache"
+
+  deployment_name = var.deployment_name
+  subnet_ids = [
+    module.main_vpc.private_subnet_1_id,
+    module.main_vpc.private_subnet_2_id,
+    module.main_vpc.private_subnet_3_id
+  ]
+  security_group_ids  = [module.main_vpc.default_security_group_id]
+  redis_instance_type = var.redis_instance_type
+  redis_version       = var.redis_version
+}
