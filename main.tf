@@ -64,3 +64,30 @@ module "redis" {
   redis_instance_type = var.redis_instance_type
   redis_version       = var.redis_version
 }
+
+module "services" {
+  source = "./modules/services"
+
+  deployment_name            = var.deployment_name
+  braintrust_org_name        = var.braintrust_org_name
+  postgres_username          = module.database.postgres_database_username
+  postgres_password          = module.database.postgres_database_password
+  postgres_host              = module.database.postgres_database_address
+  redis_host                 = module.redis.redis_endpoint
+  redis_port                 = module.redis.redis_port
+  service_security_group_ids = [module.main_vpc.default_security_group_id]
+  service_subnet_ids = [
+    module.main_vpc.private_subnet_1_id,
+    module.main_vpc.private_subnet_2_id,
+    module.main_vpc.private_subnet_3_id
+  ]
+  use_quarantine_vpc                       = var.enable_quarantine
+  quarantine_vpc_id                        = var.enable_quarantine ? module.quarantine_vpc[0].vpc_id : null
+  quarantine_vpc_default_security_group_id = var.enable_quarantine ? module.quarantine_vpc[0].default_security_group_id : null
+  quarantine_vpc_private_subnets = var.enable_quarantine ? [
+    module.quarantine_vpc[0].private_subnet_1_id,
+    module.quarantine_vpc[0].private_subnet_2_id,
+    module.quarantine_vpc[0].private_subnet_3_id
+  ] : []
+
+}
