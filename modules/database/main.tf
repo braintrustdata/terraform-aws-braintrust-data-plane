@@ -1,3 +1,8 @@
+locals {
+  postgres_username = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["username"]
+  postgres_password = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["password"]
+}
+
 resource "aws_db_instance" "main" {
   identifier     = "${var.deployment_name}-main"
   engine         = "postgres"
@@ -12,8 +17,8 @@ resource "aws_db_instance" "main" {
   iops               = var.postgres_storage_iops
 
   db_name  = "postgres"
-  username = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["username"]
-  password = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["password"]
+  username = local.postgres_username
+  password = local.postgres_password
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   parameter_group_name   = aws_db_parameter_group.main.name

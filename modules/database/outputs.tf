@@ -12,3 +12,13 @@ output "postgres_database_arn" {
   value       = aws_db_instance.main.arn
   description = "The ARN of the main Postgres database"
 }
+
+output "postgres_database_username" {
+  value       = local.postgres_username
+  description = "The username for the main Postgres database"
+}
+
+output "postgres_database_password" {
+  value       = local.postgres_password
+  description = "The password for the main Postgres database"
+}
