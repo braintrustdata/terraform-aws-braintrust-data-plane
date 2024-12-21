@@ -9,7 +9,7 @@ provider "aws" {
   # Optional, but recommended. Set default tags for all resources created by this module.
   default_tags {
     tags = {
-      BraintrustDeploymentName = "braintrust"
+      BraintrustDeploymentName = var.deployment_name
       ManagedBy                = "terraform"
     }
   }
