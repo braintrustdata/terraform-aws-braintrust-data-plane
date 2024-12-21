@@ -87,12 +87,6 @@ variable "quarantine_public_subnet_1_az" {
 
 
 ## Database
-variable "managed_postgres" {
-  description = "Create a managed RDS Postgres instance. Disable if you want to run your own."
-  type        = bool
-  default     = true
-}
-
 variable "postgres_instance_type" {
   description = "Instance type for the RDS instance."
   type        = string

@@ -35,7 +35,6 @@ module "quarantine_vpc" {
 
 module "database" {
   source                 = "./modules/database"
-  count                  = var.managed_postgres ? 1 : 0
   deployment_name        = var.deployment_name
   postgres_instance_type = var.postgres_instance_type
   postgres_storage_size  = var.postgres_storage_size

@@ -29,7 +29,7 @@ output "main_vpc_private_subnet_3_id" {
 }
 
 output "postgres_database_arn" {
-  value       = var.managed_postgres ? module.database[0].postgres_database_arn : null
+  value       = module.database.postgres_database_arn
   description = "ARN of the main Braintrust Postgres database"
 }
 
