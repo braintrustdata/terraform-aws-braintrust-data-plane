@@ -1,0 +1,6 @@
+{
+    "AIProxy": "lambda/AIProxy/versions/1f288929d305c28a0569aa6b823b485d.zip",
+    "APIHandler": "lambda/APIHandler/versions/a4ff50add3da3d87d7fe61749d184a33.zip",
+    "MigrateDatabaseFunction": "lambda/MigrateDatabaseFunction/versions/7d8a0cf8b4335353e46cf8c8c68d0594.zip",
+    "QuarantineWarmupFunction": "lambda/QuarantineWarmupFunction/versions/799c7cbaf60e3c07b2d41420dff89194.zip"
+}
