@@ -20,7 +20,11 @@ variable "braintrust_org_name" {
 variable "deployment_name" {
   type        = string
   default     = "braintrust"
-  description = "Name of this Braintrust deployment. Will be included in tags and prefixes in resources names"
+  description = "Name of this Braintrust deployment. Will be included in tags and prefixes in resources names. Lowercase letters and hyphens only."
+  validation {
+    condition     = can(regex("^[a-z-]+$", var.deployment_name))
+    error_message = "The deployment_name must contain only lowercase letters and hyphens in order to be compatible with AWS resource naming restrictions."
+  }
 }
 
 ## NETWORKING
