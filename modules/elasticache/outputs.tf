@@ -6,4 +6,9 @@ output "redis_endpoint" {
 output "redis_port" {
   value       = aws_elasticache_cluster.main.cache_nodes[0].port
   description = "Redis port"
-} 
+}
+
+output "redis_arn" {
+  value       = aws_elasticache_cluster.main.arn
+  description = "Redis ARN"
+}
