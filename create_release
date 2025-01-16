@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+import json
+import urllib.request
+import sys
+
+# This script is for hard coding the latest lambda versions to VERSIONS.json
+# as part of the release process for this terraform module
+#
+# By default, this script will write the versions from the `latest` tag
+# You can specify a different tag (e.g. stable) by passing it as an argument
+
+version_tag = "latest"
+if len(sys.argv) > 1:
+    version_tag = sys.argv[1]
+
+print(f"Fetching {version_tag} lambda versions...")
+
+lambdas = [
+    "AIProxy",
+    "APIHandler", 
+    "MigrateDatabaseFunction",
+    "QuarantineWarmupFunction"
+]
+
+ecr_images = [
+    "braintrust/brainstore"
+]
+
+base_url = "https://braintrust-assets-us-east-1.s3.us-east-1.amazonaws.com/lambda"
+
+versions = {}
+for lambda_name in lambdas:
+    print(f"Fetching {version_tag} version for {lambda_name}...")
+    with urllib.request.urlopen(f"{base_url}/{lambda_name}/version-{version_tag}") as response:
+        version = response.read().decode('utf-8').strip()
+        versions[lambda_name] = version
+
+
+
+print("Writing versions to VERSIONS.json...")
+with open("modules/services/VERSIONS.json", "w") as f:
+    json.dump(versions, f, indent=4)
