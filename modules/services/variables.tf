@@ -8,6 +8,11 @@ variable "deployment_name" {
   description = "Name of this deployment. Will be included in resource names"
 }
 
+variable "service_vpc_id" {
+  type        = string
+  description = "The VPC ID for the lambda functions that are the main braintrust service"
+}
+
 variable "service_security_group_ids" {
   type        = list(string)
   description = "The security group ids to apply to the lambda functions that are the main braintrust service"
@@ -28,6 +33,8 @@ variable "postgres_password" {
   description = "The password of the postgres database"
   sensitive   = true
 }
+
+
 
 variable "postgres_host" {
   type        = string
@@ -78,4 +85,43 @@ variable "quarantine_vpc_private_subnets" {
     condition     = var.use_quarantine_vpc ? length(var.quarantine_vpc_private_subnets) == 3 : true
     error_message = "Quarantine VPC must have 3 private subnets."
   }
+}
+
+variable "brainstore_hostname" {
+  type        = string
+  description = "Hostname for Brainstore"
+}
+
+variable "brainstore_port" {
+  type        = number
+  description = "Port for Brainstore"
+  default     = 4000
+}
+
+variable "brainstore_s3_bucket_name" {
+  type        = string
+  description = "Name of the Brainstore S3 bucket"
+}
+
+variable "whitelisted_origins" {
+  type        = string
+  description = "List of origins to whitelist for CORS"
+}
+
+variable "outbound_rate_limit_window_minutes" {
+  type        = number
+  description = "The time frame in minutes over which rate per-user rate limits are accumulated"
+  default     = 1
+}
+
+variable "outbound_rate_limit_max_requests" {
+  type        = number
+  description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
+  default     = 0
+}
+
+variable "api_handler_provisioned_concurrency" {
+  type        = number
+  description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
+  default     = 1
 }

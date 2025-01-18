@@ -81,39 +81,71 @@ resource "aws_iam_role" "api_handler_role" {
   })
 }
 
-resource "aws_iam_role_policy" "api_handler_policy" {
-  name = "${var.deployment_name}-APIHandlerRolePolicy"
-  role = aws_iam_role.api_handler_role.id
+resource "aws_iam_role_policy_attachments_exclusive" "api_handler_exclusive" {
+  role_name = aws_iam_role.api_handler_role.name
+  policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
+    aws_iam_policy.api_handler_policy.arn,
+    aws_iam_policy.api_handler_quarantine.name[0].arn
+  ]
+}
+
+resource "aws_iam_policy" "api_handler_quarantine" {
+  count = var.use_quarantine_vpc ? 1 : 0
+  name  = "${var.deployment_name}-APIHandlerQuarantinePolicy"
   policy = jsonencode({
     Statement = [
       {
+        Action   = "lambda:InvokeFunction"
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "api_handler_policy" {
+  name = "${var.deployment_name}-APIHandlerRolePolicy"
+  policy = jsonencode({
+    Statement = [
+      {
+        Sid      = "ElasticacheAccess"
         Action   = ["elasticache:DescribeCacheClusters"]
         Effect   = "Allow"
         Resource = ["*"]
       },
       {
+        Sid      = "CloudWatchLogs"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Effect   = "Allow"
         Resource = "arn:*:logs:*:*:*"
       },
+      # TODO: Do we need access to the database secret here?
       {
+        Sid    = "S3Access"
         Action = "s3:*"
         Effect = "Allow"
         Resource = [
           "arn:aws:s3:::${aws_s3_bucket.lambda_responses_bucket.arn}",
           "arn:aws:s3:::${aws_s3_bucket.lambda_responses_bucket.arn}/*",
           "arn:aws:s3:::${aws_s3_bucket.code_bundle_bucket.arn}",
-          "arn:aws:s3:::${aws_s3_bucket.code_bundle_bucket.arn}/*"
+          "arn:aws:s3:::${aws_s3_bucket.code_bundle_bucket.arn}/*",
+          "arn:aws:s3:::${var.brainstore_s3_bucket_name}",
+          "arn:aws:s3:::${var.brainstore_s3_bucket_name}/*"
         ]
       },
       {
-        Action   = ["lambda:CreateFunction", "lambda:PublishVersion"]
-        Effect   = "Allow"
-        Resource = "arn:aws:lambda:$${AWS::Region}:$${AWS::AccountId}:function:*"
-        Sid      = "QuarantinePublish"
+        Sid    = "CatchupETLInvoke"
+        Action = ["lambda:InvokeFunction"]
+        Effect = "Allow"
+        # TODO: Make this the catcup ETL arn
+        Resource = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:*"
       },
       {
-        Action   = ["lambda:CreateFunction", "lambda:PublishVersion"]
+        Action = [
+          "lambda:CreateFunction",
+          "lambda:PublishVersion"
+        ]
         Effect   = "Deny"
         Resource = "*"
         Condition = {
@@ -159,14 +191,5 @@ resource "aws_iam_role_policy" "api_handler_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachments_exclusive" "api_handler_exclusive" {
-  role_name = aws_iam_role.api_handler_role.name
-  policy_arns = [
-    "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-  ]
-}
 
-resource "aws_iam_role_policies_exclusive" "api_handler_policies_exclusive" {
-  role_name    = aws_iam_role.api_handler_role.name
-  policy_names = [aws_iam_role_policy.api_handler_policy.name]
-}
+

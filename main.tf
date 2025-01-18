@@ -76,6 +76,7 @@ module "services" {
   redis_host                 = module.redis.redis_endpoint
   redis_port                 = module.redis.redis_port
   service_security_group_ids = [module.main_vpc.default_security_group_id]
+  service_vpc_id             = module.main_vpc.vpc_id
   service_subnet_ids = [
     module.main_vpc.private_subnet_1_id,
     module.main_vpc.private_subnet_2_id,
