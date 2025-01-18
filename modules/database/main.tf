@@ -39,7 +39,7 @@ resource "aws_db_instance" "main" {
 }
 
 resource "aws_db_parameter_group" "main" {
-  name        = "${var.deployment_name}-main"
+  name_prefix = "${var.deployment_name}-main"
   family      = "postgres${split(".", var.postgres_version)[0]}"
   description = "DB parameter group for the Braintrust main database"
 
@@ -65,9 +65,13 @@ resource "aws_db_parameter_group" "main" {
 }
 
 resource "aws_db_subnet_group" "main" {
-  name        = "${var.deployment_name}-main"
+  name_prefix = "${var.deployment_name}-main"
   description = "Subnet group for the Braintrust main database"
   subnet_ids  = var.database_subnet_ids
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_iam_role" "db_monitoring" {
