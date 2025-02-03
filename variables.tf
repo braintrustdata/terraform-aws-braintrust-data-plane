@@ -144,3 +144,29 @@ variable "redis_version" {
   type        = string
   default     = "7.0"
 }
+
+## Services
+
+variable "api_handler_provisioned_concurrency" {
+  description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
+  type        = number
+  default     = 0
+}
+
+variable "whitelisted_origins" {
+  description = "List of origins to whitelist for CORS"
+  type        = list(string)
+  default     = []
+}
+
+variable "outbound_rate_limit_max_requests" {
+  description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
+  type        = number
+  default     = 0
+}
+
+variable "outbound_rate_limit_window_minutes" {
+  description = "The time frame in minutes over which rate per-user rate limits are accumulated"
+  type        = number
+  default     = 1
+}

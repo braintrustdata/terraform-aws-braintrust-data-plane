@@ -68,13 +68,27 @@ module "redis" {
 module "services" {
   source = "./modules/services"
 
-  deployment_name            = var.deployment_name
-  braintrust_org_name        = var.braintrust_org_name
-  postgres_username          = module.database.postgres_database_username
-  postgres_password          = module.database.postgres_database_password
-  postgres_host              = module.database.postgres_database_address
-  redis_host                 = module.redis.redis_endpoint
-  redis_port                 = module.redis.redis_port
+  deployment_name = var.deployment_name
+
+  # Data stores
+  postgres_username = module.database.postgres_database_username
+  postgres_password = module.database.postgres_database_password
+  postgres_host     = module.database.postgres_database_address
+  redis_host        = module.redis.redis_endpoint
+  redis_port        = module.redis.redis_port
+  # TODO: Brainstore
+  brainstore_hostname       = var.brainstore_hostname
+  brainstore_port           = var.brainstore_port
+  brainstore_s3_bucket_name = var.brainstore_s3_bucket_name
+
+  # Service configuration
+  braintrust_org_name                 = var.braintrust_org_name
+  api_handler_provisioned_concurrency = var.api_handler_provisioned_concurrency
+  whitelisted_origins                 = var.whitelisted_origins
+  outbound_rate_limit_window_minutes  = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests    = var.outbound_rate_limit_max_requests
+
+  # Networking
   service_security_group_ids = [module.main_vpc.default_security_group_id]
   service_vpc_id             = module.main_vpc.vpc_id
   service_subnet_ids = [
@@ -82,6 +96,8 @@ module "services" {
     module.main_vpc.private_subnet_2_id,
     module.main_vpc.private_subnet_3_id
   ]
+
+  # Quarantine VPC
   use_quarantine_vpc                       = var.enable_quarantine
   quarantine_vpc_id                        = var.enable_quarantine ? module.quarantine_vpc[0].vpc_id : null
   quarantine_vpc_default_security_group_id = var.enable_quarantine ? module.quarantine_vpc[0].default_security_group_id : null

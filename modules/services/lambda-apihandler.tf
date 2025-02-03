@@ -10,6 +10,11 @@ resource "aws_lambda_function" "api_handler" {
   publish       = true
   architectures = ["arm64"]
 
+  logging_config {
+    log_format = "Text"
+    log_group  = "/braintrust/${var.deployment_name}/${aws_lambda_function.api_handler.function_name}"
+  }
+
   layers = [
     # See https://github.com/tobilg/duckdb-nodejs-layer
     "arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:12"
@@ -26,7 +31,7 @@ resource "aws_lambda_function" "api_handler" {
       REDIS_HOST          = var.redis_host
       REDIS_PORT          = var.redis_port
       CATCHUP_ETL_ARN     = aws_lambda_function.catchup_etl.arn
-      WHITELISTED_ORIGINS = var.whitelisted_origins
+      WHITELISTED_ORIGINS = join(",", var.whitelisted_origins)
       RESPONSE_BUCKET     = aws_s3_bucket.lambda_responses_bucket.id
       CODE_BUNDLE_BUCKET  = aws_s3_bucket.code_bundle_bucket.id
 
@@ -81,7 +86,8 @@ resource "aws_lambda_permission" "api_handler_invoke" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api_handler_js.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.rest_api_execution_arn}/*"
+  # TODO
+  source_arn = "${var.rest_api_execution_arn}/*"
 }
 
 # Create a new IAM role for AI Proxy invocation

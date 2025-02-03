@@ -104,20 +104,19 @@ variable "brainstore_s3_bucket_name" {
 }
 
 variable "whitelisted_origins" {
-  type        = string
+  type        = list(string)
   description = "List of origins to whitelist for CORS"
-}
-
-variable "outbound_rate_limit_window_minutes" {
-  type        = number
-  description = "The time frame in minutes over which rate per-user rate limits are accumulated"
-  default     = 1
 }
 
 variable "outbound_rate_limit_max_requests" {
   type        = number
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   default     = 0
+}
+variable "outbound_rate_limit_window_minutes" {
+  type        = number
+  description = "The time frame in minutes over which rate per-user rate limits are accumulated"
+  default     = 1
 }
 
 variable "api_handler_provisioned_concurrency" {
