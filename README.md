@@ -27,6 +27,13 @@ module "braintrust" {
 }
 ```
 
+## Customized Deployments
+
+It is highly recommended to use our root module to deploy Braintrust. It will make support and upgrades far easier. However, if you need to customize the deployment, you can pick and choose from our submodules since they are easily composable.
+
+Look at our `main.tf` as a reference for how to configure the submodules. For example, if you wanted to re-use an existing VPC, you could remove the `module.main_vpc` block and pass in the existing VPC's ID, subnets, and security group IDs to the `services`, `database`, and `redis` modules.
+
+
 ## Development Setup
 
 You only need to do these steps if you are making changes to this module.
