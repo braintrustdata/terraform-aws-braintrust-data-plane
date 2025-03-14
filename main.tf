@@ -98,6 +98,15 @@ module "services" {
   clickhouse_host      = local.clickhouse_address
   clickhouse_secret_id = var.enable_clickhouse ? module.clickhouse[0].clickhouse_secret_id : null
 
+  brainstore_enabled                         = var.enable_brainstore
+  brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].brainstore_hostname : null
+  brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].brainstore_s3_bucket_name : null
+  brainstore_port                            = var.brainstore_port
+  brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
+  brainstore_backfill_new_objects            = var.brainstore_backfill_new_objects
+  brainstore_backfill_disable_historical     = var.brainstore_backfill_disable_historical
+  brainstore_backfill_disable_nonhistorical  = var.brainstore_backfill_disable_nonhistorical
+
   # Service configuration
   braintrust_org_name                 = var.braintrust_org_name
   api_handler_provisioned_concurrency = var.api_handler_provisioned_concurrency

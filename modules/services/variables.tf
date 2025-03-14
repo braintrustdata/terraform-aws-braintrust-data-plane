@@ -179,3 +179,28 @@ variable "clickhouse_secret" {
   type        = string
   default     = null
 }
+
+variable "brainstore_enable_historical_full_backfill" {
+  type        = bool
+  description = "Enable historical full backfill for Brainstore"
+  default     = true
+}
+
+variable "brainstore_backfill_new_objects" {
+  type        = bool
+  description = "Enable backfill for new objects for Brainstore"
+  default     = true
+}
+
+variable "brainstore_backfill_disable_historical" {
+  type        = bool
+  description = "Disable historical backfill for Brainstore"
+  default     = false
+}
+
+variable "brainstore_backfill_disable_nonhistorical" {
+  type        = bool
+  description = "Disable non-historical backfill for Brainstore"
+  default     = false
+}
+

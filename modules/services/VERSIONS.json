@@ -1,8 +1,9 @@
 {
-    "_tag": "latest",
     "AIProxy": "lambda/AIProxy/versions/25fc7cbdb108be9db641ec47b7f5acab.zip",
     "APIHandler": "lambda/APIHandler/versions/b532daac63efc30982f34aca75f1880d.zip",
     "MigrateDatabaseFunction": "lambda/MigrateDatabaseFunction/versions/78d320c5049782073f58b5f1ba0fdac4.zip",
     "QuarantineWarmupFunction": "lambda/QuarantineWarmupFunction/versions/81d03621748d93167a2ad8ff78753191.zip",
-    "CatchupETL": "lambda/CatchupETL/versions/9dddcd4d0f4d897d6edb3ac4d104c3c5.zip"
+    "CatchupETL": "lambda/CatchupETL/versions/9dddcd4d0f4d897d6edb3ac4d104c3c5.zip",
+    "_tag": "latest",
+    "_timestamp": "2025-03-14T15:45:57.352992"
 }

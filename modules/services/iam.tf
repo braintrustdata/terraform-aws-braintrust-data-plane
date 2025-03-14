@@ -183,14 +183,16 @@ resource "aws_iam_policy" "api_handler_policy" {
         Sid    = "S3Access"
         Action = "s3:*"
         Effect = "Allow"
-        Resource = [
+        Resource = concat([
           "arn:aws:s3:::${aws_s3_bucket.lambda_responses_bucket.arn}",
           "arn:aws:s3:::${aws_s3_bucket.lambda_responses_bucket.arn}/*",
           "arn:aws:s3:::${aws_s3_bucket.code_bundle_bucket.arn}",
           "arn:aws:s3:::${aws_s3_bucket.code_bundle_bucket.arn}/*",
-          "arn:aws:s3:::${var.brainstore_s3_bucket_name}",
-          "arn:aws:s3:::${var.brainstore_s3_bucket_name}/*"
-        ]
+          ],
+          var.brainstore_s3_bucket_name != null && var.brainstore_s3_bucket_name != "" ? [
+            "arn:aws:s3:::${var.brainstore_s3_bucket_name}",
+            "arn:aws:s3:::${var.brainstore_s3_bucket_name}/*"
+        ] : [])
       },
       {
         Sid      = "CatchupETLInvoke"

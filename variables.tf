@@ -237,7 +237,7 @@ variable "enable_brainstore" {
 
 variable "brainstore_instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore.Must be a Graviton instance type. Preferably with 16GB of memory and a local SSD for cache data. The default value is for tiny deployments. Recommended for production deployments is c7gd.8xlarge."
+  description = "The instance type to use for the Brainstore. Must be a Graviton instance type. Preferably with 16GB of memory and a local SSD for cache data. The default value is for tiny deployments. Recommended for production deployments is c7gd.8xlarge."
   default     = "c5.xlarge"
 }
 
@@ -271,23 +271,34 @@ variable "brainstore_version_override" {
   default     = null
 }
 
-variable "brainstore_backfill_all_objects" {
+variable "brainstore_enable_historical_full_backfill" {
   type        = bool
-  description = "Run a full historical backfill of all objects."
+  description = "Enable historical full backfill for Brainstore. Don't modify this unless instructed by Braintrust."
+  default     = true
+}
+
+variable "brainstore_backfill_new_objects" {
+  type        = bool
+  description = "Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust."
+  default     = true
+}
+
+variable "brainstore_backfill_disable_historical" {
+  type        = bool
+  description = "Disable historical backfill for Brainstore. Don't modify this unless instructed by Braintrust."
   default     = false
 }
 
-variable "brainstore_backfill_only_realtime" {
+variable "brainstore_backfill_disable_nonhistorical" {
   type        = bool
-  description = "Only backfill to keep realtime objects up-to-date. (This is an advanced setting you should only use to debug with the Braintrust team)."
+  description = "Disable non-historical backfill for Brainstore. Don't modify this unless instructed by Braintrust."
   default     = false
 }
 
-variable "brainstore_backfill_only_historical" {
-  type        = bool
-  description = "Only backfill to keep historical objects up-to-date. (This is an advanced setting you should only use to debug with the Braintrust team)."
-  default     = false
-}
+
+
+
+
 
 
 
