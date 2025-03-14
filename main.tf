@@ -99,9 +99,9 @@ module "services" {
   clickhouse_secret_id = var.enable_clickhouse ? module.clickhouse[0].clickhouse_secret_id : null
 
   brainstore_enabled                         = var.enable_brainstore
-  brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].brainstore_hostname : null
-  brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].brainstore_s3_bucket_name : null
-  brainstore_port                            = var.brainstore_port
+  brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
+  brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
+  brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
   brainstore_backfill_new_objects            = var.brainstore_backfill_new_objects
   brainstore_backfill_disable_historical     = var.brainstore_backfill_disable_historical
