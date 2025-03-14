@@ -38,24 +38,6 @@ variable "instance_key_pair_name" {
   default     = null
 }
 
-variable "brainstore_backfill_all_objects" {
-  type        = bool
-  description = "Run a full historical backfill of all objects."
-  default     = false
-}
-
-variable "brainstore_backfill_only_realtime" {
-  type        = bool
-  description = "Only backfill to keep realtime objects up-to-date. (This is an advanced setting you should only use to debug with the Braintrust team)."
-  default     = false
-}
-
-variable "brainstore_backfill_only_historical" {
-  type        = bool
-  description = "Only backfill to keep historical objects up-to-date. (This is an advanced setting you should only use to debug with the Braintrust team)."
-  default     = false
-}
-
 variable "kms_key_arn" {
   type        = string
   description = "The ARN of the KMS key to use for encrypting the Brainstore disks and S3 bucket. If not provided, AWS managed keys will be used."

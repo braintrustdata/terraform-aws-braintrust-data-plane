@@ -1,3 +1,8 @@
+
+locals {
+  brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
+}
+
 resource "aws_launch_template" "brainstore" {
   name          = "${var.deployment_name}-brainstore"
   image_id      = data.aws_ami.ubuntu_24_04.id
@@ -40,6 +45,7 @@ resource "aws_launch_template" "brainstore" {
     brainstore_s3_bucket        = aws_s3_bucket.brainstore.id
     brainstore_license_key      = var.license_key
     brainstore_version_override = var.version_override == null ? "" : var.version_override
+    brainstore_release_version  = local.brainstore_release_version
   }))
 
   tag_specifications {

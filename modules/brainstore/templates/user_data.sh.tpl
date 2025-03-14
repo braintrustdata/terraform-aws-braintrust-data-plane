@@ -95,9 +95,7 @@ AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
 EOF
 
-# Note: This value will be replaced with a specific version when making a release
-# FIXME: This should lookup the version from the data file.
-BRAINSTORE_RELEASE_VERSION=latest
+BRAINSTORE_RELEASE_VERSION=${brainstore_release_version}
 BRAINSTORE_VERSION_OVERRIDE=${brainstore_version_override}
 BRAINSTORE_VERSION=$${BRAINSTORE_VERSION_OVERRIDE:-$${BRAINSTORE_RELEASE_VERSION}}
 
