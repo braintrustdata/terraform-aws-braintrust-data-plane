@@ -1,6 +1,10 @@
 # tflint-ignore-file: terraform_module_version
 
-# Create an instance of the Braintrust data plane.
+locals {
+  # This is primarily used for tagging and naming resources in your AWS account.
+  # Do not change this after deployment. RDS and S3 resources can not be renamed.
+  deployment_name = "braintrust"
+}
 
 module "braintrust-data-plane" {
   source = "braintrustdata/data-plane/braintrust"
@@ -73,10 +77,4 @@ module "braintrust-data-plane" {
 
   # Enable the Quarantine VPC to run user defined functions in an isolated environment. If disabled, user defined functions will not be available.
   # enable_quarantine_vpc                = true
-}
-
-locals {
-  # This is primarily used for tagging and naming resources in your AWS account.
-  # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "braintrust"
 }
