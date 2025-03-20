@@ -100,9 +100,7 @@ resource "aws_ec2_instance_connect_endpoint" "bastion" {
   count = var.enable_braintrust_support_shell_access ? 1 : 0
 
   subnet_id          = var.public_subnet_ids[0]
-  vpc_id             = var.vpc_id
   security_group_ids = [aws_security_group.instance_connect_endpoint[0].id]
-
   preserve_client_ip = true
 
   tags = {
