@@ -261,10 +261,11 @@ resource "aws_instance" "bastion" {
     region                = data.aws_region.current.name
     database_host         = var.database_host
     database_secret_arn   = var.database_secret_arn
-    clickhouse_host       = var.clickhouse_host
-    clickhouse_secret_arn = var.clickhouse_secret_arn
+    clickhouse_host       = var.clickhouse_host != null ? var.clickhouse_host : ""
+    clickhouse_secret_arn = var.clickhouse_secret_arn != null ? var.clickhouse_secret_arn : ""
     redis_host            = var.redis_host
     redis_port            = var.redis_port
+    lambda_function_arns  = var.lambda_function_arns
   }))
 
   tags = {

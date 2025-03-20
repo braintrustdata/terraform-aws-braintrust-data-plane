@@ -65,3 +65,9 @@ variable "kms_key_arn" {
   description = "ARN of the KMS key to use for encrypting the bastion host"
   type        = string
 }
+
+variable "lambda_function_arns" {
+  description = "List of Lambda function ARNs to make available to the bastion host"
+  type        = list(string)
+  default     = []
+}
