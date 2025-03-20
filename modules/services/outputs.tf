@@ -37,3 +37,18 @@ output "cloudfront_distribution_arn" {
   description = "The ARN of the cloudfront distribution"
   value       = aws_cloudfront_distribution.dataplane.arn
 }
+
+output "migrate_database_arn" {
+  description = "The ARN of the migrate database lambda function"
+  value       = aws_lambda_function.migrate_database.arn
+}
+
+output "catchup_etl_arn" {
+  description = "The ARN of the catchup etl lambda function"
+  value       = aws_lambda_function.catchup_etl.arn
+}
+
+output "quarantine_warmup_arn" {
+  description = "The ARN of the quarantine warmup lambda function"
+  value       = var.use_quarantine_vpc ? aws_lambda_function.quarantine_warmup[0].arn : null
+}
