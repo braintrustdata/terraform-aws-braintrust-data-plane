@@ -300,11 +300,3 @@ variable "brainstore_backfill_disable_nonhistorical" {
   description = "Disable non-historical backfill for Brainstore. Don't modify this unless instructed by Braintrust."
   default     = false
 }
-
-
-
-
-
-
-
-
