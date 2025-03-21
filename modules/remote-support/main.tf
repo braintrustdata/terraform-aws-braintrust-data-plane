@@ -187,10 +187,10 @@ resource "aws_iam_role_policy" "bastion" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = [
+        Resource = compact([
           var.database_secret_arn,
           var.clickhouse_secret_arn
-        ]
+        ])
       }
     ]
   })
