@@ -198,6 +198,17 @@ resource "aws_iam_role_policy" "bastion" {
           var.database_secret_arn,
           var.clickhouse_secret_arn
         ])
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = [var.kms_key_arn]
       }
     ]
   })
