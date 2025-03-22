@@ -94,6 +94,13 @@ resource "aws_security_group" "instance_connect_endpoint" {
     protocol    = "tcp"
     cidr_blocks = var.bastion_allowed_cidrs
   }
+
+  egress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_ec2_instance_connect_endpoint" "bastion" {
