@@ -39,14 +39,13 @@ echo -e "\nsource /etc/braintrust.env\n" >> /home/ubuntu/.bashrc
 
 cat <<'EOF' > /home/ubuntu/list-instances.sh
 #!/bin/bash
-json=$(aws ec2 describe-instances --filters "Name=tag:BraintrustDeploymentName,Values=$TPL_DEPLOYMENT_NAME")
+json=$(aws ec2 describe-instances --filters "Name=tag:BraintrustDeploymentName,Values=${deployment_name}")
 
 if [ "$1" == "--json" ]; then
   echo "$json"
 else
-  echo "$json" | jq -r '.Reservations[].Instances[] | "\(.InstanceId) \(.Tags[] | select(.Key=="Name").Value // "")"'
+  echo "$json" | jq -r '.Reservations[].Instances[] | "\(.InstanceId) \((.Tags[] | select(.Key=="Name").Value) // "") [\(.State.Name)]"'
 fi
-
 EOF
 
 cat <<'EOF' > /home/ubuntu/list-functions.sh
