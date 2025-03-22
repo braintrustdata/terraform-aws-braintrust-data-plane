@@ -48,6 +48,10 @@ resource "aws_lambda_function" "ai_proxy" {
   tracing_config {
     mode = "PassThrough"
   }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_lambda_function_url" "ai_proxy" {

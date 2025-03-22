@@ -20,6 +20,10 @@ resource "aws_iam_role" "braintrust_support" {
       }
     ]
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role_policy" "braintrust_support_logs" {

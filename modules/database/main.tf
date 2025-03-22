@@ -40,6 +40,10 @@ resource "aws_db_instance" "main" {
 
   kms_key_id = var.kms_key_arn
 
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
+
   lifecycle {
     # These can't be changed without recreating the RDS instance
     ignore_changes = [
@@ -79,6 +83,10 @@ resource "aws_db_parameter_group" "main" {
   lifecycle {
     create_before_destroy = true
   }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_db_subnet_group" "main" {
@@ -88,6 +96,10 @@ resource "aws_db_subnet_group" "main" {
 
   lifecycle {
     create_before_destroy = true
+  }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -106,6 +118,10 @@ resource "aws_iam_role" "db_monitoring" {
       }
     ]
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "db_monitoring" {
@@ -135,4 +151,8 @@ resource "aws_secretsmanager_secret" "database_secret" {
   name_prefix = "${var.deployment_name}/DatabaseSecret-"
   description = "Username/password for the main Braintrust RDS database"
   kms_key_id  = var.kms_key_arn
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }

@@ -51,6 +51,10 @@ resource "aws_lambda_function" "quarantine_warmup" {
   tracing_config {
     mode = "PassThrough"
   }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 # Invoke the quarantine warmup lambda function every time the api handler is deployed

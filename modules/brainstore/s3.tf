@@ -7,6 +7,10 @@ resource "aws_s3_bucket" "brainstore" {
       bucket_prefix
     ]
   }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "brainstore" {

@@ -4,7 +4,8 @@ resource "aws_vpc" "vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}"
+    Name                     = "${var.deployment_name}-${var.vpc_name}"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -12,7 +13,8 @@ resource "aws_internet_gateway" "internet_gateway" {
   vpc_id = aws_vpc.vpc.id
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-gateway"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-gateway"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -27,7 +29,8 @@ resource "aws_nat_gateway" "nat_gateway" {
   depends_on    = [aws_internet_gateway.internet_gateway]
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-nat"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-nat"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -35,7 +38,8 @@ resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.vpc.id
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-public-rt"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-public-rt"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -43,7 +47,8 @@ resource "aws_route_table" "private_route_table" {
   vpc_id = aws_vpc.vpc.id
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-private-rt"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-private-rt"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -66,7 +71,8 @@ resource "aws_subnet" "public_subnet_1" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -76,7 +82,8 @@ resource "aws_subnet" "private_subnet_1" {
   availability_zone = var.private_subnet_1_az
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-1"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-private-subnet-1"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -86,7 +93,8 @@ resource "aws_subnet" "private_subnet_2" {
   availability_zone = var.private_subnet_2_az
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-2"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-private-subnet-2"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -96,7 +104,8 @@ resource "aws_subnet" "private_subnet_3" {
   availability_zone = var.private_subnet_3_az
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-3"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-private-subnet-3"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -139,6 +148,7 @@ resource "aws_vpc_endpoint" "s3" {
   })
 
   tags = {
-    Name = "${var.deployment_name}-${var.vpc_name}-s3-endpoint"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-s3-endpoint"
+    BraintrustDeploymentName = var.deployment_name
   }
 }

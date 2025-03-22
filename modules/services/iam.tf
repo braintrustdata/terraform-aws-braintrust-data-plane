@@ -13,6 +13,10 @@ resource "aws_iam_role" "quarantine_invoke_role" {
     ]
     Version = "2012-10-17"
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role_policy" "quarantine_invoke_policy" {
@@ -56,6 +60,10 @@ resource "aws_iam_role" "quarantine_function_role" {
       }
     ]
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "quarantine_function_role" {
@@ -78,6 +86,10 @@ resource "aws_iam_role" "api_handler_role" {
     ]
     Version = "2012-10-17"
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "vpc_access" {
@@ -149,6 +161,10 @@ resource "aws_iam_policy" "api_handler_quarantine" {
       },
     ]
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_policy" "api_handler_policy" {
@@ -225,6 +241,10 @@ resource "aws_iam_policy" "api_handler_policy" {
     ]
     Version = "2012-10-17"
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role" "default_role" {
@@ -242,6 +262,10 @@ resource "aws_iam_role" "default_role" {
       }
     ]
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {

@@ -51,21 +51,24 @@ resource "aws_launch_template" "brainstore" {
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name = "${var.deployment_name}-brainstore"
+      Name                     = "${var.deployment_name}-brainstore"
+      BraintrustDeploymentName = var.deployment_name
     }
   }
 
   tag_specifications {
     resource_type = "volume"
     tags = {
-      Name = "${var.deployment_name}-brainstore"
+      Name                     = "${var.deployment_name}-brainstore"
+      BraintrustDeploymentName = var.deployment_name
     }
   }
 
   tag_specifications {
     resource_type = "network-interface"
     tags = {
-      Name = "${var.deployment_name}-brainstore"
+      Name                     = "${var.deployment_name}-brainstore"
+      BraintrustDeploymentName = var.deployment_name
     }
   }
 }
@@ -80,6 +83,10 @@ resource "aws_lb" "brainstore" {
   lifecycle {
     # Changing security groups requires a new NLB.
     create_before_destroy = true
+  }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -97,6 +104,10 @@ resource "aws_lb_target_group" "brainstore" {
     unhealthy_threshold = 3
     timeout             = 10
     interval            = 10
+  }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
@@ -140,6 +151,12 @@ resource "aws_autoscaling_group" "brainstore" {
       max_healthy_percentage = 200
     }
     triggers = ["tag"]
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "${var.deployment_name}-brainstore"
+    propagate_at_launch = true
   }
 
   tag {

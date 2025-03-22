@@ -72,8 +72,8 @@ resource "aws_kms_key" "braintrust" {
   })
 
   tags = {
-    Name        = "${var.deployment_name}-main"
-    Environment = var.deployment_name
+    Name                     = "${var.deployment_name}-main"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 

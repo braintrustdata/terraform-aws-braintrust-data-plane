@@ -16,6 +16,10 @@ resource "aws_iam_role" "clickhouse" {
       Action = "sts:AssumeRole"
     }]
   })
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_iam_role_policy" "clickhouse_secret_access" {

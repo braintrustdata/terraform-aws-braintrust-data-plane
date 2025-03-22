@@ -82,6 +82,10 @@ resource "aws_lambda_function" "api_handler" {
   tracing_config {
     mode = "PassThrough"
   }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_lambda_provisioned_concurrency_config" "api_handler_live" {

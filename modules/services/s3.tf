@@ -7,6 +7,10 @@ resource "aws_s3_bucket" "code_bundle_bucket" {
     # S3 does not support renaming buckets
     ignore_changes = [bucket_prefix]
   }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucket" {
@@ -29,6 +33,10 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
   lifecycle {
     # S3 does not support renaming buckets
     ignore_changes = [bucket_prefix]
+  }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 

@@ -45,6 +45,10 @@ resource "aws_lambda_function" "catchup_etl" {
   tracing_config {
     mode = "PassThrough"
   }
+
+  tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 resource "aws_cloudwatch_event_rule" "catchup_etl_schedule" {

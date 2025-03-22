@@ -15,7 +15,8 @@ resource "aws_iam_role" "brainstore_ec2_role" {
   })
 
   tags = {
-    Name = "${var.deployment_name}-brainstore-ec2-role"
+    Name                     = "${var.deployment_name}-brainstore-ec2-role"
+    BraintrustDeploymentName = var.deployment_name
   }
 }
 
