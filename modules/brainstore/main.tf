@@ -141,6 +141,12 @@ resource "aws_autoscaling_group" "brainstore" {
     }
     triggers = ["tag"]
   }
+
+  tag {
+    key                 = "BraintrustDeploymentName"
+    value               = var.deployment_name
+    propagate_at_launch = true
+  }
 }
 
 data "aws_ami" "ubuntu_24_04" {
