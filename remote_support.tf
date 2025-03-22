@@ -28,7 +28,9 @@ module "remote_support" {
   enable_braintrust_support_logs_access  = var.enable_braintrust_support_logs_access
   enable_braintrust_support_shell_access = var.enable_braintrust_support_shell_access
   vpc_id                                 = module.main_vpc.vpc_id
+  private_subnet_ids                     = [module.main_vpc.private_subnet_1_id]
   public_subnet_ids                      = [module.main_vpc.public_subnet_1_id]
+  bastion_additional_security_groups     = [module.main_vpc.default_security_group_id]
 }
 
 variable "enable_braintrust_support_logs_access" {

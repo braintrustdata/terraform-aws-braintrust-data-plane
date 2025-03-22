@@ -21,14 +21,33 @@ variable "bastion_allowed_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "bastion_additional_security_groups" {
+  description = "List of additional security groups to apply to the bastion host"
+  type        = list(string)
+  default     = []
+}
+
 variable "vpc_id" {
   description = "ID of the VPC where the bastion host will be deployed"
   type        = string
 }
 
 variable "public_subnet_ids" {
-  description = "List of public subnet IDs where the bastion host can be deployed"
+  description = "List of public subnet IDs where the EC2 instance connect endpoint can be deployed"
   type        = list(string)
+  validation {
+    condition     = length(var.public_subnet_ids) >= 1
+    error_message = "There must be at least one public subnet in the VPC."
+  }
+}
+
+variable "private_subnet_ids" {
+  description = "List of private subnet IDs where the bastion host can be deployed"
+  type        = list(string)
+  validation {
+    condition     = length(var.private_subnet_ids) >= 1
+    error_message = "There must be at least one private subnet in the VPC."
+  }
 }
 
 variable "database_host" {
