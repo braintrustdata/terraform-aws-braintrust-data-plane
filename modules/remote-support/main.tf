@@ -252,8 +252,8 @@ resource "aws_instance" "bastion" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t4g.medium"
 
-  subnet_id                   = var.public_subnet_ids[0]
-  vpc_security_group_ids      = [aws_security_group.bastion_ssh[0].id]
+  subnet_id                   = var.private_subnet_ids[0]
+  vpc_security_group_ids      = concat([aws_security_group.bastion_ssh[0].id], var.bastion_additional_security_groups)
   associate_public_ip_address = false
 
   iam_instance_profile = aws_iam_instance_profile.bastion[0].name
