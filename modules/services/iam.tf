@@ -242,9 +242,7 @@ resource "aws_iam_policy" "api_handler_policy" {
     Version = "2012-10-17"
   })
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_role" "default_role" {
@@ -263,9 +261,7 @@ resource "aws_iam_role" "default_role" {
     ]
   })
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {

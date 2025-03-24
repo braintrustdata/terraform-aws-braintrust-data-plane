@@ -8,9 +8,7 @@ resource "aws_s3_bucket" "code_bundle_bucket" {
     ignore_changes = [bucket_prefix]
   }
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucket" {
@@ -35,9 +33,7 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
     ignore_changes = [bucket_prefix]
   }
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "lambda_responses_bucket" {

@@ -1,21 +1,25 @@
 data "aws_region" "current" {}
 
+locals {
+  common_tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
+}
+
 resource "aws_vpc" "vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}"
+  }, local.common_tags)
 }
 
 resource "aws_internet_gateway" "internet_gateway" {
   vpc_id = aws_vpc.vpc.id
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-gateway"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-gateway"
+  }, local.common_tags)
 }
 
 resource "aws_eip" "nat_public_ip" {
@@ -28,28 +32,25 @@ resource "aws_nat_gateway" "nat_gateway" {
   subnet_id     = aws_subnet.public_subnet_1.id
   depends_on    = [aws_internet_gateway.internet_gateway]
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-nat"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-nat"
+  }, local.common_tags)
 }
 
 resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.vpc.id
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-public-rt"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-public-rt"
+  }, local.common_tags)
 }
 
 resource "aws_route_table" "private_route_table" {
   vpc_id = aws_vpc.vpc.id
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-private-rt"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-private-rt"
+  }, local.common_tags)
 }
 
 resource "aws_route" "public_route" {
@@ -70,10 +71,9 @@ resource "aws_subnet" "public_subnet_1" {
   availability_zone       = var.public_subnet_1_az
   map_public_ip_on_launch = true
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"
+  }, local.common_tags)
 }
 
 resource "aws_subnet" "private_subnet_1" {
@@ -81,10 +81,9 @@ resource "aws_subnet" "private_subnet_1" {
   cidr_block        = var.private_subnet_1_cidr
   availability_zone = var.private_subnet_1_az
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-private-subnet-1"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-1"
+  }, local.common_tags)
 }
 
 resource "aws_subnet" "private_subnet_2" {
@@ -92,10 +91,9 @@ resource "aws_subnet" "private_subnet_2" {
   cidr_block        = var.private_subnet_2_cidr
   availability_zone = var.private_subnet_2_az
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-private-subnet-2"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-2"
+  }, local.common_tags)
 }
 
 resource "aws_subnet" "private_subnet_3" {
@@ -103,10 +101,9 @@ resource "aws_subnet" "private_subnet_3" {
   cidr_block        = var.private_subnet_3_cidr
   availability_zone = var.private_subnet_3_az
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-private-subnet-3"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-3"
+  }, local.common_tags)
 }
 
 resource "aws_route_table_association" "private_subnet_1_association" {
@@ -147,8 +144,7 @@ resource "aws_vpc_endpoint" "s3" {
     ]
   })
 
-  tags = {
-    Name                     = "${var.deployment_name}-${var.vpc_name}-s3-endpoint"
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-s3-endpoint"
+  }, local.common_tags)
 }

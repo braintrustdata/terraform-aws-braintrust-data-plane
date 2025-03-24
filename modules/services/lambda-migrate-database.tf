@@ -31,9 +31,7 @@ resource "aws_lambda_function" "migrate_database" {
     security_group_ids = var.service_security_group_ids
   }
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 # This is mainly for convenience to be able to manually invoke the latest

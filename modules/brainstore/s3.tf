@@ -8,9 +8,7 @@ resource "aws_s3_bucket" "brainstore" {
     ]
   }
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "brainstore" {

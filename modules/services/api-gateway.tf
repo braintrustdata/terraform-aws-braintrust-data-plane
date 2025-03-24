@@ -6,6 +6,10 @@ resource "aws_api_gateway_rest_api" "api" {
   }
 
   body = jsonencode(local.api_gateway_openapi_spec)
+
+  tags = merge({
+    Name = "${var.deployment_name}-API"
+  }, local.common_tags)
 }
 
 resource "aws_api_gateway_deployment" "api" {
@@ -22,6 +26,10 @@ resource "aws_api_gateway_stage" "api" {
   deployment_id = aws_api_gateway_deployment.api.id
   rest_api_id   = aws_api_gateway_rest_api.api.id
   stage_name    = "api"
+
+  tags = merge({
+    Name = "${var.deployment_name}-API-Stage"
+  }, local.common_tags)
 }
 
 resource "aws_api_gateway_method_settings" "all" {

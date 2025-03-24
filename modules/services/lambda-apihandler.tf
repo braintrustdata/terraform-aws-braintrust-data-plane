@@ -83,9 +83,7 @@ resource "aws_lambda_function" "api_handler" {
     mode = "PassThrough"
   }
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_lambda_provisioned_concurrency_config" "api_handler_live" {
@@ -115,6 +113,7 @@ resource "aws_iam_role" "ai_proxy_invoke_role" {
     ]
     Version = "2012-10-17"
   })
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy" "ai_proxy_invoke_policy" {

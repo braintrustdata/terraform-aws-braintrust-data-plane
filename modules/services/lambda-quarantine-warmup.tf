@@ -52,9 +52,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
     mode = "PassThrough"
   }
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 # Invoke the quarantine warmup lambda function every time the api handler is deployed

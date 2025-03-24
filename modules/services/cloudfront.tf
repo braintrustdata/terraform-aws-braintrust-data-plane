@@ -82,4 +82,6 @@ resource "aws_cloudfront_distribution" "dataplane" {
       restriction_type = "none"
     }
   }
+
+  tags = local.common_tags
 }

@@ -49,9 +49,7 @@ resource "aws_lambda_function" "ai_proxy" {
     mode = "PassThrough"
   }
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_lambda_function_url" "ai_proxy" {
