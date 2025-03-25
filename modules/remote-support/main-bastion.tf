@@ -118,6 +118,7 @@ resource "aws_iam_role" "bastion" {
       }
     ]
   })
+  
   tags = local.common_tags
 }
 
