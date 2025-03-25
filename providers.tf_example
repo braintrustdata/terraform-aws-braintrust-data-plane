@@ -6,10 +6,4 @@ provider "aws" {
   # Optional, but recommended. Only allow running in a specific AWS account.
   # This is helpful for preventing accidental changes in the wrong account.
   allowed_account_ids = ["<your AWS account ID>"]
-  default_tags {
-    tags = {
-      # Required for IAM policies
-      BraintrustDeploymentName = var.deployment_name
-    }
-  }
 }
