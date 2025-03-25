@@ -102,6 +102,12 @@ resource "aws_iam_role_policy_attachment" "api_handler_policy" {
   policy_arn = aws_iam_policy.api_handler_policy.arn
 }
 
+resource "aws_iam_role_policy_attachment" "api_handler_additional_policy" {
+  count      = length(var.service_additional_policy_arns)
+  role       = aws_iam_role.api_handler_role.name
+  policy_arn = var.service_additional_policy_arns[count.index]
+}
+
 resource "aws_iam_role_policy_attachment" "api_handler_quarantine" {
   count      = var.use_quarantine_vpc ? 1 : 0
   role       = aws_iam_role.api_handler_role.name

@@ -209,6 +209,12 @@ variable "custom_certificate_arn" {
   default     = null
 }
 
+variable "service_additional_policy_arns" {
+  type        = list(string)
+  description = "Additional policy ARNs to attach to the lambda functions that are the main braintrust service"
+  default     = []
+}
+
 ## Clickhouse
 variable "enable_clickhouse" {
   type        = bool

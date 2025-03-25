@@ -116,6 +116,7 @@ module "services" {
   outbound_rate_limit_max_requests    = var.outbound_rate_limit_max_requests
   custom_domain                       = var.custom_domain
   custom_certificate_arn              = var.custom_certificate_arn
+  service_additional_policy_arns      = var.service_additional_policy_arns
 
   # Networking
   service_security_group_ids = [module.main_vpc.default_security_group_id]

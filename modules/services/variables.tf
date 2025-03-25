@@ -18,6 +18,11 @@ variable "service_subnet_ids" {
   description = "The subnet ids for the lambda functions that are the main braintrust service"
 }
 
+variable "service_additional_policy_arns" {
+  type        = list(string)
+  description = "Additional policy ARNs to attach to the lambda functions that are the main braintrust service"
+  default     = []
+}
 variable "postgres_username" {
   type        = string
   description = "The username of the postgres database"
