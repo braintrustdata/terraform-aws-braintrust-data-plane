@@ -25,6 +25,9 @@ resource "aws_internet_gateway" "internet_gateway" {
 resource "aws_eip" "nat_public_ip" {
   domain     = "vpc"
   depends_on = [aws_internet_gateway.internet_gateway]
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-nat-eip"
+  }, local.common_tags)
 }
 
 resource "aws_nat_gateway" "nat_gateway" {
