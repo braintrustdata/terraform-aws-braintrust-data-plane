@@ -12,6 +12,10 @@ resource "aws_vpc" "vpc" {
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}"
   }, local.common_tags)
+
+  lifecycle {
+    ignore_changes = [cidr_block]
+  }
 }
 
 resource "aws_internet_gateway" "internet_gateway" {
@@ -77,6 +81,10 @@ resource "aws_subnet" "public_subnet_1" {
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"
   }, local.common_tags)
+
+  lifecycle {
+    ignore_changes = [cidr_block]
+  }
 }
 
 resource "aws_subnet" "private_subnet_1" {
@@ -87,6 +95,10 @@ resource "aws_subnet" "private_subnet_1" {
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-1"
   }, local.common_tags)
+
+  lifecycle {
+    ignore_changes = [cidr_block]
+  }
 }
 
 resource "aws_subnet" "private_subnet_2" {
@@ -97,6 +109,10 @@ resource "aws_subnet" "private_subnet_2" {
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-2"
   }, local.common_tags)
+
+  lifecycle {
+    ignore_changes = [cidr_block]
+  }
 }
 
 resource "aws_subnet" "private_subnet_3" {
@@ -107,6 +123,10 @@ resource "aws_subnet" "private_subnet_3" {
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-3"
   }, local.common_tags)
+
+  lifecycle {
+    ignore_changes = [cidr_block]
+  }
 }
 
 resource "aws_route_table_association" "private_subnet_1_association" {

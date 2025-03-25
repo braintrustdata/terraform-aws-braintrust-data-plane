@@ -50,7 +50,7 @@ variable "additional_kms_key_policies" {
 ## NETWORKING
 variable "vpc_cidr" {
   type        = string
-  default     = "10.175.0.0/16"
+  default     = "10.175.0.0/21"
   description = "CIDR block for the VPC"
 }
 
@@ -86,7 +86,7 @@ variable "enable_quarantine_vpc" {
 
 variable "quarantine_vpc_cidr" {
   type        = string
-  default     = "10.176.0.0/16"
+  default     = "10.175.8.0/21"
   description = "CIDR block for the Quarantined VPC"
 }
 
