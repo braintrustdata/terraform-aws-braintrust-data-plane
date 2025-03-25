@@ -1,5 +1,8 @@
 locals {
   clickhouse_bucket_name = var.external_clickhouse_s3_bucket_name == null ? aws_s3_bucket.clickhouse_s3_bucket[0].id : var.external_clickhouse_s3_bucket_name
+  common_tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 data "aws_region" "current" {}
@@ -53,9 +56,9 @@ resource "aws_instance" "clickhouse" {
     clickhouse_secret_version_id = aws_secretsmanager_secret_version.clickhouse_secret.version_id
   }))
 
-  tags = {
+  tags = merge({
     Name = "${var.deployment_name}-clickhouse"
-  }
+  }, local.common_tags)
 }
 
 # EBS volume for Clickhouse metadata. This needs to be preserved across instances.
@@ -67,9 +70,9 @@ resource "aws_ebs_volume" "clickhouse_metadata" {
   encrypted         = true
   kms_key_id        = var.kms_key_arn
 
-  tags = {
+  tags = merge({
     Name = "${var.deployment_name}-clickhouse-metadata"
-  }
+  }, local.common_tags)
   lifecycle {
     prevent_destroy = true
   }

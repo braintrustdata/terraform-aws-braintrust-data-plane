@@ -1,7 +1,14 @@
+locals {
+  common_tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
+}
+
 resource "aws_elasticache_subnet_group" "main" {
   name        = "${var.deployment_name}-elasticache-subnet-group"
   description = "Subnet group for Braintrust elasticache"
   subnet_ids  = var.subnet_ids
+  tags        = local.common_tags
 }
 
 resource "aws_elasticache_cluster" "main" {
@@ -12,4 +19,5 @@ resource "aws_elasticache_cluster" "main" {
   engine_version     = var.redis_version
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = var.security_group_ids
-} 
+  tags               = local.common_tags
+}

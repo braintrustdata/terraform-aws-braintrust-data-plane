@@ -1,6 +1,8 @@
 resource "aws_iam_instance_profile" "clickhouse" {
   name = "${var.deployment_name}-ClickhouseInstanceProfile"
   role = aws_iam_role.clickhouse.name
+
+  tags = local.common_tags
 }
 
 resource "aws_iam_role" "clickhouse" {
@@ -17,9 +19,7 @@ resource "aws_iam_role" "clickhouse" {
     }]
   })
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy" "clickhouse_secret_access" {

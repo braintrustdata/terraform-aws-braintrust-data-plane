@@ -1,6 +1,7 @@
 resource "aws_secretsmanager_secret" "clickhouse_secret" {
   name_prefix = "${var.deployment_name}/ClickhouseSecret-"
   kms_key_id  = var.kms_key_arn
+  tags        = local.common_tags
 }
 
 data "aws_secretsmanager_random_password" "clickhouse_secret" {

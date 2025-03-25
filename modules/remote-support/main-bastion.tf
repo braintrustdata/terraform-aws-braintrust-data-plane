@@ -5,9 +5,9 @@ resource "aws_ec2_instance_connect_endpoint" "endpoint" {
   security_group_ids = [aws_security_group.instance_connect_endpoint[0].id]
   preserve_client_ip = true
 
-  tags = {
+  tags = merge({
     Name = "${var.deployment_name}-instance-connect-endpoint"
-  }
+  }, local.common_tags)
 }
 
 resource "aws_instance" "bastion" {
@@ -48,9 +48,9 @@ resource "aws_instance" "bastion" {
     lambda_function_arns  = var.lambda_function_arns
   }))
 
-  tags = {
+  tags = merge({
     Name = "${var.deployment_name}-bastion"
-  }
+  }, local.common_tags)
 }
 
 resource "aws_security_group" "bastion_ssh" {
@@ -73,6 +73,8 @@ resource "aws_security_group" "bastion_ssh" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = local.common_tags
 }
 
 resource "aws_security_group" "instance_connect_endpoint" {
@@ -95,6 +97,8 @@ resource "aws_security_group" "instance_connect_endpoint" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = local.common_tags
 }
 
 resource "aws_iam_role" "bastion" {
@@ -114,6 +118,7 @@ resource "aws_iam_role" "bastion" {
       }
     ]
   })
+  tags = local.common_tags
 }
 
 resource "aws_iam_instance_profile" "bastion" {
@@ -121,6 +126,7 @@ resource "aws_iam_instance_profile" "bastion" {
 
   name = "${var.deployment_name}-bastion"
   role = aws_iam_role.bastion[0].name
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy" "bastion" {

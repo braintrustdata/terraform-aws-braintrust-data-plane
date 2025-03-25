@@ -1,5 +1,8 @@
 locals {
   has_braintrust_support_access = var.enable_braintrust_support_logs_access || var.enable_braintrust_support_shell_access
+  common_tags = {
+    BraintrustDeploymentName = var.deployment_name
+  }
 }
 
 # Role that can be assumed by Braintrust support team to optionally access Cloudwatch logs or optionally access the bastion host
@@ -21,9 +24,7 @@ resource "aws_iam_role" "braintrust_support" {
     ]
   })
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy" "braintrust_support_logs" {
