@@ -11,6 +11,9 @@ This is an example of a standard Braintrust data plane deployment. Copy this dir
   * Pass it into terraform as a flag `terraform apply -var 'brainstore_license_key=your-key'`
   * Add it to an uncommitted `terraform.tfvars` or `.auto.tfvars` file.
 
+## Initialize your AWS account
+If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
+
 ## Pointing your Organization to your data plane
 
 After applying this configuration you will have a Braintrust data plane deployed in your AWS account. You can then run `terraform output` to get the API URL you need to enter into the Braintrust UI for your Organization.
