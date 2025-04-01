@@ -36,6 +36,10 @@ resource "aws_launch_template" "brainstore" {
     instance_metadata_tags      = "enabled"
   }
 
+  monitoring {
+    enabled = true
+  }
+
   user_data = base64encode(templatefile("${path.module}/templates/user_data.sh.tpl", {
     aws_region                  = data.aws_region.current.name
     deployment_name             = var.deployment_name
