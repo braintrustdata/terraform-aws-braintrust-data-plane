@@ -28,6 +28,9 @@ resource "aws_instance" "bastion" {
     encrypted             = true
     kms_key_id            = var.kms_key_arn
     delete_on_termination = true
+    tags = merge({
+      Name = "${var.deployment_name}-bastion-root-volume"
+    }, local.common_tags)
   }
 
   metadata_options {
@@ -118,7 +121,7 @@ resource "aws_iam_role" "bastion" {
       }
     ]
   })
-  
+
   tags = local.common_tags
 }
 

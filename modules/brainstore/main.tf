@@ -55,6 +55,10 @@ resource "aws_launch_template" "brainstore" {
     brainstore_release_version  = local.brainstore_release_version
   }))
 
+  tags = merge({
+    Name = "${var.deployment_name}-brainstore"
+  }, local.common_tags)
+
   tag_specifications {
     resource_type = "instance"
     tags = merge({
