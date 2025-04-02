@@ -215,6 +215,12 @@ variable "service_additional_policy_arns" {
   default     = []
 }
 
+variable "lambda_version_tag_override" {
+  description = "Optional override for the lambda version tag. Don't set this unless instructed by Braintrust."
+  type        = string
+  default     = null
+}
+
 ## Clickhouse
 variable "enable_clickhouse" {
   type        = bool

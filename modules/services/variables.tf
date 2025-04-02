@@ -209,3 +209,9 @@ variable "brainstore_backfill_disable_nonhistorical" {
   default     = false
 }
 
+variable "lambda_version_tag_override" {
+  description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
+  type        = string
+  default     = null
+}
+

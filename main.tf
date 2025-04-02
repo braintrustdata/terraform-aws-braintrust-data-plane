@@ -86,7 +86,8 @@ module "redis" {
 module "services" {
   source = "./modules/services"
 
-  deployment_name = var.deployment_name
+  deployment_name             = var.deployment_name
+  lambda_version_tag_override = var.lambda_version_tag_override
 
   # Data stores
   postgres_username = module.database.postgres_database_username
