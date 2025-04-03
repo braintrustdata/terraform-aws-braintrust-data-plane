@@ -108,6 +108,7 @@ module "services" {
   brainstore_backfill_new_objects            = var.brainstore_backfill_new_objects
   brainstore_backfill_disable_historical     = var.brainstore_backfill_disable_historical
   brainstore_backfill_disable_nonhistorical  = var.brainstore_backfill_disable_nonhistorical
+  brainstore_etl_batch_size                  = var.brainstore_etl_batch_size
 
   # Service configuration
   braintrust_org_name                 = var.braintrust_org_name

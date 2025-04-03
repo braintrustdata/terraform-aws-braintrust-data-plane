@@ -209,6 +209,12 @@ variable "brainstore_backfill_disable_nonhistorical" {
   default     = false
 }
 
+variable "brainstore_etl_batch_size" {
+  type        = number
+  description = "The batch size for the ETL process"
+  default     = null
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
