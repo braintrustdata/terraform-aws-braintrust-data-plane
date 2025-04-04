@@ -36,6 +36,30 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
   tags = local.common_tags
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
+  bucket = aws_s3_bucket.lambda_responses_bucket.id
+
+  rule {
+    id     = "ExpireObjectsAfterOneDay"
+    status = "Enabled"
+
+    expiration {
+      days = 1
+    }
+  }
+}
+
+resource "aws_s3_bucket_cors_configuration" "lambda_responses_bucket" {
+  bucket = aws_s3_bucket.lambda_responses_bucket.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3600
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "lambda_responses_bucket" {
   bucket = aws_s3_bucket.lambda_responses_bucket.id
 
