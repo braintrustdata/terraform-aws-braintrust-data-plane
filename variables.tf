@@ -12,6 +12,12 @@ locals {
   quarantine_public_subnet_1_az  = var.quarantine_public_subnet_1_az != null ? var.quarantine_public_subnet_1_az : data.aws_availability_zones.available.names[0]
 }
 
+variable "use_aurora_postgres" {
+  type        = bool
+  description = "Use Aurora PostgreSQL instead of RDS PostgreSQL"
+  default     = false
+}
+
 variable "braintrust_org_name" {
   type        = string
   description = "The name of your organization in Braintrust (e.g. acme.com)"

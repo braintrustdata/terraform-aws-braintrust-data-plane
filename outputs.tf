@@ -49,7 +49,7 @@ output "main_vpc_private_route_table_id" {
 }
 
 output "postgres_database_arn" {
-  value       = module.database.postgres_database_arn
+  value       = var.use_aurora_postgres ? module.database_aurora[0].postgres_database_arn : module.database[0].postgres_database_arn
   description = "ARN of the main Braintrust Postgres database"
 }
 

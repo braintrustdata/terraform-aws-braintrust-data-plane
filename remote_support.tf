@@ -11,8 +11,8 @@ module "remote_support" {
 
   deployment_name = var.deployment_name
 
-  database_host         = module.database.postgres_database_address
-  database_secret_arn   = module.database.postgres_database_secret_arn
+  database_host         = local.postgres_database_address
+  database_secret_arn   = local.postgres_database_secret_arn
   redis_host            = module.redis.redis_endpoint
   redis_port            = module.redis.redis_port
   clickhouse_host       = local.clickhouse_address

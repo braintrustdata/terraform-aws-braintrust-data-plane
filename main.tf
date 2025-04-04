@@ -11,6 +11,12 @@ locals {
   clickhouse_address = var.use_external_clickhouse_address != null ? var.use_external_clickhouse_address : (
     var.enable_clickhouse ? module.clickhouse[0].clickhouse_instance_private_ip : null
   )
+
+  postgres_database_address    = var.use_aurora_postgres ? module.database_aurora[0].postgres_database_address : module.database[0].postgres_database_address
+  postgres_database_port       = var.use_aurora_postgres ? module.database_aurora[0].postgres_database_port : module.database[0].postgres_database_port
+  postgres_database_username   = var.use_aurora_postgres ? module.database_aurora[0].postgres_database_username : module.database[0].postgres_database_username
+  postgres_database_password   = var.use_aurora_postgres ? module.database_aurora[0].postgres_database_password : module.database[0].postgres_database_password
+  postgres_database_secret_arn = var.use_aurora_postgres ? module.database_aurora[0].postgres_database_secret_arn : module.database[0].postgres_database_secret_arn
 }
 
 module "main_vpc" {
@@ -50,6 +56,7 @@ module "quarantine_vpc" {
 
 module "database" {
   source                    = "./modules/database"
+  count                     = var.use_aurora_postgres ? 0 : 1
   deployment_name           = var.deployment_name
   postgres_instance_type    = var.postgres_instance_type
   multi_az                  = var.postgres_multi_az
@@ -68,6 +75,21 @@ module "database" {
   postgres_storage_throughput = var.postgres_storage_throughput
 
   kms_key_arn = local.kms_key_arn
+}
+
+module "database_aurora" {
+  source                 = "./modules/database-aurora"
+  count                  = var.use_aurora_postgres ? 1 : 0
+  deployment_name        = var.deployment_name
+  postgres_instance_type = var.postgres_instance_type
+  postgres_version       = var.postgres_version
+  database_subnet_ids = [
+    module.main_vpc.private_subnet_1_id,
+    module.main_vpc.private_subnet_2_id,
+    module.main_vpc.private_subnet_3_id
+  ]
+  database_security_group_ids = [module.main_vpc.default_security_group_id]
+  kms_key_arn                 = local.kms_key_arn
 }
 
 module "redis" {
@@ -91,10 +113,10 @@ module "services" {
   lambda_version_tag_override = var.lambda_version_tag_override
 
   # Data stores
-  postgres_username = module.database.postgres_database_username
-  postgres_password = module.database.postgres_database_password
-  postgres_host     = module.database.postgres_database_address
-  postgres_port     = module.database.postgres_database_port
+  postgres_username = local.postgres_database_username
+  postgres_password = local.postgres_database_password
+  postgres_host     = local.postgres_database_address
+  postgres_port     = local.postgres_database_port
   redis_host        = module.redis.redis_endpoint
   redis_port        = module.redis.redis_port
 
@@ -168,9 +190,9 @@ module "brainstore" {
   license_key            = var.brainstore_license_key
   version_override       = var.brainstore_version_override
 
-  database_host       = module.database.postgres_database_address
-  database_port       = module.database.postgres_database_port
-  database_secret_arn = module.database.postgres_database_secret_arn
+  database_host       = local.postgres_database_address
+  database_port       = local.postgres_database_port
+  database_secret_arn = local.postgres_database_secret_arn
   redis_host          = module.redis.redis_endpoint
   redis_port          = module.redis.redis_port
 
