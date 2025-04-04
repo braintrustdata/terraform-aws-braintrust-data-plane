@@ -19,6 +19,7 @@ resource "aws_db_instance" "main" {
   storage_type          = var.postgres_storage_type
   storage_throughput    = var.postgres_storage_throughput
   iops                  = var.postgres_storage_iops
+  multi_az              = var.multi_az
 
   db_name  = "postgres"
   username = local.postgres_username

@@ -158,6 +158,12 @@ variable "postgres_version" {
   default     = "15.7"
 }
 
+variable "postgres_multi_az" {
+  description = "Specifies if the RDS instance is multi-AZ. Increases cost but provides higher availability. Recommended for production environments."
+  type        = bool
+  default     = false
+}
+
 ## Redis
 variable "redis_instance_type" {
   description = "Instance type for the Redis cluster"

@@ -61,3 +61,9 @@ variable "kms_key_arn" {
   type        = string
   default     = null
 }
+
+variable "multi_az" {
+  description = "Specifies if the RDS instance is multi-AZ. Increases cost but provides higher availability. Recommended for production environments."
+  type        = bool
+  default     = false
+}

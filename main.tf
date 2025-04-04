@@ -52,6 +52,7 @@ module "database" {
   source                    = "./modules/database"
   deployment_name           = var.deployment_name
   postgres_instance_type    = var.postgres_instance_type
+  multi_az                  = var.postgres_multi_az
   postgres_storage_size     = var.postgres_storage_size
   postgres_max_storage_size = var.postgres_max_storage_size
   postgres_storage_type     = var.postgres_storage_type
