@@ -43,6 +43,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
     id     = "ExpireObjectsAfterOneDay"
     status = "Enabled"
 
+    filter {
+      prefix = ""
+    }
+
     expiration {
       days = 1
     }
