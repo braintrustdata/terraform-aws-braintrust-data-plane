@@ -39,6 +39,8 @@ resource "aws_rds_cluster" "main" {
   performance_insights_enabled          = true
   performance_insights_retention_period = 7
 
+  enabled_cloudwatch_logs_exports = ["instance", "postgresql"]
+
   tags = local.common_tags
 
   lifecycle {
@@ -96,6 +98,84 @@ resource "aws_db_parameter_group" "main" {
     name         = "shared_preload_libraries"
     value        = "pg_stat_statements,pg_hint_plan,pg_cron"
     apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "auto_explain.hashes"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_analyze"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_buffers"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_format"
+    value        = "json"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_min_duration"
+    value        = "10000"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_nested_statements"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_timing"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_triggers"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "auto_explain.log_verbose"
+    value        = "1"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "log_min_duration_statement"
+    value        = "10000"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "log_parameter_max_length"
+    value        = "128"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "log_temp_files"
+    value        = "100"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "work_mem"
+    value        = "262144"
+    apply_method = "immediate"
   }
 
   lifecycle {
