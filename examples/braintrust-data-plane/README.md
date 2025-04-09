@@ -4,7 +4,7 @@ This is an example of a standard Braintrust data plane deployment. Copy this dir
 * `provider.tf` should be modified to use your AWS account and region.
 * `terraform.tf` should be modified to use the remote backend that your company uses. Typically this is an S3 bucket and DynamoDB table.
 * `main.tf` should be modified to meet your needs for the Braintrust deployment. The defaults are sensible only for a small development deployment.
-* Brainstore requires a license key which you can find in the Braintrust UI under Settings > API
+* Brainstore requires a license key which you can find in the Braintrust UI under Settings > Data Plane
 ![Brainstore License Key](../../assets/Brainstore-License-Key.png)
 * It isn't recommended that you commit this license key to your git repo. You can safely pass this key into terraform multiple ways:
   * Set `TF_VAR_brainstore_license_key=your-key` in your terraform environment
@@ -22,13 +22,21 @@ After applying this configuration you will have a Braintrust data plane deployed
 api_url = "https://dx6ntff6gocr6.cloudfront.net"
 ```
 
-To configure your Organization to use your new data plane, click your user icon on the top right > Settings > API URL.
+To configure your Organization to use your new data plane, click your user icon on the top right > Settings > Data Plane.
 
 > [!WARNING]
 > If you are testing, it is HIGHLY recommended that [you create a new Braintrust Organization](https://www.braintrust.dev/app/setup) for testing your new data plane. If you change your live Organization's API URL, you might break users who are currently using it.
 
-![Setting the API URL in Braintrust](/assets/Braintrust-API-URL.png)
+![Setting the API URL in Braintrust](../../assets/Braintrust-API-URL.png)
 
-Paste the API URL into the text field and click Save. Click to copy the test ping command and run it in your terminal to verify that your data plane is working.
+Click Edit
 
-![Verifying the API URL in Braintrust](/assets/Braintrust-API-URL-2.png)
+![Edit the API URL in Braintrust](../../assets/Braintrust-API-URL-Edit.png)
+
+Paste the API URL into the text field, and click Save. Leave the Proxy and Realtime URL blank.
+
+![Paste the API URL](../../assets/Braintrust-API-URL-set.png)
+
+Verify in the UI that the ping to each endpoint is sucessful.
+
+![Verify Successful Ping](../../assets/Braintrust-API-URL-verify.png)
