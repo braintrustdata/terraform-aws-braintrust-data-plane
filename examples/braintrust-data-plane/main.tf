@@ -34,6 +34,9 @@ module "braintrust-data-plane" {
   # PostgreSQL engine version for the RDS instance.
   # postgres_version                      = "15.7"
 
+  # Multi-AZ RDS instance. Enabling increases cost but provides higher availability. Recommended for production environments.
+  # postgres_multi_az                     = true
+
   ### Brainstore configuration
   # Enable Brainstore for faster analytics
   enable_brainstore = false
@@ -59,10 +62,10 @@ module "braintrust-data-plane" {
   ### Network configuration
   # CIDR block for the VPC. You might need to adjust this so it does not conflict with any
   # other VPC CIDR blocks you intend to peer with Braintrust
-  # vpc_cidr                             = "10.175.0.0/16"
+  # vpc_cidr                             = "10.175.0.0/21"
 
   # CIDR block for the Quarantined VPC. This is used to run user defined functions in an isolated environment.
-  # quarantine_vpc_cidr                   = "10.176.0.0/16"
+  # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
   ### Advanced configuration
   # The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost.
@@ -82,12 +85,5 @@ module "braintrust-data-plane" {
 
   # The time frame in minutes over which rate per-user rate limits are accumulated
   # outbound_rate_limit_window_minutes    = 1
-
-  # Existing KMS key ARN to use for encrypting resources. If not provided, a new key will be created.
-  # DO NOT change this after deployment. If you do it will attempt to destroy your DB and prior S3 objects will no longer be readable.
-  # kms_key_arn                           = null
-
-  # Enable the Quarantine VPC to run user defined functions in an isolated environment. If disabled, user defined functions will not be available.
-  # enable_quarantine_vpc                = true
 
 }
