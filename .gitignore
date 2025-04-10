@@ -48,3 +48,5 @@ braintrust-sandbox/*
 
 # Ignore IntelliJ IDEA project files
 .idea
+
+scripts/logs*

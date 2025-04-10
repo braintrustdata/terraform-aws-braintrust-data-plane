@@ -8,6 +8,26 @@ To use this module, **copy the [`examples/braintrust-data-plane`](examples/brain
 
 If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
 
+## Useful scripts
+
+### dump-logs.sh
+This script will dump the logs for the given deployment and services to the `logs-<deployment_name>` directory. This is useful for debugging issues with the data plane and sharing with the Braintrust team.
+
+```
+# ./dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
+
+./dump-logs.sh bt-sandbox
+Fetching logs for the last 60 minutes for APIHandler...
+Fetching logs for the last 60 minutes for brainstore...
+✅ Saved logs for brainstore to logs-bt-sandbox/brainstore.log
+✅ Saved logs for APIHandler to logs-bt-sandbox/APIHandler.log
+```
+
+### create-service-linked-roles.sh
+Required for new AWS accounts to ensure IAM service-linked roles are created.
+```
+./scripts/create-service-linked-roles.sh
+```
 
 ## Customized Deployments
 
