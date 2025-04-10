@@ -37,6 +37,5 @@ Paste the API URL into the text field, and click Save. Leave the Proxy and Realt
 
 ![Paste the API URL](../../assets/Braintrust-API-URL-set.png)
 
-Verify in the UI that the ping to each endpoint is sucessful.
-
+Verify in the UI that the ping to each endpoint is successful.
 ![Verify Successful Ping](../../assets/Braintrust-API-URL-verify.png)
