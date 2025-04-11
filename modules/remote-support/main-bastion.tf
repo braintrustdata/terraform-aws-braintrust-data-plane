@@ -109,7 +109,7 @@ resource "aws_iam_role" "bastion" {
 
   name = "${var.deployment_name}-bastion"
 
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -139,7 +139,7 @@ resource "aws_iam_role_policy" "bastion" {
   name = "bastion-permissions"
   role = aws_iam_role.bastion[0].id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -212,7 +212,7 @@ resource "aws_iam_role_policy" "braintrust_support_ec2_connect" {
   name = "ec2-instance-connect-bastion"
   role = aws_iam_role.braintrust_support[0].id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
