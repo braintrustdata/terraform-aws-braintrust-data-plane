@@ -102,6 +102,7 @@ module "services" {
   clickhouse_secret = var.enable_clickhouse ? module.clickhouse[0].clickhouse_secret : null
 
   brainstore_enabled                         = var.enable_brainstore
+  brainstore_default                         = var.brainstore_default
   brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
   brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
   brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null

@@ -259,6 +259,16 @@ variable "enable_brainstore" {
   default     = false
 }
 
+variable "brainstore_default" {
+  type        = string
+  description = "Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag. Don't set this if you have a large backfill ongoing and are migrating from Clickhouse."
+  default     = "true"
+  validation {
+    condition     = contains(["true", "false", "forced"], var.brainstore_default)
+    error_message = "brainstore_default must be true, false, or forced."
+  }
+}
+
 variable "brainstore_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore. Must be a Graviton instance type. Preferably with 16GB of memory and a local SSD for cache data. The default value is for tiny deployments. Recommended for production deployments is c7gd.8xlarge."

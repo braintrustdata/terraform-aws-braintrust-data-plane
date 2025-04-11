@@ -215,6 +215,16 @@ variable "brainstore_etl_batch_size" {
   default     = null
 }
 
+variable "brainstore_default" {
+  type        = string
+  description = "Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag."
+  default     = "true"
+  validation {
+    condition     = contains(["true", "false", "forced"], var.brainstore_default)
+    error_message = "brainstore_default must be true, false, or forced."
+  }
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string

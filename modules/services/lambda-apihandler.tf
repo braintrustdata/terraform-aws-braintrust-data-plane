@@ -62,6 +62,7 @@ resource "aws_lambda_function" "api_handler" {
       FUNCTION_SECRET_KEY = aws_secretsmanager_secret_version.function_tools_secret.secret_string
 
       BRAINSTORE_ENABLED                         = var.brainstore_enabled
+      BRAINSTORE_DEFAULT                         = var.brainstore_default
       BRAINSTORE_URL                             = local.brainstore_url
       BRAINSTORE_REALTIME_WAL_BUCKET             = local.brainstore_s3_bucket
       BRAINSTORE_ENABLE_HISTORICAL_FULL_BACKFILL = var.brainstore_enable_historical_full_backfill
