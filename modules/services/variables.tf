@@ -215,6 +215,12 @@ variable "brainstore_etl_batch_size" {
   default     = null
 }
 
+variable "brainstore_default" {
+  type        = bool
+  description = "Whether to set Brainstore as the default rather than opting in each project. Don't set this if you have a large backfill and are migrating from Clickhouse."
+  default     = true
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
