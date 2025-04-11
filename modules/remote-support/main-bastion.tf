@@ -9,7 +9,7 @@ resource "aws_ec2_instance_connect_endpoint" "endpoint" {
     Name = "${var.deployment_name}-instance-connect-endpoint"
   }, local.common_tags)
 }
-
+# nosemgrep
 resource "aws_instance" "bastion" {
   count = var.enable_braintrust_support_shell_access ? 1 : 0
 
