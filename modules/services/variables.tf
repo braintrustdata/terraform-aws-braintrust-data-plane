@@ -216,9 +216,13 @@ variable "brainstore_etl_batch_size" {
 }
 
 variable "brainstore_default" {
-  type        = bool
-  description = "Whether to set Brainstore as the default rather than opting in each project. Don't set this if you have a large backfill and are migrating from Clickhouse."
-  default     = true
+  type        = string
+  description = "Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag."
+  default     = "true"
+  validation {
+    condition     = var.brainstore_default == "true" || var.brainstore_default == "false" || var.brainstore_default == "forced"
+    error_message = "brainstore_default must be true, false, or forced."
+  }
 }
 
 variable "lambda_version_tag_override" {
