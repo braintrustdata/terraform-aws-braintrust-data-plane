@@ -92,3 +92,9 @@ variable "redis_port" {
   type        = string
   description = "The port of the Redis instance"
 }
+
+variable "extra_env_vars" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore"
+  default     = {}
+}

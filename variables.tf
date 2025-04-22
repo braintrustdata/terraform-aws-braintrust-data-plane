@@ -330,3 +330,27 @@ variable "brainstore_etl_batch_size" {
   description = "The batch size for the ETL process"
   default     = null
 }
+
+variable "brainstore_extra_env_vars" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore"
+  default     = {}
+}
+
+variable "service_extra_env_vars" {
+  type = object({
+    APIHandler               = map(string)
+    AIProxy                  = map(string)
+    CatchupETL               = map(string)
+    MigrateDatabaseFunction  = map(string)
+    QuarantineWarmupFunction = map(string)
+  })
+  description = "Extra environment variables to set for services"
+  default = {
+    APIHandler               = {}
+    AIProxy                  = {}
+    CatchupETL               = {}
+    MigrateDatabaseFunction  = {}
+    QuarantineWarmupFunction = {}
+  }
+}

@@ -221,3 +221,21 @@ variable "lambda_version_tag_override" {
   default     = null
 }
 
+variable "extra_env_vars" {
+  type = object({
+    APIHandler               = map(string)
+    AIProxy                  = map(string)
+    CatchupETL               = map(string)
+    MigrateDatabaseFunction  = map(string)
+    QuarantineWarmupFunction = map(string)
+  })
+  description = "Extra environment variables to set for services"
+  default = {
+    APIHandler               = {}
+    AIProxy                  = {}
+    CatchupETL               = {}
+    MigrateDatabaseFunction  = {}
+    QuarantineWarmupFunction = {}
+  }
+}
+

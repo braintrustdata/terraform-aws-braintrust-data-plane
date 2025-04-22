@@ -19,11 +19,11 @@ resource "aws_lambda_function" "migrate_database" {
     log_group  = "/braintrust/${var.deployment_name}/${local.migrate_database_function_name}"
   }
   environment {
-    variables = {
+    variables = merge({
       BRAINTRUST_RUN_DRAFT_MIGRATIONS = var.run_draft_migrations
       PG_URL                          = local.postgres_url
       CLICKHOUSE_CONNECT_URL          = local.clickhouse_connect_url
-    }
+    }, var.extra_env_vars.MigrateDatabaseFunction)
   }
 
   vpc_config {

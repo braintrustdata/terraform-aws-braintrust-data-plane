@@ -32,7 +32,7 @@ resource "aws_lambda_function" "api_handler" {
   }
 
   environment {
-    variables = {
+    variables = merge({
       ORG_NAME                   = var.braintrust_org_name
       BRAINTRUST_DEPLOYMENT_NAME = var.deployment_name
 
@@ -71,7 +71,7 @@ resource "aws_lambda_function" "api_handler" {
 
       CLICKHOUSE_PG_URL      = local.clickhouse_pg_url
       CLICKHOUSE_CONNECT_URL = local.clickhouse_connect_url
-    }
+    }, var.extra_env_vars.APIHandler)
   }
 
   vpc_config {

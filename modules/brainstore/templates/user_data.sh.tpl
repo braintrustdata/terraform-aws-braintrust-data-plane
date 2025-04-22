@@ -94,6 +94,9 @@ BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
+%{ for env_key, env_value in extra_env_vars ~}
+${env_key}=${env_value}
+%{ endfor ~}
 EOF
 
 BRAINSTORE_RELEASE_VERSION=${brainstore_release_version}
