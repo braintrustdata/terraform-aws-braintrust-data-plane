@@ -15,7 +15,7 @@ resource "aws_lambda_function" "catchup_etl" {
   kms_key_arn   = var.kms_key_arn
 
   environment {
-    variables = {
+    variables = merge({
       ORG_NAME                                   = var.braintrust_org_name
       PG_URL                                     = local.postgres_url
       REDIS_HOST                                 = var.redis_host
@@ -30,7 +30,7 @@ resource "aws_lambda_function" "catchup_etl" {
       CLICKHOUSE_ETL_BATCH_SIZE                  = var.brainstore_etl_batch_size
       CLICKHOUSE_PG_URL                          = local.clickhouse_pg_url
       CLICKHOUSE_CONNECT_URL                     = local.clickhouse_connect_url
-    }
+    }, var.extra_env_vars.CatchupETL)
   }
 
   logging_config {

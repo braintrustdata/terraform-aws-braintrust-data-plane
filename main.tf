@@ -120,6 +120,7 @@ module "services" {
   custom_domain                       = var.custom_domain
   custom_certificate_arn              = var.custom_certificate_arn
   service_additional_policy_arns      = var.service_additional_policy_arns
+  extra_env_vars                      = var.service_extra_env_vars
 
   # Networking
   service_security_group_ids = [module.main_vpc.default_security_group_id]
@@ -167,6 +168,7 @@ module "brainstore" {
   port                   = var.brainstore_port
   license_key            = var.brainstore_license_key
   version_override       = var.brainstore_version_override
+  extra_env_vars         = var.brainstore_extra_env_vars
 
   database_host       = module.database.postgres_database_address
   database_port       = module.database.postgres_database_port

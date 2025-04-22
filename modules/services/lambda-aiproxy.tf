@@ -23,7 +23,7 @@ resource "aws_lambda_function" "ai_proxy" {
   }
 
   environment {
-    variables = {
+    variables = merge({
       ORG_NAME                                          = var.braintrust_org_name
       PG_URL                                            = local.postgres_url
       REDIS_HOST                                        = var.redis_host
@@ -37,7 +37,7 @@ resource "aws_lambda_function" "ai_proxy" {
       QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
       QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? var.quarantine_vpc_default_security_group_id : ""
       QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
-    }
+    }, var.extra_env_vars.AIProxy)
   }
 
   vpc_config {
