@@ -12,6 +12,16 @@ resource "aws_cloudfront_distribution" "dataplane" {
   price_class = "PriceClass_100"
   aliases     = var.custom_domain != null ? [var.custom_domain] : null
 
+  # Add logging configuration if provided
+  dynamic "logging_config" {
+    for_each = var.cloudfront_logging_config != null ? [var.cloudfront_logging_config] : []
+    content {
+      bucket          = logging_config.value.bucket
+      include_cookies = logging_config.value.include_cookies
+      prefix          = logging_config.value.prefix
+    }
+  }
+
   origin {
     origin_id   = "APIGatewayOrigin"
     origin_path = "/api"
