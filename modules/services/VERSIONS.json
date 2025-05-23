@@ -1,9 +1,9 @@
 {
-    "AIProxy": "lambda/AIProxy/versions/d3ef7d8e8b6cf126a9502debc8f0aa5a.zip",
-    "APIHandler": "lambda/APIHandler/versions/16d090128de6ee5a3c2e2729452aa137.zip",
-    "MigrateDatabaseFunction": "lambda/MigrateDatabaseFunction/versions/2135e2491ccdaaba64a1d210ec0d9550.zip",
-    "QuarantineWarmupFunction": "lambda/QuarantineWarmupFunction/versions/59e4faddabb46195db6fbaf351163ab3.zip",
-    "CatchupETL": "lambda/CatchupETL/versions/2489d099f3e423b72f5813e80e88f3d7.zip",
-    "_tag": "latest",
-    "_timestamp": "2025-05-21T10:12:54.977050"
+    "AIProxy": "lambda/AIProxy/versions/96130cd4316f07d470a49fe316b21a58.zip",
+    "APIHandler": "lambda/APIHandler/versions/7436567ec72e8f2e529c8dd32240fc45.zip",
+    "MigrateDatabaseFunction": "lambda/MigrateDatabaseFunction/versions/3729cb25d49b67eeba6a3a9bb1e4a621.zip",
+    "QuarantineWarmupFunction": "lambda/QuarantineWarmupFunction/versions/afd5e22864d0bfe0abf1490761ee8ce5.zip",
+    "CatchupETL": "lambda/CatchupETL/versions/f00a9d6a6f6a4f5fe30ff10c0e8854c9.zip",
+    "_tag": "v1.0.9",
+    "_timestamp": "2025-05-23T15:21:45.330895"
 }
