@@ -249,3 +249,13 @@ variable "extra_env_vars" {
   }
 }
 
+variable "cloudfront_logging_config" {
+  description = "Configuration for CloudFront logging"
+  type = object({
+    bucket          = string
+    include_cookies = optional(bool, false)
+    prefix          = optional(string)
+  })
+  default = null
+}
+
