@@ -365,6 +365,18 @@ variable "brainstore_etl_batch_size" {
   default     = null
 }
 
+variable "brainstore_s3_bucket_retention_days" {
+  type        = number
+  description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
+  default     = 7
+}
+
+variable "brainstore_vacuum_all_objects" {
+  type        = bool
+  description = "Whether to vacuum all objects in the Brainstore"
+  default     = false
+}
+
 variable "brainstore_extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore"

@@ -173,6 +173,7 @@ module "brainstore" {
   port                                     = var.brainstore_port
   license_key                              = var.brainstore_license_key
   version_override                         = var.brainstore_version_override
+  s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
   extra_env_vars                           = var.brainstore_extra_env_vars
   writer_instance_count                    = var.brainstore_writer_instance_count
   writer_instance_type                     = var.brainstore_writer_instance_type
