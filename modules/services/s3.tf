@@ -23,6 +23,17 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucke
   }
 }
 
+resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
+  bucket = aws_s3_bucket.code_bundle_bucket.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["PUT"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3600
+  }
+}
+
 resource "aws_s3_bucket" "lambda_responses_bucket" {
   # S3 bucket names are globally unique so we have to use a prefix and let terraform
   # generate a random suffix to ensure uniqueness

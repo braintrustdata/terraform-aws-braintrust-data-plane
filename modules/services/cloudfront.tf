@@ -18,11 +18,12 @@ resource "aws_cloudfront_distribution" "dataplane" {
     domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com"
 
     custom_origin_config {
-      origin_protocol_policy = "https-only"
-      origin_read_timeout    = 60
-      https_port             = 443
-      http_port              = 80
-      origin_ssl_protocols   = ["TLSv1.2"]
+      origin_protocol_policy   = "https-only"
+      origin_read_timeout      = 60
+      origin_keepalive_timeout = 60
+      https_port               = 443
+      http_port                = 80
+      origin_ssl_protocols     = ["TLSv1.2"]
     }
   }
 
@@ -31,12 +32,28 @@ resource "aws_cloudfront_distribution" "dataplane" {
     origin_id   = "AIProxyOrigin"
 
     custom_origin_config {
-      origin_protocol_policy = "https-only"
-      origin_read_timeout    = 60
-      https_port             = 443
-      http_port              = 80
-      origin_ssl_protocols   = ["TLSv1.2"]
+      origin_protocol_policy   = "https-only"
+      origin_read_timeout      = 60
+      origin_keepalive_timeout = 60
+      https_port               = 443
+      http_port                = 80
+      origin_ssl_protocols     = ["TLSv1.2"]
     }
+  }
+
+  origin {
+    domain_name = "braintrustproxy.com"
+    origin_id   = "CloudflareProxy"
+
+    custom_origin_config {
+      origin_protocol_policy   = "https-only"
+      origin_read_timeout      = 60
+      origin_keepalive_timeout = 60
+      https_port               = 443
+      http_port                = 80
+      origin_ssl_protocols     = ["TLSv1.2"]
+    }
+
   }
 
   default_cache_behavior {
@@ -60,7 +77,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = "AIProxyOrigin"
+      target_origin_id       = var.use_global_ai_proxy ? "CloudflareProxy" : "AIProxyOrigin"
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled

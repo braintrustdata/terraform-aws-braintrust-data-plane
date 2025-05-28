@@ -91,6 +91,7 @@ BRAINSTORE_METADATA_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${
 BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${database_port}/postgres
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
 BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
+BRAINSTORE_VACUUM_OBJECT_ALL=${brainstore_vacuum_object_all}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}

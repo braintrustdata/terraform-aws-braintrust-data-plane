@@ -7,7 +7,8 @@ resource "aws_lambda_function" "ai_proxy" {
   s3_key        = local.lambda_versions["AIProxy"]
   role          = aws_iam_role.api_handler_role.arn
   handler       = "index.handler"
-  runtime       = "nodejs20.x"
+  runtime       = "nodejs22.x"
+  architectures = ["arm64"]
   memory_size   = 1024
   timeout       = 900
   publish       = true
@@ -67,6 +68,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "x-bt-auth-token",
       "x-bt-stream-fmt",
       "x-bt-use-cache",
+      "x-bt-app-origin",
+      "x-bt-parent",
       "x-stainless-os",
       "x-stainless-lang",
       "x-stainless-package-version",
@@ -79,7 +82,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "keep-alive",
       "access-control-allow-credentials",
       "access-control-allow-origin",
-      "access-control-allow-methods"
+      "access-control-allow-methods",
+      "x-bt-internal-trace-id"
     ]
     max_age = 86400
   }
