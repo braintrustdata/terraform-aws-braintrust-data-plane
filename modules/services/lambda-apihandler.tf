@@ -10,7 +10,7 @@ resource "aws_lambda_function" "api_handler" {
   s3_key                         = local.lambda_versions["APIHandler"]
   role                           = aws_iam_role.api_handler_role.arn
   handler                        = "index.handler"
-  runtime                        = "nodejs20.x"
+  runtime                        = "nodejs22.x"
   memory_size                    = 10240 # Max that lambda supports
   reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   timeout                        = 600

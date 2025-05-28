@@ -8,7 +8,7 @@ resource "aws_lambda_function" "catchup_etl" {
   s3_key        = local.lambda_versions["CatchupETL"]
   role          = aws_iam_role.default_role.arn
   handler       = "index.handler"
-  runtime       = "nodejs20.x"
+  runtime       = "nodejs22.x"
   memory_size   = 1024
   timeout       = 900
   architectures = ["arm64"]
