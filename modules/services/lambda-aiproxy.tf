@@ -69,6 +69,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "x-bt-auth-token",
       "x-bt-stream-fmt",
       "x-bt-use-cache",
+      "x-bt-app-origin",
+      "x-bt-parent",
       "x-stainless-os",
       "x-stainless-lang",
       "x-stainless-package-version",
@@ -81,7 +83,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "keep-alive",
       "access-control-allow-credentials",
       "access-control-allow-origin",
-      "access-control-allow-methods"
+      "access-control-allow-methods",
+      "x-bt-internal-trace-id"
     ]
     max_age = 86400
   }
