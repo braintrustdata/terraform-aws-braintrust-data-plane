@@ -25,7 +25,7 @@ resource "aws_lambda_function" "api_handler" {
 
   layers = [
     # See https://github.com/tobilg/duckdb-nodejs-layer
-    "arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:12"
+    "arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:14"
   ]
 
   ephemeral_storage {
