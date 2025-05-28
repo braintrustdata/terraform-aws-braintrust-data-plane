@@ -10,7 +10,7 @@ resource "aws_lambda_function" "api_handler" {
   s3_key        = local.lambda_versions["APIHandler"]
   role          = aws_iam_role.api_handler_role.arn
   handler       = "index.handler"
-  runtime       = "nodejs20.x"
+  runtime       = "nodejs22.x"
   memory_size   = 10240 # Max that lambda supports
   timeout       = 600
   publish       = true
