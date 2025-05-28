@@ -22,3 +22,25 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "brainstore" {
     bucket_key_enabled = var.kms_key_arn != null
   }
 }
+
+resource "aws_s3_bucket_versioning" "brainstore" {
+  bucket = aws_s3_bucket.brainstore.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
+  depends_on = [aws_s3_bucket_versioning.brainstore]
+  bucket     = aws_s3_bucket.brainstore.id
+
+  rule {
+    id     = "cleanup-old-versions"
+    status = "Enabled"
+
+    # Delete old versions after X days
+    noncurrent_version_expiration {
+      noncurrent_days = var.s3_bucket_retention_days
+    }
+  }
+}

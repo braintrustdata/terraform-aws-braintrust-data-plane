@@ -129,3 +129,9 @@ variable "brainstore_index_validation_only_deletes" {
   description = "Scope index validation to only deletes in Brainstore. Only applies if brainstore_enable_index_validation is true"
   default     = true
 }
+
+variable "s3_bucket_retention_days" {
+  type        = number
+  description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
+  default     = 7
+}
