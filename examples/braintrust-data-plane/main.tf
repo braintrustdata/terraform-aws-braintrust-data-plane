@@ -13,6 +13,18 @@ module "braintrust-data-plane" {
   deployment_name     = local.deployment_name
   braintrust_org_name = "" # Add your organization name from the Braintrust UI here
 
+  ### Service Configuration
+  # The maximum number of concurrent executions to reserve and constrain Braintrust lambdas to.
+  # If you run Braintrust in a shared account you should set these to a reasonable limit to avoid
+  # impacting other non-Braintrust Lambdas. AWS has a global shared limit of 1000 concurrent executions per account.
+  # By default these are unlimited which is ideal for dedicated AWS account.
+  # Recommended 100 to 1000 for production in a shared account.
+  # api_handler_reserved_concurrent_executions = 100
+  # ai_proxy_reserved_concurrent_executions    = 100
+
+  # The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost.
+  # api_handler_provisioned_concurrency   = 0
+
   ### Postgres configuration
   # The default is small for development and testing purposes. Recommended db.r8g.2xlarge for production.
   # postgres_instance_type                = "db.t4g.xlarge"
@@ -68,9 +80,6 @@ module "braintrust-data-plane" {
   # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
   ### Advanced configuration
-  # The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost.
-  # api_handler_provisioned_concurrency   = 0
-
   # List of origins to whitelist for CORS
   # whitelisted_origins                   = []
 
