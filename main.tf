@@ -113,15 +113,17 @@ module "services" {
   brainstore_etl_batch_size                  = var.brainstore_etl_batch_size
 
   # Service configuration
-  braintrust_org_name                 = var.braintrust_org_name
-  api_handler_provisioned_concurrency = var.api_handler_provisioned_concurrency
-  whitelisted_origins                 = var.whitelisted_origins
-  outbound_rate_limit_window_minutes  = var.outbound_rate_limit_window_minutes
-  outbound_rate_limit_max_requests    = var.outbound_rate_limit_max_requests
-  custom_domain                       = var.custom_domain
-  custom_certificate_arn              = var.custom_certificate_arn
-  service_additional_policy_arns      = var.service_additional_policy_arns
-  extra_env_vars                      = var.service_extra_env_vars
+  braintrust_org_name                        = var.braintrust_org_name
+  api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
+  api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
+  ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
+  whitelisted_origins                        = var.whitelisted_origins
+  outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
+  custom_domain                              = var.custom_domain
+  custom_certificate_arn                     = var.custom_certificate_arn
+  service_additional_policy_arns             = var.service_additional_policy_arns
+  extra_env_vars                             = var.service_extra_env_vars
 
   # Networking
   service_security_group_ids = [module.main_vpc.default_security_group_id]
