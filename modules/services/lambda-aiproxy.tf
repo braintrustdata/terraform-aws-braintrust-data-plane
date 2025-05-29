@@ -2,16 +2,17 @@ locals {
   ai_proxy_function_name = "${var.deployment_name}-AIProxy"
 }
 resource "aws_lambda_function" "ai_proxy" {
-  function_name = local.ai_proxy_function_name
-  s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["AIProxy"]
-  role          = aws_iam_role.api_handler_role.arn
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
-  memory_size   = 1024
-  timeout       = 900
-  publish       = true
-  kms_key_arn   = var.kms_key_arn
+  function_name                  = local.ai_proxy_function_name
+  s3_bucket                      = local.lambda_s3_bucket
+  s3_key                         = local.lambda_versions["AIProxy"]
+  role                           = aws_iam_role.api_handler_role.arn
+  handler                        = "index.handler"
+  runtime                        = "nodejs20.x"
+  memory_size                    = 1024
+  reserved_concurrent_executions = var.ai_proxy_reserved_concurrent_executions
+  timeout                        = 900
+  publish                        = true
+  kms_key_arn                    = var.kms_key_arn
 
   logging_config {
     log_format = "Text"

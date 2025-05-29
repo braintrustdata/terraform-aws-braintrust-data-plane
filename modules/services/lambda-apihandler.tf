@@ -5,17 +5,18 @@ resource "aws_lambda_function" "api_handler" {
   # Require the DB migrations to be run before the API handler is deployed
   depends_on = [aws_lambda_invocation.invoke_database_migration]
 
-  function_name = local.api_handler_function_name
-  s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["APIHandler"]
-  role          = aws_iam_role.api_handler_role.arn
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
-  memory_size   = 10240 # Max that lambda supports
-  timeout       = 600
-  publish       = true
-  architectures = ["arm64"]
-  kms_key_arn   = var.kms_key_arn
+  function_name                  = local.api_handler_function_name
+  s3_bucket                      = local.lambda_s3_bucket
+  s3_key                         = local.lambda_versions["APIHandler"]
+  role                           = aws_iam_role.api_handler_role.arn
+  handler                        = "index.handler"
+  runtime                        = "nodejs20.x"
+  memory_size                    = 10240 # Max that lambda supports
+  reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
+  timeout                        = 600
+  publish                        = true
+  architectures                  = ["arm64"]
+  kms_key_arn                    = var.kms_key_arn
 
   logging_config {
     log_format = "Text"

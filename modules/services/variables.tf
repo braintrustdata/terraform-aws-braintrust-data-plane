@@ -149,6 +149,18 @@ variable "api_handler_provisioned_concurrency" {
   default     = 1
 }
 
+variable "api_handler_reserved_concurrent_executions" {
+  type        = number
+  description = "The number of concurrent executions to reserve for the API Handler. Setting this will prevent the API Handler from throttling other lambdas in your account.Note this will take away from your global concurrency limit in your AWS account."
+  default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
+}
+
+variable "ai_proxy_reserved_concurrent_executions" {
+  type        = number
+  description = "The number of concurrent executions to reserve for the AI Proxy. Setting this will prevent the AI Proxy from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
+  default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
+}
+
 variable "run_draft_migrations" {
   type        = bool
   description = "Enable draft migrations for database schema updates"
