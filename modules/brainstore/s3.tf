@@ -38,6 +38,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
     id     = "cleanup-old-versions"
     status = "Enabled"
 
+    filter {
+      # Apply to all objects in the bucket
+      prefix = ""
+    }
+
     # Delete old versions after X days
     noncurrent_version_expiration {
       noncurrent_days = var.s3_bucket_retention_days
