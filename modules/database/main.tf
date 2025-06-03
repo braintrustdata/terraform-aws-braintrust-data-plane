@@ -42,6 +42,8 @@ resource "aws_db_instance" "main" {
   performance_insights_enabled          = true
   performance_insights_retention_period = 7
 
+  auto_minor_version_upgrade = var.auto_minor_version_upgrade
+
   kms_key_id = var.kms_key_arn
 
   tags = local.common_tags

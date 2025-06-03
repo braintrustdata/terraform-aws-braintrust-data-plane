@@ -67,3 +67,9 @@ variable "multi_az" {
   type        = bool
   default     = false
 }
+
+variable "auto_minor_version_upgrade" {
+  description = "Indicates that minor engine upgrades will be applied automatically to the DB instance during the maintenance window. When true you will have to set your postgres_version to only the major number or you will see drift. e.g. '15' instead of '15.7'"
+  type        = bool
+  default     = true
+}

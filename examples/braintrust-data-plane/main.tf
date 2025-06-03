@@ -46,12 +46,18 @@ module "braintrust-data-plane" {
   # PostgreSQL engine version for the RDS instance.
   # postgres_version                      = "15.7"
 
+  # Automatic upgrades of PostgreSQL minor engine version.
+  # If true, AWS will automatically upgrade the minor version of the PostgreSQL engine for you.
+  # Note: Don't include the minor version in your postgres_version if you want to use this.
+  # If false, you will need to manually upgrade the minor version of the PostgreSQL engine.
+  # postgres_auto_minor_version_upgrade   = false
+
   # Multi-AZ RDS instance. Enabling increases cost but provides higher availability. Recommended for production environments.
   # postgres_multi_az                     = true
 
   ### Brainstore configuration
   # Enable Brainstore for faster analytics
-  enable_brainstore = false
+  enable_brainstore = true
 
   # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
   brainstore_license_key = var.brainstore_license_key
