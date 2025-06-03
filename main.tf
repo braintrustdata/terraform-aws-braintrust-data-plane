@@ -66,7 +66,7 @@ module "database" {
 
   postgres_storage_iops       = var.postgres_storage_iops
   postgres_storage_throughput = var.postgres_storage_throughput
-  auto_minor_version_upgrade  = var.auto_minor_version_upgrade
+  auto_minor_version_upgrade  = var.postgres_auto_minor_version_upgrade
 
   kms_key_arn = local.kms_key_arn
 }
