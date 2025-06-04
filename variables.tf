@@ -274,7 +274,7 @@ variable "clickhouse_instance_type" {
 variable "enable_brainstore" {
   type        = bool
   description = "Enable Brainstore for faster analytics"
-  default     = false
+  default     = true
 }
 
 variable "brainstore_default" {
