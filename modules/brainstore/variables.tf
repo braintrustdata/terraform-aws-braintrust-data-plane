@@ -5,13 +5,8 @@ variable "deployment_name" {
 
 variable "instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore. Must be a Graviton instance type. Preferably with 16GB of memory and a local SSD for cache data. The default value is for tiny deployments. Recommended for production deployments is c7gd.8xlarge."
+  description = "The instance type to use for the Brainstore. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
   default     = "c7gd.8xlarge"
-
-  validation {
-    condition     = can(regex("[a-z0-9]*g[a-z0-9]*\\.", var.instance_type))
-    error_message = "Must be a Graviton instance type."
-  }
 }
 
 variable "license_key" {
