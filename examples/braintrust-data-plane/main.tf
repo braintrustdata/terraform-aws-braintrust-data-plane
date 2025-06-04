@@ -30,7 +30,9 @@ module "braintrust-data-plane" {
   # postgres_instance_type                = "db.t4g.xlarge"
 
   # Storage size (in GB) for the RDS instance. Recommended 1000GB for production.
-  # postgres_storage_size                 = 100
+  # postgres_storage_size                 = 1000
+  # Maximum storage size (in GB) to allow the RDS instance to auto-scale to.
+  # postgres_max_storage_size             = 4000
 
   # Storage type for the RDS instance. Recommended io2 for large production deployments.
   # postgres_storage_type                 = "gp3"
@@ -62,9 +64,9 @@ module "braintrust-data-plane" {
   # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
   brainstore_license_key = var.brainstore_license_key
 
-  # The instance type to use for the Brainstore. Must be a Graviton instance type. Preferably with 16GB of memory and a local SSD for cache data.
-  # The default value is for tiny deployments. Recommended for production deployments is c7gd.8xlarge.
-  # brainstore_instance_type             = "c7gd.xlarge"
+  # The instance type to use for the Brainstore. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data.
+  # Recommended for production deployments is c7gd.8xlarge.
+  # brainstore_instance_type             = "c7gd.8xlarge"
 
   # The number of Brainstore instances to provision
   # brainstore_instance_count            = 1

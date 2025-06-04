@@ -73,3 +73,9 @@ variable "auto_minor_version_upgrade" {
   type        = bool
   default     = true
 }
+
+variable "deletion_protection" {
+  description = "Indicates that the DB instance should be protected against deletion. The database can't be deleted when this value is set to true."
+  type        = bool
+  default     = true
+}

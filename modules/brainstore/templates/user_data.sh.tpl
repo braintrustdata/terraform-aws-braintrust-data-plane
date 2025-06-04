@@ -37,6 +37,17 @@ EOF
 export AWS_DEFAULT_REGION=${aws_region}
 
 sudo snap install aws-cli --classic
+# Set up docker log rotation
+mkdir -p /etc/docker
+cat <<EOF > /etc/docker/daemon.json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  }
+}
+EOF
 apt-get update
 apt-get install -y docker.io jq earlyoom dstat
 systemctl start docker
