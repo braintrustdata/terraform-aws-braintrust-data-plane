@@ -30,7 +30,9 @@ module "braintrust-data-plane" {
   # postgres_instance_type                = "db.t4g.xlarge"
 
   # Storage size (in GB) for the RDS instance. Recommended 1000GB for production.
-  # postgres_storage_size                 = 100
+  # postgres_storage_size                 = 1000
+  # Maximum storage size (in GB) to allow the RDS instance to auto-scale to.
+  # postgres_max_storage_size             = 4000
 
   # Storage type for the RDS instance. Recommended io2 for large production deployments.
   # postgres_storage_type                 = "gp3"
