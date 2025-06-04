@@ -289,8 +289,8 @@ variable "brainstore_default" {
 
 variable "brainstore_instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore. Must be a Graviton instance type. Preferably with 16GB of memory and a local SSD for cache data. The default value is for tiny deployments. Recommended for production deployments is c7gd.8xlarge."
-  default     = "c7gd.xlarge"
+  description = "The instance type to use for the Brainstore. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
+  default     = "c8gd.8xlarge"
 }
 
 variable "brainstore_instance_count" {
