@@ -3,6 +3,7 @@ locals {
   common_tags = {
     BraintrustDeploymentName = var.deployment_name
   }
+  architecture = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -183,7 +184,7 @@ data "aws_ami" "ubuntu_24_04" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-*-24.04-arm64-server-*"]
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-*-24.04-*-server-*"]
   }
   filter {
     name   = "virtualization-type"
@@ -191,8 +192,12 @@ data "aws_ami" "ubuntu_24_04" {
   }
   filter {
     name   = "architecture"
-    values = ["arm64"]
+    values = [local.architecture]
   }
+}
+
+data "aws_ec2_instance_type" "brainstore" {
+  instance_type = var.instance_type
 }
 
 data "aws_region" "current" {}
