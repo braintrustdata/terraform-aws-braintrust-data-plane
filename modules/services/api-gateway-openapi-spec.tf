@@ -351,6 +351,84 @@ locals {
       "/xact-id" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
+      "/test-automation" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/version" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/status" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/backfill/status/active" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/backfill/status/failed" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/vacuum/status" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/vacuum/reset_state" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/vacuum/object/{object_id}" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/automation/flush-cache" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/automation/cloud-identity" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/automation/cron" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/automation/cron/{id}/status" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/automation/cron/{id}/run" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/automation/cron/{id}/reset" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
     }
 
     x-amazon-apigateway-binary-media-types = [
