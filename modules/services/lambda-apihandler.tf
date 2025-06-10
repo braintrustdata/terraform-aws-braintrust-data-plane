@@ -92,7 +92,7 @@ resource "aws_lambda_provisioned_concurrency_config" "api_handler_live" {
   count                             = var.api_handler_provisioned_concurrency > 0 ? 1 : 0
   function_name                     = aws_lambda_function.api_handler.function_name
   provisioned_concurrent_executions = var.api_handler_provisioned_concurrency
-  qualifier                         = aws_lambda_alias.api_handler_live.name
+  qualifier                         = aws_lambda_function.api_handler.version
 }
 
 resource "aws_lambda_alias" "api_handler_live" {
