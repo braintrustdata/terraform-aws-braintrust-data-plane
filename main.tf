@@ -127,6 +127,7 @@ module "services" {
   extra_env_vars                             = var.service_extra_env_vars
 
   # Networking
+  vpc_id                     = module.main_vpc.vpc_id
   service_security_group_ids = [module.main_vpc.default_security_group_id]
   service_subnet_ids = [
     module.main_vpc.private_subnet_1_id,

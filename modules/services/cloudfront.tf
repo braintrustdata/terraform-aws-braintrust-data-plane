@@ -4,6 +4,21 @@ locals {
   # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
 }
+
+resource "aws_cloudfront_vpc_origin" "alb" {
+  vpc_origin_endpoint_config {
+    name                   = "${var.deployment_name}-api-alb-origin"
+    arn                    = aws_lb.api.arn
+    http_port              = 80
+    https_port             = 443
+    origin_protocol_policy = "http-only"
+    origin_ssl_protocols {
+      items    = ["TLSv1.2"]
+      quantity = 1
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "dataplane" {
   comment      = "Braintrust Dataplane - ${var.deployment_name}"
   enabled      = true
@@ -13,16 +28,14 @@ resource "aws_cloudfront_distribution" "dataplane" {
   aliases     = var.custom_domain != null ? [var.custom_domain] : null
 
   origin {
-    origin_id   = "APIGatewayOrigin"
+    origin_id   = "APIOrigin"
+    domain_name = aws_lb.api.dns_name
     origin_path = "/api"
-    domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com"
 
-    custom_origin_config {
-      origin_protocol_policy = "https-only"
-      origin_read_timeout    = 60
-      https_port             = 443
-      http_port              = 80
-      origin_ssl_protocols   = ["TLSv1.2"]
+    vpc_origin_config {
+      vpc_origin_id            = aws_cloudfront_vpc_origin.alb.id
+      origin_keepalive_timeout = 60
+      origin_read_timeout      = 30
     }
   }
 
@@ -42,7 +55,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "APIGatewayOrigin"
+    target_origin_id       = "APIOrigin"
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id          = local.cloudfront_CachingDisabled

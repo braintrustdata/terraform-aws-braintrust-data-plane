@@ -261,3 +261,25 @@ variable "extra_env_vars" {
   }
 }
 
+variable "enable_alb" {
+  type        = bool
+  description = "Whether to create an Application Load Balancer"
+  default     = false
+}
+
+variable "alb_security_group_ids" {
+  type        = list(string)
+  description = "List of security group IDs to attach to the ALB"
+  default     = []
+}
+
+variable "vpc_id" {
+  type        = string
+  description = "The ID of the VPC where resources will be created"
+}
+
+variable "tags" {
+  type        = map(string)
+  description = "A map of tags to add to all resources"
+  default     = {}
+}
