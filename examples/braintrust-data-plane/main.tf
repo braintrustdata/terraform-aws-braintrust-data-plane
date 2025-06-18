@@ -103,4 +103,10 @@ module "braintrust-data-plane" {
   # The time frame in minutes over which rate per-user rate limits are accumulated
   # outbound_rate_limit_window_minutes    = 1
 
+  ## Braintrust Support
+  # Enable sharing of Cloudwatch logs with Braintrust staff
+  # enable_braintrust_support_logs_access = true
+
+  # Enable Bastion SSH access for Braintrust staff. This will create a bastion host and a security group that allows EC2 instance connect access from the Braintrust IAM Role.
+  # enable_braintrust_support_shell_access = true
 }
