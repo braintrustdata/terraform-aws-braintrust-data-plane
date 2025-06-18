@@ -299,6 +299,18 @@ variable "brainstore_instance_count" {
   default     = 1
 }
 
+variable "brainstore_writer_instance_count" {
+  type        = number
+  description = "Optional: The number of dedicated writer nodes to create"
+  default     = 0
+}
+
+variable "brainstore_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore writer nodes"
+  default     = "c8gd.8xlarge"
+}
+
 variable "brainstore_instance_key_pair_name" {
   type        = string
   description = "The name of the key pair to use for the Brainstore instance"
@@ -357,6 +369,32 @@ variable "brainstore_extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore"
   default     = {}
+}
+
+
+
+variable "brainstore_enable_index_validation" {
+  type        = bool
+  description = "Enable index validation for Brainstore"
+  default     = false
+}
+
+variable "brainstore_index_validation_only_deletes" {
+  type        = bool
+  description = "Scope index validation to only deletes in Brainstore. Only applies if brainstore_enable_index_validation is true"
+  default     = true
+}
+
+variable "brainstore_disable_optimization_worker" {
+  type        = bool
+  description = "Disable the optimization worker in Brainstore"
+  default     = true
+}
+
+variable "brainstore_vacuum_object_all" {
+  type        = bool
+  description = "Enable vacuuming of all objects in Brainstore"
+  default     = false
 }
 
 variable "service_extra_env_vars" {

@@ -3,7 +3,8 @@ locals {
   common_tags = {
     BraintrustDeploymentName = var.deployment_name
   }
-  architecture = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
+  architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
+  has_writer_nodes = var.writer_instance_count > 0
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -54,7 +55,13 @@ resource "aws_launch_template" "brainstore" {
     brainstore_license_key      = var.license_key
     brainstore_version_override = var.version_override == null ? "" : var.version_override
     brainstore_release_version  = local.brainstore_release_version
-    extra_env_vars              = var.extra_env_vars
+    # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
+    brainstore_disable_optimization_worker   = local.has_writer_nodes ? true : var.brainstore_disable_optimization_worker
+    brainstore_vacuum_object_all             = local.has_writer_nodes ? false : var.brainstore_vacuum_object_all
+    brainstore_enable_index_validation       = var.brainstore_enable_index_validation
+    brainstore_index_validation_only_deletes = var.brainstore_index_validation_only_deletes
+    is_dedicated_writer_node                 = "false"
+    extra_env_vars                           = var.extra_env_vars
   }))
 
   tags = merge({
@@ -64,21 +71,24 @@ resource "aws_launch_template" "brainstore" {
   tag_specifications {
     resource_type = "instance"
     tags = merge({
-      Name = "${var.deployment_name}-brainstore"
+      Name           = local.has_writer_nodes ? "${var.deployment_name}-brainstore-reader" : "${var.deployment_name}-brainstore"
+      BrainstoreRole = local.has_writer_nodes ? "Reader" : "ReaderWriter"
     }, local.common_tags)
   }
 
   tag_specifications {
     resource_type = "volume"
     tags = merge({
-      Name = "${var.deployment_name}-brainstore"
+      Name           = local.has_writer_nodes ? "${var.deployment_name}-brainstore-reader" : "${var.deployment_name}-brainstore"
+      BrainstoreRole = local.has_writer_nodes ? "Reader" : "ReaderWriter"
     }, local.common_tags)
   }
 
   tag_specifications {
     resource_type = "network-interface"
     tags = merge({
-      Name = "${var.deployment_name}-brainstore"
+      Name           = local.has_writer_nodes ? "${var.deployment_name}-brainstore-reader" : "${var.deployment_name}-brainstore"
+      BrainstoreRole = local.has_writer_nodes ? "Reader" : "ReaderWriter"
     }, local.common_tags)
   }
 }
@@ -162,7 +172,7 @@ resource "aws_autoscaling_group" "brainstore" {
 
   tag {
     key                 = "Name"
-    value               = "${var.deployment_name}-brainstore"
+    value               = local.has_writer_nodes ? "${var.deployment_name}-brainstore-reader" : "${var.deployment_name}-brainstore"
     propagate_at_launch = true
   }
 

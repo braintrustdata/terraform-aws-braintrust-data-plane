@@ -105,6 +105,7 @@ module "services" {
   brainstore_enabled                         = var.enable_brainstore
   brainstore_default                         = var.brainstore_default
   brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
+  brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
   brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
   brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
@@ -165,20 +166,25 @@ module "brainstore" {
   source = "./modules/brainstore"
   count  = var.enable_brainstore ? 1 : 0
 
-  deployment_name        = var.deployment_name
-  instance_count         = var.brainstore_instance_count
-  instance_type          = var.brainstore_instance_type
-  instance_key_pair_name = var.brainstore_instance_key_pair_name
-  port                   = var.brainstore_port
-  license_key            = var.brainstore_license_key
-  version_override       = var.brainstore_version_override
-  extra_env_vars         = var.brainstore_extra_env_vars
-
-  database_host       = module.database.postgres_database_address
-  database_port       = module.database.postgres_database_port
-  database_secret_arn = module.database.postgres_database_secret_arn
-  redis_host          = module.redis.redis_endpoint
-  redis_port          = module.redis.redis_port
+  deployment_name                          = var.deployment_name
+  instance_count                           = var.brainstore_instance_count
+  instance_type                            = var.brainstore_instance_type
+  instance_key_pair_name                   = var.brainstore_instance_key_pair_name
+  port                                     = var.brainstore_port
+  license_key                              = var.brainstore_license_key
+  version_override                         = var.brainstore_version_override
+  extra_env_vars                           = var.brainstore_extra_env_vars
+  writer_instance_count                    = var.brainstore_writer_instance_count
+  writer_instance_type                     = var.brainstore_writer_instance_type
+  brainstore_disable_optimization_worker   = var.brainstore_disable_optimization_worker
+  brainstore_vacuum_object_all             = var.brainstore_vacuum_object_all
+  brainstore_enable_index_validation       = var.brainstore_enable_index_validation
+  brainstore_index_validation_only_deletes = var.brainstore_index_validation_only_deletes
+  database_host                            = module.database.postgres_database_address
+  database_port                            = module.database.postgres_database_port
+  database_secret_arn                      = module.database.postgres_database_secret_arn
+  redis_host                               = module.redis.redis_endpoint
+  redis_port                               = module.redis.redis_port
 
   vpc_id            = module.main_vpc.vpc_id
   security_group_id = module.main_vpc.default_security_group_id

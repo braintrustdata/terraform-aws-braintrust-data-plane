@@ -11,11 +11,13 @@ locals {
     lambda => trimspace(data.http.lambda_versions[lambda].response_body)
   } : jsondecode(file("${path.module}/VERSIONS.json"))
 
-  postgres_url           = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
-  brainstore_url         = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
-  brainstore_s3_bucket   = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
-  clickhouse_pg_url      = var.clickhouse_host != null ? "postgres://default:${var.clickhouse_secret}@${var.clickhouse_host}:9005/default" : ""
-  clickhouse_connect_url = var.clickhouse_host != null ? "http://default:${var.clickhouse_secret}@${var.clickhouse_host}:8123/default" : ""
+  postgres_url            = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
+  using_brainstore_writer = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
+  brainstore_url          = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
+  brainstore_writer_url   = var.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+  brainstore_s3_bucket    = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
+  clickhouse_pg_url       = var.clickhouse_host != null ? "postgres://default:${var.clickhouse_secret}@${var.clickhouse_host}:9005/default" : ""
+  clickhouse_connect_url  = var.clickhouse_host != null ? "http://default:${var.clickhouse_secret}@${var.clickhouse_host}:8123/default" : ""
   common_tags = {
     BraintrustDeploymentName = var.deployment_name
   }

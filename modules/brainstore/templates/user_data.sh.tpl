@@ -102,6 +102,10 @@ BRAINSTORE_METADATA_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${
 BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${database_port}/postgres
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
 BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
+BRAINSTORE_DISABLE_OPTIMIZATION_WORKER=${brainstore_disable_optimization_worker}
+BRAINSTORE_VACUUM_OBJECT_ALL=${brainstore_vacuum_object_all}
+BRAINSTORE_INDEX_WRITER_VALIDATE=${brainstore_enable_index_validation}
+BRAINSTORE_INDEX_WRITER_VALIDATE_ONLY_DELETES=${brainstore_index_validation_only_deletes}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
@@ -109,6 +113,11 @@ AWS_REGION=${aws_region}
 ${env_key}=${env_value}
 %{ endfor ~}
 EOF
+
+if [ "${is_dedicated_writer_node}" = "true" ]; then
+  # Until we are comfortable with stability
+  echo '0 * * * * root /usr/bin/docker restart brainstore > /var/log/brainstore-restart.log 2>&1' > /etc/cron.d/restart-brainstore
+fi
 
 BRAINSTORE_RELEASE_VERSION=${brainstore_release_version}
 BRAINSTORE_VERSION_OVERRIDE=${brainstore_version_override}

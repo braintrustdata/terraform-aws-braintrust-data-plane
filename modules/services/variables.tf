@@ -107,6 +107,12 @@ variable "brainstore_hostname" {
   }
 }
 
+variable "brainstore_writer_hostname" {
+  type        = string
+  description = "Hostname for the dedicated Brainstore writer nodes, if enabled"
+  default     = null
+}
+
 variable "brainstore_port" {
   type        = number
   description = "Port for Brainstore"
