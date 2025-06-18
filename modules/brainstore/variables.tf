@@ -109,7 +109,7 @@ variable "writer_instance_type" {
 variable "brainstore_disable_optimization_worker" {
   type        = bool
   description = "Whether to disable the optimization worker in Brainstore"
-  default     = true
+  default     = false
 }
 
 variable "brainstore_vacuum_object_all" {
