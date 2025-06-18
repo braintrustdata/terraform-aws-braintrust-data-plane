@@ -388,7 +388,7 @@ variable "brainstore_index_validation_only_deletes" {
 variable "brainstore_disable_optimization_worker" {
   type        = bool
   description = "Disable the optimization worker in Brainstore"
-  default     = true
+  default     = false
 }
 
 variable "brainstore_vacuum_object_all" {
