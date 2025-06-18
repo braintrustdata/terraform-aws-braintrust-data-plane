@@ -243,6 +243,31 @@ variable "brainstore_default" {
   }
 }
 
+variable "brainstore_disable_optimization_worker" {
+  type        = bool
+  description = "Whether to disable the optimization worker in Brainstore"
+  default     = false
+}
+
+variable "brainstore_vacuum_object_all" {
+  type        = bool
+  description = "Whether to vacuum all objects in Brainstore"
+  default     = false
+}
+
+variable "brainstore_enable_index_validation" {
+  type        = bool
+  description = "Enable index validation for Brainstore"
+  default     = false
+}
+
+variable "brainstore_index_validation_only_deletes" {
+  type        = bool
+  description = "Scope index validation to only deletes in Brainstore. Only applies if brainstore_enable_index_validation is true"
+  default     = true
+}
+
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
