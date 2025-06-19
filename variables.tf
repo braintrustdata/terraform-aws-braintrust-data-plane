@@ -373,7 +373,7 @@ variable "brainstore_s3_bucket_retention_days" {
 
 variable "brainstore_vacuum_all_objects" {
   type        = bool
-  description = "Whether to vacuum all objects in the Brainstore"
+  description = "Enable vacuuming of all objects in Brainstore"
   default     = false
 }
 
@@ -400,12 +400,6 @@ variable "brainstore_index_validation_only_deletes" {
 variable "brainstore_disable_optimization_worker" {
   type        = bool
   description = "Disable the optimization worker in Brainstore"
-  default     = false
-}
-
-variable "brainstore_vacuum_object_all" {
-  type        = bool
-  description = "Enable vacuuming of all objects in Brainstore"
   default     = false
 }
 

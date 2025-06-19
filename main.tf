@@ -173,12 +173,12 @@ module "brainstore" {
   port                                     = var.brainstore_port
   license_key                              = var.brainstore_license_key
   version_override                         = var.brainstore_version_override
-  s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
+  s3_bucket_retention_days                 = var.brainstore_s3_bucket_retention_days
   extra_env_vars                           = var.brainstore_extra_env_vars
   writer_instance_count                    = var.brainstore_writer_instance_count
   writer_instance_type                     = var.brainstore_writer_instance_type
   brainstore_disable_optimization_worker   = var.brainstore_disable_optimization_worker
-  brainstore_vacuum_object_all             = var.brainstore_vacuum_object_all
+  brainstore_vacuum_all_objects            = var.brainstore_vacuum_all_objects
   brainstore_enable_index_validation       = var.brainstore_enable_index_validation
   brainstore_index_validation_only_deletes = var.brainstore_index_validation_only_deletes
   database_host                            = module.database.postgres_database_address

@@ -255,12 +255,6 @@ variable "brainstore_disable_optimization_worker" {
   default     = false
 }
 
-variable "brainstore_vacuum_object_all" {
-  type        = bool
-  description = "Whether to vacuum all objects in Brainstore"
-  default     = false
-}
-
 variable "brainstore_enable_index_validation" {
   type        = bool
   description = "Enable index validation for Brainstore"

@@ -112,7 +112,7 @@ variable "brainstore_disable_optimization_worker" {
   default     = false
 }
 
-variable "brainstore_vacuum_object_all" {
+variable "brainstore_vacuum_all_objects" {
   type        = bool
   description = "Whether to vacuum all objects in Brainstore"
   default     = false

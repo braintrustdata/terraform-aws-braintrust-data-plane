@@ -49,7 +49,7 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_version_override              = var.version_override == null ? "" : var.version_override
     brainstore_release_version               = local.brainstore_release_version
     brainstore_disable_optimization_worker   = var.brainstore_disable_optimization_worker
-    brainstore_vacuum_object_all             = var.brainstore_vacuum_object_all
+    brainstore_vacuum_all_objects            = var.brainstore_vacuum_all_objects
     brainstore_enable_index_validation       = var.brainstore_enable_index_validation
     brainstore_index_validation_only_deletes = var.brainstore_index_validation_only_deletes
     is_dedicated_writer_node                 = "true"
