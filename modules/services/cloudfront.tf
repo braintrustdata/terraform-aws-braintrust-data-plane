@@ -3,6 +3,9 @@ locals {
   cloudfront_CachingDisabled = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
   # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+  cloudfront_AIProxyOrigin             = "AIProxyOrigin"
+  cloudfront_CloudflareProxy           = "CloudflareProxy"
+  cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
 }
 resource "aws_cloudfront_distribution" "dataplane" {
   comment      = "Braintrust Dataplane - ${var.deployment_name}"
@@ -13,7 +16,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   aliases     = var.custom_domain != null ? [var.custom_domain] : null
 
   origin {
-    origin_id   = "APIGatewayOrigin"
+    origin_id   = local.cloudfront_APIGatewayOrigin
     origin_path = "/api"
     domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com"
 
@@ -29,7 +32,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
   origin {
     domain_name = trimsuffix(trimprefix(aws_lambda_function_url.ai_proxy.function_url, "https://"), "/")
-    origin_id   = "AIProxyOrigin"
+    origin_id   = local.cloudfront_AIProxyOrigin
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
@@ -43,7 +46,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
   origin {
     domain_name = "braintrustproxy.com"
-    origin_id   = "CloudflareProxy"
+    origin_id   = local.cloudfront_CloudflareProxy
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
@@ -59,7 +62,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "APIGatewayOrigin"
+    target_origin_id       = local.cloudfront_APIGatewayOrigin
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id          = local.cloudfront_CachingDisabled
@@ -77,7 +80,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = var.use_global_ai_proxy ? "CloudflareProxy" : "AIProxyOrigin"
+      target_origin_id       = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
