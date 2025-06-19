@@ -58,23 +58,18 @@ module "braintrust-data-plane" {
   # postgres_multi_az                     = true
 
   ### Brainstore configuration
-  # Enable Brainstore for faster analytics
-  enable_brainstore = true
-
   # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
   brainstore_license_key = var.brainstore_license_key
 
-  # The instance type to use for the Brainstore. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data.
-  # If you're using dedicated writer nodes, you can run a smaller instance type for the reader nodes.
-  # Recommended for production deployments is c8gd.8xlarge.
-  # brainstore_instance_type             = "c8gd.8xlarge"
+  # The number of Brainstore reader instances to provision
+  # Recommended Graviton instance type with 16GB of memory
+  brainstore_instance_count = 2
+  brainstore_instance_type  = "c8gd.2xlarge"
 
-  # The number of Brainstore instances to provision
-  # brainstore_instance_count            = 1
-
-  # Optional: The number of dedicated Brainstore writer nodes to create
-  # brainstore_writer_instance_count      = 1
-  # brainstore_writer_instance_type       = "c8gd.8xlarge"
+  # The number of dedicated Brainstore writer nodes to create
+  # Recommended Graviton instance type with 32GB of memory
+  brainstore_writer_instance_count = 1
+  brainstore_writer_instance_type  = "c8gd.8xlarge"
 
   ### Redis configuration
   # Default is acceptable for small production deployments. Recommended cache.m7g.large for larger deployments.

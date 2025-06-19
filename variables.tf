@@ -289,20 +289,20 @@ variable "brainstore_default" {
 
 variable "brainstore_instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
-  default     = "c8gd.8xlarge"
+  description = "The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
+  default     = "c8gd.2xlarge"
 }
 
 variable "brainstore_instance_count" {
   type        = number
-  description = "The number of Brainstore instances to provision"
-  default     = 1
+  description = "The number of Brainstore reader instances to provision"
+  default     = 2
 }
 
 variable "brainstore_writer_instance_count" {
   type        = number
-  description = "Optional: The number of dedicated writer nodes to create"
-  default     = 0
+  description = "The number of dedicated writer nodes to create"
+  default     = 1
 }
 
 variable "brainstore_writer_instance_type" {

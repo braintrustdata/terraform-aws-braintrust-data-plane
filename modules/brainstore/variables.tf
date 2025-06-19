@@ -5,8 +5,8 @@ variable "deployment_name" {
 
 variable "instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
-  default     = "c8gd.8xlarge"
+  description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
+  default     = "c8gd.2xlarge"
 }
 
 variable "license_key" {
@@ -20,8 +20,8 @@ variable "license_key" {
 
 variable "instance_count" {
   type        = number
-  description = "The number of instances to create"
-  default     = 1
+  description = "The number of reader instances to create"
+  default     = 2
 }
 
 variable "port" {
@@ -97,7 +97,7 @@ variable "extra_env_vars" {
 variable "writer_instance_count" {
   type        = number
   description = "The number of dedicated writer nodes to create"
-  default     = 0
+  default     = 1
 }
 
 variable "writer_instance_type" {
