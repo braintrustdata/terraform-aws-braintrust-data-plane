@@ -27,7 +27,7 @@ module "braintrust-data-plane" {
 
   ### Postgres configuration
   # The default is small for development and testing purposes. Recommended db.r8g.2xlarge for production.
-  # postgres_instance_type                = "db.t4g.xlarge"
+  # postgres_instance_type                = "db.r8g.2xlarge"
 
   # Storage size (in GB) for the RDS instance. Recommended 1000GB for production.
   # postgres_storage_size                 = 1000
@@ -64,7 +64,7 @@ module "braintrust-data-plane" {
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_instance_count = 2
-  brainstore_instance_type  = "c8gd.2xlarge"
+  brainstore_instance_type  = "c8gd.4xlarge"
 
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
