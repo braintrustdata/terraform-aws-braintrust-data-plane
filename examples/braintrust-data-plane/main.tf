@@ -70,8 +70,8 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
   ### Redis configuration
-  # Default is acceptable for small production deployments. Recommended cache.m7g.large for larger deployments.
-  # redis_instance_type                   = "cache.t4g.small"
+  # Default is acceptable for typical production deployments.
+  # redis_instance_type                   = "cache.t4g.medium"
 
   # Redis engine version
   # redis_version                         = "7.0"

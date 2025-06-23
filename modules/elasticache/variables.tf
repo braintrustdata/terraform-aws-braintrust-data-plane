@@ -16,11 +16,11 @@ variable "security_group_ids" {
 variable "redis_instance_type" {
   type        = string
   description = "Instance type for the Redis cluster"
-  default     = "cache.t4g.small"
+  default     = "cache.t4g.medium"
 }
 
 variable "redis_version" {
   type        = string
   description = "Redis engine version"
   default     = "7.0"
-} 
+}
