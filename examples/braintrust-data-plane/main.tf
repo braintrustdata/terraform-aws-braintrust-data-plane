@@ -24,10 +24,9 @@ module "braintrust-data-plane" {
   # api_handler_provisioned_concurrency   = 0
 
   ### Postgres configuration
-  # The default is small for development and testing purposes. Recommended db.r8g.2xlarge for production.
   # postgres_instance_type                = "db.r8g.2xlarge"
 
-  # Storage size (in GB) for the RDS instance. Recommended 1000GB for production.
+  # Storage size (in GB) for the RDS instance.
   # postgres_storage_size                 = 1000
   # Maximum storage size (in GB) to allow the RDS instance to auto-scale to.
   # postgres_max_storage_size             = 4000
@@ -37,22 +36,23 @@ module "braintrust-data-plane" {
 
   # Storage IOPS for the RDS instance. Only applicable if storage_type is io1, io2, or gp3.
   # Recommended 15000 for production. Default for gp3 is 3000.
-  # postgres_storage_iops                 = null
+  # postgres_storage_iops                 = 10000
 
   # Throughput for the RDS instance. Only applicable if storage_type is gp3.
   # Recommended 500 for production if you are using gp3. Leave blank for io1 or io2
-  # postgres_storage_throughput           = null
+  # postgres_storage_throughput           = 500
 
   # PostgreSQL engine version for the RDS instance.
-  # postgres_version                      = "15.7"
+  # postgres_version                      = "15"
 
   # Automatic upgrades of PostgreSQL minor engine version.
   # If true, AWS will automatically upgrade the minor version of the PostgreSQL engine for you.
   # Note: Don't include the minor version in your postgres_version if you want to use this.
   # If false, you will need to manually upgrade the minor version of the PostgreSQL engine.
-  # postgres_auto_minor_version_upgrade   = false
+  # postgres_auto_minor_version_upgrade   = true
 
-  # Multi-AZ RDS instance. Enabling increases cost but provides higher availability. Recommended for production environments.
+  # Multi-AZ RDS instance. Enabling increases cost but provides higher availability.
+  # Recommended for critical production environments.
   # postgres_multi_az                     = true
 
   ### Brainstore configuration
@@ -61,13 +61,13 @@ module "braintrust-data-plane" {
 
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
-  brainstore_instance_count = 2
-  brainstore_instance_type  = "c8gd.4xlarge"
+  # brainstore_instance_count = 2
+  #  brainstore_instance_type  = "c8gd.4xlarge"
 
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
-  brainstore_writer_instance_count = 1
-  brainstore_writer_instance_type  = "c8gd.8xlarge"
+  # brainstore_writer_instance_count = 1
+  # brainstore_writer_instance_type  = "c8gd.8xlarge"
 
   ### Redis configuration
   # Default is acceptable for typical production deployments.
@@ -100,7 +100,7 @@ module "braintrust-data-plane" {
   # The time frame in minutes over which rate per-user rate limits are accumulated
   # outbound_rate_limit_window_minutes    = 1
 
-  ## Braintrust Support
+  ### Braintrust Support
   # Enable sharing of Cloudwatch logs with Braintrust staff
   # enable_braintrust_support_logs_access = true
 
