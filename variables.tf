@@ -188,7 +188,7 @@ variable "redis_version" {
 variable "api_handler_provisioned_concurrency" {
   description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
   type        = number
-  default     = 0
+  default     = 1
 }
 
 variable "api_handler_reserved_concurrent_executions" {
