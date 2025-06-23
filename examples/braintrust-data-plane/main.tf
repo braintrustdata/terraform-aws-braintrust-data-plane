@@ -1,17 +1,15 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
-locals {
-  # This is primarily used for tagging and naming resources in your AWS account.
-  # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "braintrust"
-}
-
 module "braintrust-data-plane" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
-  deployment_name     = local.deployment_name
-  braintrust_org_name = "" # Add your organization name from the Braintrust UI here
+  # This is primarily used for tagging and naming resources in your AWS account.
+  # Do not change this after deployment. RDS and S3 resources can not be renamed.
+  deployment_name = "braintrust"
+
+  # Add your organization name from the Braintrust UI here
+  braintrust_org_name = ""
 
   ### Service Configuration
   # The maximum number of concurrent executions to reserve and constrain Braintrust lambdas to.
