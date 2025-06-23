@@ -119,19 +119,19 @@ variable "quarantine_public_subnet_1_az" {
 variable "postgres_instance_type" {
   description = "Instance type for the RDS instance."
   type        = string
-  default     = "db.t4g.xlarge"
+  default     = "db.r8g.2xlarge"
 }
 
 variable "postgres_storage_size" {
   description = "Storage size (in GB) for the RDS instance."
   type        = number
-  default     = 100
+  default     = 1000
 }
 
 variable "postgres_max_storage_size" {
   description = "Maximum storage size (in GB) to allow the RDS instance to auto-scale to."
   type        = number
-  default     = 1000
+  default     = 4000
 }
 
 variable "postgres_storage_type" {
@@ -143,13 +143,13 @@ variable "postgres_storage_type" {
 variable "postgres_storage_iops" {
   description = "Storage IOPS for the RDS instance. Only applicable if storage_type is io1, io2, or gp3."
   type        = number
-  default     = null
+  default     = 10000
 }
 
 variable "postgres_storage_throughput" {
   description = "Throughput for the RDS instance. Only applicable if storage_type is gp3."
   type        = number
-  default     = null
+  default     = 500
 }
 
 variable "postgres_version" {
