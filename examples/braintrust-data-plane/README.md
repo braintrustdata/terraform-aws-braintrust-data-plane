@@ -1,4 +1,4 @@
-This is an example of a standard Braintrust data plane deployment. Copy this directory to a new directory in your own repository and modify the files to match your environment.
+This is an example of a standard **production-sized** Braintrust data plane deployment. Copy this directory to a new directory in your own repository and modify the files to match your environment.
 
 ## Configure Terraform
 * `provider.tf` should be modified to use your AWS account and region.
