@@ -94,7 +94,7 @@ variable "quarantine_vpc_private_subnets" {
 variable "brainstore_enabled" {
   type        = bool
   description = "Whether Brainstore is enabled"
-  default     = false
+  default     = true
 }
 
 variable "brainstore_hostname" {
