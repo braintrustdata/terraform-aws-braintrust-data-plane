@@ -129,3 +129,21 @@ variable "s3_bucket_retention_days" {
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
   default     = 7
 }
+
+variable "internal_observability_api_key" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
+variable "internal_observability_region" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = "us5"
+}

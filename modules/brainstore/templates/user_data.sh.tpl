@@ -117,6 +117,42 @@ if [ "${is_dedicated_writer_node}" = "true" ]; then
   echo '0 * * * * root /usr/bin/docker restart brainstore > /var/log/brainstore-restart.log 2>&1' > /etc/cron.d/restart-brainstore
 fi
 
+if [ -n "${internal_observability_api_key}" ]; then
+  if [ -n "${internal_observability_env_name}" ]; then
+    export DD_ENV="${internal_observability_env_name}"
+  fi
+  # Install Datadog Agent
+  export DD_API_KEY="${internal_observability_api_key}"
+  export DD_SITE="${internal_observability_region}.datadoghq.com"
+  export DD_APM_INSTRUMENTATION_ENABLED=host
+  export DD_APM_INSTRUMENTATION_LIBRARIES=java:1,python:3,js:5,php:1,dotnet:3
+  bash -c "$(curl -L https://install.datadoghq.com/scripts/install_script_agent7.sh)"
+  usermod -a -G docker dd-agent
+
+  cat <<EOF > /etc/datadog-agent/environment
+DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
+DD_COLLECT_EC2_TAGS=true
+DD_COLLECT_EC2_TAGS_USE_IMDS=true
+EOF
+  # Configure Datadog Agent to collect Docker logs
+  cat <<EOF >> /etc/datadog-agent/datadog.yaml
+logs_enabled: true
+listeners:
+    - name: docker
+config_providers:
+    - name: docker
+      polling: true
+logs_config:
+    container_collect_all: true
+EOF
+  # Configure Brainstore to send traces to Datadog
+  cat <<EOF >> /etc/brainstore.env
+BRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318
+EOF
+  # Restart Datadog Agent to pick up new configuration
+  systemctl restart datadog-agent
+fi
+
 BRAINSTORE_RELEASE_VERSION=${brainstore_release_version}
 BRAINSTORE_VERSION_OVERRIDE=${brainstore_version_override}
 BRAINSTORE_VERSION=$${BRAINSTORE_VERSION_OVERRIDE:-$${BRAINSTORE_RELEASE_VERSION}}

@@ -400,3 +400,21 @@ variable "service_extra_env_vars" {
     QuarantineWarmupFunction = {}
   }
 }
+
+variable "internal_observability_api_key" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
+variable "internal_observability_region" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = "us5"
+}
