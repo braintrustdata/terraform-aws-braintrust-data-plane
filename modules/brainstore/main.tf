@@ -56,12 +56,10 @@ resource "aws_launch_template" "brainstore" {
     brainstore_version_override = var.version_override == null ? "" : var.version_override
     brainstore_release_version  = local.brainstore_release_version
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
-    brainstore_disable_optimization_worker   = local.has_writer_nodes ? true : var.brainstore_disable_optimization_worker
-    brainstore_vacuum_all_objects            = local.has_writer_nodes ? false : var.brainstore_vacuum_all_objects
-    brainstore_enable_index_validation       = var.brainstore_enable_index_validation
-    brainstore_index_validation_only_deletes = var.brainstore_index_validation_only_deletes
-    is_dedicated_writer_node                 = "false"
-    extra_env_vars                           = var.extra_env_vars
+    brainstore_disable_optimization_worker = local.has_writer_nodes ? true : var.brainstore_disable_optimization_worker
+    brainstore_vacuum_all_objects          = local.has_writer_nodes ? false : var.brainstore_vacuum_all_objects
+    is_dedicated_writer_node               = "false"
+    extra_env_vars                         = var.extra_env_vars
   }))
 
   tags = merge({
