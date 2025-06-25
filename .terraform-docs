@@ -1,0 +1,3 @@
+formatter: "markdown"
+sections:
+  show: ['header', 'inputs', 'outputs']
