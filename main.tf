@@ -173,6 +173,7 @@ module "brainstore" {
   version_override                       = var.brainstore_version_override
   s3_bucket_retention_days               = var.brainstore_s3_bucket_retention_days
   extra_env_vars                         = var.brainstore_extra_env_vars
+  extra_env_vars_writer                  = var.brainstore_extra_env_vars_writer
   writer_instance_count                  = var.brainstore_writer_instance_count
   writer_instance_type                   = var.brainstore_writer_instance_type
   brainstore_disable_optimization_worker = var.brainstore_disable_optimization_worker
