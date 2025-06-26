@@ -69,8 +69,6 @@ resource "aws_lambda_function" "api_handler" {
       BRAINSTORE_REALTIME_WAL_BUCKET             = local.brainstore_s3_bucket
       BRAINSTORE_ENABLE_HISTORICAL_FULL_BACKFILL = var.brainstore_enable_historical_full_backfill
       BRAINSTORE_BACKFILL_NEW_OBJECTS            = var.brainstore_backfill_new_objects
-      BRAINSTORE_BACKFILL_DISABLE_HISTORICAL     = var.brainstore_backfill_disable_historical
-      BRAINSTORE_BACKFILL_DISABLE_NONHISTORICAL  = var.brainstore_backfill_disable_nonhistorical
 
       CLICKHOUSE_PG_URL      = local.clickhouse_pg_url
       CLICKHOUSE_CONNECT_URL = local.clickhouse_connect_url

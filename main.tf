@@ -110,8 +110,6 @@ module "services" {
   brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
   brainstore_backfill_new_objects            = var.brainstore_backfill_new_objects
-  brainstore_backfill_disable_historical     = var.brainstore_backfill_disable_historical
-  brainstore_backfill_disable_nonhistorical  = var.brainstore_backfill_disable_nonhistorical
   brainstore_etl_batch_size                  = var.brainstore_etl_batch_size
 
   # Service configuration

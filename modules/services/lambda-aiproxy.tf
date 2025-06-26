@@ -8,7 +8,7 @@ resource "aws_lambda_function" "ai_proxy" {
   role                           = aws_iam_role.api_handler_role.arn
   handler                        = "index.handler"
   runtime                        = "nodejs22.x"
-  architectures = ["arm64"]
+  architectures                  = ["arm64"]
   memory_size                    = 1024
   reserved_concurrent_executions = var.ai_proxy_reserved_concurrent_executions
   timeout                        = 900

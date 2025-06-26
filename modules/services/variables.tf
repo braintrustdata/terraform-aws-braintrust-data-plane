@@ -221,18 +221,6 @@ variable "brainstore_backfill_new_objects" {
   default     = true
 }
 
-variable "brainstore_backfill_disable_historical" {
-  type        = bool
-  description = "Disable historical backfill for Brainstore"
-  default     = false
-}
-
-variable "brainstore_backfill_disable_nonhistorical" {
-  type        = bool
-  description = "Disable non-historical backfill for Brainstore"
-  default     = false
-}
-
 variable "brainstore_etl_batch_size" {
   type        = number
   description = "The batch size for the ETL process"
@@ -248,25 +236,6 @@ variable "brainstore_default" {
     error_message = "brainstore_default must be true, false, or forced."
   }
 }
-
-variable "brainstore_disable_optimization_worker" {
-  type        = bool
-  description = "Whether to disable the optimization worker in Brainstore"
-  default     = false
-}
-
-variable "brainstore_enable_index_validation" {
-  type        = bool
-  description = "Enable index validation for Brainstore"
-  default     = false
-}
-
-variable "brainstore_index_validation_only_deletes" {
-  type        = bool
-  description = "Scope index validation to only deletes in Brainstore. Only applies if brainstore_enable_index_validation is true"
-  default     = true
-}
-
 
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
