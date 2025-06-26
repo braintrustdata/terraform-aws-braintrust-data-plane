@@ -1,0 +1,28 @@
+name: Terraform CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: Terraform Lint & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+
+      - name: Run setup task
+        run: mise run setup
+
+      - name: Run lint task
+        run: mise run lint
+
+      - name: Run validate task
+        run: mise run validate
