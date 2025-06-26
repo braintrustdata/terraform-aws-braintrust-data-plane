@@ -124,7 +124,7 @@ locals {
       "/brainstore/backfill/track" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
-      "/brainstore/segment/{segment_id}/object_id" = {
+      "/brainstore/segment/{segment_id}" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
             {
