@@ -1,9 +1,12 @@
 repos:
-- repo: https://github.com/antonbabenko/pre-commit-terraform
-  rev: v1.88.0  # Get the latest from: https://github.com/antonbabenko/pre-commit-terraform/releases
+- repo: local
   hooks:
-    - id: terraform_fmt
-    - id: terraform_tflint
+    - id: mise-lint
+      name: mise lint
+      entry: mise
+      args: ["run", "lint"]
+      language: system
+      pass_filenames: false
 - repo: https://github.com/terraform-docs/terraform-docs
   rev: v0.12.0
   hooks:
