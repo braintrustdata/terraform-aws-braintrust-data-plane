@@ -230,10 +230,10 @@ variable "brainstore_etl_batch_size" {
 variable "brainstore_default" {
   type        = string
   description = "Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag."
-  default     = "true"
+  default     = "force"
   validation {
-    condition     = contains(["true", "false", "forced"], var.brainstore_default)
-    error_message = "brainstore_default must be true, false, or forced."
+    condition     = contains(["true", "false", "force"], var.brainstore_default)
+    error_message = "brainstore_default must be true, false, or force."
   }
 }
 

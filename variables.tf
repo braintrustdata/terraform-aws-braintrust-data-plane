@@ -280,10 +280,10 @@ variable "enable_brainstore" {
 variable "brainstore_default" {
   type        = string
   description = "Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag. Don't set this if you have a large backfill ongoing and are migrating from Clickhouse."
-  default     = "true"
+  default     = "force"
   validation {
-    condition     = contains(["true", "false", "forced"], var.brainstore_default)
-    error_message = "brainstore_default must be true, false, or forced."
+    condition     = contains(["true", "false", "force"], var.brainstore_default)
+    error_message = "brainstore_default must be true, false, or force."
   }
 }
 
