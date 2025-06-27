@@ -1,0 +1,104 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# dependencies = [
+#     "boto3",
+# ]
+# ///
+
+import boto3
+import argparse
+import sys
+
+
+def get_vpc_id_by_name(ec2_client, vpc_name):
+    response = ec2_client.describe_vpcs(
+        Filters=[{"Name": "tag:Name", "Values": [vpc_name]}]
+    )
+    vpcs = response.get("Vpcs", [])
+    if not vpcs:
+        print(f"No VPC found with name '{vpc_name}'")
+        sys.exit(1)
+    if len(vpcs) > 1:
+        print(f"Multiple VPCs found with name '{vpc_name}'. Aborting.")
+        for vpc in vpcs:
+            print(f"- VPC ID: {vpc['VpcId']}")
+        sys.exit(1)
+    return vpcs[0]["VpcId"]
+
+
+def find_quarantine_lambdas_in_vpc(lambda_client, vpc_id):
+    matching_functions = []
+    paginator = lambda_client.get_paginator("list_functions")
+    total_checked = 0
+    print("Scanning Lambda functions...")
+    for page in paginator.paginate():
+        for function in page["Functions"]:
+            name = function["FunctionName"]
+            total_checked += 1
+            print(f"[{total_checked}] Checking: {name}", flush=True)
+            if not name.startswith("Quarantine-"):
+                continue
+            try:
+                config = lambda_client.get_function_configuration(FunctionName=name)
+            except Exception as e:
+                print(f"  Error fetching config for {name}: {e}")
+                continue
+            if config.get("VpcConfig", {}).get("VpcId") == vpc_id:
+                print(f"  -> Match found: {name}")
+                matching_functions.append(name)
+            else:
+                print(f"  -> Skipped: Not in target VPC")
+    return matching_functions
+
+
+def delete_lambda_functions(lambda_client, function_names):
+    print("\nDeleting matched functions...")
+    for name in function_names:
+        print(f"Deleting Lambda: {name}")
+        try:
+            lambda_client.delete_function(FunctionName=name)
+        except Exception as e:
+            print(f"  Failed to delete {name}: {e}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="This script is used to list and optionally delete quarantine functions in a VPC. "
+        "It should only be used when deleting an entire braintrust deployment.",
+        usage="%(prog)s <vpc_name> [--delete]",
+    )
+    parser.add_argument("vpc_name", nargs="?", help="Name of the VPC")
+    parser.add_argument(
+        "--delete", action="store_true", help="Delete the matching Lambda functions"
+    )
+
+    args = parser.parse_args()
+
+    if not args.vpc_name:
+        parser.print_help()
+        sys.exit(1)
+
+    ec2_client = boto3.client("ec2")
+    lambda_client = boto3.client("lambda")
+
+    print(f"Resolving VPC ID for VPC name: {args.vpc_name}")
+    vpc_id = get_vpc_id_by_name(ec2_client, args.vpc_name)
+    print(f"Target VPC ID: {vpc_id}")
+
+    functions = find_quarantine_lambdas_in_vpc(lambda_client, vpc_id)
+
+    print("\nMatching Lambda functions:")
+    if not functions:
+        print("None found.")
+    else:
+        for fn in functions:
+            print(fn)
+
+        if args.delete:
+            delete_lambda_functions(lambda_client, functions)
+        else:
+            print("\nUse --delete to remove these functions.")
+
+
+if __name__ == "__main__":
+    main()

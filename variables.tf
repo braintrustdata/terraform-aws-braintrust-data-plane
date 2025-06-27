@@ -367,27 +367,19 @@ variable "brainstore_vacuum_all_objects" {
 
 variable "brainstore_extra_env_vars" {
   type        = map(string)
-  description = "Extra environment variables to set for Brainstore"
+  description = "Extra environment variables to set for Brainstore reader or dual use nodes"
   default     = {}
 }
 
-
-
-variable "brainstore_enable_index_validation" {
-  type        = bool
-  description = "Enable index validation for Brainstore"
-  default     = false
-}
-
-variable "brainstore_index_validation_only_deletes" {
-  type        = bool
-  description = "Scope index validation to only deletes in Brainstore. Only applies if brainstore_enable_index_validation is true"
-  default     = true
+variable "brainstore_extra_env_vars_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore writer nodes"
+  default     = {}
 }
 
 variable "brainstore_disable_optimization_worker" {
   type        = bool
-  description = "Disable the optimization worker in Brainstore"
+  description = "Disable the optimization worker globally in Brainstore"
   default     = false
 }
 
@@ -407,4 +399,22 @@ variable "service_extra_env_vars" {
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
   }
+}
+
+variable "internal_observability_api_key" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
+variable "internal_observability_region" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = "us5"
 }
