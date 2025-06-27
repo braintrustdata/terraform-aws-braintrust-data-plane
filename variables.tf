@@ -379,7 +379,7 @@ variable "brainstore_extra_env_vars_writer" {
 
 variable "brainstore_disable_optimization_worker" {
   type        = bool
-  description = "Disable the optimization worker in Brainstore"
+  description = "Disable the optimization worker globally in Brainstore"
   default     = false
 }
 
