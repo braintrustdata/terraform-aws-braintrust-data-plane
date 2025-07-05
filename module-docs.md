@@ -84,6 +84,14 @@ Type: `bool`
 
 Default: `false`
 
+### <a name="input_brainstore_disable_process_wal_worker"></a> [brainstore\_disable\_process\_wal\_worker](#input\_brainstore\_disable\_process\_wal\_worker)
+
+Description: Disable the process WAL worker in Brainstore
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_brainstore_enable_historical_full_backfill"></a> [brainstore\_enable\_historical\_full\_backfill](#input\_brainstore\_enable\_historical\_full\_backfill)
 
 Description: Enable historical full backfill for Brainstore. Don't modify this unless instructed by Braintrust.
