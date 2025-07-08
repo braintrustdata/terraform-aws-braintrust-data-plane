@@ -209,6 +209,12 @@ variable "whitelisted_origins" {
   default     = []
 }
 
+variable "s3_additional_allowed_origins" {
+  description = "Additional origins to allow for S3 bucket CORS configuration. Supports a wildcard in the domain name."
+  type        = list(string)
+  default     = []
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number

@@ -118,6 +118,7 @@ module "services" {
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
   whitelisted_origins                        = var.whitelisted_origins
+  s3_additional_allowed_origins              = var.s3_additional_allowed_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
   custom_domain                              = var.custom_domain
