@@ -9,7 +9,7 @@ terraform-docs = "latest"
 lint = ["terraform fmt -recursive", "tflint --recursive"]
 setup = ["pre-commit install", "tflint --init"]
 precommit = ["pre-commit run --all-files"]
-docs = "terraform-docs --output-check ."
+docs = "terraform-docs ."
 
 [tasks.validate]
 description = "Validate the Terraform module and example code"
