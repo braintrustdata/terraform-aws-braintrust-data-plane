@@ -27,3 +27,8 @@ output "postgres_database_secret_arn" {
   value       = aws_secretsmanager_secret.database_secret.arn
   description = "The ARN of the secret containing the main Postgres database credentials"
 }
+
+output "rds_security_group_id" {
+  value       = aws_security_group.rds.id
+  description = "The ID of the security group for the RDS instance"
+}

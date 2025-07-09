@@ -1,3 +1,4 @@
+<!-- BEGIN_TF_DOCS -->
 ## Required Inputs
 
 The following input variables are required:
@@ -44,22 +45,6 @@ Type: `number`
 
 Default: `-1`
 
-### <a name="input_brainstore_backfill_disable_historical"></a> [brainstore\_backfill\_disable\_historical](#input\_brainstore\_backfill\_disable\_historical)
-
-Description: Disable historical backfill for Brainstore. Don't modify this unless instructed by Braintrust.
-
-Type: `bool`
-
-Default: `false`
-
-### <a name="input_brainstore_backfill_disable_nonhistorical"></a> [brainstore\_backfill\_disable\_nonhistorical](#input\_brainstore\_backfill\_disable\_nonhistorical)
-
-Description: Disable non-historical backfill for Brainstore. Don't modify this unless instructed by Braintrust.
-
-Type: `bool`
-
-Default: `false`
-
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
 Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
@@ -74,11 +59,11 @@ Description: Whether to set Brainstore as the default rather than requiring user
 
 Type: `string`
 
-Default: `"true"`
+Default: `"force"`
 
 ### <a name="input_brainstore_disable_optimization_worker"></a> [brainstore\_disable\_optimization\_worker](#input\_brainstore\_disable\_optimization\_worker)
 
-Description: Disable the optimization worker in Brainstore
+Description: Disable the optimization worker globally in Brainstore
 
 Type: `bool`
 
@@ -92,14 +77,6 @@ Type: `bool`
 
 Default: `true`
 
-### <a name="input_brainstore_enable_index_validation"></a> [brainstore\_enable\_index\_validation](#input\_brainstore\_enable\_index\_validation)
-
-Description: Enable index validation for Brainstore
-
-Type: `bool`
-
-Default: `false`
-
 ### <a name="input_brainstore_etl_batch_size"></a> [brainstore\_etl\_batch\_size](#input\_brainstore\_etl\_batch\_size)
 
 Description: The batch size for the ETL process
@@ -110,19 +87,19 @@ Default: `null`
 
 ### <a name="input_brainstore_extra_env_vars"></a> [brainstore\_extra\_env\_vars](#input\_brainstore\_extra\_env\_vars)
 
-Description: Extra environment variables to set for Brainstore
+Description: Extra environment variables to set for Brainstore reader or dual use nodes
 
 Type: `map(string)`
 
 Default: `{}`
 
-### <a name="input_brainstore_index_validation_only_deletes"></a> [brainstore\_index\_validation\_only\_deletes](#input\_brainstore\_index\_validation\_only\_deletes)
+### <a name="input_brainstore_extra_env_vars_writer"></a> [brainstore\_extra\_env\_vars\_writer](#input\_brainstore\_extra\_env\_vars\_writer)
 
-Description: Scope index validation to only deletes in Brainstore. Only applies if brainstore\_enable\_index\_validation is true
+Description: Extra environment variables to set for Brainstore writer nodes
 
-Type: `bool`
+Type: `map(string)`
 
-Default: `true`
+Default: `{}`
 
 ### <a name="input_brainstore_instance_count"></a> [brainstore\_instance\_count](#input\_brainstore\_instance\_count)
 
@@ -283,6 +260,30 @@ Description: Enable the Quarantine VPC to run user defined functions in an isola
 Type: `bool`
 
 Default: `true`
+
+### <a name="input_internal_observability_api_key"></a> [internal\_observability\_api\_key](#input\_internal\_observability\_api\_key)
+
+Description: Support for internal observability agent. Do not set this unless instructed by support.
+
+Type: `string`
+
+Default: `""`
+
+### <a name="input_internal_observability_env_name"></a> [internal\_observability\_env\_name](#input\_internal\_observability\_env\_name)
+
+Description: Support for internal observability agent. Do not set this unless instructed by support.
+
+Type: `string`
+
+Default: `""`
+
+### <a name="input_internal_observability_region"></a> [internal\_observability\_region](#input\_internal\_observability\_region)
+
+Description: Support for internal observability agent. Do not set this unless instructed by support.
+
+Type: `string`
+
+Default: `"us5"`
 
 ### <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn)
 
@@ -568,10 +569,6 @@ Description: ID of the Clickhouse secret. Note this is the Terraform ID attribut
 
 Description: CIDR block of the main VPC
 
-### <a name="output_main_vpc_default_security_group_id"></a> [main\_vpc\_default\_security\_group\_id](#output\_main\_vpc\_default\_security\_group\_id)
-
-Description: ID of the default security group in the main VPC
-
 ### <a name="output_main_vpc_id"></a> [main\_vpc\_id](#output\_main\_vpc\_id)
 
 Description: ID of the main VPC that contains the Braintrust resources
@@ -611,3 +608,8 @@ Description: ID of the quarantine VPC that user functions run inside of.
 ### <a name="output_redis_arn"></a> [redis\_arn](#output\_redis\_arn)
 
 Description: ARN of the Redis instance
+
+### <a name="output_remote_support_security_group_id"></a> [remote\_support\_security\_group\_id](#output\_remote\_support\_security\_group\_id)
+
+Description: Security Group ID for the Remote Support bastion host.
+<!-- END_TF_DOCS -->

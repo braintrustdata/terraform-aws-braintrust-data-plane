@@ -13,11 +13,6 @@ output "main_vpc_cidr" {
   description = "CIDR block of the main VPC"
 }
 
-output "main_vpc_default_security_group_id" {
-  value       = module.main_vpc.default_security_group_id
-  description = "ID of the default security group in the main VPC"
-}
-
 output "main_vpc_public_subnet_1_id" {
   value       = module.main_vpc.public_subnet_1_id
   description = "ID of the public subnet in the main VPC"

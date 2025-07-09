@@ -12,3 +12,8 @@ output "redis_arn" {
   value       = aws_elasticache_cluster.main.arn
   description = "Redis ARN"
 }
+
+output "redis_security_group_id" {
+  value       = aws_security_group.elasticache.id
+  description = "The ID of the security group for the Elasticache instance"
+}

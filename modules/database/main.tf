@@ -27,7 +27,7 @@ resource "aws_db_instance" "main" {
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   parameter_group_name   = aws_db_parameter_group.main.name
-  vpc_security_group_ids = var.database_security_group_ids
+  vpc_security_group_ids = [aws_security_group.rds.id]
 
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
@@ -152,4 +152,48 @@ resource "aws_secretsmanager_secret" "database_secret" {
   kms_key_id  = var.kms_key_arn
 
   tags = local.common_tags
+}
+
+#------------------------------------------------------------------------------
+# Security groups
+#------------------------------------------------------------------------------
+resource "aws_security_group" "rds" {
+  name   = "${var.deployment_name}-rds"
+  vpc_id = var.vpc_id
+  tags   = merge({ "Name" = "${var.deployment_name}-rds" }, local.common_tags)
+}
+
+resource "aws_security_group_rule" "rds_allow_ingress_from_brainstore" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = var.brainstore_ec2_security_group_id
+  description              = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Brainstore EC2 instances."
+
+  security_group_id = aws_security_group.rds.id
+}
+
+resource "aws_security_group_rule" "rds_allow_ingress_from_lambda" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = var.lambda_security_group_id
+  description              = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Lambdas."
+
+  security_group_id = aws_security_group.rds.id
+}
+
+resource "aws_security_group_rule" "rds_allow_ingress_from_remote_support" {
+  count = var.remote_support_security_group_id != null ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = var.remote_support_security_group_id
+  description              = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Remote Support."
+
+  security_group_id = aws_security_group.rds.id
 }

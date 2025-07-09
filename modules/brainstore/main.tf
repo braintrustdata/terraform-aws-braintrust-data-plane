@@ -18,7 +18,7 @@ resource "aws_launch_template" "brainstore" {
     arn = aws_iam_instance_profile.brainstore.arn
   }
 
-  vpc_security_group_ids = [var.security_group_id]
+  vpc_security_group_ids = [aws_security_group.brainstore_ec2.id]
 
   block_device_mappings {
     device_name = "/dev/sda1"
@@ -99,7 +99,7 @@ resource "aws_lb" "brainstore" {
   internal           = true
   load_balancer_type = "network"
   subnets            = var.private_subnet_ids
-  security_groups    = [var.security_group_id]
+  security_groups    = [aws_security_group.brainstore_nlb.id]
 
   lifecycle {
     # Changing security groups requires a new NLB.
@@ -214,3 +214,71 @@ data "aws_ec2_instance_type" "brainstore" {
 data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
+
+#------------------------------------------------------------------------------
+# Security groups
+#------------------------------------------------------------------------------
+resource "aws_security_group" "brainstore_nlb" {
+  name   = "${var.deployment_name}-brainstore-nlb-allow-ingress"
+  vpc_id = var.vpc_id
+  tags   = merge({ "Name" = "${var.deployment_name}-brainstore-nlb" }, local.common_tags)
+}
+
+resource "aws_security_group_rule" "brainstore_nlb_allow_ingress_from_lambda" {
+  type                     = "ingress"
+  from_port                = var.port
+  to_port                  = var.port
+  protocol                 = "tcp"
+  source_security_group_id = var.lambda_security_group_id
+  description              = "Allow TCP/${var.port} (brainstore port) inbound to Brainstore NLB from Lambdas."
+  security_group_id        = aws_security_group.brainstore_nlb.id
+}
+
+resource "aws_security_group_rule" "brainstore_nlb_allow_egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow all outbound traffic from Brainstore NLB."
+  security_group_id = aws_security_group.brainstore_nlb.id
+}
+
+resource "aws_security_group" "brainstore_ec2" {
+  name   = "${var.deployment_name}-brainstore-ec2"
+  vpc_id = var.vpc_id
+  tags   = merge({ "Name" = "${var.deployment_name}-brainstore-ec2" }, local.common_tags)
+}
+
+resource "aws_security_group_rule" "brainstore_ec2_allow_ingress_from_nlb" {
+  type                     = "ingress"
+  from_port                = var.port
+  to_port                  = var.port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.brainstore_nlb.id
+  description              = "Allow TCP/${var.port} (brainstore port) inbound to Brainstore EC2 instances from NLB."
+  security_group_id        = aws_security_group.brainstore_ec2.id
+}
+
+resource "aws_security_group_rule" "brainstore_ec2_allow_egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow all outbound traffic from Brainstore EC2 instances."
+  security_group_id = aws_security_group.brainstore_ec2.id
+}
+
+resource "aws_security_group_rule" "brainstore_ec2_allow_ingress_from_remote_support" {
+  count = var.remote_support_security_group_id != null ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 22
+  to_port                  = 22
+  protocol                 = "tcp"
+  source_security_group_id = var.remote_support_security_group_id
+  description              = "Allow TCP/22 (SSH) inbound to Brainstore EC2 instances from Remote Support."
+
+  security_group_id = aws_security_group.brainstore_ec2.id
+}

@@ -8,9 +8,9 @@ variable "deployment_name" {
   description = "Name of this deployment. Will be included in resource names"
 }
 
-variable "service_security_group_ids" {
-  type        = list(string)
-  description = "The security group ids to apply to the lambda functions that are the main braintrust service"
+variable "vpc_id" {
+  type        = string
+  description = "The ID of the VPC to deploy the services into"
 }
 
 variable "service_subnet_ids" {
@@ -68,16 +68,6 @@ variable "quarantine_vpc_id" {
   validation {
     condition     = var.use_quarantine_vpc ? var.quarantine_vpc_id != null : true
     error_message = "Quarantine VPC ID is required when using quarantine VPC."
-  }
-}
-
-variable "quarantine_vpc_default_security_group_id" {
-  type        = string
-  description = "The ID of the quarantine VPC default security group"
-  default     = null
-  validation {
-    condition     = var.use_quarantine_vpc ? var.quarantine_vpc_default_security_group_id != null : true
-    error_message = "Quarantine VPC default security group ID is required when using quarantine VPC."
   }
 }
 

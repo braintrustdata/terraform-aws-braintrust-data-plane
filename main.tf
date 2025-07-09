@@ -62,7 +62,10 @@ module "database" {
     module.main_vpc.private_subnet_2_id,
     module.main_vpc.private_subnet_3_id
   ]
-  database_security_group_ids = [module.main_vpc.default_security_group_id]
+  vpc_id                           = module.main_vpc.vpc_id
+  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_ec2_security_group_id
+  lambda_security_group_id         = module.services.lambda_security_group_id
+  remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
 
   postgres_storage_iops       = var.postgres_storage_iops
   postgres_storage_throughput = var.postgres_storage_throughput
@@ -80,7 +83,11 @@ module "redis" {
     module.main_vpc.private_subnet_2_id,
     module.main_vpc.private_subnet_3_id
   ]
-  security_group_ids  = [module.main_vpc.default_security_group_id]
+  vpc_id                           = module.main_vpc.vpc_id
+  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_ec2_security_group_id
+  lambda_security_group_id         = module.services.lambda_security_group_id
+  remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
+
   redis_instance_type = var.redis_instance_type
   redis_version       = var.redis_version
 }
@@ -126,7 +133,7 @@ module "services" {
   extra_env_vars                             = var.service_extra_env_vars
 
   # Networking
-  service_security_group_ids = [module.main_vpc.default_security_group_id]
+  vpc_id = module.main_vpc.vpc_id
   service_subnet_ids = [
     module.main_vpc.private_subnet_1_id,
     module.main_vpc.private_subnet_2_id,
@@ -134,9 +141,8 @@ module "services" {
   ]
 
   # Quarantine VPC
-  use_quarantine_vpc                       = var.enable_quarantine_vpc
-  quarantine_vpc_id                        = var.enable_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
-  quarantine_vpc_default_security_group_id = var.enable_quarantine_vpc ? module.quarantine_vpc[0].default_security_group_id : null
+  use_quarantine_vpc = var.enable_quarantine_vpc
+  quarantine_vpc_id  = var.enable_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
   quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
     module.quarantine_vpc[0].private_subnet_1_id,
     module.quarantine_vpc[0].private_subnet_2_id,
@@ -188,8 +194,10 @@ module "brainstore" {
   internal_observability_env_name = var.internal_observability_env_name
   internal_observability_region   = var.internal_observability_region
 
-  vpc_id            = module.main_vpc.vpc_id
-  security_group_id = module.main_vpc.default_security_group_id
+  vpc_id                           = module.main_vpc.vpc_id
+  lambda_security_group_id         = module.services.lambda_security_group_id
+  remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
+
   private_subnet_ids = [
     module.main_vpc.private_subnet_1_id,
     module.main_vpc.private_subnet_2_id,

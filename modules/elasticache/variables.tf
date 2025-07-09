@@ -8,9 +8,25 @@ variable "subnet_ids" {
   description = "List of subnet IDs for the ElastiCache subnet group"
 }
 
-variable "security_group_ids" {
-  type        = list(string)
-  description = "List of security group IDs for the ElastiCache cluster"
+variable "vpc_id" {
+  type        = string
+  description = "ID of VPC where Elasticache will be deployed."
+}
+
+variable "brainstore_ec2_security_group_id" {
+  description = "Security Group ID for the Brainstore instances."
+  type        = string
+}
+
+variable "lambda_security_group_id" {
+  description = "Security Group ID for the Lambda functions."
+  type        = string
+}
+
+variable "remote_support_security_group_id" {
+  type        = string
+  description = "Security Group ID for the Remote Support bastion host."
+  default     = null
 }
 
 variable "redis_instance_type" {

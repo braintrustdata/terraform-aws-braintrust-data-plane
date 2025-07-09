@@ -17,3 +17,13 @@ output "port" {
   description = "The port used by Brainstore"
   value       = var.port
 }
+
+output "brainstore_nlb_security_group_id" {
+  description = "The ID of the security group for the Brainstore NLB"
+  value       = aws_security_group.brainstore_nlb.id
+}
+
+output "brainstore_ec2_security_group_id" {
+  description = "The ID of the security group for the Brainstore EC2 instances"
+  value       = aws_security_group.brainstore_ec2.id
+}

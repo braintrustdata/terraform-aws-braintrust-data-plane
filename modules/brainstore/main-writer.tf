@@ -11,7 +11,7 @@ resource "aws_launch_template" "brainstore_writer" {
     arn = aws_iam_instance_profile.brainstore.arn
   }
 
-  vpc_security_group_ids = [var.security_group_id]
+  vpc_security_group_ids = [aws_security_group.brainstore_ec2.id]
 
   block_device_mappings {
     device_name = "/dev/sda1"
@@ -92,7 +92,7 @@ resource "aws_lb" "brainstore_writer" {
   internal           = true
   load_balancer_type = "network"
   subnets            = var.private_subnet_ids
-  security_groups    = [var.security_group_id]
+  security_groups    = [aws_security_group.brainstore_nlb.id]
 
   lifecycle {
     create_before_destroy = true

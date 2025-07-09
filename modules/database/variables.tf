@@ -51,9 +51,25 @@ variable "database_subnet_ids" {
   type        = list(string)
 }
 
-variable "database_security_group_ids" {
-  description = "Security Group IDs for the RDS instance."
-  type        = list(string)
+variable "vpc_id" {
+  type        = string
+  description = "ID of VPC where RDS will be deployed."
+}
+
+variable "brainstore_ec2_security_group_id" {
+  description = "Security Group ID for the Brainstore instances."
+  type        = string
+}
+
+variable "lambda_security_group_id" {
+  description = "Security Group ID for the Lambda functions."
+  type        = string
+}
+
+variable "remote_support_security_group_id" {
+  type        = string
+  description = "Security Group ID for the Remote Support bastion host."
+  default     = null
 }
 
 variable "kms_key_arn" {

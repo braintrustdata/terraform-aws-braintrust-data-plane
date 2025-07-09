@@ -52,9 +52,15 @@ variable "vpc_id" {
   description = "The ID of the VPC where Brainstore resources will be created"
 }
 
-variable "security_group_id" {
+variable "lambda_security_group_id" {
   type        = string
-  description = "The ID of the security group to use for Brainstore resources"
+  description = "The ID of the security group for the Lambda functions"
+}
+
+variable "remote_support_security_group_id" {
+  type        = string
+  description = "Security Group ID for the Remote Support bastion host."
+  default     = null
 }
 
 variable "private_subnet_ids" {

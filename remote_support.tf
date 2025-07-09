@@ -30,7 +30,6 @@ module "remote_support" {
   vpc_id                                 = module.main_vpc.vpc_id
   private_subnet_ids                     = [module.main_vpc.private_subnet_1_id]
   public_subnet_ids                      = [module.main_vpc.public_subnet_1_id]
-  bastion_additional_security_groups     = [module.main_vpc.default_security_group_id]
 }
 
 variable "enable_braintrust_support_logs_access" {
@@ -53,4 +52,9 @@ output "braintrust_support_role_arn" {
 output "bastion_instance_id" {
   description = "Instance ID of the bastion host that Braintrust support staff can connect to using EC2 Instance Connect. Share this with the Braintrust team."
   value       = var.enable_braintrust_support_shell_access ? module.remote_support[0].bastion_instance_id : null
+}
+
+output "remote_support_security_group_id" {
+  description = "Security Group ID for the Remote Support bastion host."
+  value       = local.has_braintrust_support_access ? module.remote_support[0].remote_support_security_group_id : null
 }
