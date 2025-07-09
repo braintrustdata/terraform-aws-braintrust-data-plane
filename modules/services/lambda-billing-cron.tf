@@ -1,5 +1,6 @@
 locals {
-  billing_cron_function_name = "${var.deployment_name}-BillingCron"
+  billing_cron_function_name            = "${var.deployment_name}-BillingCron"
+  production_billing_telemetry_endpoint = "https://87qqbbajy9.execute-api.us-east-1.amazonaws.com/v1/events"
 }
 
 
@@ -7,11 +8,13 @@ resource "aws_lambda_function" "billing_cron" {
   count = var.enable_billing_telemetry ? 1 : 0
 
   function_name = local.billing_cron_function_name
-  role         = aws_iam_role.default_role.arn
-  handler      = "lambda.handler"
-  runtime      = "nodejs22.x"
-  timeout      = 300
-  memory_size  = 1024
+  s3_bucket     = local.lambda_s3_bucket
+  s3_key        = local.lambda_versions["BillingCron"]
+  role          = aws_iam_role.default_role.arn
+  handler       = "lambda.handler"
+  runtime       = "nodejs22.x"
+  timeout       = 300
+  memory_size   = 1024
   architectures = ["arm64"]
 
   environment {
@@ -24,7 +27,7 @@ resource "aws_lambda_function" "billing_cron" {
       TELEMETRY_ENABLE_AGGREGATION = var.enable_billing_telemetry_aggregation
       TELEMETRY_LOG_LEVEL          = var.billing_telemetry_log_level
       SERVICE_TOKEN_SECRET_KEY     = random_password.service_token_secret_key.result
-      TELEMETRY_URL                = var.enable_billing_telemetry ? "https://87qqbbajy9.execute-api.us-east-1.amazonaws.com/v1/events" : ""
+      TELEMETRY_URL                = var.enable_billing_telemetry ? local.production_billing_telemetry_endpoint : ""
     }, var.extra_env_vars.BillingCron)
   }
 
@@ -57,22 +60,26 @@ resource "aws_cloudwatch_event_rule" "billing_cron_schedule" {
 resource "aws_cloudwatch_event_target" "billing_cron_target" {
   count = var.enable_billing_telemetry ? 1 : 0
 
-  rule      = aws_cloudwatch_event_rule.billing_cron_schedule.name
+  rule      = aws_cloudwatch_event_rule.billing_cron_schedule[0].name
   target_id = "BillingCronLambdaTarget"
   arn       = aws_lambda_function.billing_cron.arn
 }
 
 resource "aws_lambda_permission" "allow_eventbridge" {
+  count = var.enable_billing_telemetry ? 1 : 0
+
   statement_id  = "AllowEventBridgeInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.billing_cron.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.billing_cron_schedule.arn
+  source_arn    = aws_cloudwatch_event_rule.billing_cron_schedule[0].arn
 }
 
 
-# TODO:
+# TODO: automation cron / service token keys will replace this
 resource "random_password" "service_token_secret_key" {
+  count = var.enable_billing_telemetry ? 1 : 0
+
   length  = 32
   special = false
 }
