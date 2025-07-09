@@ -26,3 +26,6 @@ jobs:
 
       - name: Run validate task
         run: mise run validate
+
+      - name: Check terraform docs
+        run: mise run docs --output-check
