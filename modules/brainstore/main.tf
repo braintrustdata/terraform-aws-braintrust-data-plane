@@ -57,6 +57,7 @@ resource "aws_launch_template" "brainstore" {
     brainstore_release_version  = local.brainstore_release_version
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
     brainstore_disable_optimization_worker = local.has_writer_nodes ? true : var.brainstore_disable_optimization_worker
+    brainstore_disable_process_wal_worker  = local.has_writer_nodes ? true : var.brainstore_disable_process_wal_worker
     brainstore_vacuum_all_objects          = local.has_writer_nodes ? false : var.brainstore_vacuum_all_objects
     is_dedicated_writer_node               = "false"
     extra_env_vars                         = var.extra_env_vars

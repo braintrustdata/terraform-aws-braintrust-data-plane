@@ -118,6 +118,12 @@ variable "brainstore_disable_optimization_worker" {
   default     = false
 }
 
+variable "brainstore_disable_process_wal_worker" {
+  type        = bool
+  description = "Disable the process WAL worker in Brainstore"
+  default     = false
+}
+
 variable "brainstore_vacuum_all_objects" {
   type        = bool
   description = "Whether to vacuum all objects in Brainstore"
