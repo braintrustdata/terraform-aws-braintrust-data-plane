@@ -1,0 +1,30 @@
+name: Terraform Docs
+
+on:
+  pull_request:
+
+jobs:
+  docs:
+    name: Check Terraform Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Mise
+        uses: jdx/mise-action@v2
+
+      - name: Generate terraform docs
+        run: mise run docs
+
+      - name: Check for documentation changes
+        run: |
+          if ! git diff --exit-code --name-only module-docs.md; then
+            echo "::error::Documentation is out of date. Please run 'mise run docs' to update the documentation."
+            echo "::error::The following files have changes:"
+            git diff --name-only module-docs.md
+            echo "::error::Please commit the updated documentation and push your changes."
+            exit 1
+          fi
+          echo "Documentation is up to date!"
