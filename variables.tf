@@ -394,6 +394,7 @@ variable "service_extra_env_vars" {
     APIHandler               = map(string)
     AIProxy                  = map(string)
     CatchupETL               = map(string)
+    BillingCron              = map(string)
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
   })
@@ -402,6 +403,7 @@ variable "service_extra_env_vars" {
     APIHandler               = {}
     AIProxy                  = {}
     CatchupETL               = {}
+    BillingCron              = {}
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
   }
