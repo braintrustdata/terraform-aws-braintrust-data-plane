@@ -243,6 +243,7 @@ variable "extra_env_vars" {
   type = object({
     APIHandler               = map(string)
     AIProxy                  = map(string)
+    BillingCron              = map(string)
     CatchupETL               = map(string)
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
@@ -251,6 +252,7 @@ variable "extra_env_vars" {
   default = {
     APIHandler               = {}
     AIProxy                  = {}
+    BillingCron              = {}
     CatchupETL               = {}
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
