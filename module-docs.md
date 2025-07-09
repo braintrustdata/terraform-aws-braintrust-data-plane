@@ -504,6 +504,7 @@ object({
     APIHandler               = map(string)
     AIProxy                  = map(string)
     CatchupETL               = map(string)
+    BillingCron              = map(string)
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
   })
@@ -515,6 +516,7 @@ Default:
 {
   "AIProxy": {},
   "APIHandler": {},
+  "BillingCron": {},
   "CatchupETL": {},
   "MigrateDatabaseFunction": {},
   "QuarantineWarmupFunction": {}
