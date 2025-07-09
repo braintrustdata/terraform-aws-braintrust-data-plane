@@ -4,6 +4,8 @@ locals {
     "https://*.braintrust.dev",
     "https://*.preview.braintrust.dev"
   ]
+
+  all_origins = concat(local.default_origins, var.s3_additional_allowed_origins)
 }
 
 resource "aws_s3_bucket" "code_bundle_bucket" {
@@ -37,7 +39,7 @@ resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT"]
-    allowed_origins = local.default_origins
+    allowed_origins = local.all_origins
     max_age_seconds = 3600
   }
 }
@@ -78,7 +80,7 @@ resource "aws_s3_bucket_cors_configuration" "lambda_responses_bucket" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "HEAD"]
-    allowed_origins = local.default_origins
+    allowed_origins = local.all_origins
     max_age_seconds = 3600
   }
 }
