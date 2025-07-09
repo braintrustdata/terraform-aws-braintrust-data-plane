@@ -28,4 +28,4 @@ jobs:
         run: mise run validate
 
       - name: Check terraform docs
-        run: mise run docs
+        run: mise run docs --output-check
