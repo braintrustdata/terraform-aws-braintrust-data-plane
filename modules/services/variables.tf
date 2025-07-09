@@ -257,3 +257,25 @@ variable "extra_env_vars" {
   }
 }
 
+variable "enable_billing_telemetry" {
+  description = "Enable billing telemetry. Do not enable this unless instructed by support."
+  type        = bool
+  default     = false
+}
+
+variable "enable_billing_telemetry_aggregation" {
+  description = "Enable billing telemetry aggregation. Do not enable this unless instructed by support."
+  type        = bool
+  default     = false
+}
+
+variable "billing_telemetry_log_level" {
+  description = "Log level for billing telemetry. Defaults to 'error' if empty, or unspecified."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.billing_telemetry_log_level == "" || contains(["info", "warn", "error", "debug"], var.billing_telemetry_log_level)
+    error_message = "billing_telemetry_log_level must be empty or one of: info, warn, error, debug"
+  }
+}
