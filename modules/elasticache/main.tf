@@ -65,3 +65,13 @@ resource "aws_security_group_rule" "elasticache_allow_ingress_from_remote_suppor
 
   security_group_id = aws_security_group.elasticache.id
 }
+
+resource "aws_security_group_rule" "elasticache_allow_egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow all outbound traffic from Elasticache instances."
+  security_group_id = aws_security_group.elasticache.id
+}
