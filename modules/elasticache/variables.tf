@@ -29,6 +29,12 @@ variable "remote_support_security_group_id" {
   default     = null
 }
 
+variable "enable_remote_support_access" {
+  type        = bool
+  description = "Enable remote support access to elasticache instances."
+  default     = false
+}
+
 variable "redis_instance_type" {
   type        = string
   description = "Instance type for the Redis cluster"

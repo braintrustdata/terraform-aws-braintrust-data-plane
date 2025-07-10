@@ -63,6 +63,12 @@ variable "remote_support_security_group_id" {
   default     = null
 }
 
+variable "enable_remote_support_access" {
+  type        = bool
+  description = "Enable remote support access to Brainstore instances."
+  default     = false
+}
+
 variable "private_subnet_ids" {
   type        = list(string)
   description = "The IDs of the private subnets where Brainstore instances will be launched"

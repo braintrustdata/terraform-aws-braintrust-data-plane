@@ -72,6 +72,12 @@ variable "remote_support_security_group_id" {
   default     = null
 }
 
+variable "enable_remote_support_access" {
+  type        = bool
+  description = "Enable remote support access to database instances."
+  default     = false
+}
+
 variable "kms_key_arn" {
   description = "KMS key ARN to use for encrypting resources. If not provided, the default AWS managed key is used. DO NOT change this after deployment. If you do, it will attempt to destroy your DB."
   type        = string

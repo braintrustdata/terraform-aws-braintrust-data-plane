@@ -54,7 +54,7 @@ resource "aws_security_group_rule" "elasticache_allow_ingress_from_lambda" {
 }
 
 resource "aws_security_group_rule" "elasticache_allow_ingress_from_remote_support" {
-  count = var.remote_support_security_group_id != null ? 1 : 0
+  for_each = var.enable_remote_support_access ? { "enable" = true } : {}
 
   type                     = "ingress"
   from_port                = 6379

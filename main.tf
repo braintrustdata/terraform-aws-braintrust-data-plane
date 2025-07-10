@@ -66,6 +66,7 @@ module "database" {
   brainstore_ec2_security_group_id = module.brainstore[0].brainstore_ec2_security_group_id
   lambda_security_group_id         = module.services.lambda_security_group_id
   remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
+  enable_remote_support_access     = var.enable_braintrust_support_shell_access
 
   postgres_storage_iops       = var.postgres_storage_iops
   postgres_storage_throughput = var.postgres_storage_throughput
@@ -87,6 +88,7 @@ module "redis" {
   brainstore_ec2_security_group_id = module.brainstore[0].brainstore_ec2_security_group_id
   lambda_security_group_id         = module.services.lambda_security_group_id
   remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
+  enable_remote_support_access     = var.enable_braintrust_support_shell_access
 
   redis_instance_type = var.redis_instance_type
   redis_version       = var.redis_version
@@ -198,6 +200,7 @@ module "brainstore" {
   vpc_id                           = module.main_vpc.vpc_id
   lambda_security_group_id         = module.services.lambda_security_group_id
   remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
+  enable_remote_support_access     = var.enable_braintrust_support_shell_access
 
   private_subnet_ids = [
     module.main_vpc.private_subnet_1_id,
