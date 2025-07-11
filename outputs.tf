@@ -48,13 +48,13 @@ output "brainstore_security_group_id" {
   description = "ID of the security group for the Brainstore instances"
 }
 
-output "database_security_group_id" {
-  value       = module.database.database_security_group_id
+output "rds_security_group_id" {
+  value       = module.database.rds_security_group_id
   description = "ID of the security group for the RDS instance"
 }
 
-output "elasticache_security_group_id" {
-  value       = module.elasticache.elasticache_security_group_id
+output "redis_security_group_id" {
+  value       = module.redis.redis_security_group_id
   description = "ID of the security group for the Elasticache instance"
 }
 
