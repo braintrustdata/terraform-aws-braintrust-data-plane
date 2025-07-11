@@ -170,7 +170,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorize
   to_port                      = 5432
   ip_protocol                  = "tcp"
   referenced_security_group_id = each.value
-  description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Brainstore EC2 instances."
+  description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from ${each.key}."
 
   security_group_id = aws_security_group.rds.id
 }
