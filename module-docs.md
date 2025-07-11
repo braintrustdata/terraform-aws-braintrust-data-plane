@@ -477,6 +477,14 @@ Type: `string`
 
 Default: `"7.0"`
 
+### <a name="input_s3_additional_allowed_origins"></a> [s3\_additional\_allowed\_origins](#input\_s3\_additional\_allowed\_origins)
+
+Description: Additional origins to allow for S3 bucket CORS configuration. Supports a wildcard in the domain name.
+
+Type: `list(string)`
+
+Default: `[]`
+
 ### <a name="input_service_additional_policy_arns"></a> [service\_additional\_policy\_arns](#input\_service\_additional\_policy\_arns)
 
 Description: Additional policy ARNs to attach to the lambda functions that are the main braintrust service
@@ -549,6 +557,10 @@ Description: The primary endpoint for the dataplane API. This is the value that 
 
 Description: Instance ID of the bastion host that Braintrust support staff can connect to using EC2 Instance Connect. Share this with the Braintrust team.
 
+### <a name="output_brainstore_security_group_id"></a> [brainstore\_security\_group\_id](#output\_brainstore\_security\_group\_id)
+
+Description: ID of the security group for the Brainstore instances
+
 ### <a name="output_braintrust_support_role_arn"></a> [braintrust\_support\_role\_arn](#output\_braintrust\_support\_role\_arn)
 
 Description: ARN of the Role that grants Braintrust team remote support. Share this with the Braintrust team.
@@ -564,6 +576,10 @@ Description: Name of the Clickhouse S3 bucket
 ### <a name="output_clickhouse_secret_id"></a> [clickhouse\_secret\_id](#output\_clickhouse\_secret\_id)
 
 Description: ID of the Clickhouse secret. Note this is the Terraform ID attribute which is a pipe delimited combination of secret ID and version ID
+
+### <a name="output_lambda_security_group_id"></a> [lambda\_security\_group\_id](#output\_lambda\_security\_group\_id)
+
+Description: ID of the security group for the Lambda functions
 
 ### <a name="output_main_vpc_cidr"></a> [main\_vpc\_cidr](#output\_main\_vpc\_cidr)
 
@@ -605,9 +621,17 @@ Description: ARN of the main Braintrust Postgres database
 
 Description: ID of the quarantine VPC that user functions run inside of.
 
+### <a name="output_rds_security_group_id"></a> [rds\_security\_group\_id](#output\_rds\_security\_group\_id)
+
+Description: ID of the security group for the RDS instance
+
 ### <a name="output_redis_arn"></a> [redis\_arn](#output\_redis\_arn)
 
 Description: ARN of the Redis instance
+
+### <a name="output_redis_security_group_id"></a> [redis\_security\_group\_id](#output\_redis\_security\_group\_id)
+
+Description: ID of the security group for the Elasticache instance
 
 ### <a name="output_remote_support_security_group_id"></a> [remote\_support\_security\_group\_id](#output\_remote\_support\_security\_group\_id)
 
