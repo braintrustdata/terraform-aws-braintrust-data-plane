@@ -11,6 +11,9 @@ locals {
   clickhouse_address = var.use_external_clickhouse_address != null ? var.use_external_clickhouse_address : (
     var.enable_clickhouse ? module.clickhouse[0].clickhouse_instance_private_ip : null
   )
+  bastion_security_group = var.enable_braintrust_support_shell_access ? {
+    "Remote Support Bastion" = module.remote_support[0].remote_support_security_group_id
+  } : {}
 }
 
 module "main_vpc" {
@@ -63,7 +66,7 @@ module "database" {
     module.main_vpc.private_subnet_3_id
   ]
   vpc_id                           = module.main_vpc.vpc_id
-  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_ec2_security_group_id
+  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_instance_security_group_id
   lambda_security_group_id         = module.services.lambda_security_group_id
   remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
   enable_remote_support_access     = var.enable_braintrust_support_shell_access
@@ -85,7 +88,7 @@ module "redis" {
     module.main_vpc.private_subnet_3_id
   ]
   vpc_id                           = module.main_vpc.vpc_id
-  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_ec2_security_group_id
+  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_instance_security_group_id
   lambda_security_group_id         = module.services.lambda_security_group_id
   remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
   enable_remote_support_access     = var.enable_braintrust_support_shell_access
@@ -197,10 +200,14 @@ module "brainstore" {
   internal_observability_env_name = var.internal_observability_env_name
   internal_observability_region   = var.internal_observability_region
 
-  vpc_id                           = module.main_vpc.vpc_id
-  lambda_security_group_id         = module.services.lambda_security_group_id
-  remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
-  enable_remote_support_access     = var.enable_braintrust_support_shell_access
+  vpc_id = module.main_vpc.vpc_id
+  authorized_security_groups = merge(
+    {
+      "Lambda Services" = module.services.lambda_security_group_id
+    },
+    local.bastion_security_group
+  )
+  authorized_security_groups_ssh = local.bastion_security_group
 
   private_subnet_ids = [
     module.main_vpc.private_subnet_1_id,

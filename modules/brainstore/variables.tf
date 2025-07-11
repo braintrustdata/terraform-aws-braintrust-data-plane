@@ -52,21 +52,16 @@ variable "vpc_id" {
   description = "The ID of the VPC where Brainstore resources will be created"
 }
 
-variable "lambda_security_group_id" {
-  type        = string
-  description = "The ID of the security group for the Lambda functions"
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the Brainstore ELB. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
-variable "remote_support_security_group_id" {
-  type        = string
-  description = "Security Group ID for the Remote Support bastion host."
-  default     = null
-}
-
-variable "enable_remote_support_access" {
-  type        = bool
-  description = "Enable remote support access to Brainstore instances."
-  default     = false
+variable "authorized_security_groups_ssh" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access Brainstore instances via SSH. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
 variable "private_subnet_ids" {

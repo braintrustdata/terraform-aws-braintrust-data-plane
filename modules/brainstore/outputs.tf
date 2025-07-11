@@ -18,12 +18,12 @@ output "port" {
   value       = var.port
 }
 
-output "brainstore_nlb_security_group_id" {
-  description = "The ID of the security group for the Brainstore NLB"
-  value       = aws_security_group.brainstore_nlb.id
+output "brainstore_elb_security_group_id" {
+  description = "The ID of the security group for the Brainstore ELB"
+  value       = aws_security_group.brainstore_elb.id
 }
 
-output "brainstore_ec2_security_group_id" {
-  description = "The ID of the security group for the Brainstore EC2 instances"
-  value       = aws_security_group.brainstore_ec2.id
+output "brainstore_instance_security_group_id" {
+  description = "The ID of the security group for the Brainstore instances"
+  value       = aws_security_group.brainstore_instance.id
 }
