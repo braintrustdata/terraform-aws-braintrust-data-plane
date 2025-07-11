@@ -45,8 +45,8 @@ resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_ingress_from_a
 
 resource "aws_vpc_security_group_egress_rule" "elasticache_allow_egress_all" {
 
-  from_port         = 0
-  to_port           = 0
+  from_port         = -1
+  to_port           = -1
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from Elasticache instances."

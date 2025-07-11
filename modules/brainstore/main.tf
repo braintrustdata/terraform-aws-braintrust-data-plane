@@ -236,8 +236,8 @@ resource "aws_vpc_security_group_ingress_rule" "brainstore_elb_allow_ingress_fro
 }
 
 resource "aws_vpc_security_group_egress_rule" "brainstore_elb_allow_egress_all" {
-  from_port         = 0
-  to_port           = 0
+  from_port         = -1
+  to_port           = -1
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from Brainstore ELB."
@@ -274,8 +274,8 @@ resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingres
 
 resource "aws_vpc_security_group_egress_rule" "brainstore_instance_allow_egress_all" {
 
-  from_port         = 0
-  to_port           = 0
+  from_port         = -1
+  to_port           = -1
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from Brainstore instances."

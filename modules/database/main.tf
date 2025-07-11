@@ -177,8 +177,8 @@ resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorize
 
 resource "aws_vpc_security_group_egress_rule" "rds_allow_egress_all" {
 
-  from_port         = 0
-  to_port           = 0
+  from_port         = -1
+  to_port           = -1
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from RDS instances."
