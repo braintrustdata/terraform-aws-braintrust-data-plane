@@ -77,7 +77,7 @@ resource "aws_security_group" "bastion_ssh" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = local.common_tags
+  tags = merge({ "Name" = "${var.deployment_name}-bastion-ssh" }, local.common_tags)
 }
 
 resource "aws_security_group" "instance_connect_endpoint" {
@@ -101,7 +101,7 @@ resource "aws_security_group" "instance_connect_endpoint" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = local.common_tags
+  tags = merge({ "Name" = "${var.deployment_name}-instance-connect-endpoint" }, local.common_tags)
 }
 
 resource "aws_iam_role" "bastion" {
