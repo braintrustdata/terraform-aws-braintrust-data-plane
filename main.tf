@@ -69,11 +69,9 @@ module "database" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
+      "Brainstore"      = module.brainstore[0].brainstore_instance_security_group_id
     },
     local.bastion_security_group,
-    {
-      "Brainstore" = module.brainstore[0].brainstore_instance_security_group_id
-    }
   )
   postgres_storage_iops       = var.postgres_storage_iops
   postgres_storage_throughput = var.postgres_storage_throughput
@@ -95,11 +93,9 @@ module "redis" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
+      "Brainstore"      = module.brainstore[0].brainstore_instance_security_group_id
     },
     local.bastion_security_group,
-    {
-      "Brainstore" = module.brainstore[0].brainstore_instance_security_group_id
-    }
   )
   redis_instance_type = var.redis_instance_type
   redis_version       = var.redis_version
