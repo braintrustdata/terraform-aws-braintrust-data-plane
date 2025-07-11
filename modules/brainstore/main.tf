@@ -221,7 +221,7 @@ data "aws_caller_identity" "current" {}
 resource "aws_security_group" "brainstore_elb" {
   name   = "${var.deployment_name}-brainstore-elb"
   vpc_id = var.vpc_id
-  tags   = local.common_tags
+  tags   = merge({ "Name" = "${var.deployment_name}-brainstore-elb" }, local.common_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "brainstore_elb_allow_ingress_from_authorized_security_groups" {
@@ -247,7 +247,7 @@ resource "aws_vpc_security_group_egress_rule" "brainstore_elb_allow_egress_all" 
 resource "aws_security_group" "brainstore_instance" {
   name   = "${var.deployment_name}-brainstore-instance"
   vpc_id = var.vpc_id
-  tags   = local.common_tags
+  tags   = merge({ "Name" = "${var.deployment_name}-brainstore-instance" }, local.common_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingress_from_nlb" {
