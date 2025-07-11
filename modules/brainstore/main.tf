@@ -224,24 +224,22 @@ resource "aws_security_group" "brainstore_elb" {
   tags   = local.common_tags
 }
 
-resource "aws_security_group_rule" "brainstore_elb_allow_ingress_from_authorized_security_groups" {
+resource "aws_vpc_security_group_ingress_rule" "brainstore_elb_allow_ingress_from_authorized_security_groups" {
   for_each = var.authorized_security_groups
 
-  type                     = "ingress"
-  from_port                = var.port
-  to_port                  = var.port
-  protocol                 = "tcp"
-  source_security_group_id = each.value
-  description              = "Allow inbound to brainstore from ${each.key}."
-  security_group_id        = aws_security_group.brainstore_elb.id
+  from_port                    = var.port
+  to_port                      = var.port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow inbound to brainstore from ${each.key}."
+  security_group_id            = aws_security_group.brainstore_elb.id
 }
 
-resource "aws_security_group_rule" "brainstore_elb_allow_egress_all" {
-  type              = "egress"
+resource "aws_vpc_security_group_egress_rule" "brainstore_elb_allow_egress_all" {
   from_port         = 0
   to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from Brainstore ELB."
   security_group_id = aws_security_group.brainstore_elb.id
 }
@@ -252,35 +250,34 @@ resource "aws_security_group" "brainstore_instance" {
   tags   = local.common_tags
 }
 
-resource "aws_security_group_rule" "brainstore_instance_allow_ingress_from_nlb" {
-  type                     = "ingress"
-  from_port                = var.port
-  to_port                  = var.port
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.brainstore_elb.id
-  description              = "Allow inbound to Brainstore instances from NLB."
-  security_group_id        = aws_security_group.brainstore_instance.id
+resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingress_from_nlb" {
+
+  from_port                    = var.port
+  to_port                      = var.port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.brainstore_elb.id
+  description                  = "Allow inbound to Brainstore instances from NLB."
+  security_group_id            = aws_security_group.brainstore_instance.id
 }
 
-resource "aws_security_group_rule" "brainstore_instance_allow_ingress_from_authorized_security_groups_ssh" {
+resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingress_from_authorized_security_groups_ssh" {
   for_each = var.authorized_security_groups_ssh
 
-  type                     = "ingress"
-  from_port                = 22
-  to_port                  = 22
-  protocol                 = "tcp"
-  source_security_group_id = each.value
-  description              = "Allow inbound SSH to Brainstore instances from ${each.key}."
+  from_port                    = 22
+  to_port                      = 22
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow inbound SSH to Brainstore instances from ${each.key}."
 
   security_group_id = aws_security_group.brainstore_instance.id
 }
 
-resource "aws_security_group_rule" "brainstore_instance_allow_egress_all" {
-  type              = "egress"
+resource "aws_vpc_security_group_egress_rule" "brainstore_instance_allow_egress_all" {
+
   from_port         = 0
   to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from Brainstore instances."
   security_group_id = aws_security_group.brainstore_instance.id
 }

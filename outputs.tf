@@ -43,6 +43,26 @@ output "main_vpc_private_route_table_id" {
   description = "ID of the private route table in the main VPC"
 }
 
+output "brainstore_security_group_id" {
+  value       = module.brainstore[0].brainstore_instance_security_group_id
+  description = "ID of the security group for the Brainstore instances"
+}
+
+output "database_security_group_id" {
+  value       = module.database.database_security_group_id
+  description = "ID of the security group for the RDS instance"
+}
+
+output "elasticache_security_group_id" {
+  value       = module.elasticache.elasticache_security_group_id
+  description = "ID of the security group for the Elasticache instance"
+}
+
+output "lambda_security_group_id" {
+  value       = module.services.lambda_security_group_id
+  description = "ID of the security group for the Lambda functions"
+}
+
 output "postgres_database_arn" {
   value       = module.database.postgres_database_arn
   description = "ARN of the main Braintrust Postgres database"

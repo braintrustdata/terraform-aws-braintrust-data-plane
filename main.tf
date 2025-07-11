@@ -65,12 +65,16 @@ module "database" {
     module.main_vpc.private_subnet_2_id,
     module.main_vpc.private_subnet_3_id
   ]
-  vpc_id                           = module.main_vpc.vpc_id
-  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_instance_security_group_id
-  lambda_security_group_id         = module.services.lambda_security_group_id
-  remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
-  enable_remote_support_access     = var.enable_braintrust_support_shell_access
-
+  vpc_id = module.main_vpc.vpc_id
+  authorized_security_groups = merge(
+    {
+      "Lambda Services" = module.services.lambda_security_group_id
+    },
+    local.bastion_security_group,
+    {
+      "Brainstore" = module.brainstore[0].brainstore_instance_security_group_id
+    }
+  )
   postgres_storage_iops       = var.postgres_storage_iops
   postgres_storage_throughput = var.postgres_storage_throughput
   auto_minor_version_upgrade  = var.postgres_auto_minor_version_upgrade
@@ -87,12 +91,16 @@ module "redis" {
     module.main_vpc.private_subnet_2_id,
     module.main_vpc.private_subnet_3_id
   ]
-  vpc_id                           = module.main_vpc.vpc_id
-  brainstore_ec2_security_group_id = module.brainstore[0].brainstore_instance_security_group_id
-  lambda_security_group_id         = module.services.lambda_security_group_id
-  remote_support_security_group_id = var.enable_braintrust_support_shell_access ? module.remote_support[0].remote_support_security_group_id : null
-  enable_remote_support_access     = var.enable_braintrust_support_shell_access
-
+  vpc_id = module.main_vpc.vpc_id
+  authorized_security_groups = merge(
+    {
+      "Lambda Services" = module.services.lambda_security_group_id
+    },
+    local.bastion_security_group,
+    {
+      "Brainstore" = module.brainstore[0].brainstore_instance_security_group_id
+    }
+  )
   redis_instance_type = var.redis_instance_type
   redis_version       = var.redis_version
 }

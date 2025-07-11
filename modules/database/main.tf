@@ -163,47 +163,24 @@ resource "aws_security_group" "rds" {
   tags   = merge({ "Name" = "${var.deployment_name}-rds" }, local.common_tags)
 }
 
-resource "aws_security_group_rule" "rds_allow_ingress_from_brainstore" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = var.brainstore_ec2_security_group_id
-  description              = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Brainstore EC2 instances."
+resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
+
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Brainstore EC2 instances."
 
   security_group_id = aws_security_group.rds.id
 }
 
-resource "aws_security_group_rule" "rds_allow_ingress_from_lambda" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = var.lambda_security_group_id
-  description              = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Lambdas."
+resource "aws_vpc_security_group_egress_rule" "rds_allow_egress_all" {
 
-  security_group_id = aws_security_group.rds.id
-}
-
-resource "aws_security_group_rule" "rds_allow_ingress_from_remote_support" {
-  for_each = var.enable_remote_support_access ? { "enable" = true } : {}
-
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = var.remote_support_security_group_id
-  description              = "Allow TCP/5432 (PostgreSQL) inbound to RDS from Remote Support."
-
-  security_group_id = aws_security_group.rds.id
-}
-
-resource "aws_security_group_rule" "rds_allow_egress_all" {
-  type              = "egress"
   from_port         = 0
   to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from RDS instances."
   security_group_id = aws_security_group.rds.id
 }

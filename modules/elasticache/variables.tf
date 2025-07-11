@@ -13,26 +13,10 @@ variable "vpc_id" {
   description = "ID of VPC where Elasticache will be deployed."
 }
 
-variable "brainstore_ec2_security_group_id" {
-  description = "Security Group ID for the Brainstore instances."
-  type        = string
-}
-
-variable "lambda_security_group_id" {
-  description = "Security Group ID for the Lambda functions."
-  type        = string
-}
-
-variable "remote_support_security_group_id" {
-  type        = string
-  description = "Security Group ID for the Remote Support bastion host."
-  default     = null
-}
-
-variable "enable_remote_support_access" {
-  type        = bool
-  description = "Enable remote support access to elasticache instances."
-  default     = false
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access Elasticache. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
 variable "redis_instance_type" {
