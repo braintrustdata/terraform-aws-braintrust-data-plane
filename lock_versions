@@ -95,6 +95,7 @@ def get_lambda_versions(version_tag):
         "MigrateDatabaseFunction",
         "QuarantineWarmupFunction",
         "CatchupETL",
+        "BillingCron"
     ]
 
     lambda_base_url = (

@@ -3,7 +3,7 @@
 # Usage:
 #   ./dump_logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
 
-ALL_SERVICES=("brainstore" "AIProxy" "APIHandler" "CatchupETL" "MigrateDatabaseFunction" "QuarantineWarmupFunction")
+ALL_SERVICES=("brainstore" "AIProxy" "APIHandler" "CatchupETL" "MigrateDatabaseFunction" "QuarantineWarmupFunction" "BillingCron")
 SERVICES="APIHandler,brainstore"
 
 if [ -z "$1" ]; then

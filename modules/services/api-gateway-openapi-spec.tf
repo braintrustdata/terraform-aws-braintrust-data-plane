@@ -456,6 +456,12 @@ locals {
           ]
         })
       }
+      "/billing/status" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/billing/refresh" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
     }
 
     x-amazon-apigateway-binary-media-types = [
