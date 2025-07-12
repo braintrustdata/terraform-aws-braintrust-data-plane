@@ -69,7 +69,7 @@ module "database" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
-      "Brainstore"      = module.brainstore[0].brainstore_instance_security_group_id
+      "Brainstore"      = var.enable_brainstore ? module.brainstore[0].brainstore_instance_security_group_id : null
     },
     local.bastion_security_group,
   )
@@ -93,7 +93,7 @@ module "redis" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
-      "Brainstore"      = module.brainstore[0].brainstore_instance_security_group_id
+      "Brainstore"      = var.enable_brainstore ? module.brainstore[0].brainstore_instance_security_group_id : null
     },
     local.bastion_security_group,
   )
