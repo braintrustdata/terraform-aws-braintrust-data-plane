@@ -366,6 +366,21 @@ locals {
       "/test-automation" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/service-token/upsert" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/service-token/{name}" = {
+        for method in ["options", "head", "get"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "name"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/brainstore/version" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
