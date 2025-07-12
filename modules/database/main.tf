@@ -27,7 +27,7 @@ resource "aws_db_instance" "main" {
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   parameter_group_name   = aws_db_parameter_group.main.name
-  vpc_security_group_ids = var.database_security_group_ids
+  vpc_security_group_ids = [aws_security_group.rds.id]
 
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
@@ -152,4 +152,35 @@ resource "aws_secretsmanager_secret" "database_secret" {
   kms_key_id  = var.kms_key_arn
 
   tags = local.common_tags
+}
+
+#------------------------------------------------------------------------------
+# Security groups
+#------------------------------------------------------------------------------
+resource "aws_security_group" "rds" {
+  name   = "${var.deployment_name}-rds"
+  vpc_id = var.vpc_id
+  tags   = merge({ "Name" = "${var.deployment_name}-rds" }, local.common_tags)
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
+
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from ${each.key}."
+
+  security_group_id = aws_security_group.rds.id
+}
+
+resource "aws_vpc_security_group_egress_rule" "rds_allow_egress_all" {
+
+  from_port         = -1
+  to_port           = -1
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
+  description       = "Allow all outbound traffic from RDS instances."
+  security_group_id = aws_security_group.rds.id
 }

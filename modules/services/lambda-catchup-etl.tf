@@ -39,7 +39,7 @@ resource "aws_lambda_function" "catchup_etl" {
 
   vpc_config {
     subnet_ids         = var.service_subnet_ids
-    security_group_ids = var.service_security_group_ids
+    security_group_ids = [aws_security_group.lambda.id]
   }
 
   tracing_config {

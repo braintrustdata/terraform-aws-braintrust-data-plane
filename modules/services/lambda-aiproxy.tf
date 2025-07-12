@@ -37,14 +37,14 @@ resource "aws_lambda_function" "ai_proxy" {
       QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
       QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
       QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
-      QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? var.quarantine_vpc_default_security_group_id : ""
+      QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda.id : ""
       QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
     }, var.extra_env_vars.AIProxy)
   }
 
   vpc_config {
     subnet_ids         = var.service_subnet_ids
-    security_group_ids = var.service_security_group_ids
+    security_group_ids = [aws_security_group.lambda.id]
   }
 
   tracing_config {

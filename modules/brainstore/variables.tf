@@ -52,9 +52,16 @@ variable "vpc_id" {
   description = "The ID of the VPC where Brainstore resources will be created"
 }
 
-variable "security_group_id" {
-  type        = string
-  description = "The ID of the security group to use for Brainstore resources"
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the Brainstore ELB. Format: { name = <security_group_id> }"
+  default     = {}
+}
+
+variable "authorized_security_groups_ssh" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access Brainstore instances via SSH. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
 variable "private_subnet_ids" {

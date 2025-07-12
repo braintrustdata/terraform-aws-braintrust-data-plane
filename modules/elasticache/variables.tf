@@ -8,9 +8,15 @@ variable "subnet_ids" {
   description = "List of subnet IDs for the ElastiCache subnet group"
 }
 
-variable "security_group_ids" {
-  type        = list(string)
-  description = "List of security group IDs for the ElastiCache cluster"
+variable "vpc_id" {
+  type        = string
+  description = "ID of VPC where Elasticache will be deployed."
+}
+
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access Elasticache. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
 variable "redis_instance_type" {

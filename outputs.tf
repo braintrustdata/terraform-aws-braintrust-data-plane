@@ -13,11 +13,6 @@ output "main_vpc_cidr" {
   description = "CIDR block of the main VPC"
 }
 
-output "main_vpc_default_security_group_id" {
-  value       = module.main_vpc.default_security_group_id
-  description = "ID of the default security group in the main VPC"
-}
-
 output "main_vpc_public_subnet_1_id" {
   value       = module.main_vpc.public_subnet_1_id
   description = "ID of the public subnet in the main VPC"
@@ -46,6 +41,26 @@ output "main_vpc_public_route_table_id" {
 output "main_vpc_private_route_table_id" {
   value       = module.main_vpc.private_route_table_id
   description = "ID of the private route table in the main VPC"
+}
+
+output "brainstore_security_group_id" {
+  value       = module.brainstore[0].brainstore_instance_security_group_id
+  description = "ID of the security group for the Brainstore instances"
+}
+
+output "rds_security_group_id" {
+  value       = module.database.rds_security_group_id
+  description = "ID of the security group for the RDS instance"
+}
+
+output "redis_security_group_id" {
+  value       = module.redis.redis_security_group_id
+  description = "ID of the security group for the Elasticache instance"
+}
+
+output "lambda_security_group_id" {
+  value       = module.services.lambda_security_group_id
+  description = "ID of the security group for the Lambda functions"
 }
 
 output "postgres_database_arn" {

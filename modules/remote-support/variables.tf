@@ -21,12 +21,6 @@ variable "bastion_allowed_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "bastion_additional_security_groups" {
-  description = "List of additional security groups to apply to the bastion host"
-  type        = list(string)
-  default     = []
-}
-
 variable "vpc_id" {
   description = "ID of the VPC where the bastion host will be deployed"
   type        = string

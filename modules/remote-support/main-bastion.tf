@@ -17,7 +17,7 @@ resource "aws_instance" "bastion" {
   instance_type = "t4g.medium"
 
   subnet_id                   = var.private_subnet_ids[0]
-  vpc_security_group_ids      = concat([aws_security_group.bastion_ssh[0].id], var.bastion_additional_security_groups)
+  vpc_security_group_ids      = [aws_security_group.bastion_ssh[0].id]
   associate_public_ip_address = false
 
   iam_instance_profile = aws_iam_instance_profile.bastion[0].name
@@ -77,7 +77,7 @@ resource "aws_security_group" "bastion_ssh" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = local.common_tags
+  tags = merge({ "Name" = "${var.deployment_name}-bastion-ssh" }, local.common_tags)
 }
 
 resource "aws_security_group" "instance_connect_endpoint" {
@@ -101,7 +101,7 @@ resource "aws_security_group" "instance_connect_endpoint" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = local.common_tags
+  tags = merge({ "Name" = "${var.deployment_name}-instance-connect-endpoint" }, local.common_tags)
 }
 
 resource "aws_iam_role" "bastion" {

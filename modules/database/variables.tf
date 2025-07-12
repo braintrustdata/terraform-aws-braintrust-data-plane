@@ -51,9 +51,15 @@ variable "database_subnet_ids" {
   type        = list(string)
 }
 
-variable "database_security_group_ids" {
-  description = "Security Group IDs for the RDS instance."
-  type        = list(string)
+variable "vpc_id" {
+  type        = string
+  description = "ID of VPC where RDS will be deployed."
+}
+
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the RDS instance. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
 variable "kms_key_arn" {
