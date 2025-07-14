@@ -60,5 +60,5 @@ output "lambda_security_group_id" {
 
 output "quarantine_lambda_security_group_id" {
   description = "The ID of the security group for the quarantine Lambda functions"
-  value       = aws_security_group.quarantine_lambda.id
+  value       = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : null
 }
