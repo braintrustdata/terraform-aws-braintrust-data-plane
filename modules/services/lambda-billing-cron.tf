@@ -52,7 +52,7 @@ resource "aws_cloudwatch_event_rule" "billing_cron_schedule" {
   count = var.enable_billing_telemetry ? 1 : 0
 
   name                = "${var.deployment_name}-billing-cron-schedule"
-  description         = "Trigger billing cron Lambda function"
+  description         = "Trigger billing cron Lambda function."
   schedule_expression = "rate(5 minutes)"
   tags                = local.common_tags
 }
