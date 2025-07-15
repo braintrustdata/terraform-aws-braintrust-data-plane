@@ -142,6 +142,11 @@ module "services" {
   service_additional_policy_arns             = var.service_additional_policy_arns
   extra_env_vars                             = var.service_extra_env_vars
 
+  # Billing telemetry
+  enable_billing_telemetry              = var.enable_billing_telemetry
+  disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
+  billing_telemetry_log_level           = var.billing_telemetry_log_level
+
   # Networking
   vpc_id = module.main_vpc.vpc_id
   service_subnet_ids = [

@@ -203,6 +203,29 @@ variable "ai_proxy_reserved_concurrent_executions" {
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
 }
 
+variable "enable_billing_telemetry" {
+  description = "Enable billing telemetry. Do not enable this unless instructed by support."
+  type        = bool
+  default     = false
+}
+
+variable "disable_billing_telemetry_aggregation" {
+  description = "Disable billing telemetry aggregation. Do not disable this unless instructed by support."
+  type        = bool
+  default     = false
+}
+
+variable "billing_telemetry_log_level" {
+  description = "Log level for billing telemetry. Defaults to 'error' if empty, or unspecified."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.billing_telemetry_log_level == "" || contains(["info", "warn", "error", "debug"], var.billing_telemetry_log_level)
+    error_message = "billing_telemetry_log_level must be empty or one of: info, warn, error, debug"
+  }
+}
+
 variable "whitelisted_origins" {
   description = "List of origins to whitelist for CORS"
   type        = list(string)
