@@ -3,7 +3,7 @@ locals {
   # the regions where we currently host our lambda code
   supported_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1"]
   lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.name}"
-  lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL"]
+  lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron"]
 
   # Lambda versions can be specified statically through VERSIONS.json or dynamically via lambda_version_tag_override
   lambda_versions = var.lambda_version_tag_override != null ? {
