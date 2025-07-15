@@ -45,6 +45,14 @@ Type: `number`
 
 Default: `-1`
 
+### <a name="input_billing_telemetry_log_level"></a> [billing\_telemetry\_log\_level](#input\_billing\_telemetry\_log\_level)
+
+Description: Log level for billing telemetry. Defaults to 'error' if empty, or unspecified.
+
+Type: `string`
+
+Default: `""`
+
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
 Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
@@ -220,6 +228,22 @@ Description: Name of this Braintrust deployment. Will be included in tags and pr
 Type: `string`
 
 Default: `"braintrust"`
+
+### <a name="input_disable_billing_telemetry_aggregation"></a> [disable\_billing\_telemetry\_aggregation](#input\_disable\_billing\_telemetry\_aggregation)
+
+Description: Disable billing telemetry aggregation. Do not disable this unless instructed by support.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_enable_billing_telemetry"></a> [enable\_billing\_telemetry](#input\_enable\_billing\_telemetry)
+
+Description: Enable billing telemetry. Do not enable this unless instructed by support.
+
+Type: `bool`
+
+Default: `false`
 
 ### <a name="input_enable_brainstore"></a> [enable\_brainstore](#input\_enable\_brainstore)
 
