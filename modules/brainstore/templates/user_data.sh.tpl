@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Help prevent immediate failure of apt commands if another background process is holding the lock
+echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
+
 # Mount the local SSD if it exists
 MOUNT_DIR="/mnt/tmp/brainstore"
 mkdir -p "$MOUNT_DIR"
