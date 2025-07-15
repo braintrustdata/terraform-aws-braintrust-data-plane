@@ -1,7 +1,7 @@
 locals {
   # Lambdas can only be deployed from s3 buckets in the same region. These are
   # the regions where we currently host our lambda code
-  supported_regions = ["us-east-1", "us-east-2", "us-west-2"]
+  supported_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1"]
   lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.name}"
   lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL"]
 
@@ -34,7 +34,7 @@ data "aws_region" "current" {
   lifecycle {
     postcondition {
       condition     = contains(local.supported_regions, self.name)
-      error_message = "Region must be one of: us-east-1, us-east-2, us-west-2. Contact support if you need a new region to be supported."
+      error_message = "Region must be one of: us-east-1, us-east-2, us-west-2, eu-west-1. Contact support if you need a new region to be supported."
     }
   }
 }
