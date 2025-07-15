@@ -103,6 +103,7 @@ module "braintrust-data-plane" {
   # service_extra_env_vars = {
   #   APIHandler               = {}
   #   AIProxy                  = {}
+  #   BillingCron              = {}
   #   CatchupETL               = {}
   #   MigrateDatabaseFunction  = {}
   #   QuarantineWarmupFunction = {}
