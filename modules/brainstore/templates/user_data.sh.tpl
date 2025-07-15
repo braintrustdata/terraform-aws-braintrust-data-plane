@@ -4,26 +4,20 @@
 echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
 
 # Mount the local SSD if it exists
+apt-get install -y nvme-cli
 MOUNT_DIR="/mnt/tmp/brainstore"
 mkdir -p "$MOUNT_DIR"
-NVME_DEV=$(lsblk -o NAME,MOUNTPOINT | grep -v MOUNTPOINT | grep nvme1n1 | awk '{print $1}' | head -n 1)
-if [ -n "$NVME_DEV" ]; then
-  echo "Local SSD detected: $NVME_DEV"
-
-  if ! file -s "/dev/$NVME_DEV" | grep -q "filesystem"; then
-    echo "Formatting /dev/$NVME_DEV as ext4..."
-    mkfs.ext4 "/dev/$NVME_DEV"
-  fi
-  echo "Mounting /dev/$NVME_DEV at $MOUNT_DIR..."
-  mount "/dev/$NVME_DEV" "$MOUNT_DIR"
-
-  # Add the mount to /etc/fstab to make it persistent.
-  # Note this will only survive reboots and not an EC2 stop/start
-  if ! grep -q "$MOUNT_DIR" /etc/fstab; then
-    echo "/dev/$NVME_DEV $MOUNT_DIR ext4 defaults,nofail 0 2" >> /etc/fstab
-  fi
+DEVICE=$(nvme list | grep 'Instance Storage' | head -n1 | awk '{print $1}')
+if [ -n "$DEVICE" ]; then
+  echo "Ephemeral device: $DEVICE"
+  blkid "$DEVICE" >/dev/null || mkfs.ext4 -F "$DEVICE"
+  mount "$DEVICE" "$MOUNT_DIR"
+  # Add to fstab using UUID rather than device name
+  UUID=$(blkid -s UUID -o value "$DEVICE")
+  echo "UUID=$UUID $MOUNT_DIR ext4 defaults 0 2" >> /etc/fstab
 else
-  echo "No local SSD detected. Brainstore will use EBS instead."
+  echo "No ephemeral device found. Exiting with failure."
+  exit 1
 fi
 
 # Raise the file descriptor limit
