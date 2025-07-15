@@ -265,8 +265,8 @@ variable "enable_billing_telemetry" {
   default     = false
 }
 
-variable "enable_billing_telemetry_aggregation" {
-  description = "Enable billing telemetry aggregation. Do not enable this unless instructed by support."
+variable "disable_billing_telemetry_aggregation" {
+  description = "Disable billing telemetry aggregation. Do not disable this unless instructed by support."
   type        = bool
   default     = false
 }

@@ -19,15 +19,15 @@ resource "aws_lambda_function" "billing_cron" {
 
   environment {
     variables = merge({
-      ORG_NAME                     = var.braintrust_org_name
-      PG_URL                       = local.postgres_url
-      REDIS_HOST                   = var.redis_host
-      REDIS_PORT                   = var.redis_port
-      TELEMETRY_ENABLED            = var.enable_billing_telemetry
-      TELEMETRY_ENABLE_AGGREGATION = var.enable_billing_telemetry_aggregation
-      TELEMETRY_LOG_LEVEL          = var.billing_telemetry_log_level
-      SERVICE_TOKEN_SECRET_KEY     = random_password.service_token_secret_key[0].result
-      TELEMETRY_URL                = var.enable_billing_telemetry ? local.production_billing_telemetry_endpoint : ""
+      ORG_NAME                      = var.braintrust_org_name
+      PG_URL                        = local.postgres_url
+      REDIS_HOST                    = var.redis_host
+      REDIS_PORT                    = var.redis_port
+      TELEMETRY_ENABLED             = var.enable_billing_telemetry
+      TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
+      TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
+      SERVICE_TOKEN_SECRET_KEY      = random_password.service_token_secret_key[0].result
+      TELEMETRY_URL                 = var.enable_billing_telemetry ? local.production_billing_telemetry_endpoint : ""
     }, var.extra_env_vars.BillingCron)
   }
 
