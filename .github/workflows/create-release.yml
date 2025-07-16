@@ -53,12 +53,24 @@ jobs:
           git commit -m "Update Braintrust Services versions to ${{ inputs.services_version }}"
           git push origin main
 
-
       - name: Create GitHub Release
         run: |
-          gh release create ${{ inputs.module_version }} \
-            --draft \
-            --generate-notes \
-            --title "${{ inputs.module_version }}"
+          if [ "${{ inputs.services_version }}" != "" ]; then
+            cat > release_notes.md << EOF
+
+          ## Braintrust Services
+          * Updated Braintrust Services to \`${{ inputs.services_version }}\`
+          EOF
+            gh release create ${{ inputs.module_version }} \
+              --draft \
+              --generate-notes \
+              --notes-file release_notes.md \
+              --title "${{ inputs.module_version }}"
+          else
+            gh release create ${{ inputs.module_version }} \
+              --draft \
+              --generate-notes \
+              --title "${{ inputs.module_version }}"
+          fi
         env:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
