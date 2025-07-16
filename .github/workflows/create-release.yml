@@ -1,0 +1,68 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      module_version:
+        description: 'Terraform module release version (e.g., v1.2.3)'
+        required: true
+        type: string
+      services_version:
+        description: 'Braintrust services version (e.g., v1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@v1
+        id: bot-token
+        with:
+          app-id: ${{ secrets.GH_BOT_APP_ID }}
+          private-key: ${{ secrets.GH_BOT_APP_PRIVATE_KEY }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.bot-token.outputs.token }}
+          ref: main
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::872608195481:role/github_ecr_full_access
+          aws-region: us-east-1
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "Braintrust Bot"
+          git config --global user.email "braintrust-bot@users.noreply.github.com"
+
+      - name: Run lock_versions script
+        run: ./lock_versions ${{ inputs.services_version }}
+
+      - name: Commit changes to locked versions
+        run: |
+          git add .
+          git commit -m "Update Braintrust Services versions to ${{ inputs.services_version }}"
+          git push origin main
+
+      - name: Create GitHub Release
+        run: |
+          gh release create ${{ inputs.module_version }} \
+            --draft \
+            --generate-notes \
+            --title "${{ inputs.module_version }}" \
+            --notes "Updated Braintrust Services versions to ${{ inputs.services_version }}"
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
