@@ -46,34 +46,40 @@ jobs:
       - name: Update versions of Braintrust Services
         if: inputs.services_version != ''
         run: |
-          git config --global user.name "Braintrust Bot"
-          git config --global user.email "braintrust-bot@users.noreply.github.com"
           git config --global user.name "braintrust-bot[bot]"
           # This is the User Id of the braintrust-bot app
           git config --global user.email "215900051+braintrust-bot[bot]@users.noreply.github.com"
+
+          # Create a new branch for the changes
+          git checkout -b update-services-versions-${{ inputs.services_version }}
+
           ./lock_versions ${{ inputs.services_version }}
+
           git add .
-          git commit -m "Update Braintrust Services versions to ${{ inputs.services_version }}"
-          git push origin main
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Braintrust Services versions to ${{ inputs.services_version }}"
+            git push origin update-services-versions-${{ inputs.services_version }}
+
+            # Create PR and immediately merge it
+            PR_NUMBER=$(gh pr create \
+              --title "Update Braintrust Services versions to ${{ inputs.services_version }}" \
+              --body "Automated update of Braintrust Services versions to ${{ inputs.services_version }}" \
+              --base main \
+              --head update-services-versions-${{ inputs.services_version }} \
+              --json number \
+              --jq '.number')
+
+            # Immediately squash merge the PR
+            gh pr merge $PR_NUMBER --squash --delete-branch --admin
+          else
+            echo "No changes detected after running lock_versions, skipping PR creation"
+          fi
 
       - name: Create GitHub Release
         run: |
-          if [ "${{ inputs.services_version }}" != "" ]; then
-            cat > release_notes.md << EOF
-
-          ## Braintrust Services
-          * Updated Braintrust Services to \`${{ inputs.services_version }}\`
-          EOF
-            gh release create ${{ inputs.module_version }} \
-              --draft \
-              --generate-notes \
-              --notes-file release_notes.md \
-              --title "${{ inputs.module_version }}"
-          else
-            gh release create ${{ inputs.module_version }} \
-              --draft \
-              --generate-notes \
-              --title "${{ inputs.module_version }}"
-          fi
+          gh release create ${{ inputs.module_version }} \
+            --draft \
+            --generate-notes \
+            --title "${{ inputs.module_version }}" \
         env:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
