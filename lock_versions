@@ -95,7 +95,7 @@ def get_lambda_versions(version_tag):
         "MigrateDatabaseFunction",
         "QuarantineWarmupFunction",
         "CatchupETL",
-        "BillingCron"
+        "BillingCron",
     ]
 
     lambda_base_url = (
@@ -121,7 +121,6 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     metadata = {
         "_tag": version_tag,
-        "_timestamp": datetime.datetime.now().isoformat(),
     }
 
     if not check_aws_authentication():
