@@ -25,21 +25,10 @@ resource "aws_lambda_function" "ai_proxy" {
   }
 
   environment {
-    variables = merge({
-      ORG_NAME                                          = var.braintrust_org_name
-      PG_URL                                            = local.postgres_url
-      REDIS_HOST                                        = var.redis_host
-      REDIS_PORT                                        = var.redis_port
-      CODE_BUNDLE_BUCKET                                = aws_s3_bucket.code_bundle_bucket.id
-      FUNCTION_SECRET_KEY                               = aws_secretsmanager_secret_version.function_tools_secret.secret_string
-      QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc ? aws_iam_role.quarantine_function_role.arn : ""
-      QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc ? aws_iam_role.quarantine_invoke_role.arn : ""
-      QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
-      QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
-      QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
-      QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : ""
-      QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
-    }, var.extra_env_vars.AIProxy)
+    variables = merge(
+      local.api_common_env_vars,
+      var.extra_env_vars.AIProxy
+    )
   }
 
   vpc_config {
