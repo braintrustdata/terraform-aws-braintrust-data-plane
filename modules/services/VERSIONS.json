@@ -1,10 +1,9 @@
 {
-    "AIProxy": "lambda/AIProxy/versions/08585353761ac8408fd95b30c366028f.zip",
-    "APIHandler": "lambda/APIHandler/versions/07e9daf558842858f5eb4b505eb0430e.zip",
-    "MigrateDatabaseFunction": "lambda/MigrateDatabaseFunction/versions/15e65d1dea9fb140ff794c24e5df020c.zip",
-    "QuarantineWarmupFunction": "lambda/QuarantineWarmupFunction/versions/a3cc247ec349370c2747bd24cd5681d5.zip",
-    "CatchupETL": "lambda/CatchupETL/versions/6711b31b0414fa3be5a5b76a2f844672.zip",
-    "BillingCron": "lambda/BillingCron/versions/8db5133448e5efe577e5e9c15a4cf66a.zip",
-    "_tag": "v1.1.14",
-    "_timestamp": "2025-07-16T19:19:35.080416"
+    "AIProxy": "lambda/AIProxy/versions/b766282d3421d0c7bf093b2f5a51cb53.zip",
+    "APIHandler": "lambda/APIHandler/versions/aa6ff8b64cf423eebb6f759288bb88fb.zip",
+    "MigrateDatabaseFunction": "lambda/MigrateDatabaseFunction/versions/be0ad840da6f5be385917cff86d03d03.zip",
+    "QuarantineWarmupFunction": "lambda/QuarantineWarmupFunction/versions/e543fbc98b3e30fe9bef1d7b2cc16f83.zip",
+    "CatchupETL": "lambda/CatchupETL/versions/f39a0d980516d4334b54757d929cf7a2.zip",
+    "BillingCron": "lambda/BillingCron/versions/03bad5e0b39ad8d59f0bb9fafb28cb82.zip",
+    "_tag": "v1.1.15"
 }
