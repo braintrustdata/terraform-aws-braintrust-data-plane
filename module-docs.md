@@ -583,6 +583,10 @@ Description: The primary endpoint for the dataplane API. This is the value that 
 
 Description: Instance ID of the bastion host that Braintrust support staff can connect to using EC2 Instance Connect. Share this with the Braintrust team.
 
+### <a name="output_brainstore_s3_bucket_name"></a> [brainstore\_s3\_bucket\_name](#output\_brainstore\_s3\_bucket\_name)
+
+Description: Name of the Brainstore S3 bucket
+
 ### <a name="output_brainstore_security_group_id"></a> [brainstore\_security\_group\_id](#output\_brainstore\_security\_group\_id)
 
 Description: ID of the security group for the Brainstore instances
