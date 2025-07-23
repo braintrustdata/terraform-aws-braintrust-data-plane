@@ -7,10 +7,13 @@ locals {
   lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron"]
 
   # Lambda versions can be specified statically through VERSIONS.json or dynamically via lambda_version_tag_override
-  lambda_versions = var.lambda_version_tag_override != null ? {
+  # If lambda_version_tag_override is provided, use it. Otherwise, use the lambda_version_tag from VERSIONS.json
+  lambda_version_tag = var.lambda_version_tag_override != null ? var.lambda_version_tag_override : jsondecode(file("${path.module}/VERSIONS.json"))["lambda_version_tag"]
+
+  lambda_versions = {
     for lambda in local.lambda_names :
     lambda => trimspace(data.http.lambda_versions[lambda].response_body)
-  } : jsondecode(file("${path.module}/VERSIONS.json"))
+  }
 
   postgres_url            = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
   using_brainstore_writer = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
@@ -26,9 +29,9 @@ locals {
 
 # Data source for dynamic lambda version lookups
 data "http" "lambda_versions" {
-  for_each = var.lambda_version_tag_override != null ? toset(local.lambda_names) : toset([])
+  for_each = toset(local.lambda_names)
 
-  url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.name}.amazonaws.com/lambda/${each.value}/version-${var.lambda_version_tag_override}"
+  url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.name}.amazonaws.com/lambda/${each.value}/version-${local.lambda_version_tag}"
 }
 
 data "aws_region" "current" {
