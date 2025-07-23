@@ -1,7 +1,6 @@
 #!/usr/bin/env -S uv --quiet run --script
 # /// script
 # dependencies = [
-#   "boto3",
 # ]
 # ///
 
@@ -12,69 +11,13 @@ release process of the terraform module.
 Versions are written to a VERSIONS.json file in their respective module directories.
 The terraform module will look at these files to determine the versions to deploy.
 
-By default, this script will write the versions from the `latest` tag.
-You can specify a different tag (e.g. stable) by passing it as an argument.
-
 Usage:
-    ./lock_versions [version_tag]
-
-    If no version_tag is provided, "latest" is used by default.
+    ./lock_versions VERSION_TAG
 """
 
 import json
-import urllib.request
 import sys
 import os
-import boto3
-import botocore.exceptions
-import datetime
-
-
-def check_aws_authentication():
-    try:
-        session = boto3.Session()
-        sts_client = session.client("sts")
-        sts_client.get_caller_identity()
-        return True
-    except (
-        botocore.exceptions.ClientError,
-        botocore.exceptions.TokenRetrievalError,
-    ) as e:
-        return False
-    except Exception as e:
-        print(f"Unexpected error checking AWS authentication: {str(e)}")
-        raise
-
-
-def get_lambda_versions(version_tag):
-    """
-    Fetches versions for all lambda functions based on the specified tag.
-    Returns a dictionary with lambda names as keys and versions as values.
-    """
-    print(f"Fetching lambda versions for tag: {version_tag}")
-
-    lambdas = [
-        "AIProxy",
-        "APIHandler",
-        "MigrateDatabaseFunction",
-        "QuarantineWarmupFunction",
-        "CatchupETL",
-        "BillingCron",
-    ]
-
-    lambda_base_url = (
-        "https://braintrust-assets-us-east-1.s3.us-east-1.amazonaws.com/lambda"
-    )
-    versions = {}
-    for lambda_name in lambdas:
-        print(f"Fetching {version_tag} version for {lambda_name}...")
-        with urllib.request.urlopen(
-            f"{lambda_base_url}/{lambda_name}/version-{version_tag}"
-        ) as response:
-            version = response.read().decode("utf-8").strip()
-            versions[lambda_name] = version
-
-    return versions
 
 
 def main():
@@ -87,25 +30,15 @@ def main():
     version_tag = sys.argv[1]
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    metadata = {
-        "_tag": version_tag,
-    }
 
-    if not check_aws_authentication():
-        print("ERROR: You are not authenticated with AWS.")
-        print("Please run 'aws sso login' or set up your AWS credentials.")
-        sys.exit(1)
-
-    # Get lambda versions and write to services/VERSIONS.json
-    lambda_versions = get_lambda_versions(version_tag)
-    lambda_versions.update(metadata)
-
-    print("Writing lambda versions to modules/services/VERSIONS.json...")
+    # Write lambda version tag to services/VERSIONS.json
+    print("Writing lambda version tag to modules/services/VERSIONS.json...")
     versions_path = f"{script_dir}/modules/services/VERSIONS.json"
+    lambda_versions = {"lambda_version_tag": version_tag}
     with open(versions_path, "w") as f:
         json.dump(lambda_versions, f, indent=4)
 
-    # Get brainstore version from ECR and write to brainstore/VERSIONS.json
+    # Write brainstore version to brainstore/VERSIONS.json
     print("Writing brainstore version to modules/brainstore/VERSIONS.json...")
     brainstore_versions_path = f"{script_dir}/modules/brainstore/VERSIONS.json"
     os.makedirs(os.path.dirname(brainstore_versions_path), exist_ok=True)
