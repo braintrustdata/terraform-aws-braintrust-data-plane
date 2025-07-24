@@ -354,6 +354,63 @@ locals {
           ]
         })
       }
+      "/environment" = {
+        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/environment/{id}" = {
+        for method in ["delete", "get", "options", "patch"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/environment-object/{object_type}/{object_id}" = {
+        for method in ["get", "options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/environment-object/{object_type}/{object_id}/{environment_slug}" = {
+        for method in ["delete", "get", "options", "put"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "environment_slug"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/version" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
