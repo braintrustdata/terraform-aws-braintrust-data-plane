@@ -412,6 +412,12 @@ variable "brainstore_disable_optimization_worker" {
   default     = false
 }
 
+variable "brainstore_disable_process_wal_worker" {
+  type        = bool
+  description = "Disable the process WAL worker in Brainstore"
+  default     = false
+}
+
 variable "service_extra_env_vars" {
   type = object({
     APIHandler               = map(string)
