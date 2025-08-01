@@ -420,6 +420,7 @@ variable "service_extra_env_vars" {
     BillingCron              = map(string)
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
+    AutomationCron           = map(string)
   })
   description = "Extra environment variables to set for services"
   default = {
@@ -429,6 +430,7 @@ variable "service_extra_env_vars" {
     BillingCron              = {}
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
+    AutomationCron           = {}
   }
 }
 

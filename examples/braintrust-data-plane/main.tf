@@ -107,6 +107,7 @@ module "braintrust-data-plane" {
   #   CatchupETL               = {}
   #   MigrateDatabaseFunction  = {}
   #   QuarantineWarmupFunction = {}
+  #   AutomationCron           = {}
   # }
 
 

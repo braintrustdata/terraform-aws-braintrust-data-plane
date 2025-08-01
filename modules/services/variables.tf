@@ -247,6 +247,7 @@ variable "extra_env_vars" {
     CatchupETL               = map(string)
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
+    AutomationCron           = map(string)
   })
   description = "Extra environment variables to set for services"
   default = {
@@ -256,6 +257,7 @@ variable "extra_env_vars" {
     CatchupETL               = {}
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
+    AutomationCron           = {}
   }
 }
 

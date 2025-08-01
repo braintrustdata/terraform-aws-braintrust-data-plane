@@ -531,6 +531,7 @@ object({
     BillingCron              = map(string)
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
+    AutomationCron           = map(string)
   })
 ```
 
@@ -543,7 +544,8 @@ Default:
   "BillingCron": {},
   "CatchupETL": {},
   "MigrateDatabaseFunction": {},
-  "QuarantineWarmupFunction": {}
+  "QuarantineWarmupFunction": {},
+  "AutomationCron": {}
 }
 ```
 
