@@ -7,7 +7,7 @@ resource "aws_lambda_function" "automation_cron" {
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["AutomationCron"]
   role          = aws_iam_role.api_handler_role.arn
-  handler       = "lambda.handler"
+  handler       = "index.handler"
   runtime       = "nodejs22.x"
   timeout       = 300
   memory_size   = 1024
