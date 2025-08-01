@@ -73,7 +73,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     for_each = toset([
       "/v1/proxy", "/v1/proxy/*",
       "/v1/eval", "/v1/eval/*",
-      "/v1/function/*",
+      "/v1/function/*/?*",
       "/function/*"
     ])
     content {
