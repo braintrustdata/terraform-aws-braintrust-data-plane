@@ -541,11 +541,11 @@ Default:
 {
   "AIProxy": {},
   "APIHandler": {},
+  "AutomationCron": {},
   "BillingCron": {},
   "CatchupETL": {},
   "MigrateDatabaseFunction": {},
-  "QuarantineWarmupFunction": {},
-  "AutomationCron": {}
+  "QuarantineWarmupFunction": {}
 }
 ```
 
