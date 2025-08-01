@@ -245,6 +245,7 @@ resource "aws_iam_policy" "api_handler_policy" {
         Resource = var.kms_key_arn
       },
       {
+        Sid      = "AssumeRoleInCustomerAccountForS3Export"
         Action   = "sts:AssumeRole"
         Effect   = "Allow"
         Resource = "*"
