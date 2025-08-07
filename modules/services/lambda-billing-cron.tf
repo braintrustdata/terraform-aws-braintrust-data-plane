@@ -1,6 +1,6 @@
 locals {
   billing_cron_function_name            = "${var.deployment_name}-BillingCron"
-  production_billing_telemetry_endpoint = "https://87qqbbajy9.execute-api.us-east-1.amazonaws.com/v1/events"
+  production_billing_telemetry_endpoint = "https://www.braintrust.dev/api/billing/telemetry/v1/events"
 }
 
 
