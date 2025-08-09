@@ -53,6 +53,14 @@ Type: `string`
 
 Default: `""`
 
+### <a name="input_billing_telemetry_url"></a> [billing\_telemetry\_url](#input\_billing\_telemetry\_url)
+
+Description: The URL endpoint for sending telemetry data. Do not change this unless instructed by support.
+
+Type: `string`
+
+Default: `"https://www.braintrust.dev/api/billing/telemetry/v1/events"`
+
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
 Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
@@ -239,11 +247,11 @@ Default: `false`
 
 ### <a name="input_enable_billing_telemetry"></a> [enable\_billing\_telemetry](#input\_enable\_billing\_telemetry)
 
-Description: Enable billing telemetry. Do not enable this unless instructed by support.
+Description: DEPRECATED: Billing telemetry is now always enabled. This parameter is ignored.
 
 Type: `bool`
 
-Default: `false`
+Default: `true`
 
 ### <a name="input_enable_brainstore"></a> [enable\_brainstore](#input\_enable\_brainstore)
 
@@ -324,6 +332,14 @@ Description: Optional override for the lambda version tag. Don't set this unless
 Type: `string`
 
 Default: `null`
+
+### <a name="input_monitoring_telemetry"></a> [monitoring\_telemetry](#input\_monitoring\_telemetry)
+
+Description: Support for internal monitoring telemetry. Do not set this unless instructed by support.
+
+Type: `string`
+
+Default: `""`
 
 ### <a name="input_outbound_rate_limit_max_requests"></a> [outbound\_rate\_limit\_max\_requests](#input\_outbound\_rate\_limit\_max\_requests)
 
