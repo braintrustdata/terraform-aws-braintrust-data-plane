@@ -49,3 +49,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
     }
   }
 }
+
+resource "aws_s3_bucket_public_access_block" "brainstore" {
+  bucket = aws_s3_bucket.brainstore.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
