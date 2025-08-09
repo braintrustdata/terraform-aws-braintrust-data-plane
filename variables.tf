@@ -203,10 +203,11 @@ variable "ai_proxy_reserved_concurrent_executions" {
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "enable_billing_telemetry" {
-  description = "Enable billing telemetry. Do not enable this unless instructed by support."
+  description = "DEPRECATED: Billing telemetry is now always enabled. This parameter is ignored."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "disable_billing_telemetry_aggregation" {
@@ -224,6 +225,12 @@ variable "billing_telemetry_log_level" {
     condition     = var.billing_telemetry_log_level == "" || contains(["info", "warn", "error", "debug"], var.billing_telemetry_log_level)
     error_message = "billing_telemetry_log_level must be empty or one of: info, warn, error, debug"
   }
+}
+
+variable "billing_telemetry_url" {
+  description = "The URL endpoint for sending telemetry data. Do not change this unless instructed by support."
+  type        = string
+  default     = "https://www.braintrust.dev/api/billing/telemetry/v1/events"
 }
 
 variable "whitelisted_origins" {
@@ -394,6 +401,11 @@ variable "brainstore_vacuum_all_objects" {
   default     = false
 }
 
+variable "monitoring_telemetry" {
+  description = "The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values. Available options are metrics, logs, traces, status, memprof, and usage."
+  type        = string
+  default     = "status,metrics"
+}
 variable "brainstore_extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore reader or dual use nodes"
