@@ -131,6 +131,12 @@ variable "brainstore_vacuum_all_objects" {
   default     = false
 }
 
+variable "monitoring_telemetry" {
+  description = "The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values. Available options are metrics, logs, traces, status, memprof, and usage."
+  type        = string
+  default     = "status,metrics"
+}
+
 variable "s3_bucket_retention_days" {
   type        = number
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
