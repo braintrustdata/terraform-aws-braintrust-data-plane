@@ -407,6 +407,11 @@ variable "brainstore_vacuum_all_objects" {
   default     = false
 }
 
+variable "monitoring_telemetry" {
+  description = "The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values. Available options are metrics, logs, traces, status, memprof, and usage."
+  type        = string
+  default     = "status,metrics"
+}
 variable "brainstore_extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore reader or dual use nodes"
