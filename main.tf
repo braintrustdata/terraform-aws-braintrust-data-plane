@@ -108,7 +108,7 @@ module "services" {
   lambda_version_tag_override = var.lambda_version_tag_override
 
   # Telemetry
-  monitoring_telemetry                  = var.monitoring_telemetry
+  monitoring_telemetry = var.monitoring_telemetry
 
   # Data stores
   postgres_username = module.database.postgres_database_username
