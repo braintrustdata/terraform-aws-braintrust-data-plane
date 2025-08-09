@@ -204,9 +204,9 @@ variable "ai_proxy_reserved_concurrent_executions" {
 }
 
 variable "enable_billing_telemetry" {
-  description = "Enable billing telemetry. Do not enable this unless instructed by support."
+  description = "DEPRECATED: Billing telemetry is now always enabled. This parameter is ignored."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "disable_billing_telemetry_aggregation" {
@@ -224,6 +224,18 @@ variable "billing_telemetry_log_level" {
     condition     = var.billing_telemetry_log_level == "" || contains(["info", "warn", "error", "debug"], var.billing_telemetry_log_level)
     error_message = "billing_telemetry_log_level must be empty or one of: info, warn, error, debug"
   }
+}
+
+variable "monitoring_telemetry" {
+  description = "Support for internal monitoring telemetry. Do not set this unless instructed by support."
+  type        = string
+  default     = ""
+}
+
+variable "billing_telemetry_url" {
+  description = "The URL endpoint for sending telemetry data. Do not change this unless instructed by support."
+  type        = string
+  default     = "https://www.braintrust.dev/api/billing/telemetry/v1/events"
 }
 
 variable "whitelisted_origins" {

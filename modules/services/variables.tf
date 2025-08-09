@@ -262,15 +262,27 @@ variable "extra_env_vars" {
 }
 
 variable "enable_billing_telemetry" {
-  description = "Enable billing telemetry. Do not enable this unless instructed by support."
+  description = "DEPRECATED. Use the monitoring_telemetry variable with or without `usage` instead to enable or disable billing telemetry."
+  type        = bool
+  default     = true
+}
+
+variable "disable_billing_telemetry_aggregation" {
+  description = "Disable billing telemetry aggregation. Do not set as true unless instructed by support."
   type        = bool
   default     = false
 }
 
-variable "disable_billing_telemetry_aggregation" {
-  description = "Disable billing telemetry aggregation. Do not disable this unless instructed by support."
-  type        = bool
-  default     = false
+variable "monitoring_telemetry" {
+  description = "The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values. Available options are metrics, logs, traces, status, memprof, and usage."
+  type        = string
+  default     = "status,metrics"
+}
+
+variable "billing_telemetry_url" {
+  description = "The URL endpoint for sending telemetry data. Do not change this unless instructed by support."
+  type        = string
+  default     = "https://www.braintrust.dev/api/billing/telemetry/v1/events"
 }
 
 variable "billing_telemetry_log_level" {

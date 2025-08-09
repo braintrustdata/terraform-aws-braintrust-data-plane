@@ -107,6 +107,9 @@ module "services" {
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
 
+  # Telemetry
+  monitoring_telemetry                  = var.monitoring_telemetry
+
   # Data stores
   postgres_username = module.database.postgres_database_username
   postgres_password = module.database.postgres_database_password
@@ -142,10 +145,10 @@ module "services" {
   service_additional_policy_arns             = var.service_additional_policy_arns
   extra_env_vars                             = var.service_extra_env_vars
 
-  # Billing telemetry
-  enable_billing_telemetry              = var.enable_billing_telemetry
+  # Billing usage telemetry
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
+  billing_telemetry_url                 = var.billing_telemetry_url
 
   # Networking
   vpc_id = module.main_vpc.vpc_id
