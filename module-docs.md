@@ -335,11 +335,11 @@ Default: `null`
 
 ### <a name="input_monitoring_telemetry"></a> [monitoring\_telemetry](#input\_monitoring\_telemetry)
 
-Description: Support for internal monitoring telemetry. Do not set this unless instructed by support.
+Description: The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values. Available options are metrics, logs, traces, status, memprof, and usage.
 
 Type: `string`
 
-Default: `""`
+Default: `"status,metrics"`
 
 ### <a name="input_outbound_rate_limit_max_requests"></a> [outbound\_rate\_limit\_max\_requests](#input\_outbound\_rate\_limit\_max\_requests)
 

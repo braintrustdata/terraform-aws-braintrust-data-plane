@@ -227,12 +227,6 @@ variable "billing_telemetry_log_level" {
   }
 }
 
-variable "monitoring_telemetry" {
-  description = "Support for internal monitoring telemetry. Do not set this unless instructed by support."
-  type        = string
-  default     = ""
-}
-
 variable "billing_telemetry_url" {
   description = "The URL endpoint for sending telemetry data. Do not change this unless instructed by support."
   type        = string
