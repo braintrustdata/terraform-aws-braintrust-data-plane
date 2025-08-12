@@ -389,9 +389,27 @@ variable "brainstore_vacuum_all_objects" {
 }
 
 variable "monitoring_telemetry" {
-  description = "The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values. Available options are metrics, logs, traces, status, memprof, and usage."
+  description = <<-EOT
+    The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values.
+
+    Available options:
+    - status: Health check information (default)
+    - metrics: System metrics (CPU/memory) and Braintrust-specific metrics like indexing lag (default)
+    - usage: Billing usage telemetry for aggregate usage metrics
+    - memprof: Memory profiling statistics and heap usage patterns
+    - logs: Application logs
+    - traces: Distributed tracing data
+  EOT
   type        = string
   default     = "status,metrics"
+
+  validation {
+    condition = alltrue([
+      for item in split(",", var.monitoring_telemetry) :
+      contains(["metrics", "logs", "traces", "status", "memprof", "usage"], trimspace(item))
+    ])
+    error_message = "The monitoring_telemetry value must be a comma-separated list containing only: metrics, logs, traces, status, memprof, usage."
+  }
 }
 variable "brainstore_extra_env_vars" {
   type        = map(string)

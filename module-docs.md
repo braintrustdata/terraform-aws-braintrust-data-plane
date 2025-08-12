@@ -319,7 +319,15 @@ Default: `null`
 
 ### <a name="input_monitoring_telemetry"></a> [monitoring\_telemetry](#input\_monitoring\_telemetry)
 
-Description: The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values. Available options are metrics, logs, traces, status, memprof, and usage.
+Description: The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values.
+
+Available options:
+- status: Health check information (default)
+- metrics: System metrics (CPU/memory) and Braintrust-specific metrics like indexing lag (default)
+- usage: Billing usage telemetry for aggregate usage metrics
+- memprof: Memory profiling statistics and heap usage patterns
+- logs: Application logs
+- traces: Distributed tracing data
 
 Type: `string`
 
