@@ -148,7 +148,6 @@ module "services" {
   # Billing usage telemetry
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
-  billing_telemetry_url                 = var.billing_telemetry_url
 
   # Networking
   vpc_id = module.main_vpc.vpc_id

@@ -227,12 +227,6 @@ variable "billing_telemetry_log_level" {
   }
 }
 
-variable "billing_telemetry_url" {
-  description = "The URL endpoint for sending telemetry data. Do not change this unless instructed by support."
-  type        = string
-  default     = "https://www.braintrust.dev/api/billing/telemetry/v1/events"
-}
-
 variable "whitelisted_origins" {
   description = "List of origins to whitelist for CORS"
   type        = list(string)

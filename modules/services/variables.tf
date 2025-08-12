@@ -281,12 +281,6 @@ variable "monitoring_telemetry" {
   default     = "status,metrics"
 }
 
-variable "billing_telemetry_url" {
-  description = "The URL endpoint for sending telemetry data. Do not change this unless instructed by support."
-  type        = string
-  default     = "https://www.braintrust.dev/api/billing/telemetry/v1/events"
-}
-
 variable "billing_telemetry_log_level" {
   description = "Log level for billing telemetry. Defaults to 'error' if empty, or unspecified."
   type        = string

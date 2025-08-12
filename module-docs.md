@@ -53,14 +53,6 @@ Type: `string`
 
 Default: `""`
 
-### <a name="input_billing_telemetry_url"></a> [billing\_telemetry\_url](#input\_billing\_telemetry\_url)
-
-Description: The URL endpoint for sending telemetry data. Do not change this unless instructed by support.
-
-Type: `string`
-
-Default: `"https://www.braintrust.dev/api/billing/telemetry/v1/events"`
-
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
 Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.

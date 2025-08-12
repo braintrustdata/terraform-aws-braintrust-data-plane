@@ -40,7 +40,6 @@ locals {
     CONTROL_PLANE_TELEMETRY       = var.monitoring_telemetry
     TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
     TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
-    TELEMETRY_URL                 = var.billing_telemetry_url
   }
   # There env vars are specific to the API Handler. Don't add env vars here if you need them for the AI Proxy as well.
   api_handler_specific_env_vars = {
