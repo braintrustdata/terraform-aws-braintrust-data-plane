@@ -203,13 +203,6 @@ variable "ai_proxy_reserved_concurrent_executions" {
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
 }
 
-# tflint-ignore: terraform_unused_declarations
-variable "enable_billing_telemetry" {
-  description = "DEPRECATED: Billing telemetry is now always enabled. This parameter is ignored."
-  type        = bool
-  default     = true
-}
-
 variable "disable_billing_telemetry_aggregation" {
   description = "Disable billing telemetry aggregation. Do not disable this unless instructed by support."
   type        = bool

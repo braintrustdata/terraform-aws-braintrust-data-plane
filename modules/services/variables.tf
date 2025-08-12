@@ -261,14 +261,6 @@ variable "extra_env_vars" {
   }
 }
 
-
-# tflint-ignore: terraform_unused_declarations
-variable "enable_billing_telemetry" {
-  description = "DEPRECATED. Use the monitoring_telemetry variable with or without `usage` instead to enable or disable billing telemetry."
-  type        = bool
-  default     = true
-}
-
 variable "disable_billing_telemetry_aggregation" {
   description = "Disable billing telemetry aggregation. Do not set as true unless instructed by support."
   type        = bool

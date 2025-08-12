@@ -237,14 +237,6 @@ Type: `bool`
 
 Default: `false`
 
-### <a name="input_enable_billing_telemetry"></a> [enable\_billing\_telemetry](#input\_enable\_billing\_telemetry)
-
-Description: DEPRECATED: Billing telemetry is now always enabled. This parameter is ignored.
-
-Type: `bool`
-
-Default: `true`
-
 ### <a name="input_enable_brainstore"></a> [enable\_brainstore](#input\_enable\_brainstore)
 
 Description: Enable Brainstore for faster analytics
