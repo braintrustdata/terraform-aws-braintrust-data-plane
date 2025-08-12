@@ -283,7 +283,7 @@ variable "monitoring_telemetry" {
   default     = "status,metrics"
 
   validation {
-    condition = alltrue([
+    condition = var.monitoring_telemetry == "" || alltrue([
       for item in split(",", var.monitoring_telemetry) :
       contains(["metrics", "logs", "traces", "status", "memprof", "usage"], trimspace(item))
     ])

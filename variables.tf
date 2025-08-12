@@ -404,13 +404,14 @@ variable "monitoring_telemetry" {
   default     = "status,metrics"
 
   validation {
-    condition = alltrue([
+    condition = var.monitoring_telemetry == "" || alltrue([
       for item in split(",", var.monitoring_telemetry) :
       contains(["metrics", "logs", "traces", "status", "memprof", "usage"], trimspace(item))
     ])
     error_message = "The monitoring_telemetry value must be a comma-separated list containing only: metrics, logs, traces, status, memprof, usage."
   }
 }
+
 variable "brainstore_extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore reader or dual use nodes"
