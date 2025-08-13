@@ -157,14 +157,6 @@ Type: `number`
 
 Default: `7`
 
-### <a name="input_brainstore_vacuum_all_objects"></a> [brainstore\_vacuum\_all\_objects](#input\_brainstore\_vacuum\_all\_objects)
-
-Description: Enable vacuuming of all objects in Brainstore
-
-Type: `bool`
-
-Default: `false`
-
 ### <a name="input_brainstore_version_override"></a> [brainstore\_version\_override](#input\_brainstore\_version\_override)
 
 Description: Lock Brainstore on a specific version. Don't set this unless instructed by Braintrust.

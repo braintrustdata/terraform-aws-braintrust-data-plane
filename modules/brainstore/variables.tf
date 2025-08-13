@@ -125,12 +125,6 @@ variable "brainstore_disable_optimization_worker" {
   default     = false
 }
 
-variable "brainstore_vacuum_all_objects" {
-  type        = bool
-  description = "Whether to vacuum all objects in Brainstore"
-  default     = false
-}
-
 variable "monitoring_telemetry" {
   description = <<-EOT
     The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values.
