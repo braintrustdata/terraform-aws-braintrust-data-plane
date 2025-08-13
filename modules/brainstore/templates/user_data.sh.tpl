@@ -100,7 +100,9 @@ BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${datab
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
 BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
 BRAINSTORE_DISABLE_OPTIMIZATION_WORKER=${brainstore_disable_optimization_worker}
-BRAINSTORE_VACUUM_OBJECT_ALL=${brainstore_vacuum_all_objects}
+%{ if brainstore_disable_vacuum ~}
+BRAINSTORE_VACUUM_OBJECT_ALL=false
+%{ endif ~}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
