@@ -21,6 +21,7 @@ resource "aws_lambda_function" "billing_cron" {
       PG_URL                        = local.postgres_url
       REDIS_HOST                    = var.redis_host
       REDIS_PORT                    = var.redis_port
+      CONTROL_PLANE_TELEMETRY       = var.monitoring_telemetry
       TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
       TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
       SERVICE_TOKEN_SECRET_KEY      = random_password.service_token_secret_key.result
