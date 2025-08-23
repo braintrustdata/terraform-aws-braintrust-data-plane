@@ -9,7 +9,7 @@ resource "aws_lambda_function" "ai_proxy" {
   handler                        = "index.handler"
   runtime                        = "nodejs22.x"
   architectures                  = ["arm64"]
-  memory_size                    = 1024
+  memory_size                    = 10240 # Max that lambda supports
   reserved_concurrent_executions = var.ai_proxy_reserved_concurrent_executions
   timeout                        = 900
   publish                        = true
