@@ -119,12 +119,6 @@ variable "writer_instance_type" {
   default     = "c8gd.8xlarge"
 }
 
-variable "brainstore_disable_optimization_worker" {
-  type        = bool
-  description = "Whether to disable the optimization worker in Brainstore"
-  default     = false
-}
-
 variable "monitoring_telemetry" {
   description = <<-EOT
     The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values.

@@ -199,7 +199,6 @@ module "brainstore" {
   extra_env_vars_writer                  = var.brainstore_extra_env_vars_writer
   writer_instance_count                  = var.brainstore_writer_instance_count
   writer_instance_type                   = var.brainstore_writer_instance_type
-  brainstore_disable_optimization_worker = var.brainstore_disable_optimization_worker
   monitoring_telemetry                   = var.monitoring_telemetry
   database_host                          = module.database.postgres_database_address
   database_port                          = module.database.postgres_database_port

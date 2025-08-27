@@ -48,7 +48,6 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_license_key                 = var.license_key
     brainstore_version_override            = var.version_override == null ? "" : var.version_override
     brainstore_release_version             = local.brainstore_release_version
-    brainstore_disable_optimization_worker = var.brainstore_disable_optimization_worker
     monitoring_telemetry                   = var.monitoring_telemetry
     brainstore_disable_vacuum              = false
     is_dedicated_reader_node               = "false"

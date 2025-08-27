@@ -69,14 +69,6 @@ Type: `string`
 
 Default: `"force"`
 
-### <a name="input_brainstore_disable_optimization_worker"></a> [brainstore\_disable\_optimization\_worker](#input\_brainstore\_disable\_optimization\_worker)
-
-Description: Disable the optimization worker globally in Brainstore
-
-Type: `bool`
-
-Default: `false`
-
 ### <a name="input_brainstore_enable_historical_full_backfill"></a> [brainstore\_enable\_historical\_full\_backfill](#input\_brainstore\_enable\_historical\_full\_backfill)
 
 Description: Enable historical full backfill for Brainstore. Don't modify this unless instructed by Braintrust.
