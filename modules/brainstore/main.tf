@@ -56,9 +56,9 @@ resource "aws_launch_template" "brainstore" {
     brainstore_version_override = var.version_override == null ? "" : var.version_override
     brainstore_release_version  = local.brainstore_release_version
     monitoring_telemetry        = var.monitoring_telemetry
+    brainstore_disable_optimization_worker = var.brainstore_disable_optimization_worker
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
-    brainstore_disable_optimization_worker = local.has_writer_nodes ? true : var.brainstore_disable_optimization_worker
-    brainstore_disable_vacuum              = local.has_writer_nodes ? true : false
+    is_dedicated_reader_node               = local.has_writer_nodes
     is_dedicated_writer_node               = "false"
     extra_env_vars                         = var.extra_env_vars
     internal_observability_api_key         = var.internal_observability_api_key

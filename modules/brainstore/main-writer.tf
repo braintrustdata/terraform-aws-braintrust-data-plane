@@ -51,6 +51,7 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_disable_optimization_worker = var.brainstore_disable_optimization_worker
     monitoring_telemetry                   = var.monitoring_telemetry
     brainstore_disable_vacuum              = false
+    is_dedicated_reader_node               = "false"
     is_dedicated_writer_node               = "true"
     extra_env_vars                         = var.extra_env_vars_writer
     internal_observability_api_key         = var.internal_observability_api_key
