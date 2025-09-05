@@ -57,11 +57,26 @@ module "braintrust-data-plane" {
   brainstore_instance_count = 2
   brainstore_instance_type  = "c8gd.4xlarge"
 
+  # (Optional) Enable CPU-based autoscaling for Brainstore instances
+  # brainstore_enable_autoscaling = true
+  # brainstore_autoscaling_min_capacity = 2
+  # brainstore_autoscaling_max_capacity = 4
+  # brainstore_autoscaling_desired_capacity = 2
+  # brainstore_autoscaling_cpu_scale_up_threshold = 70
+  # brainstore_autoscaling_cpu_scale_down_threshold = 30
+
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
+  # (Optional) Enable CPU-based autoscaling for Brainstore writer instances
+  # brainstore_writer_enable_autoscaling = true
+  # brainstore_writer_autoscaling_min_capacity = 1
+  # brainstore_writer_autoscaling_max_capacity = 2
+  # brainstore_writer_autoscaling_desired_capacity = 1
+  # brainstore_writer_autoscaling_cpu_scale_up_threshold = 70
+  # brainstore_writer_autoscaling_cpu_scale_down_threshold = 30
 
   ### Redis configuration
 
