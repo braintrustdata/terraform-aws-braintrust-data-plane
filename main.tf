@@ -124,7 +124,7 @@ module "services" {
   brainstore_enabled                         = var.enable_brainstore
   brainstore_default                         = var.brainstore_default
   brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_autoscaling_min_capacity != "" ? module.brainstore[0].writer_dns_name : null
   brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
   brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
@@ -188,8 +188,6 @@ module "brainstore" {
   count  = var.enable_brainstore ? 1 : 0
 
   deployment_name             = var.deployment_name
-  instance_count              = var.brainstore_instance_count
-  instance_type               = var.brainstore_instance_type
   instance_key_pair_name      = var.brainstore_instance_key_pair_name
   port                        = var.brainstore_port
   license_key                 = var.brainstore_license_key
@@ -198,8 +196,6 @@ module "brainstore" {
   brainstore_enable_retention = var.brainstore_enable_retention
   extra_env_vars              = var.brainstore_extra_env_vars
   extra_env_vars_writer       = var.brainstore_extra_env_vars_writer
-  writer_instance_count       = var.brainstore_writer_instance_count
-  writer_instance_type        = var.brainstore_writer_instance_type
   monitoring_telemetry        = var.monitoring_telemetry
   database_host               = module.database.postgres_database_address
   database_port               = module.database.postgres_database_port
@@ -211,6 +207,18 @@ module "brainstore" {
   internal_observability_api_key  = var.internal_observability_api_key
   internal_observability_env_name = var.internal_observability_env_name
   internal_observability_region   = var.internal_observability_region
+
+  # Autoscaling configuration (applies to main instances - readers when writers enabled, reader/writer when writers disabled)
+  instance_type                = var.brainstore_instance_type
+  autoscaling_min_capacity     = var.brainstore_autoscaling_min_capacity
+  autoscaling_max_capacity     = var.brainstore_autoscaling_max_capacity
+  autoscaling_cpu_target_value = var.brainstore_autoscaling_cpu_target_value
+
+  # Writer autoscaling configuration (optional, separate from readers)
+  writer_instance_type                = var.brainstore_writer_instance_type
+  writer_autoscaling_min_capacity     = var.brainstore_writer_autoscaling_min_capacity
+  writer_autoscaling_max_capacity     = var.brainstore_writer_autoscaling_max_capacity
+  writer_autoscaling_cpu_target_value = var.brainstore_writer_autoscaling_cpu_target_value
 
   vpc_id = module.main_vpc.vpc_id
   authorized_security_groups = merge(
