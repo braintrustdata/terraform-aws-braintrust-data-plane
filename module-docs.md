@@ -53,6 +53,122 @@ Type: `string`
 
 Default: `""`
 
+### <a name="input_brainstore_autoscaling_adjustment_type"></a> [brainstore\_autoscaling\_adjustment\_type](#input\_brainstore\_autoscaling\_adjustment\_type)
+
+Description: The type of adjustment to make when scaling
+
+Type: `string`
+
+Default: `"ChangeInCapacity"`
+
+### <a name="input_brainstore_autoscaling_cpu_evaluation_periods"></a> [brainstore\_autoscaling\_cpu\_evaluation\_periods](#input\_brainstore\_autoscaling\_cpu\_evaluation\_periods)
+
+Description: Number of evaluation periods for CPU metric before triggering alarm
+
+Type: `number`
+
+Default: `2`
+
+### <a name="input_brainstore_autoscaling_cpu_period"></a> [brainstore\_autoscaling\_cpu\_period](#input\_brainstore\_autoscaling\_cpu\_period)
+
+Description: Period in seconds for CPU metric evaluation
+
+Type: `number`
+
+Default: `300`
+
+### <a name="input_brainstore_autoscaling_cpu_scale_down_threshold"></a> [brainstore\_autoscaling\_cpu\_scale\_down\_threshold](#input\_brainstore\_autoscaling\_cpu\_scale\_down\_threshold)
+
+Description: CPU utilization threshold percentage to trigger scale down
+
+Type: `number`
+
+Default: `30`
+
+### <a name="input_brainstore_autoscaling_cpu_scale_up_threshold"></a> [brainstore\_autoscaling\_cpu\_scale\_up\_threshold](#input\_brainstore\_autoscaling\_cpu\_scale\_up\_threshold)
+
+Description: CPU utilization threshold percentage to trigger scale up
+
+Type: `number`
+
+Default: `70`
+
+### <a name="input_brainstore_autoscaling_desired_capacity"></a> [brainstore\_autoscaling\_desired\_capacity](#input\_brainstore\_autoscaling\_desired\_capacity)
+
+Description: Desired number of Brainstore instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `2`
+
+### <a name="input_brainstore_autoscaling_max_capacity"></a> [brainstore\_autoscaling\_max\_capacity](#input\_brainstore\_autoscaling\_max\_capacity)
+
+Description: Maximum number of Brainstore instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `4`
+
+### <a name="input_brainstore_autoscaling_min_capacity"></a> [brainstore\_autoscaling\_min\_capacity](#input\_brainstore\_autoscaling\_min\_capacity)
+
+Description: Minimum number of Brainstore instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `2`
+
+### <a name="input_brainstore_autoscaling_step_scaling_down"></a> [brainstore\_autoscaling\_step\_scaling\_down](#input\_brainstore\_autoscaling\_step\_scaling\_down)
+
+Description: Step scaling adjustments for scale down actions
+
+Type:
+
+```hcl
+list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+```
+
+Default:
+
+```json
+[
+  {
+    "metric_interval_lower_bound": null,
+    "metric_interval_upper_bound": 0,
+    "scaling_adjustment": -1
+  }
+]
+```
+
+### <a name="input_brainstore_autoscaling_step_scaling_up"></a> [brainstore\_autoscaling\_step\_scaling\_up](#input\_brainstore\_autoscaling\_step\_scaling\_up)
+
+Description: Step scaling adjustments for scale up actions
+
+Type:
+
+```hcl
+list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+```
+
+Default:
+
+```json
+[
+  {
+    "metric_interval_lower_bound": 0,
+    "metric_interval_upper_bound": null,
+    "scaling_adjustment": 1
+  }
+]
+```
+
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
 Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
@@ -72,6 +188,14 @@ Default: `"force"`
 ### <a name="input_brainstore_disable_optimization_worker"></a> [brainstore\_disable\_optimization\_worker](#input\_brainstore\_disable\_optimization\_worker)
 
 Description: Disable the optimization worker globally in Brainstore
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_brainstore_enable_autoscaling"></a> [brainstore\_enable\_autoscaling](#input\_brainstore\_enable\_autoscaling)
+
+Description: Enable CPU-based autoscaling for Brainstore instances
 
 Type: `bool`
 
@@ -164,6 +288,130 @@ Description: Lock Brainstore on a specific version. Don't set this unless instru
 Type: `string`
 
 Default: `null`
+
+### <a name="input_brainstore_writer_autoscaling_adjustment_type"></a> [brainstore\_writer\_autoscaling\_adjustment\_type](#input\_brainstore\_writer\_autoscaling\_adjustment\_type)
+
+Description: The type of adjustment to make when scaling writers
+
+Type: `string`
+
+Default: `"ChangeInCapacity"`
+
+### <a name="input_brainstore_writer_autoscaling_cpu_evaluation_periods"></a> [brainstore\_writer\_autoscaling\_cpu\_evaluation\_periods](#input\_brainstore\_writer\_autoscaling\_cpu\_evaluation\_periods)
+
+Description: Number of evaluation periods for CPU metric before triggering alarm for writers
+
+Type: `number`
+
+Default: `2`
+
+### <a name="input_brainstore_writer_autoscaling_cpu_period"></a> [brainstore\_writer\_autoscaling\_cpu\_period](#input\_brainstore\_writer\_autoscaling\_cpu\_period)
+
+Description: Period in seconds for CPU metric evaluation for writers
+
+Type: `number`
+
+Default: `300`
+
+### <a name="input_brainstore_writer_autoscaling_cpu_scale_down_threshold"></a> [brainstore\_writer\_autoscaling\_cpu\_scale\_down\_threshold](#input\_brainstore\_writer\_autoscaling\_cpu\_scale\_down\_threshold)
+
+Description: CPU utilization threshold percentage to trigger scale down for writers
+
+Type: `number`
+
+Default: `30`
+
+### <a name="input_brainstore_writer_autoscaling_cpu_scale_up_threshold"></a> [brainstore\_writer\_autoscaling\_cpu\_scale\_up\_threshold](#input\_brainstore\_writer\_autoscaling\_cpu\_scale\_up\_threshold)
+
+Description: CPU utilization threshold percentage to trigger scale up for writers
+
+Type: `number`
+
+Default: `70`
+
+### <a name="input_brainstore_writer_autoscaling_desired_capacity"></a> [brainstore\_writer\_autoscaling\_desired\_capacity](#input\_brainstore\_writer\_autoscaling\_desired\_capacity)
+
+Description: Desired number of Brainstore writer instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `1`
+
+### <a name="input_brainstore_writer_autoscaling_max_capacity"></a> [brainstore\_writer\_autoscaling\_max\_capacity](#input\_brainstore\_writer\_autoscaling\_max\_capacity)
+
+Description: Maximum number of Brainstore writer instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `2`
+
+### <a name="input_brainstore_writer_autoscaling_min_capacity"></a> [brainstore\_writer\_autoscaling\_min\_capacity](#input\_brainstore\_writer\_autoscaling\_min\_capacity)
+
+Description: Minimum number of Brainstore writer instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `1`
+
+### <a name="input_brainstore_writer_autoscaling_step_scaling_down"></a> [brainstore\_writer\_autoscaling\_step\_scaling\_down](#input\_brainstore\_writer\_autoscaling\_step\_scaling\_down)
+
+Description: Step scaling adjustments for scale down actions for writers
+
+Type:
+
+```hcl
+list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+```
+
+Default:
+
+```json
+[
+  {
+    "metric_interval_lower_bound": null,
+    "metric_interval_upper_bound": 0,
+    "scaling_adjustment": -1
+  }
+]
+```
+
+### <a name="input_brainstore_writer_autoscaling_step_scaling_up"></a> [brainstore\_writer\_autoscaling\_step\_scaling\_up](#input\_brainstore\_writer\_autoscaling\_step\_scaling\_up)
+
+Description: Step scaling adjustments for scale up actions for writers
+
+Type:
+
+```hcl
+list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+```
+
+Default:
+
+```json
+[
+  {
+    "metric_interval_lower_bound": 0,
+    "metric_interval_upper_bound": null,
+    "scaling_adjustment": 1
+  }
+]
+```
+
+### <a name="input_brainstore_writer_enable_autoscaling"></a> [brainstore\_writer\_enable\_autoscaling](#input\_brainstore\_writer\_enable\_autoscaling)
+
+Description: Enable CPU-based autoscaling for Brainstore writer instances
+
+Type: `bool`
+
+Default: `false`
 
 ### <a name="input_brainstore_writer_instance_count"></a> [brainstore\_writer\_instance\_count](#input\_brainstore\_writer\_instance\_count)
 
