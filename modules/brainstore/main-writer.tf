@@ -183,7 +183,7 @@ resource "aws_autoscaling_group" "brainstore_writer" {
 # CloudWatch Alarms for CPU-based autoscaling (Writers)
 resource "aws_cloudwatch_metric_alarm" "brainstore_writer_cpu_high" {
   count               = local.has_writer_nodes && var.writer_enable_autoscaling ? 1 : 0
-  alarm_name          = "Autoscaling/${var.deployment_name}-brainstore-writer/CPUUtilization/Low"
+  alarm_name          = "Autoscaling/${var.deployment_name}-brainstore-writer/CPUUtilization/High"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = var.writer_autoscaling_cpu_evaluation_periods
   metric_name         = "CPUUtilization"
@@ -203,7 +203,7 @@ resource "aws_cloudwatch_metric_alarm" "brainstore_writer_cpu_high" {
 
 resource "aws_cloudwatch_metric_alarm" "brainstore_writer_cpu_low" {
   count               = local.has_writer_nodes && var.writer_enable_autoscaling ? 1 : 0
-  alarm_name          = "Autoscaling/${var.deployment_name}-brainstore-writer/CPUUtilization/High"
+  alarm_name          = "Autoscaling/${var.deployment_name}-brainstore-writer/CPUUtilization/Low"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.writer_autoscaling_cpu_evaluation_periods
   metric_name         = "CPUUtilization"
