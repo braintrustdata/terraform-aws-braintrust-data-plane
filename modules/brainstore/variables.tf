@@ -172,3 +172,186 @@ variable "internal_observability_region" {
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = "us5"
 }
+
+# Autoscaling Configuration
+variable "enable_autoscaling" {
+  type        = bool
+  description = "Enable CPU-based autoscaling for Brainstore instances (readers when writers enabled, reader/writer when writers disabled)"
+  default     = false
+}
+
+variable "autoscaling_min_capacity" {
+  type        = number
+  description = "Minimum number of Brainstore instances when autoscaling is enabled"
+  default     = 2
+}
+
+variable "autoscaling_max_capacity" {
+  type        = number
+  description = "Maximum number of Brainstore instances when autoscaling is enabled"
+  default     = 4
+}
+
+variable "autoscaling_desired_capacity" {
+  type        = number
+  description = "Desired number of Brainstore instances when autoscaling is enabled"
+  default     = 2
+}
+
+variable "autoscaling_cpu_scale_up_threshold" {
+  type        = number
+  description = "CPU utilization threshold percentage to trigger scale up"
+  default     = 70
+}
+
+variable "autoscaling_cpu_scale_down_threshold" {
+  type        = number
+  description = "CPU utilization threshold percentage to trigger scale down"
+  default     = 30
+}
+
+variable "autoscaling_cpu_period" {
+  type        = number
+  description = "Period in seconds for CPU metric evaluation"
+  default     = 300
+}
+
+variable "autoscaling_cpu_evaluation_periods" {
+  type        = number
+  description = "Number of evaluation periods for CPU metric before triggering alarm"
+  default     = 2
+}
+
+variable "autoscaling_adjustment_type" {
+  type        = string
+  description = "The type of adjustment to make when scaling"
+  default     = "ChangeInCapacity"
+  validation {
+    condition     = contains(["ChangeInCapacity", "ExactCapacity", "PercentChangeInCapacity"], var.autoscaling_adjustment_type)
+    error_message = "The adjustment_type must be one of: ChangeInCapacity, ExactCapacity, PercentChangeInCapacity."
+  }
+}
+
+variable "autoscaling_step_scaling_up" {
+  type = list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+  description = "Step scaling adjustments for scale up actions"
+  default = [
+    {
+      metric_interval_lower_bound = 0
+      metric_interval_upper_bound = null
+      scaling_adjustment          = 1
+    }
+  ]
+}
+
+variable "autoscaling_step_scaling_down" {
+  type = list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+  description = "Step scaling adjustments for scale down actions"
+  default = [
+    {
+      metric_interval_lower_bound = null
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = -1
+    }
+  ]
+}
+
+# Writer Autoscaling Configuration
+variable "writer_enable_autoscaling" {
+  type        = bool
+  description = "Enable CPU-based autoscaling for Brainstore writer instances"
+  default     = false
+}
+
+variable "writer_autoscaling_min_capacity" {
+  type        = number
+  description = "Minimum number of Brainstore writer instances when autoscaling is enabled"
+  default     = 1
+}
+
+variable "writer_autoscaling_max_capacity" {
+  type        = number
+  description = "Maximum number of Brainstore writer instances when autoscaling is enabled"
+  default     = 2
+}
+
+variable "writer_autoscaling_desired_capacity" {
+  type        = number
+  description = "Desired number of Brainstore writer instances when autoscaling is enabled"
+  default     = 1
+}
+
+variable "writer_autoscaling_cpu_scale_up_threshold" {
+  type        = number
+  description = "CPU utilization threshold percentage to trigger scale up for writers"
+  default     = 70
+}
+
+variable "writer_autoscaling_cpu_scale_down_threshold" {
+  type        = number
+  description = "CPU utilization threshold percentage to trigger scale down for writers"
+  default     = 30
+}
+
+variable "writer_autoscaling_cpu_period" {
+  type        = number
+  description = "Period in seconds for CPU metric evaluation for writers"
+  default     = 300
+}
+
+variable "writer_autoscaling_cpu_evaluation_periods" {
+  type        = number
+  description = "Number of evaluation periods for CPU metric before triggering alarm for writers"
+  default     = 2
+}
+
+
+variable "writer_autoscaling_adjustment_type" {
+  type        = string
+  description = "The type of adjustment to make when scaling writers"
+  default     = "ChangeInCapacity"
+  validation {
+    condition     = contains(["ChangeInCapacity", "ExactCapacity", "PercentChangeInCapacity"], var.writer_autoscaling_adjustment_type)
+    error_message = "The adjustment_type must be one of: ChangeInCapacity, ExactCapacity, PercentChangeInCapacity."
+  }
+}
+
+variable "writer_autoscaling_step_scaling_up" {
+  type = list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+  description = "Step scaling adjustments for scale up actions for writers"
+  default = [
+    {
+      metric_interval_lower_bound = 0
+      metric_interval_upper_bound = null
+      scaling_adjustment          = 1
+    }
+  ]
+}
+
+variable "writer_autoscaling_step_scaling_down" {
+  type = list(object({
+    metric_interval_lower_bound = number
+    metric_interval_upper_bound = number
+    scaling_adjustment          = number
+  }))
+  description = "Step scaling adjustments for scale down actions for writers"
+  default = [
+    {
+      metric_interval_lower_bound = null
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = -1
+    }
+  ]
+}

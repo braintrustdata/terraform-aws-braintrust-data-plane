@@ -143,16 +143,16 @@ resource "aws_lb_listener" "brainstore" {
 
 resource "aws_autoscaling_group" "brainstore" {
   name_prefix         = "${var.deployment_name}-brainstore"
-  min_size            = var.instance_count
-  max_size            = var.instance_count * 2
-  desired_capacity    = var.instance_count
+  min_size            = var.enable_autoscaling ? var.autoscaling_min_capacity : var.instance_count
+  max_size            = var.enable_autoscaling ? var.autoscaling_max_capacity : var.instance_count * 2
+  desired_capacity    = var.enable_autoscaling ? var.autoscaling_desired_capacity : var.instance_count
   vpc_zone_identifier = var.private_subnet_ids
   health_check_type   = "EBS,ELB"
   # This is essentially the expected boot and setup time of the instance.
   # If too low, the ASG may terminate the instance before it has a chance to boot.
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
-  wait_for_elb_capacity     = var.instance_count
+  wait_for_elb_capacity     = var.enable_autoscaling ? var.autoscaling_desired_capacity : var.instance_count
   launch_template {
     id      = aws_launch_template.brainstore.id
     version = aws_launch_template.brainstore.latest_version
@@ -184,6 +184,84 @@ resource "aws_autoscaling_group" "brainstore" {
       key                 = tag.key
       value               = tag.value
       propagate_at_launch = true
+    }
+  }
+}
+
+# CloudWatch Alarms for CPU-based autoscaling
+resource "aws_cloudwatch_metric_alarm" "brainstore_cpu_high" {
+  count               = var.enable_autoscaling ? 1 : 0
+  alarm_name          = "Autoscaling/${var.deployment_name}-brainstore/CPUUtilization/High"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = var.autoscaling_cpu_evaluation_periods
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = var.autoscaling_cpu_period
+  statistic           = "Average"
+  threshold           = var.autoscaling_cpu_scale_up_threshold
+  alarm_description   = "This metric monitors brainstore cpu utilization for scale up"
+  alarm_actions       = [aws_autoscaling_policy.brainstore_scale_up[0].arn]
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.brainstore.name
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "brainstore_cpu_low" {
+  count               = var.enable_autoscaling ? 1 : 0
+  alarm_name          = "Autoscaling/${var.deployment_name}-brainstore/CPUUtilization/Low"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = var.autoscaling_cpu_evaluation_periods
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = var.autoscaling_cpu_period
+  statistic           = "Average"
+  threshold           = var.autoscaling_cpu_scale_down_threshold
+  alarm_description   = "This metric monitors brainstore cpu utilization for scale down"
+  alarm_actions       = [aws_autoscaling_policy.brainstore_scale_down[0].arn]
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.brainstore.name
+  }
+
+  tags = local.common_tags
+}
+
+# Autoscaling Policies - Step Scaling
+resource "aws_autoscaling_policy" "brainstore_scale_up" {
+  count                     = var.enable_autoscaling ? 1 : 0
+  name                      = "${var.deployment_name}-brainstore-scale-up"
+  adjustment_type           = var.autoscaling_adjustment_type
+  autoscaling_group_name    = aws_autoscaling_group.brainstore.name
+  policy_type               = "StepScaling"
+  estimated_instance_warmup = 300
+
+  dynamic "step_adjustment" {
+    for_each = var.autoscaling_step_scaling_up
+    content {
+      metric_interval_lower_bound = step_adjustment.value.metric_interval_lower_bound
+      metric_interval_upper_bound = step_adjustment.value.metric_interval_upper_bound
+      scaling_adjustment          = step_adjustment.value.scaling_adjustment
+    }
+  }
+}
+
+resource "aws_autoscaling_policy" "brainstore_scale_down" {
+  count                     = var.enable_autoscaling ? 1 : 0
+  name                      = "${var.deployment_name}-brainstore-scale-down"
+  adjustment_type           = var.autoscaling_adjustment_type
+  autoscaling_group_name    = aws_autoscaling_group.brainstore.name
+  policy_type               = "StepScaling"
+  estimated_instance_warmup = 300
+
+  dynamic "step_adjustment" {
+    for_each = var.autoscaling_step_scaling_down
+    content {
+      metric_interval_lower_bound = step_adjustment.value.metric_interval_lower_bound
+      metric_interval_upper_bound = step_adjustment.value.metric_interval_upper_bound
+      scaling_adjustment          = step_adjustment.value.scaling_adjustment
     }
   }
 }
