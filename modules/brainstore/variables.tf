@@ -192,12 +192,6 @@ variable "autoscaling_max_capacity" {
   default     = 4
 }
 
-variable "autoscaling_desired_capacity" {
-  type        = number
-  description = "Desired number of Brainstore instances when autoscaling is enabled"
-  default     = 2
-}
-
 variable "autoscaling_cpu_target_value" {
   type        = number
   description = "Target CPU utilization percentage for target tracking scaling"
@@ -221,12 +215,6 @@ variable "writer_autoscaling_max_capacity" {
   type        = number
   description = "Maximum number of Brainstore writer instances when autoscaling is enabled"
   default     = 2
-}
-
-variable "writer_autoscaling_desired_capacity" {
-  type        = number
-  description = "Desired number of Brainstore writer instances when autoscaling is enabled"
-  default     = 1
 }
 
 variable "writer_autoscaling_cpu_target_value" {

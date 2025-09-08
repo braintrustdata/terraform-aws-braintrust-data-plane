@@ -140,12 +140,12 @@ resource "aws_autoscaling_group" "brainstore_writer" {
   name_prefix               = "${var.deployment_name}-brainstore-writer"
   min_size                  = var.writer_enable_autoscaling ? var.writer_autoscaling_min_capacity : var.writer_instance_count
   max_size                  = var.writer_enable_autoscaling ? var.writer_autoscaling_max_capacity : var.writer_instance_count * 2
-  desired_capacity          = var.writer_enable_autoscaling ? var.writer_autoscaling_desired_capacity : var.writer_instance_count
+  desired_capacity          = var.writer_enable_autoscaling ? null : var.writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_writer[0].arn]
-  wait_for_elb_capacity     = var.writer_enable_autoscaling ? var.writer_autoscaling_desired_capacity : var.writer_instance_count
+  wait_for_elb_capacity     = var.writer_enable_autoscaling ? var.writer_autoscaling_min_capacity : var.writer_instance_count
   launch_template {
     id      = aws_launch_template.brainstore_writer[0].id
     version = aws_launch_template.brainstore_writer[0].latest_version

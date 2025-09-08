@@ -61,14 +61,6 @@ Type: `number`
 
 Default: `70`
 
-### <a name="input_brainstore_autoscaling_desired_capacity"></a> [brainstore\_autoscaling\_desired\_capacity](#input\_brainstore\_autoscaling\_desired\_capacity)
-
-Description: Desired number of Brainstore instances when autoscaling is enabled
-
-Type: `number`
-
-Default: `2`
-
 ### <a name="input_brainstore_autoscaling_max_capacity"></a> [brainstore\_autoscaling\_max\_capacity](#input\_brainstore\_autoscaling\_max\_capacity)
 
 Description: Maximum number of Brainstore instances when autoscaling is enabled
@@ -212,14 +204,6 @@ Description: Target CPU utilization percentage for Brainstore writer autoscaling
 Type: `number`
 
 Default: `70`
-
-### <a name="input_brainstore_writer_autoscaling_desired_capacity"></a> [brainstore\_writer\_autoscaling\_desired\_capacity](#input\_brainstore\_writer\_autoscaling\_desired\_capacity)
-
-Description: Desired number of Brainstore writer instances when autoscaling is enabled
-
-Type: `number`
-
-Default: `1`
 
 ### <a name="input_brainstore_writer_autoscaling_max_capacity"></a> [brainstore\_writer\_autoscaling\_max\_capacity](#input\_brainstore\_writer\_autoscaling\_max\_capacity)
 

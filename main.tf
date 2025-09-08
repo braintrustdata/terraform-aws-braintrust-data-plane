@@ -215,14 +215,12 @@ module "brainstore" {
   enable_autoscaling           = var.brainstore_enable_autoscaling
   autoscaling_min_capacity     = var.brainstore_autoscaling_min_capacity
   autoscaling_max_capacity     = var.brainstore_autoscaling_max_capacity
-  autoscaling_desired_capacity = var.brainstore_autoscaling_desired_capacity
   autoscaling_cpu_target_value = var.brainstore_autoscaling_cpu_target_value
 
   # Writer autoscaling configuration (optional, separate from readers)
   writer_enable_autoscaling           = var.brainstore_writer_enable_autoscaling
   writer_autoscaling_min_capacity     = var.brainstore_writer_autoscaling_min_capacity
   writer_autoscaling_max_capacity     = var.brainstore_writer_autoscaling_max_capacity
-  writer_autoscaling_desired_capacity = var.brainstore_writer_autoscaling_desired_capacity
   writer_autoscaling_cpu_target_value = var.brainstore_writer_autoscaling_cpu_target_value
 
   vpc_id = module.main_vpc.vpc_id

@@ -145,14 +145,14 @@ resource "aws_autoscaling_group" "brainstore" {
   name_prefix         = "${var.deployment_name}-brainstore"
   min_size            = var.enable_autoscaling ? var.autoscaling_min_capacity : var.instance_count
   max_size            = var.enable_autoscaling ? var.autoscaling_max_capacity : var.instance_count * 2
-  desired_capacity    = var.enable_autoscaling ? var.autoscaling_desired_capacity : var.instance_count
+  desired_capacity    = var.enable_autoscaling ? null : var.instance_count
   vpc_zone_identifier = var.private_subnet_ids
   health_check_type   = "EBS,ELB"
   # This is essentially the expected boot and setup time of the instance.
   # If too low, the ASG may terminate the instance before it has a chance to boot.
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
-  wait_for_elb_capacity     = var.enable_autoscaling ? var.autoscaling_desired_capacity : var.instance_count
+  wait_for_elb_capacity     = var.enable_autoscaling ? var.autoscaling_min_capacity : var.instance_count
   launch_template {
     id      = aws_launch_template.brainstore.id
     version = aws_launch_template.brainstore.latest_version
