@@ -44,6 +44,23 @@ resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
+  bucket = aws_s3_bucket.code_bundle_bucket.id
+
+  rule {
+    id     = "DeleteIncompleteMultipartUploads"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "code_bundle_bucket" {
   bucket = aws_s3_bucket.code_bundle_bucket.id
 
@@ -79,6 +96,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
 
     expiration {
       days = 1
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
     }
   }
 }
