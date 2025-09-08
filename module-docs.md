@@ -53,41 +53,9 @@ Type: `string`
 
 Default: `""`
 
-### <a name="input_brainstore_autoscaling_adjustment_type"></a> [brainstore\_autoscaling\_adjustment\_type](#input\_brainstore\_autoscaling\_adjustment\_type)
+### <a name="input_brainstore_autoscaling_cpu_target_value"></a> [brainstore\_autoscaling\_cpu\_target\_value](#input\_brainstore\_autoscaling\_cpu\_target\_value)
 
-Description: The type of adjustment to make when scaling
-
-Type: `string`
-
-Default: `"ChangeInCapacity"`
-
-### <a name="input_brainstore_autoscaling_cpu_evaluation_periods"></a> [brainstore\_autoscaling\_cpu\_evaluation\_periods](#input\_brainstore\_autoscaling\_cpu\_evaluation\_periods)
-
-Description: Number of evaluation periods for CPU metric before triggering alarm
-
-Type: `number`
-
-Default: `2`
-
-### <a name="input_brainstore_autoscaling_cpu_period"></a> [brainstore\_autoscaling\_cpu\_period](#input\_brainstore\_autoscaling\_cpu\_period)
-
-Description: Period in seconds for CPU metric evaluation
-
-Type: `number`
-
-Default: `300`
-
-### <a name="input_brainstore_autoscaling_cpu_scale_down_threshold"></a> [brainstore\_autoscaling\_cpu\_scale\_down\_threshold](#input\_brainstore\_autoscaling\_cpu\_scale\_down\_threshold)
-
-Description: CPU utilization threshold percentage to trigger scale down
-
-Type: `number`
-
-Default: `30`
-
-### <a name="input_brainstore_autoscaling_cpu_scale_up_threshold"></a> [brainstore\_autoscaling\_cpu\_scale\_up\_threshold](#input\_brainstore\_autoscaling\_cpu\_scale\_up\_threshold)
-
-Description: CPU utilization threshold percentage to trigger scale up
+Description: Target CPU utilization percentage for Brainstore autoscaling group target tracking scaling
 
 Type: `number`
 
@@ -116,58 +84,6 @@ Description: Minimum number of Brainstore instances when autoscaling is enabled
 Type: `number`
 
 Default: `2`
-
-### <a name="input_brainstore_autoscaling_step_scaling_down"></a> [brainstore\_autoscaling\_step\_scaling\_down](#input\_brainstore\_autoscaling\_step\_scaling\_down)
-
-Description: Step scaling adjustments for scale down actions
-
-Type:
-
-```hcl
-list(object({
-    metric_interval_lower_bound = number
-    metric_interval_upper_bound = number
-    scaling_adjustment          = number
-  }))
-```
-
-Default:
-
-```json
-[
-  {
-    "metric_interval_lower_bound": null,
-    "metric_interval_upper_bound": 0,
-    "scaling_adjustment": -1
-  }
-]
-```
-
-### <a name="input_brainstore_autoscaling_step_scaling_up"></a> [brainstore\_autoscaling\_step\_scaling\_up](#input\_brainstore\_autoscaling\_step\_scaling\_up)
-
-Description: Step scaling adjustments for scale up actions
-
-Type:
-
-```hcl
-list(object({
-    metric_interval_lower_bound = number
-    metric_interval_upper_bound = number
-    scaling_adjustment          = number
-  }))
-```
-
-Default:
-
-```json
-[
-  {
-    "metric_interval_lower_bound": 0,
-    "metric_interval_upper_bound": null,
-    "scaling_adjustment": 1
-  }
-]
-```
 
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
@@ -199,7 +115,7 @@ Description: Enable CPU-based autoscaling for Brainstore instances
 
 Type: `bool`
 
-Default: `false`
+Default: `true`
 
 ### <a name="input_brainstore_enable_historical_full_backfill"></a> [brainstore\_enable\_historical\_full\_backfill](#input\_brainstore\_enable\_historical\_full\_backfill)
 
@@ -289,41 +205,9 @@ Type: `string`
 
 Default: `null`
 
-### <a name="input_brainstore_writer_autoscaling_adjustment_type"></a> [brainstore\_writer\_autoscaling\_adjustment\_type](#input\_brainstore\_writer\_autoscaling\_adjustment\_type)
+### <a name="input_brainstore_writer_autoscaling_cpu_target_value"></a> [brainstore\_writer\_autoscaling\_cpu\_target\_value](#input\_brainstore\_writer\_autoscaling\_cpu\_target\_value)
 
-Description: The type of adjustment to make when scaling writers
-
-Type: `string`
-
-Default: `"ChangeInCapacity"`
-
-### <a name="input_brainstore_writer_autoscaling_cpu_evaluation_periods"></a> [brainstore\_writer\_autoscaling\_cpu\_evaluation\_periods](#input\_brainstore\_writer\_autoscaling\_cpu\_evaluation\_periods)
-
-Description: Number of evaluation periods for CPU metric before triggering alarm for writers
-
-Type: `number`
-
-Default: `2`
-
-### <a name="input_brainstore_writer_autoscaling_cpu_period"></a> [brainstore\_writer\_autoscaling\_cpu\_period](#input\_brainstore\_writer\_autoscaling\_cpu\_period)
-
-Description: Period in seconds for CPU metric evaluation for writers
-
-Type: `number`
-
-Default: `300`
-
-### <a name="input_brainstore_writer_autoscaling_cpu_scale_down_threshold"></a> [brainstore\_writer\_autoscaling\_cpu\_scale\_down\_threshold](#input\_brainstore\_writer\_autoscaling\_cpu\_scale\_down\_threshold)
-
-Description: CPU utilization threshold percentage to trigger scale down for writers
-
-Type: `number`
-
-Default: `30`
-
-### <a name="input_brainstore_writer_autoscaling_cpu_scale_up_threshold"></a> [brainstore\_writer\_autoscaling\_cpu\_scale\_up\_threshold](#input\_brainstore\_writer\_autoscaling\_cpu\_scale\_up\_threshold)
-
-Description: CPU utilization threshold percentage to trigger scale up for writers
+Description: Target CPU utilization percentage for Brainstore writer autoscaling group target tracking scaling
 
 Type: `number`
 
@@ -353,65 +237,13 @@ Type: `number`
 
 Default: `1`
 
-### <a name="input_brainstore_writer_autoscaling_step_scaling_down"></a> [brainstore\_writer\_autoscaling\_step\_scaling\_down](#input\_brainstore\_writer\_autoscaling\_step\_scaling\_down)
-
-Description: Step scaling adjustments for scale down actions for writers
-
-Type:
-
-```hcl
-list(object({
-    metric_interval_lower_bound = number
-    metric_interval_upper_bound = number
-    scaling_adjustment          = number
-  }))
-```
-
-Default:
-
-```json
-[
-  {
-    "metric_interval_lower_bound": null,
-    "metric_interval_upper_bound": 0,
-    "scaling_adjustment": -1
-  }
-]
-```
-
-### <a name="input_brainstore_writer_autoscaling_step_scaling_up"></a> [brainstore\_writer\_autoscaling\_step\_scaling\_up](#input\_brainstore\_writer\_autoscaling\_step\_scaling\_up)
-
-Description: Step scaling adjustments for scale up actions for writers
-
-Type:
-
-```hcl
-list(object({
-    metric_interval_lower_bound = number
-    metric_interval_upper_bound = number
-    scaling_adjustment          = number
-  }))
-```
-
-Default:
-
-```json
-[
-  {
-    "metric_interval_lower_bound": 0,
-    "metric_interval_upper_bound": null,
-    "scaling_adjustment": 1
-  }
-]
-```
-
 ### <a name="input_brainstore_writer_enable_autoscaling"></a> [brainstore\_writer\_enable\_autoscaling](#input\_brainstore\_writer\_enable\_autoscaling)
 
 Description: Enable CPU-based autoscaling for Brainstore writer instances
 
 Type: `bool`
 
-Default: `false`
+Default: `true`
 
 ### <a name="input_brainstore_writer_instance_count"></a> [brainstore\_writer\_instance\_count](#input\_brainstore\_writer\_instance\_count)
 
