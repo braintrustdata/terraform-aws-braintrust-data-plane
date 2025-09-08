@@ -323,7 +323,7 @@ Available options:
 
 Type: `string`
 
-Default: `"status,metrics"`
+Default: `"status,metrics,usage"`
 
 ### <a name="input_outbound_rate_limit_max_requests"></a> [outbound\_rate\_limit\_max\_requests](#input\_outbound\_rate\_limit\_max\_requests)
 
