@@ -138,7 +138,7 @@ variable "monitoring_telemetry" {
     - traces: Distributed tracing data
   EOT
   type        = string
-  default     = "status,metrics"
+  default     = "status,metrics,usage"
 
   validation {
     condition = var.monitoring_telemetry == "" || alltrue([
