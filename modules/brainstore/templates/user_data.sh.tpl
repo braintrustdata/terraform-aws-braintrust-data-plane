@@ -100,6 +100,11 @@ BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${datab
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
 BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
+%{ if is_dedicated_writer_node -}
+  %{ if brainstore_enable_retention -}
+BRAINSTORE_TIME_BASED_RETENTION_OBJECT_ALL=true
+  %{ endif ~}
+%{ endif ~}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}

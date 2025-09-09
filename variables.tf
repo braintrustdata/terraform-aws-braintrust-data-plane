@@ -418,6 +418,12 @@ variable "brainstore_extra_env_vars_writer" {
   default     = {}
 }
 
+variable "brainstore_enable_retention" {
+  type        = bool
+  description = "Enable time-based retention for Brainstore"
+  default     = false
+}
+
 variable "service_extra_env_vars" {
   type = object({
     APIHandler               = map(string)

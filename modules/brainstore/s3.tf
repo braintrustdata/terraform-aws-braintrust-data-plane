@@ -52,6 +52,38 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
       days_after_initiation = 1
     }
   }
+
+  rule {
+    id     = "delete-index-deletion-logs"
+    status = "Enabled"
+
+    filter {
+      # !IMPORTANT!: do not change this path
+      prefix = "brainstore/index/delete_ops/"
+    }
+
+    expiration {
+      # We use the same var for the expiration interval and the delete interval
+      # in cleanup-old-versions so the total time to deletion is 2 * var.s3_bucket_retention_days
+      days = var.s3_bucket_retention_days
+    }
+  }
+
+  rule {
+    id     = "delete-wal-deletion-logs"
+    status = "Enabled"
+
+    filter {
+      # !IMPORTANT!: do not change this path
+      prefix = "brainstore/wal/delete_ops/"
+    }
+
+    expiration {
+      # We use the same var for the expiration interval and the delete interval
+      # in cleanup-old-versions so the total time to deletion is 2 * var.s3_bucket_retention_days
+      days = var.s3_bucket_retention_days
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "brainstore" {
