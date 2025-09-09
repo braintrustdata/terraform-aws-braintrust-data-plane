@@ -138,14 +138,14 @@ resource "aws_lb_listener" "brainstore_writer" {
 resource "aws_autoscaling_group" "brainstore_writer" {
   count                     = local.has_writer_nodes ? 1 : 0
   name_prefix               = "${var.deployment_name}-brainstore-writer"
-  min_size                  = var.writer_instance_count
-  max_size                  = var.writer_instance_count * 2
-  desired_capacity          = var.writer_instance_count
+  min_size                  = var.writer_enable_autoscaling ? var.writer_autoscaling_min_capacity : var.writer_instance_count
+  max_size                  = var.writer_enable_autoscaling ? var.writer_autoscaling_max_capacity : var.writer_instance_count * 2
+  desired_capacity          = var.writer_enable_autoscaling ? null : var.writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_writer[0].arn]
-  wait_for_elb_capacity     = var.writer_instance_count
+  wait_for_elb_capacity     = var.writer_enable_autoscaling ? var.writer_autoscaling_min_capacity : var.writer_instance_count
   launch_template {
     id      = aws_launch_template.brainstore_writer[0].id
     version = aws_launch_template.brainstore_writer[0].latest_version
@@ -179,3 +179,19 @@ resource "aws_autoscaling_group" "brainstore_writer" {
     }
   }
 }
+
+# Target Tracking Scaling Policy for Writer Brainstore
+resource "aws_autoscaling_policy" "brainstore_writer_target_tracking" {
+  count                  = local.has_writer_nodes && var.writer_enable_autoscaling ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-writer-target-tracking"
+  autoscaling_group_name = aws_autoscaling_group.brainstore_writer[0].name
+  policy_type            = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+    target_value = var.writer_autoscaling_cpu_target_value
+  }
+}
+

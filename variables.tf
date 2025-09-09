@@ -463,3 +463,55 @@ variable "internal_observability_region" {
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = "us5"
 }
+
+## Brainstore Autoscaling
+variable "brainstore_enable_autoscaling" {
+  type        = bool
+  description = "Enable CPU-based autoscaling for Brainstore instances"
+  default     = true
+}
+
+variable "brainstore_autoscaling_min_capacity" {
+  type        = number
+  description = "Minimum number of Brainstore instances when autoscaling is enabled"
+  default     = 2
+}
+
+variable "brainstore_autoscaling_max_capacity" {
+  type        = number
+  description = "Maximum number of Brainstore instances when autoscaling is enabled"
+  default     = 4
+}
+
+variable "brainstore_autoscaling_cpu_target_value" {
+  type        = number
+  description = "Target CPU utilization percentage for Brainstore autoscaling group target tracking scaling"
+  default     = 70.0
+}
+
+
+## Brainstore Writer Autoscaling
+variable "brainstore_writer_enable_autoscaling" {
+  type        = bool
+  description = "Enable CPU-based autoscaling for Brainstore writer instances"
+  default     = true
+}
+
+variable "brainstore_writer_autoscaling_min_capacity" {
+  type        = number
+  description = "Minimum number of Brainstore writer instances when autoscaling is enabled"
+  default     = 1
+}
+
+variable "brainstore_writer_autoscaling_max_capacity" {
+  type        = number
+  description = "Maximum number of Brainstore writer instances when autoscaling is enabled"
+  default     = 2
+}
+
+variable "brainstore_writer_autoscaling_cpu_target_value" {
+  type        = number
+  description = "Target CPU utilization percentage for Brainstore writer autoscaling group target tracking scaling"
+  default     = 70.0
+}
+

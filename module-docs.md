@@ -53,6 +53,30 @@ Type: `string`
 
 Default: `""`
 
+### <a name="input_brainstore_autoscaling_cpu_target_value"></a> [brainstore\_autoscaling\_cpu\_target\_value](#input\_brainstore\_autoscaling\_cpu\_target\_value)
+
+Description: Target CPU utilization percentage for Brainstore autoscaling group target tracking scaling
+
+Type: `number`
+
+Default: `70`
+
+### <a name="input_brainstore_autoscaling_max_capacity"></a> [brainstore\_autoscaling\_max\_capacity](#input\_brainstore\_autoscaling\_max\_capacity)
+
+Description: Maximum number of Brainstore instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `4`
+
+### <a name="input_brainstore_autoscaling_min_capacity"></a> [brainstore\_autoscaling\_min\_capacity](#input\_brainstore\_autoscaling\_min\_capacity)
+
+Description: Minimum number of Brainstore instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `2`
+
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
 Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
@@ -76,6 +100,14 @@ Description: Disable the optimization worker globally in Brainstore
 Type: `bool`
 
 Default: `false`
+
+### <a name="input_brainstore_enable_autoscaling"></a> [brainstore\_enable\_autoscaling](#input\_brainstore\_enable\_autoscaling)
+
+Description: Enable CPU-based autoscaling for Brainstore instances
+
+Type: `bool`
+
+Default: `true`
 
 ### <a name="input_brainstore_enable_historical_full_backfill"></a> [brainstore\_enable\_historical\_full\_backfill](#input\_brainstore\_enable\_historical\_full\_backfill)
 
@@ -164,6 +196,38 @@ Description: Lock Brainstore on a specific version. Don't set this unless instru
 Type: `string`
 
 Default: `null`
+
+### <a name="input_brainstore_writer_autoscaling_cpu_target_value"></a> [brainstore\_writer\_autoscaling\_cpu\_target\_value](#input\_brainstore\_writer\_autoscaling\_cpu\_target\_value)
+
+Description: Target CPU utilization percentage for Brainstore writer autoscaling group target tracking scaling
+
+Type: `number`
+
+Default: `70`
+
+### <a name="input_brainstore_writer_autoscaling_max_capacity"></a> [brainstore\_writer\_autoscaling\_max\_capacity](#input\_brainstore\_writer\_autoscaling\_max\_capacity)
+
+Description: Maximum number of Brainstore writer instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `2`
+
+### <a name="input_brainstore_writer_autoscaling_min_capacity"></a> [brainstore\_writer\_autoscaling\_min\_capacity](#input\_brainstore\_writer\_autoscaling\_min\_capacity)
+
+Description: Minimum number of Brainstore writer instances when autoscaling is enabled
+
+Type: `number`
+
+Default: `1`
+
+### <a name="input_brainstore_writer_enable_autoscaling"></a> [brainstore\_writer\_enable\_autoscaling](#input\_brainstore\_writer\_enable\_autoscaling)
+
+Description: Enable CPU-based autoscaling for Brainstore writer instances
+
+Type: `bool`
+
+Default: `true`
 
 ### <a name="input_brainstore_writer_instance_count"></a> [brainstore\_writer\_instance\_count](#input\_brainstore\_writer\_instance\_count)
 

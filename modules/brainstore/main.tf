@@ -143,16 +143,16 @@ resource "aws_lb_listener" "brainstore" {
 
 resource "aws_autoscaling_group" "brainstore" {
   name_prefix         = "${var.deployment_name}-brainstore"
-  min_size            = var.instance_count
-  max_size            = var.instance_count * 2
-  desired_capacity    = var.instance_count
+  min_size            = var.enable_autoscaling ? var.autoscaling_min_capacity : var.instance_count
+  max_size            = var.enable_autoscaling ? var.autoscaling_max_capacity : var.instance_count * 2
+  desired_capacity    = var.enable_autoscaling ? null : var.instance_count
   vpc_zone_identifier = var.private_subnet_ids
   health_check_type   = "EBS,ELB"
   # This is essentially the expected boot and setup time of the instance.
   # If too low, the ASG may terminate the instance before it has a chance to boot.
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
-  wait_for_elb_capacity     = var.instance_count
+  wait_for_elb_capacity     = var.enable_autoscaling ? var.autoscaling_min_capacity : var.instance_count
   launch_template {
     id      = aws_launch_template.brainstore.id
     version = aws_launch_template.brainstore.latest_version
@@ -187,6 +187,22 @@ resource "aws_autoscaling_group" "brainstore" {
     }
   }
 }
+
+# Target Tracking Scaling Policy for Primary Brainstore
+resource "aws_autoscaling_policy" "brainstore_target_tracking" {
+  count                  = var.enable_autoscaling ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-target-tracking"
+  autoscaling_group_name = aws_autoscaling_group.brainstore.name
+  policy_type            = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+    target_value = var.autoscaling_cpu_target_value
+  }
+}
+
 
 data "aws_ami" "ubuntu_24_04" {
   most_recent = true
