@@ -382,6 +382,13 @@ variable "brainstore_s3_bucket_retention_days" {
   default     = 7
 }
 
+variable "brainstore_enable_retention" {
+  type        = bool
+  description = "Enable time-based retention for Brainstore"
+  default     = false
+}
+
+
 variable "monitoring_telemetry" {
   description = <<-EOT
     The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values.
@@ -416,12 +423,6 @@ variable "brainstore_extra_env_vars_writer" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore writer nodes"
   default     = {}
-}
-
-variable "brainstore_enable_retention" {
-  type        = bool
-  description = "Enable time-based retention for Brainstore"
-  default     = false
 }
 
 variable "service_extra_env_vars" {

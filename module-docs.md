@@ -149,6 +149,14 @@ Type: `number`
 
 Default: `7`
 
+### <a name="input_brainstore_enable_retention"></a> [brainstore\_enable\_retention](#input\_brainstore\_enable\_retention)
+
+Description: Enable time-based retention for Brainstore
+
+Type: `boolnumber`
+
+Default: `false`
+
 ### <a name="input_brainstore_version_override"></a> [brainstore\_version\_override](#input\_brainstore\_version\_override)
 
 Description: Lock Brainstore on a specific version. Don't set this unless instructed by Braintrust.
