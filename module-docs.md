@@ -77,6 +77,14 @@ Type: `bool`
 
 Default: `true`
 
+### <a name="input_brainstore_enable_retention"></a> [brainstore\_enable\_retention](#input\_brainstore\_enable\_retention)
+
+Description: Enable time-based retention for Brainstore
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_brainstore_etl_batch_size"></a> [brainstore\_etl\_batch\_size](#input\_brainstore\_etl\_batch\_size)
 
 Description: The batch size for the ETL process
@@ -148,14 +156,6 @@ Description: The number of days to retain non-current S3 objects. e.g. deleted o
 Type: `number`
 
 Default: `7`
-
-### <a name="input_brainstore_enable_retention"></a> [brainstore\_enable\_retention](#input\_brainstore\_enable\_retention)
-
-Description: Enable time-based retention for Brainstore
-
-Type: `boolnumber`
-
-Default: `false`
 
 ### <a name="input_brainstore_version_override"></a> [brainstore\_version\_override](#input\_brainstore\_version\_override)
 
