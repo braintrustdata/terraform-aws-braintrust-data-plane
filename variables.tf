@@ -418,12 +418,6 @@ variable "brainstore_extra_env_vars_writer" {
   default     = {}
 }
 
-variable "brainstore_disable_optimization_worker" {
-  type        = bool
-  description = "Disable the optimization worker globally in Brainstore"
-  default     = false
-}
-
 variable "service_extra_env_vars" {
   type = object({
     APIHandler               = map(string)

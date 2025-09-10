@@ -36,26 +36,26 @@ resource "aws_launch_template" "brainstore_writer" {
   }
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data.sh.tpl", {
-    aws_region                             = data.aws_region.current.name
-    deployment_name                        = var.deployment_name
-    database_secret_arn                    = var.database_secret_arn
-    database_host                          = var.database_host
-    database_port                          = var.database_port
-    redis_host                             = var.redis_host
-    redis_port                             = var.redis_port
-    brainstore_port                        = var.port
-    brainstore_s3_bucket                   = aws_s3_bucket.brainstore.id
-    brainstore_license_key                 = var.license_key
-    brainstore_version_override            = var.version_override == null ? "" : var.version_override
-    brainstore_release_version             = local.brainstore_release_version
-    brainstore_disable_optimization_worker = var.brainstore_disable_optimization_worker
-    monitoring_telemetry                   = var.monitoring_telemetry
-    brainstore_disable_vacuum              = false
-    is_dedicated_writer_node               = "true"
-    extra_env_vars                         = var.extra_env_vars_writer
-    internal_observability_api_key         = var.internal_observability_api_key
-    internal_observability_env_name        = var.internal_observability_env_name
-    internal_observability_region          = var.internal_observability_region
+    aws_region                      = data.aws_region.current.name
+    deployment_name                 = var.deployment_name
+    database_secret_arn             = var.database_secret_arn
+    database_host                   = var.database_host
+    database_port                   = var.database_port
+    redis_host                      = var.redis_host
+    redis_port                      = var.redis_port
+    brainstore_port                 = var.port
+    brainstore_s3_bucket            = aws_s3_bucket.brainstore.id
+    brainstore_license_key          = var.license_key
+    brainstore_version_override     = var.version_override == null ? "" : var.version_override
+    brainstore_release_version      = local.brainstore_release_version
+    monitoring_telemetry            = var.monitoring_telemetry
+    brainstore_disable_vacuum       = false
+    is_dedicated_reader_node        = "false"
+    is_dedicated_writer_node        = "true"
+    extra_env_vars                  = var.extra_env_vars_writer
+    internal_observability_api_key  = var.internal_observability_api_key
+    internal_observability_env_name = var.internal_observability_env_name
+    internal_observability_region   = var.internal_observability_region
   }))
 
   tags = merge({
