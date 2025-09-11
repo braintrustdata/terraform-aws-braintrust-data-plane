@@ -6,7 +6,7 @@ echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
 # Mount the local SSD if it exists
 apt-get install -y nvme-cli
 MOUNT_DIR="/mnt/tmp/brainstore"
-mkdir -p "$MOUNT_DIR"
+mkdir -m 777 -p "$MOUNT_DIR"
 DEVICE=$(nvme list | grep 'Instance Storage' | head -n1 | awk '{print $1}')
 if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
