@@ -6,12 +6,12 @@ echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
 # Mount the local SSD if it exists
 apt-get install -y nvme-cli
 MOUNT_DIR="/mnt/tmp/brainstore"
-mkdir -m 777 -p "$MOUNT_DIR"
+mkdir -p "$MOUNT_DIR"
 DEVICE=$(nvme list | grep 'Instance Storage' | head -n1 | awk '{print $1}')
 if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
   blkid "$DEVICE" >/dev/null || mkfs.ext4 -F "$DEVICE"
-  mount "$DEVICE" "$MOUNT_DIR"
+  mount -o dir_mode=0777,file_mode=0777 "$DEVICE" "$MOUNT_DIR"
   # Add to fstab using UUID rather than device name
   UUID=$(blkid -s UUID -o value "$DEVICE")
   echo "UUID=$UUID $MOUNT_DIR ext4 defaults 0 2" >> /etc/fstab
