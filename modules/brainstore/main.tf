@@ -59,6 +59,7 @@ resource "aws_launch_template" "brainstore" {
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
     is_dedicated_reader_node        = local.has_writer_nodes ? "true" : "false"
     is_dedicated_writer_node        = "false"
+    brainstore_enable_retention     = local.has_writer_nodes ? "false" : var.brainstore_enable_retention ? "true" : "false"
     extra_env_vars                  = var.extra_env_vars
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
