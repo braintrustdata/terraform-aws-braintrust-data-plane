@@ -12,6 +12,7 @@ if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
   blkid "$DEVICE" >/dev/null || mkfs.ext4 -F "$DEVICE"
   mount "$DEVICE" "$MOUNT_DIR"
+  chmod -R 0777 "$MOUNT_DIR"
   # Add to fstab using UUID rather than device name
   UUID=$(blkid -s UUID -o value "$DEVICE")
   echo "UUID=$UUID $MOUNT_DIR ext4 defaults 0 2" >> /etc/fstab
