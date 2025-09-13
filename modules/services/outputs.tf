@@ -62,3 +62,9 @@ output "quarantine_lambda_security_group_id" {
   description = "The ID of the security group for the quarantine Lambda functions"
   value       = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : null
 }
+
+output "function_tools_secret_key" {
+  description = "The function tools secret key for SERVICE_TOKEN_SECRET_KEY"
+  value       = aws_secretsmanager_secret_version.function_tools_secret.secret_string
+  sensitive   = true
+}
