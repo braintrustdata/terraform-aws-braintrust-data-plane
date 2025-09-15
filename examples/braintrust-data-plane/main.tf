@@ -1,7 +1,7 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 module "braintrust-data-plane" {
-  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
+  source = "../.."
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
   ### Examples below are shown with the module defaults. You do not have to uncomment them
@@ -13,7 +13,7 @@ module "braintrust-data-plane" {
   deployment_name = "braintrust"
 
   # Add your organization name from the Braintrust UI here
-  braintrust_org_name = ""
+  braintrust_org_name = "random-test"
 
   ### Postgres configuration
   # Changing this will incur a short downtime.
