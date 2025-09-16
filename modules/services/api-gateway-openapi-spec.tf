@@ -82,7 +82,7 @@ locals {
       "/attachment/status" = {
         for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
       }
-      "/brainstore/backfill/delete" = {
+      "/brainstore/backfill/disable" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/brainstore/backfill/enable" = {
@@ -141,12 +141,6 @@ locals {
       }
       "/btql" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
-      }
-      "/clickhouse/etl-status" = {
-        for method in ["get", "options"] : method => local.snippet_api_json_text_method
-      }
-      "/clickhouse/run-etl" = {
-        for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
       "/crud/base_experiments" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
@@ -265,7 +259,7 @@ locals {
         })
       }
       "/v1/{object_type}/{id}" = {
-        for method in ["delete", "get", "options", "patch"] : method => merge(local.snippet_api_json_method, {
+        for method in ["delete", "get", "options", "patch", "post"] : method => merge(local.snippet_api_json_method, {
           parameters = [
             {
               name     = "object_type"
@@ -414,7 +408,7 @@ locals {
       "/version" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
-      "/version-0.0.53" = {
+      "/version-0.0.54" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
       "/xact-id" = {
@@ -457,6 +451,30 @@ locals {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/brainstore/vacuum/object/{object_id}" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/brainstore/vacuum/index/object/{object_id}" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/brainstore/vacuum/segment_wal/object/{object_id}" = {
         for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
             {
@@ -518,6 +536,84 @@ locals {
       }
       "/billing/refresh" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/time_based_retention/status" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/time_based_retention/reset_state" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/time_based_retention/object/{object_id}" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/brainstore/time_based_retention" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/.well-known/{resource}" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "resource"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/.well-known/{resource}/{subresource}" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "resource"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "subresource"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/oauth/{command}" = {
+        for method in ["get", "options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "command"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/mcp" = {
+        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/register" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/authorize" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/token" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/sse" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
     }
 
