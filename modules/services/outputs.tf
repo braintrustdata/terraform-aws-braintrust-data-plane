@@ -64,7 +64,7 @@ output "quarantine_lambda_security_group_id" {
 }
 
 output "function_tools_secret_key" {
-  description = "The function tools secret key for SERVICE_TOKEN_SECRET_KEY"
+  description = "The function tools encryption key. This is used by brainstore as the SERVICE_TOKEN_SECRET_KEY."
   value       = aws_secretsmanager_secret_version.function_tools_secret.secret_string
   sensitive   = true
 }
