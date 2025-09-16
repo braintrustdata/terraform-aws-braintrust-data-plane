@@ -56,7 +56,7 @@ resource "aws_launch_template" "brainstore_writer" {
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
-    function_tools_secret_key       = var.function_tools_secret_key
+    service_token_secret_key        = var.service_token_secret_key
   }))
 
   tags = merge({

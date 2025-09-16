@@ -173,9 +173,8 @@ variable "internal_observability_region" {
   default     = "us5"
 }
 
-variable "function_tools_secret_key" {
+variable "service_token_secret_key" {
   type        = string
-  description = "The function tools secret key for SERVICE_TOKEN_SECRET_KEY"
+  description = "The secret encryption key for SERVICE_TOKEN_SECRET_KEY. Typically this re-uses the function tools secret key."
   sensitive   = true
-  default     = ""
 }
