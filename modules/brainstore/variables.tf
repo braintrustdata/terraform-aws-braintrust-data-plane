@@ -172,3 +172,9 @@ variable "internal_observability_region" {
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = "us5"
 }
+
+variable "service_token_secret_key" {
+  type        = string
+  description = "The secret encryption key for SERVICE_TOKEN_SECRET_KEY. Typically this re-uses the function tools secret key."
+  sensitive   = true
+}
