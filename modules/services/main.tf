@@ -31,7 +31,7 @@ locals {
 data "http" "lambda_versions" {
   for_each = toset(local.lambda_names)
 
-  url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.name}.amazonaws.com/lambda/${each.value}/version-${local.lambda_version_tag}"
+  url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.name}.amazonaws.com/lambda/${each.value}/version-v${local.lambda_version_tag}"
 }
 
 data "aws_region" "current" {
