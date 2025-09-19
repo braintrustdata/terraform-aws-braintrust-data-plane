@@ -463,7 +463,7 @@ variable "brainstore_autoscaling_min_capacity" {
 variable "brainstore_autoscaling_max_capacity" {
   type        = number
   description = "Maximum number of Brainstore instances for autoscaling"
-  default     = 4
+  default     = 10
 }
 
 variable "brainstore_autoscaling_cpu_target_value" {
@@ -483,7 +483,7 @@ variable "brainstore_writer_autoscaling_min_capacity" {
 variable "brainstore_writer_autoscaling_max_capacity" {
   type        = number
   description = "Maximum number of Brainstore writer instances for autoscaling"
-  default     = 2
+  default     = 10
 }
 
 variable "brainstore_writer_autoscaling_cpu_target_value" {
