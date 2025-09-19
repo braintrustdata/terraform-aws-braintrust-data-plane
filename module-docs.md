@@ -143,7 +143,7 @@ Default: `null`
 
 ### <a name="input_brainstore_instance_type"></a> [brainstore\_instance\_type](#input\_brainstore\_instance\_type)
 
-Description: The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data.
+Description: The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 32GB of memory and a local SSD for cache data.
 
 Type: `string`
 
@@ -207,7 +207,7 @@ Default: `1`
 
 ### <a name="input_brainstore_writer_instance_type"></a> [brainstore\_writer\_instance\_type](#input\_brainstore\_writer\_instance\_type)
 
-Description: The instance type to use for the Brainstore writer nodes
+Description: The instance type to use for the Brainstore writer nodes. Recommended Graviton instance type with 64GB of memory and a local SSD for cache data.
 
 Type: `string`
 

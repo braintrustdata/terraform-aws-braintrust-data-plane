@@ -5,7 +5,7 @@ variable "deployment_name" {
 
 variable "instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
+  description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 32GB of memory and a local SSD for cache data."
   default     = "c8gd.4xlarge"
 }
 

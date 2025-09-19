@@ -52,7 +52,7 @@ module "braintrust-data-plane" {
   # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
   brainstore_license_key = var.brainstore_license_key
 
-  # Recommended Graviton instance type with 16GB of memory
+  # Recommended Graviton instance type with 32GB of memory
   brainstore_instance_type = "c8gd.4xlarge"
 
   # Configure CPU-based autoscaling for Brainstore instances
@@ -60,7 +60,7 @@ module "braintrust-data-plane" {
   # brainstore_autoscaling_max_capacity = 4
   # brainstore_autoscaling_cpu_target_value = 70.0
 
-  # Recommended Graviton instance type with 32GB of memory
+  # Recommended Graviton instance type with 64GB of memory
   brainstore_writer_instance_type = "c8gd.8xlarge"
 
   # Configure CPU-based autoscaling for Brainstore writer instances
