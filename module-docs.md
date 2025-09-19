@@ -63,7 +63,7 @@ Default: `70`
 
 ### <a name="input_brainstore_autoscaling_max_capacity"></a> [brainstore\_autoscaling\_max\_capacity](#input\_brainstore\_autoscaling\_max\_capacity)
 
-Description: Maximum number of Brainstore instances when autoscaling is enabled
+Description: Maximum number of Brainstore instances for autoscaling
 
 Type: `number`
 
@@ -71,7 +71,7 @@ Default: `4`
 
 ### <a name="input_brainstore_autoscaling_min_capacity"></a> [brainstore\_autoscaling\_min\_capacity](#input\_brainstore\_autoscaling\_min\_capacity)
 
-Description: Minimum number of Brainstore instances when autoscaling is enabled
+Description: Minimum number of Brainstore instances for autoscaling
 
 Type: `number`
 
@@ -191,7 +191,7 @@ Default: `70`
 
 ### <a name="input_brainstore_writer_autoscaling_max_capacity"></a> [brainstore\_writer\_autoscaling\_max\_capacity](#input\_brainstore\_writer\_autoscaling\_max\_capacity)
 
-Description: Maximum number of Brainstore writer instances when autoscaling is enabled
+Description: Maximum number of Brainstore writer instances for autoscaling
 
 Type: `number`
 
@@ -199,7 +199,7 @@ Default: `2`
 
 ### <a name="input_brainstore_writer_autoscaling_min_capacity"></a> [brainstore\_writer\_autoscaling\_min\_capacity](#input\_brainstore\_writer\_autoscaling\_min\_capacity)
 
-Description: Minimum number of Brainstore writer instances when autoscaling is enabled
+Description: Minimum number of Brainstore writer instances for autoscaling
 
 Type: `number`
 

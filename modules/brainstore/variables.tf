@@ -170,13 +170,13 @@ variable "service_token_secret_key" {
 # Autoscaling Configuration
 variable "autoscaling_min_capacity" {
   type        = number
-  description = "Minimum number of Brainstore instances when autoscaling is enabled"
+  description = "Minimum number of Brainstore instances for autoscaling"
   default     = 2
 }
 
 variable "autoscaling_max_capacity" {
   type        = number
-  description = "Maximum number of Brainstore instances when autoscaling is enabled"
+  description = "Maximum number of Brainstore instances for autoscaling"
   default     = 10
 }
 
@@ -189,13 +189,13 @@ variable "autoscaling_cpu_target_value" {
 # Writer Autoscaling Configuration
 variable "writer_autoscaling_min_capacity" {
   type        = number
-  description = "Minimum number of Brainstore writer instances when autoscaling is enabled"
+  description = "Minimum number of Brainstore writer instances for autoscaling"
   default     = 1
 }
 
 variable "writer_autoscaling_max_capacity" {
   type        = number
-  description = "Maximum number of Brainstore writer instances when autoscaling is enabled"
+  description = "Maximum number of Brainstore writer instances for autoscaling"
   default     = 10
 }
 

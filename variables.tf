@@ -456,13 +456,13 @@ variable "internal_observability_region" {
 ## Brainstore Autoscaling
 variable "brainstore_autoscaling_min_capacity" {
   type        = number
-  description = "Minimum number of Brainstore instances when autoscaling is enabled"
+  description = "Minimum number of Brainstore instances for autoscaling"
   default     = 2
 }
 
 variable "brainstore_autoscaling_max_capacity" {
   type        = number
-  description = "Maximum number of Brainstore instances when autoscaling is enabled"
+  description = "Maximum number of Brainstore instances for autoscaling"
   default     = 4
 }
 
@@ -476,13 +476,13 @@ variable "brainstore_autoscaling_cpu_target_value" {
 ## Brainstore Writer Autoscaling
 variable "brainstore_writer_autoscaling_min_capacity" {
   type        = number
-  description = "Minimum number of Brainstore writer instances when autoscaling is enabled"
+  description = "Minimum number of Brainstore writer instances for autoscaling"
   default     = 1
 }
 
 variable "brainstore_writer_autoscaling_max_capacity" {
   type        = number
-  description = "Maximum number of Brainstore writer instances when autoscaling is enabled"
+  description = "Maximum number of Brainstore writer instances for autoscaling"
   default     = 2
 }
 

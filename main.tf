@@ -124,7 +124,7 @@ module "services" {
   brainstore_enabled                         = var.enable_brainstore
   brainstore_default                         = var.brainstore_default
   brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_autoscaling_min_capacity != "" ? module.brainstore[0].writer_dns_name : null
+  brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_autoscaling_max_capacity > 0 ? module.brainstore[0].writer_dns_name : null
   brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
   brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill

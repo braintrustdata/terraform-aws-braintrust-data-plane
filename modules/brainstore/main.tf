@@ -4,7 +4,7 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }
   architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
-  has_writer_nodes = var.writer_autoscaling_min_capacity > 0
+  has_writer_nodes = var.writer_autoscaling_max_capacity > 0
 }
 
 resource "aws_launch_template" "brainstore" {
