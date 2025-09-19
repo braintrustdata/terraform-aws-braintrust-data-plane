@@ -5,7 +5,7 @@ variable "deployment_name" {
 
 variable "instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
+  description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 32GB of memory and a local SSD for cache data."
   default     = "c8gd.4xlarge"
 }
 
@@ -16,12 +16,6 @@ variable "license_key" {
     condition     = length(var.license_key) > 0
     error_message = "The license key cannot be empty."
   }
-}
-
-variable "instance_count" {
-  type        = number
-  description = "The number of reader instances to create"
-  default     = 2
 }
 
 variable "port" {
@@ -107,12 +101,6 @@ variable "extra_env_vars_writer" {
   default     = {}
 }
 
-variable "writer_instance_count" {
-  type        = number
-  description = "The number of dedicated writer nodes to create"
-  default     = 1
-}
-
 variable "writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore writer nodes"
@@ -177,4 +165,42 @@ variable "service_token_secret_key" {
   type        = string
   description = "The secret encryption key for SERVICE_TOKEN_SECRET_KEY. Typically this re-uses the function tools secret key."
   sensitive   = true
+}
+
+# Autoscaling Configuration
+variable "autoscaling_min_capacity" {
+  type        = number
+  description = "Minimum number of Brainstore instances for autoscaling"
+  default     = 2
+}
+
+variable "autoscaling_max_capacity" {
+  type        = number
+  description = "Maximum number of Brainstore instances for autoscaling"
+  default     = 10
+}
+
+variable "autoscaling_cpu_target_value" {
+  type        = number
+  description = "Target CPU utilization percentage for target tracking scaling"
+  default     = 70.0
+}
+
+# Writer Autoscaling Configuration
+variable "writer_autoscaling_min_capacity" {
+  type        = number
+  description = "Minimum number of Brainstore writer instances for autoscaling"
+  default     = 1
+}
+
+variable "writer_autoscaling_max_capacity" {
+  type        = number
+  description = "Maximum number of Brainstore writer instances for autoscaling"
+  default     = 10
+}
+
+variable "writer_autoscaling_cpu_target_value" {
+  type        = number
+  description = "Target CPU utilization percentage for target tracking scaling for writers"
+  default     = 70.0
 }
