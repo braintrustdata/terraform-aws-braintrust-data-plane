@@ -1,5 +1,5 @@
 locals {
-  brainstore_release_version = "v${jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]}"
+  brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
   common_tags = {
     BraintrustDeploymentName = var.deployment_name
   }
