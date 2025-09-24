@@ -314,6 +314,10 @@ variable "brainstore_instance_type" {
   type        = string
   description = "The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
   default     = "c8gd.4xlarge"
+  validation {
+    condition     = can(regex("(c[5-8][a-z]*d\\.|d[a-z]*\\.|f[1-2]\\.|g[4-6][a-z]*\\.|gr6[a-z]*\\.|i[3-8][a-z]*\\.|im4gn\\.|is4gen\\.|m[5-8][a-z]*dn?\\.|p[3-6].*\\.|r[5-8][a-z]*dn?\\.|trn1[a-z]*\\.|x2[a-z]*\\.|z1d\\.|dl1\\.)", var.brainstore_instance_type))
+    error_message = "The brainstore_instance_type must have local NVMe SSD storage. Supported families: c5d/c6gd/c7gd/c8gd, m5d/m6gd/m7gd/m8gd, r5d/r6gd/r7gd/r8gd, i3-i8 series, x2gd/x2idn, z1d, f1/f2, g4-g6, p3-p6, dl1, trn1."
+  }
 }
 
 variable "brainstore_instance_count" {
@@ -332,6 +336,10 @@ variable "brainstore_writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore writer nodes"
   default     = "c8gd.8xlarge"
+  validation {
+    condition     = can(regex("(c[5-8][a-z]*d\\.|d[a-z]*\\.|f[1-2]\\.|g[4-6][a-z]*\\.|gr6[a-z]*\\.|i[3-8][a-z]*\\.|im4gn\\.|is4gen\\.|m[5-8][a-z]*dn?\\.|p[3-6].*\\.|r[5-8][a-z]*dn?\\.|trn1[a-z]*\\.|x2[a-z]*\\.|z1d\\.|dl1\\.)", var.brainstore_writer_instance_type))
+    error_message = "The brainstore_writer_instance_type must have local NVMe SSD storage. Supported families: c5d/c6gd/c7gd/c8gd, m5d/m6gd/m7gd/m8gd, r5d/r6gd/r7gd/r8gd, i3-i8 series, x2gd/x2idn, z1d, f1/f2, g4-g6, p3-p6, dl1, trn1."
+  }
 }
 
 variable "brainstore_instance_key_pair_name" {
