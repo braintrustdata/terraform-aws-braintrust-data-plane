@@ -156,7 +156,7 @@ resource "aws_iam_policy" "api_handler_quarantine" {
         Sid = "TagQuarantine"
       },
       {
-        Action   = ["lambda:DeleteFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunctionConfiguration"]
+        Action   = ["lambda:DeleteFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
         Effect   = "Allow"
         Resource = "*"
         Condition = {
