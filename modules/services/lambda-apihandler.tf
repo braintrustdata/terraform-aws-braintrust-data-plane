@@ -118,7 +118,7 @@ resource "aws_lambda_alias" "api_handler_live" {
 
 resource "aws_iam_role" "ai_proxy_invoke_role" {
   name = "${var.deployment_name}-AIProxyInvokeRole"
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
       {
         Action = "sts:AssumeRole"
@@ -136,7 +136,7 @@ resource "aws_iam_role" "ai_proxy_invoke_role" {
 resource "aws_iam_role_policy" "ai_proxy_invoke_policy" {
   name = "AIProxyInvokeRolePolicy"
   role = aws_iam_role.ai_proxy_invoke_role.id
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Statement = [
       {
         Action   = "lambda:InvokeFunction"

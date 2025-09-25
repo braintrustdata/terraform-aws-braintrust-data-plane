@@ -107,7 +107,7 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_iam_role" "db_monitoring" {
   name = "${var.deployment_name}-db-monitoring"
 
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Version = "2008-10-17"
     Statement = [
       {

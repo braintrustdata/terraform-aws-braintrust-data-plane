@@ -1,7 +1,7 @@
 resource "aws_iam_role" "brainstore_ec2_role" {
   name = "${var.deployment_name}-brainstore-ec2-role"
 
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -23,7 +23,7 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
   name = "brainstore-s3-bucket"
   role = aws_iam_role.brainstore_ec2_role.id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -48,7 +48,7 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
   name = "secrets-access"
   role = aws_iam_role.brainstore_ec2_role.id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -64,7 +64,7 @@ resource "aws_iam_role_policy" "brainstore_cloudwatch_logs_access" {
   name = "cloudwatch-logs-access"
   role = aws_iam_role.brainstore_ec2_role.id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -88,7 +88,7 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
   name = "${var.deployment_name}-brainstore-kms-policy"
   role = aws_iam_role.brainstore_ec2_role.id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {

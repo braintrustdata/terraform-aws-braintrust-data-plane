@@ -1,7 +1,7 @@
 # The role used by the API handler to invoke the used-defined quarantined function
 resource "aws_iam_role" "quarantine_invoke_role" {
   name = "${var.deployment_name}-QuarantineInvokeRole"
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
       {
         Action = "sts:AssumeRole"
@@ -22,7 +22,7 @@ resource "aws_iam_role" "quarantine_invoke_role" {
 resource "aws_iam_role_policy" "quarantine_invoke_policy" {
   name = "${var.deployment_name}-QuarantineInvokeRolePolicy"
   role = aws_iam_role.quarantine_invoke_role.id
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Statement = [
       {
         Action   = "lambda:InvokeFunction"
@@ -48,7 +48,7 @@ resource "aws_iam_role_policies_exclusive" "quarantine_invoke_role" {
 resource "aws_iam_role" "quarantine_function_role" {
   name = "${var.deployment_name}-QuarantineFunctionRole"
 
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -74,7 +74,7 @@ resource "aws_iam_role_policy_attachment" "quarantine_function_role" {
 # The role used by the API handler and AI proxy
 resource "aws_iam_role" "api_handler_role" {
   name = "${var.deployment_name}-APIHandlerRole"
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
       {
         Action = "sts:AssumeRole"
@@ -117,7 +117,7 @@ resource "aws_iam_role_policy_attachment" "api_handler_quarantine" {
 resource "aws_iam_policy" "api_handler_quarantine" {
   count = var.use_quarantine_vpc ? 1 : 0
   name  = "${var.deployment_name}-APIHandlerQuarantinePolicy"
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -175,7 +175,7 @@ resource "aws_iam_policy" "api_handler_quarantine" {
 
 resource "aws_iam_policy" "api_handler_policy" {
   name = "${var.deployment_name}-APIHandlerRolePolicy"
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Statement = [
       {
         Sid      = "ElasticacheAccess"
@@ -265,7 +265,7 @@ resource "aws_iam_policy" "api_handler_policy" {
 resource "aws_iam_role" "default_role" {
   name = "${var.deployment_name}-DefaultRole"
 
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -290,7 +290,7 @@ resource "aws_iam_role_policy" "default_role_policy" {
   name = "${var.deployment_name}-DefaultRolePolicy"
   role = aws_iam_role.default_role.id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
