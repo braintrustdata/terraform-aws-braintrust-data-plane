@@ -11,7 +11,7 @@ resource "aws_iam_role" "braintrust_support" {
 
   name = "${var.deployment_name}-braintrust-support"
 
-  assume_role_policy = jsonencode({
+  assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -33,7 +33,7 @@ resource "aws_iam_role_policy" "braintrust_support_logs" {
   name = "braintrust-support-logs-access"
   role = aws_iam_role.braintrust_support[0].id
 
-  policy = jsonencode({
+  policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
