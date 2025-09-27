@@ -10,12 +10,16 @@ resource "aws_lambda_function" "automation_cron" {
   handler       = "index.handler"
   runtime       = "nodejs22.x"
   timeout       = 300
-  memory_size   = 1024
+  memory_size   = 2048
   architectures = ["arm64"]
 
   layers = [
     "arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:14"
   ]
+
+  ephemeral_storage {
+    size = 4096
+  }
 
   environment {
     variables = merge({
