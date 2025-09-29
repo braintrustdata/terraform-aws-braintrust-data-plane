@@ -53,6 +53,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
     }
   }
 
+  dynamic "rule" {
+    for_each = var.s3_intelligent_tiering_enabled ? [1] : []
+    content {
+      id     = "intelligent-tiering"
+      status = "Enabled"
+
+      filter {
+        # Apply to all objects in the bucket
+        prefix = ""
+      }
+
+      transition {
+        days          = 1
+        storage_class = "INTELLIGENT_TIERING"
+      }
+    }
+  }
+
   rule {
     id     = "delete-index-deletion-logs"
     status = "Enabled"

@@ -155,6 +155,12 @@ variable "s3_bucket_retention_days" {
   default     = 7
 }
 
+variable "s3_intelligent_tiering_enabled" {
+  type        = bool
+  description = "Enable S3 Intelligent Tiering for the brainstore bucket to automatically optimize storage costs"
+  default     = true
+}
+
 variable "internal_observability_api_key" {
   type        = string
   description = "Support for internal observability agent. Do not set this unless instructed by support."

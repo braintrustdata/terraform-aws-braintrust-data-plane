@@ -382,6 +382,12 @@ variable "brainstore_s3_bucket_retention_days" {
   default     = 7
 }
 
+variable "brainstore_s3_intelligent_tiering_enabled" {
+  type        = bool
+  description = "Enable S3 Intelligent Tiering for the brainstore bucket to automatically optimize storage costs by transitioning objects to Infrequent Access tier"
+  default     = true
+}
+
 variable "brainstore_enable_retention" {
   type        = bool
   description = "Enable time-based retention for Brainstore"

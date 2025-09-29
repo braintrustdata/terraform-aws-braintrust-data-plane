@@ -62,6 +62,10 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
+  # Enable S3 Intelligent Tiering for Brainstore bucket to automatically optimize storage costs
+  # This will transition objects between Standard and Infrequent Access tiers based on access patterns
+  # brainstore_s3_intelligent_tiering_enabled = true
+
 
   ### Redis configuration
 
