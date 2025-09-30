@@ -65,7 +65,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
       }
 
       transition {
-        days          = 1
+        days          = 30
         storage_class = "INTELLIGENT_TIERING"
       }
     }
