@@ -97,7 +97,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
       }
 
       transition {
-        days          = var.intelligent_tiering_days
+        days          = 30
         storage_class = "STANDARD_IA"
       }
     }

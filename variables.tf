@@ -394,12 +394,6 @@ variable "brainstore_intelligent_tiering_enabled" {
   default     = true
 }
 
-variable "brainstore_intelligent_tiering_days" {
-  type        = number
-  description = "Number of days after which objects are moved to Infrequent Access tier in S3 Intelligent Tiering"
-  default     = 30
-}
-
 
 variable "monitoring_telemetry" {
   description = <<-EOT

@@ -184,9 +184,3 @@ variable "intelligent_tiering_enabled" {
   description = "Enable S3 Intelligent Tiering for the Brainstore S3 bucket to automatically optimize storage costs"
   default     = true
 }
-
-variable "intelligent_tiering_days" {
-  type        = number
-  description = "Number of days after which objects are moved to Infrequent Access tier in S3 Intelligent Tiering"
-  default     = 30
-}
