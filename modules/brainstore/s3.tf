@@ -85,22 +85,27 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
     }
   }
 
-  dynamic "rule" {
-    for_each = var.intelligent_tiering_enabled ? [1] : []
-    content {
-      id     = "intelligent-tiering"
-      status = "Enabled"
+}
 
-      filter {
-        # Apply to all objects in the bucket
-        prefix = ""
-      }
+resource "aws_s3_bucket_intelligent_tiering_configuration" "brainstore" {
+  count  = var.intelligent_tiering_enabled ? 1 : 0
+  bucket = aws_s3_bucket.brainstore.id
+  name   = "EntireBucket"
 
-      transition {
-        days          = 30
-        storage_class = "STANDARD_IA"
-      }
-    }
+  status = "Enabled"
+
+  filter {
+    prefix = ""
+  }
+
+  tiering {
+    access_tier = "ARCHIVE_ACCESS"
+    days        = 30
+  }
+
+  tiering {
+    access_tier = "DEEP_ARCHIVE_ACCESS"
+    days        = 90
   }
 }
 
