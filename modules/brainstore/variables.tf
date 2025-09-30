@@ -178,3 +178,15 @@ variable "service_token_secret_key" {
   description = "The secret encryption key for SERVICE_TOKEN_SECRET_KEY. Typically this re-uses the function tools secret key."
   sensitive   = true
 }
+
+variable "intelligent_tiering_enabled" {
+  type        = bool
+  description = "Enable S3 Intelligent Tiering for the Brainstore S3 bucket to automatically optimize storage costs"
+  default     = true
+}
+
+variable "intelligent_tiering_days" {
+  type        = number
+  description = "Number of days after which objects are moved to Infrequent Access tier in S3 Intelligent Tiering"
+  default     = 30
+}

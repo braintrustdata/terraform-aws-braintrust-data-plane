@@ -212,6 +212,9 @@ module "brainstore" {
   internal_observability_env_name = var.internal_observability_env_name
   internal_observability_region   = var.internal_observability_region
 
+  intelligent_tiering_enabled = var.brainstore_intelligent_tiering_enabled
+  intelligent_tiering_days   = var.brainstore_intelligent_tiering_days
+
   vpc_id = module.main_vpc.vpc_id
   authorized_security_groups = merge(
     {

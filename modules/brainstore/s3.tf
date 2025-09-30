@@ -84,6 +84,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
       days = var.s3_bucket_retention_days
     }
   }
+
+  dynamic "rule" {
+    for_each = var.intelligent_tiering_enabled ? [1] : []
+    content {
+      id     = "intelligent-tiering"
+      status = "Enabled"
+
+      filter {
+        # Apply to all objects in the bucket
+        prefix = ""
+      }
+
+      transition {
+        days          = var.intelligent_tiering_days
+        storage_class = "STANDARD_IA"
+      }
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "brainstore" {
