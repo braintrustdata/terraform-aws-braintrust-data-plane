@@ -53,6 +53,30 @@ Type: `string`
 
 Default: `""`
 
+### <a name="input_brainstore_autoscaling_cpu_target_value"></a> [brainstore\_autoscaling\_cpu\_target\_value](#input\_brainstore\_autoscaling\_cpu\_target\_value)
+
+Description: Target CPU utilization percentage for Brainstore autoscaling group target tracking scaling
+
+Type: `number`
+
+Default: `70`
+
+### <a name="input_brainstore_autoscaling_max_capacity"></a> [brainstore\_autoscaling\_max\_capacity](#input\_brainstore\_autoscaling\_max\_capacity)
+
+Description: Maximum number of Brainstore instances for autoscaling
+
+Type: `number`
+
+Default: `10`
+
+### <a name="input_brainstore_autoscaling_min_capacity"></a> [brainstore\_autoscaling\_min\_capacity](#input\_brainstore\_autoscaling\_min\_capacity)
+
+Description: Minimum number of Brainstore instances for autoscaling
+
+Type: `number`
+
+Default: `2`
+
 ### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
 
 Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
@@ -109,14 +133,6 @@ Type: `map(string)`
 
 Default: `{}`
 
-### <a name="input_brainstore_instance_count"></a> [brainstore\_instance\_count](#input\_brainstore\_instance\_count)
-
-Description: The number of Brainstore reader instances to provision
-
-Type: `number`
-
-Default: `2`
-
 ### <a name="input_brainstore_instance_key_pair_name"></a> [brainstore\_instance\_key\_pair\_name](#input\_brainstore\_instance\_key\_pair\_name)
 
 Description: The name of the key pair to use for the Brainstore instance
@@ -127,7 +143,7 @@ Default: `null`
 
 ### <a name="input_brainstore_instance_type"></a> [brainstore\_instance\_type](#input\_brainstore\_instance\_type)
 
-Description: The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data.
+Description: The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 32GB of memory and a local SSD for cache data.
 
 Type: `string`
 
@@ -165,9 +181,25 @@ Type: `string`
 
 Default: `null`
 
-### <a name="input_brainstore_writer_instance_count"></a> [brainstore\_writer\_instance\_count](#input\_brainstore\_writer\_instance\_count)
+### <a name="input_brainstore_writer_autoscaling_cpu_target_value"></a> [brainstore\_writer\_autoscaling\_cpu\_target\_value](#input\_brainstore\_writer\_autoscaling\_cpu\_target\_value)
 
-Description: The number of dedicated writer nodes to create
+Description: Target CPU utilization percentage for Brainstore writer autoscaling group target tracking scaling
+
+Type: `number`
+
+Default: `70`
+
+### <a name="input_brainstore_writer_autoscaling_max_capacity"></a> [brainstore\_writer\_autoscaling\_max\_capacity](#input\_brainstore\_writer\_autoscaling\_max\_capacity)
+
+Description: Maximum number of Brainstore writer instances for autoscaling
+
+Type: `number`
+
+Default: `10`
+
+### <a name="input_brainstore_writer_autoscaling_min_capacity"></a> [brainstore\_writer\_autoscaling\_min\_capacity](#input\_brainstore\_writer\_autoscaling\_min\_capacity)
+
+Description: Minimum number of Brainstore writer instances for autoscaling
 
 Type: `number`
 
@@ -175,7 +207,7 @@ Default: `1`
 
 ### <a name="input_brainstore_writer_instance_type"></a> [brainstore\_writer\_instance\_type](#input\_brainstore\_writer\_instance\_type)
 
-Description: The instance type to use for the Brainstore writer nodes
+Description: The instance type to use for the Brainstore writer nodes. Recommended Graviton instance type with 64GB of memory and a local SSD for cache data.
 
 Type: `string`
 
