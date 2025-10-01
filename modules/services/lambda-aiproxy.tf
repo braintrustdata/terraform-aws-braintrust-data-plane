@@ -73,7 +73,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "access-control-allow-credentials",
       "access-control-allow-origin",
       "access-control-allow-methods",
-      "x-bt-internal-trace-id"
+      "x-bt-internal-trace-id",
+      "x-bt-span-id"
     ]
     max_age = 86400
   }
