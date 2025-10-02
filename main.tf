@@ -8,16 +8,21 @@ module "kms" {
 
 locals {
   kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
-  clickhouse_address = var.use_external_clickhouse_address != null ? var.use_external_clickhouse_address : (
-    var.enable_clickhouse ? module.clickhouse[0].clickhouse_instance_private_ip : null
-  )
   bastion_security_group = var.enable_braintrust_support_shell_access ? {
     "Remote Support Bastion" = module.remote_support[0].remote_support_security_group_id
   } : {}
+
+  # VPC configuration - handle both created and existing VPCs
+  main_vpc_id                  = var.create_vpc ? module.main_vpc[0].vpc_id : var.existing_vpc_id
+  main_vpc_private_subnet_1_id = var.create_vpc ? module.main_vpc[0].private_subnet_1_id : var.existing_private_subnet_1_id
+  main_vpc_private_subnet_2_id = var.create_vpc ? module.main_vpc[0].private_subnet_2_id : var.existing_private_subnet_2_id
+  main_vpc_private_subnet_3_id = var.create_vpc ? module.main_vpc[0].private_subnet_3_id : var.existing_private_subnet_3_id
+  main_vpc_public_subnet_1_id  = var.create_vpc ? module.main_vpc[0].public_subnet_1_id : var.existing_public_subnet_1_id
 }
 
 module "main_vpc" {
   source = "./modules/vpc"
+  count  = var.create_vpc ? 1 : 0
 
   deployment_name = var.deployment_name
   vpc_name        = "main"
@@ -61,11 +66,11 @@ module "database" {
   postgres_storage_type     = var.postgres_storage_type
   postgres_version          = var.postgres_version
   database_subnet_ids = [
-    module.main_vpc.private_subnet_1_id,
-    module.main_vpc.private_subnet_2_id,
-    module.main_vpc.private_subnet_3_id
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id
   ]
-  vpc_id = module.main_vpc.vpc_id
+  vpc_id = local.main_vpc_id
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
@@ -85,11 +90,11 @@ module "redis" {
 
   deployment_name = var.deployment_name
   subnet_ids = [
-    module.main_vpc.private_subnet_1_id,
-    module.main_vpc.private_subnet_2_id,
-    module.main_vpc.private_subnet_3_id
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id
   ]
-  vpc_id = module.main_vpc.vpc_id
+  vpc_id = local.main_vpc_id
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
@@ -118,8 +123,8 @@ module "services" {
   redis_host        = module.redis.redis_endpoint
   redis_port        = module.redis.redis_port
 
-  clickhouse_host   = local.clickhouse_address
-  clickhouse_secret = var.enable_clickhouse ? module.clickhouse[0].clickhouse_secret : null
+  clickhouse_host   = null
+  clickhouse_secret = null
 
   brainstore_enabled                         = var.enable_brainstore
   brainstore_default                         = var.brainstore_default
@@ -150,11 +155,11 @@ module "services" {
   billing_telemetry_log_level           = var.billing_telemetry_log_level
 
   # Networking
-  vpc_id = module.main_vpc.vpc_id
+  vpc_id = local.main_vpc_id
   service_subnet_ids = [
-    module.main_vpc.private_subnet_1_id,
-    module.main_vpc.private_subnet_2_id,
-    module.main_vpc.private_subnet_3_id
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id
   ]
 
   # Quarantine VPC
@@ -169,19 +174,6 @@ module "services" {
   kms_key_arn = local.kms_key_arn
 }
 
-module "clickhouse" {
-  source = "./modules/clickhouse"
-  count  = var.enable_clickhouse ? 1 : 0
-
-  deployment_name                  = var.deployment_name
-  clickhouse_instance_count        = var.use_external_clickhouse_address != null ? 0 : 1
-  clickhouse_instance_type         = var.clickhouse_instance_type
-  clickhouse_metadata_storage_size = var.clickhouse_metadata_storage_size
-  clickhouse_subnet_id             = module.main_vpc.private_subnet_1_id
-  clickhouse_security_group_ids    = [module.main_vpc.default_security_group_id]
-
-  kms_key_arn = local.kms_key_arn
-}
 
 module "brainstore" {
   source = "./modules/brainstore"
@@ -212,7 +204,7 @@ module "brainstore" {
   internal_observability_env_name = var.internal_observability_env_name
   internal_observability_region   = var.internal_observability_region
 
-  vpc_id = module.main_vpc.vpc_id
+  vpc_id = local.main_vpc_id
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
@@ -222,10 +214,17 @@ module "brainstore" {
   authorized_security_groups_ssh = local.bastion_security_group
 
   private_subnet_ids = [
-    module.main_vpc.private_subnet_1_id,
-    module.main_vpc.private_subnet_2_id,
-    module.main_vpc.private_subnet_3_id
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id
   ]
 
   kms_key_arn = local.kms_key_arn
+}
+
+# Handle state migration since the VPC module became conditional
+# This ensures existing users don't destroy/create their VPC resources when upgrading
+moved {
+  from = module.main_vpc
+  to   = module.main_vpc[0]
 }

@@ -35,12 +35,42 @@ Required for new AWS accounts to ensure IAM service-linked roles are created.
 ./scripts/create-service-linked-roles.sh
 ```
 
-## Customized Deployments
+### VPCs
 
-It is highly recommended to use our root module to deploy Braintrust. It will make support and upgrades far easier. However, if you need to customize the deployment, you can pick and choose from our submodules since they are easily composable.
+This module creates two VPCs by default:
+- `main` VPC: This is the main VPC that contains the Braintrust services.
+- `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
 
-Look at our `main.tf` as a reference for how to configure the submodules. For example, if you wanted to re-use an existing VPC, you could remove the `module.main_vpc` block and pass in the existing VPC's ID, subnets, and security group IDs to the `services`, `database`, and `redis` modules.
+## Advanced: Customized Deployments
 
+### Using an Existing VPC
+
+The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
+
+The passed in VPC must have the following resources:
+- At least 3 private subnets in different availability zones
+- At least 1 public subnet
+- Internet gateway and NAT gateway with proper route tables configured for private subnets
+
+Important note: The module will still create and manage security groups for the services.
+
+To use an existing VPC, set `create_vpc = false` and provide the required VPC details:
+
+```hcl
+module "braintrust-data-plane" {
+  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
+
+  # ... your existing configuration ...
+
+  # Use existing VPC
+  create_vpc = false
+  existing_vpc_id                        = "vpc-xxxxxxxxx"
+  existing_private_subnet_1_id           = "subnet-xxxxxxxxx"
+  existing_private_subnet_2_id           = "subnet-yyyyyyyyy"
+  existing_private_subnet_3_id           = "subnet-zzzzzzzzz"
+  existing_public_subnet_1_id            = "subnet-aaaaaaaaa"
+}
+```
 
 ## Development Setup
 
