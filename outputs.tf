@@ -9,7 +9,7 @@ output "quarantine_vpc_id" {
 }
 
 output "main_vpc_cidr" {
-  value       = local.main_vpc_cidr
+  value       = var.create_vpc ? module.main_vpc[0].vpc_cidr : null
   description = "CIDR block of the main VPC"
 }
 
