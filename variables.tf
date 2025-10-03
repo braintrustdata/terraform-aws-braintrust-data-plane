@@ -497,6 +497,12 @@ variable "internal_observability_region" {
   default     = "us5"
 }
 
+variable "database_subnet_ids" {
+  type        = list(string)
+  description = "Optional list of subnet IDs for the database. If not provided, uses the main VPC's private subnets."
+  default     = null
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
