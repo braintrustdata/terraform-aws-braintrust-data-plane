@@ -27,9 +27,9 @@ module "remote_support" {
   ]
   enable_braintrust_support_logs_access  = var.enable_braintrust_support_logs_access
   enable_braintrust_support_shell_access = var.enable_braintrust_support_shell_access
-  vpc_id                                 = module.main_vpc[0].vpc_id
-  private_subnet_ids                     = [module.main_vpc[0].private_subnet_1_id]
-  public_subnet_ids                      = [module.main_vpc[0].public_subnet_1_id]
+  vpc_id                                 = local.main_vpc_id
+  private_subnet_ids                     = [local.main_vpc_private_subnet_1_id]
+  public_subnet_ids                      = [local.main_vpc_public_subnet_1_id]
 }
 
 variable "enable_braintrust_support_logs_access" {
