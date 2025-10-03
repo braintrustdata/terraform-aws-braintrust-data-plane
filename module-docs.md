@@ -213,6 +213,14 @@ Type: `string`
 
 Default: `null`
 
+### <a name="input_database_subnet_ids"></a> [database\_subnet\_ids](#input\_database\_subnet\_ids)
+
+Description: Optional list of subnet IDs for the database. If not provided, uses the main VPC's private subnets.
+
+Type: `list(string)`
+
+Default: `null`
+
 ### <a name="input_deployment_name"></a> [deployment\_name](#input\_deployment\_name)
 
 Description: Name of this Braintrust deployment. Will be included in tags and prefixes in resources names. Lowercase letter, numbers, and hyphens only. If you want multiple deployments in your same AWS account, use a unique name for each deployment.
