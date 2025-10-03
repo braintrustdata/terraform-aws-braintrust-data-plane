@@ -86,7 +86,8 @@ module "database" {
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
-  kms_key_arn = local.kms_key_arn
+  kms_key_arn              = local.kms_key_arn
+  permissions_boundary_arn = var.permissions_boundary_arn
 }
 
 module "redis" {
@@ -175,7 +176,8 @@ module "services" {
     module.quarantine_vpc[0].private_subnet_3_id
   ] : []
 
-  kms_key_arn = local.kms_key_arn
+  kms_key_arn              = local.kms_key_arn
+  permissions_boundary_arn = var.permissions_boundary_arn
 }
 
 
@@ -223,7 +225,8 @@ module "brainstore" {
     local.main_vpc_private_subnet_3_id
   ]
 
-  kms_key_arn = local.kms_key_arn
+  kms_key_arn              = local.kms_key_arn
+  permissions_boundary_arn = var.permissions_boundary_arn
 }
 
 # Handle state migration since the VPC module became conditional

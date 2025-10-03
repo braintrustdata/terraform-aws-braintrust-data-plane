@@ -122,6 +122,8 @@ resource "aws_iam_role" "bastion" {
     ]
   })
 
+  permissions_boundary = var.permissions_boundary_arn
+
   tags = local.common_tags
 }
 

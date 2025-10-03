@@ -178,3 +178,9 @@ variable "service_token_secret_key" {
   description = "The secret encryption key for SERVICE_TOKEN_SECRET_KEY. Typically this re-uses the function tools secret key."
   sensitive   = true
 }
+
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
+  default     = null
+}

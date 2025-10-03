@@ -301,3 +301,9 @@ variable "billing_telemetry_log_level" {
     error_message = "billing_telemetry_log_level must be empty or one of: info, warn, error, debug"
   }
 }
+
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
+  default     = null
+}
