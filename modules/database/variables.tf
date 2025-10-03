@@ -81,7 +81,7 @@ variable "auto_minor_version_upgrade" {
 }
 
 variable "DANGER_disable_deletion_protection" {
-  description = "Disable deletion protection for the database. Do not disable this this when you fully intend to destroy the database."
+  description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
   type        = bool
   default     = false
 }

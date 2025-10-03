@@ -499,6 +499,6 @@ variable "internal_observability_region" {
 
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
-  description = "Disable deletion protection for the database. Do not disable this this when you fully intend to destroy the database."
+  description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
   default     = false
 }
