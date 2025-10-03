@@ -63,7 +63,7 @@ Default: `true`
 
 ### <a name="input_brainstore_default"></a> [brainstore\_default](#input\_brainstore\_default)
 
-Description: Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag. Don't set this if you have a large backfill ongoing and are migrating from Clickhouse.
+Description: Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag.
 
 Type: `string`
 
@@ -181,21 +181,13 @@ Type: `string`
 
 Default: `"c8gd.8xlarge"`
 
-### <a name="input_clickhouse_instance_type"></a> [clickhouse\_instance\_type](#input\_clickhouse\_instance\_type)
+### <a name="input_create_vpc"></a> [create\_vpc](#input\_create\_vpc)
 
-Description: The instance type to use for the Clickhouse instance
+Description: Whether to create a new VPC. If false, existing VPC details must be provided.
 
-Type: `string`
+Type: `bool`
 
-Default: `"c5.2xlarge"`
-
-### <a name="input_clickhouse_metadata_storage_size"></a> [clickhouse\_metadata\_storage\_size](#input\_clickhouse\_metadata\_storage\_size)
-
-Description: The size of the EBS volume to use for Clickhouse metadata
-
-Type: `number`
-
-Default: `100`
+Default: `true`
 
 ### <a name="input_custom_certificate_arn"></a> [custom\_certificate\_arn](#input\_custom\_certificate\_arn)
 
@@ -253,14 +245,6 @@ Type: `bool`
 
 Default: `false`
 
-### <a name="input_enable_clickhouse"></a> [enable\_clickhouse](#input\_enable\_clickhouse)
-
-Description: Enable Clickhouse for faster analytics
-
-Type: `bool`
-
-Default: `false`
-
 ### <a name="input_enable_quarantine_vpc"></a> [enable\_quarantine\_vpc](#input\_enable\_quarantine\_vpc)
 
 Description: Enable the Quarantine VPC to run user defined functions in an isolated environment. If disabled, user defined functions will not be available.
@@ -268,6 +252,46 @@ Description: Enable the Quarantine VPC to run user defined functions in an isola
 Type: `bool`
 
 Default: `true`
+
+### <a name="input_existing_private_subnet_1_id"></a> [existing\_private\_subnet\_1\_id](#input\_existing\_private\_subnet\_1\_id)
+
+Description: ID of existing private subnet 1 (required when create\_vpc is false)
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_existing_private_subnet_2_id"></a> [existing\_private\_subnet\_2\_id](#input\_existing\_private\_subnet\_2\_id)
+
+Description: ID of existing private subnet 2 (required when create\_vpc is false)
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_existing_private_subnet_3_id"></a> [existing\_private\_subnet\_3\_id](#input\_existing\_private\_subnet\_3\_id)
+
+Description: ID of existing private subnet 3 (required when create\_vpc is false)
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_existing_public_subnet_1_id"></a> [existing\_public\_subnet\_1\_id](#input\_existing\_public\_subnet\_1\_id)
+
+Description: ID of existing public subnet 1 (required when create\_vpc is false)
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_existing_vpc_id"></a> [existing\_vpc\_id](#input\_existing\_vpc\_id)
+
+Description: ID of existing VPC to use (required when create\_vpc is false)
+
+Type: `string`
+
+Default: `null`
 
 ### <a name="input_internal_observability_api_key"></a> [internal\_observability\_api\_key](#input\_internal\_observability\_api\_key)
 
@@ -549,17 +573,9 @@ Default:
 }
 ```
 
-### <a name="input_use_external_clickhouse_address"></a> [use\_external\_clickhouse\_address](#input\_use\_external\_clickhouse\_address)
-
-Description: Do not change this unless instructed by Braintrust. If set, the domain name or IP of the external Clickhouse instance will be used and no internal instance will be created.
-
-Type: `string`
-
-Default: `null`
-
 ### <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr)
 
-Description: CIDR block for the VPC
+Description: CIDR block for the VPC (only used when create\_vpc is true)
 
 Type: `string`
 
@@ -597,18 +613,6 @@ Description: ID of the security group for the Brainstore instances
 
 Description: ARN of the Role that grants Braintrust team remote support. Share this with the Braintrust team.
 
-### <a name="output_clickhouse_host"></a> [clickhouse\_host](#output\_clickhouse\_host)
-
-Description: Host of the Clickhouse instance
-
-### <a name="output_clickhouse_s3_bucket_name"></a> [clickhouse\_s3\_bucket\_name](#output\_clickhouse\_s3\_bucket\_name)
-
-Description: Name of the Clickhouse S3 bucket
-
-### <a name="output_clickhouse_secret_id"></a> [clickhouse\_secret\_id](#output\_clickhouse\_secret\_id)
-
-Description: ID of the Clickhouse secret. Note this is the Terraform ID attribute which is a pipe delimited combination of secret ID and version ID
-
 ### <a name="output_lambda_security_group_id"></a> [lambda\_security\_group\_id](#output\_lambda\_security\_group\_id)
 
 Description: ID of the security group for the Lambda functions
@@ -623,7 +627,7 @@ Description: ID of the main VPC that contains the Braintrust resources
 
 ### <a name="output_main_vpc_private_route_table_id"></a> [main\_vpc\_private\_route\_table\_id](#output\_main\_vpc\_private\_route\_table\_id)
 
-Description: ID of the private route table in the main VPC
+Description: ID of the private route table in the main VPC (null when using existing VPC)
 
 ### <a name="output_main_vpc_private_subnet_1_id"></a> [main\_vpc\_private\_subnet\_1\_id](#output\_main\_vpc\_private\_subnet\_1\_id)
 
@@ -639,7 +643,7 @@ Description: ID of the third private subnet in the main VPC
 
 ### <a name="output_main_vpc_public_route_table_id"></a> [main\_vpc\_public\_route\_table\_id](#output\_main\_vpc\_public\_route\_table\_id)
 
-Description: ID of the public route table in the main VPC
+Description: ID of the public route table in the main VPC (null when using existing VPC)
 
 ### <a name="output_main_vpc_public_subnet_1_id"></a> [main\_vpc\_public\_subnet\_1\_id](#output\_main\_vpc\_public\_subnet\_1\_id)
 
