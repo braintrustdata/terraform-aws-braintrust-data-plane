@@ -80,8 +80,8 @@ variable "auto_minor_version_upgrade" {
   default     = true
 }
 
-variable "deletion_protection" {
-  description = "Indicates that the DB instance should be protected against deletion. The database can't be deleted when this value is set to true."
+variable "DANGER_disable_deletion_protection" {
+  description = "Disable deletion protection for the database. Do not disable this this when you fully intend to destroy the database."
   type        = bool
-  default     = true
+  default     = false
 }
