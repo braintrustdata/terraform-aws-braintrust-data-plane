@@ -15,8 +15,8 @@ module "remote_support" {
   database_secret_arn   = module.database.postgres_database_secret_arn
   redis_host            = module.redis.redis_endpoint
   redis_port            = module.redis.redis_port
-  clickhouse_host       = local.clickhouse_address
-  clickhouse_secret_arn = var.enable_clickhouse ? module.clickhouse[0].clickhouse_secret : null
+  clickhouse_host       = null
+  clickhouse_secret_arn = null
   kms_key_arn           = local.kms_key_arn
   lambda_function_arns = [
     module.services.api_handler_arn,
@@ -27,9 +27,9 @@ module "remote_support" {
   ]
   enable_braintrust_support_logs_access  = var.enable_braintrust_support_logs_access
   enable_braintrust_support_shell_access = var.enable_braintrust_support_shell_access
-  vpc_id                                 = module.main_vpc.vpc_id
-  private_subnet_ids                     = [module.main_vpc.private_subnet_1_id]
-  public_subnet_ids                      = [module.main_vpc.public_subnet_1_id]
+  vpc_id                                 = local.main_vpc_id
+  private_subnet_ids                     = [local.main_vpc_private_subnet_1_id]
+  public_subnet_ids                      = [local.main_vpc_public_subnet_1_id]
 }
 
 variable "enable_braintrust_support_logs_access" {

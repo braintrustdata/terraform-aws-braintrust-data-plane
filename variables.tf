@@ -48,10 +48,67 @@ variable "additional_kms_key_policies" {
 }
 
 ## NETWORKING
+variable "create_vpc" {
+  type        = bool
+  default     = true
+  description = "Whether to create a new VPC. If false, existing VPC details must be provided."
+}
+
 variable "vpc_cidr" {
   type        = string
   default     = "10.175.0.0/21"
-  description = "CIDR block for the VPC"
+  description = "CIDR block for the VPC (only used when create_vpc is true)"
+}
+
+# Existing VPC variables (only used when create_vpc is false)
+variable "existing_vpc_id" {
+  type        = string
+  default     = null
+  description = "ID of existing VPC to use (required when create_vpc is false)"
+  validation {
+    condition     = var.create_vpc || var.existing_vpc_id != null
+    error_message = "existing_vpc_id is required when create_vpc is false."
+  }
+}
+
+variable "existing_private_subnet_1_id" {
+  type        = string
+  default     = null
+  description = "ID of existing private subnet 1 (required when create_vpc is false)"
+  validation {
+    condition     = var.create_vpc || var.existing_private_subnet_1_id != null
+    error_message = "existing_private_subnet_1_id is required when create_vpc is false."
+  }
+}
+
+variable "existing_private_subnet_2_id" {
+  type        = string
+  default     = null
+  description = "ID of existing private subnet 2 (required when create_vpc is false)"
+  validation {
+    condition     = var.create_vpc || var.existing_private_subnet_2_id != null
+    error_message = "existing_private_subnet_2_id is required when create_vpc is false."
+  }
+}
+
+variable "existing_private_subnet_3_id" {
+  type        = string
+  default     = null
+  description = "ID of existing private subnet 3 (required when create_vpc is false)"
+  validation {
+    condition     = var.create_vpc || var.existing_private_subnet_3_id != null
+    error_message = "existing_private_subnet_3_id is required when create_vpc is false."
+  }
+}
+
+variable "existing_public_subnet_1_id" {
+  type        = string
+  default     = null
+  description = "ID of existing public subnet 1 (required when create_vpc is false)"
+  validation {
+    condition     = var.create_vpc || var.existing_public_subnet_1_id != null
+    error_message = "existing_public_subnet_1_id is required when create_vpc is false."
+  }
 }
 
 variable "private_subnet_1_az" {
@@ -268,31 +325,6 @@ variable "lambda_version_tag_override" {
   default     = null
 }
 
-## Clickhouse
-variable "enable_clickhouse" {
-  type        = bool
-  description = "Enable Clickhouse for faster analytics"
-  default     = false
-}
-
-variable "use_external_clickhouse_address" {
-  type        = string
-  description = "Do not change this unless instructed by Braintrust. If set, the domain name or IP of the external Clickhouse instance will be used and no internal instance will be created."
-  default     = null
-}
-
-variable "clickhouse_metadata_storage_size" {
-  type        = number
-  description = "The size of the EBS volume to use for Clickhouse metadata"
-  default     = 100
-}
-
-variable "clickhouse_instance_type" {
-  type        = string
-  description = "The instance type to use for the Clickhouse instance"
-  default     = "c5.2xlarge"
-}
-
 ## Brainstore
 variable "enable_brainstore" {
   type        = bool
@@ -302,7 +334,7 @@ variable "enable_brainstore" {
 
 variable "brainstore_default" {
   type        = string
-  description = "Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag. Don't set this if you have a large backfill ongoing and are migrating from Clickhouse."
+  description = "Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag."
   default     = "force"
   validation {
     condition     = contains(["true", "false", "force"], var.brainstore_default)
