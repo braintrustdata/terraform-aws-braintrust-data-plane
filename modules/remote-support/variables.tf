@@ -84,3 +84,9 @@ variable "lambda_function_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
+  default     = null
+}

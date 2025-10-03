@@ -381,6 +381,14 @@ Type: `number`
 
 Default: `1`
 
+### <a name="input_permissions_boundary_arn"></a> [permissions\_boundary\_arn](#input\_permissions\_boundary\_arn)
+
+Description: ARN of the IAM permissions boundary to apply to all IAM roles created by this module
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_postgres_auto_minor_version_upgrade"></a> [postgres\_auto\_minor\_version\_upgrade](#input\_postgres\_auto\_minor\_version\_upgrade)
 
 Description: Indicates that minor engine upgrades will be applied automatically to the DB instance during the maintenance window. When true you will have to set your postgres\_version to only the major number or you will see drift. e.g. '15' instead of '15.7'
