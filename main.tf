@@ -18,6 +18,13 @@ locals {
   main_vpc_private_subnet_2_id = var.create_vpc ? module.main_vpc[0].private_subnet_2_id : var.existing_private_subnet_2_id
   main_vpc_private_subnet_3_id = var.create_vpc ? module.main_vpc[0].private_subnet_3_id : var.existing_private_subnet_3_id
   main_vpc_public_subnet_1_id  = var.create_vpc ? module.main_vpc[0].public_subnet_1_id : var.existing_public_subnet_1_id
+
+  # Database subnet configuration - use custom subnets if provided, otherwise use main VPC private subnets
+  database_subnet_ids = var.database_subnet_ids != null ? var.database_subnet_ids : [
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id
+  ]
 }
 
 module "main_vpc" {
@@ -65,12 +72,8 @@ module "database" {
   postgres_max_storage_size = var.postgres_max_storage_size
   postgres_storage_type     = var.postgres_storage_type
   postgres_version          = var.postgres_version
-  database_subnet_ids = [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id
-  ]
-  vpc_id = local.main_vpc_id
+  database_subnet_ids       = local.database_subnet_ids
+  vpc_id                    = local.main_vpc_id
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
