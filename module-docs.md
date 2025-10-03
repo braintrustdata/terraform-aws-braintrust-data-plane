@@ -15,7 +15,7 @@ The following input variables are optional (have default values):
 
 ### <a name="input_DANGER_disable_database_deletion_protection"></a> [DANGER\_disable\_database\_deletion\_protection](#input\_DANGER\_disable\_database\_deletion\_protection)
 
-Description: Disable deletion protection for the database. Do not disable this this when you fully intend to destroy the database.
+Description: Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database.
 
 Type: `bool`
 
