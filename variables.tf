@@ -496,3 +496,9 @@ variable "internal_observability_region" {
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = "us5"
 }
+
+variable "DANGER_disable_database_deletion_protection" {
+  type        = bool
+  description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
+  default     = false
+}

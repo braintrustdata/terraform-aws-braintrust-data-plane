@@ -78,9 +78,10 @@ module "database" {
     },
     local.bastion_security_group,
   )
-  postgres_storage_iops       = var.postgres_storage_iops
-  postgres_storage_throughput = var.postgres_storage_throughput
-  auto_minor_version_upgrade  = var.postgres_auto_minor_version_upgrade
+  postgres_storage_iops              = var.postgres_storage_iops
+  postgres_storage_throughput        = var.postgres_storage_throughput
+  auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
+  DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
   kms_key_arn = local.kms_key_arn
 }
