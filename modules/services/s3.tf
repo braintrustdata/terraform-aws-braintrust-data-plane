@@ -44,8 +44,16 @@ resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
   }
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
+resource "aws_s3_bucket_versioning" "code_bundle_bucket" {
   bucket = aws_s3_bucket.code_bundle_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
+  depends_on = [aws_s3_bucket_versioning.code_bundle_bucket]
+  bucket     = aws_s3_bucket.code_bundle_bucket.id
 
   rule {
     id     = "DeleteIncompleteMultipartUploads"
@@ -57,6 +65,20 @@ resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 1
+    }
+  }
+
+  rule {
+    id     = "cleanup-old-versions"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    # Delete old versions after 7 days (shorter than brainstore since these are temporary)
+    noncurrent_version_expiration {
+      noncurrent_days = 7
     }
   }
 }
@@ -83,8 +105,16 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
   tags = local.common_tags
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
+resource "aws_s3_bucket_versioning" "lambda_responses_bucket" {
   bucket = aws_s3_bucket.lambda_responses_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
+  depends_on = [aws_s3_bucket_versioning.lambda_responses_bucket]
+  bucket     = aws_s3_bucket.lambda_responses_bucket.id
 
   rule {
     id     = "ExpireObjectsAfterOneDay"
@@ -100,6 +130,20 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 1
+    }
+  }
+
+  rule {
+    id     = "cleanup-old-versions"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    # Delete old versions after 3 days (shorter since these are temporary responses)
+    noncurrent_version_expiration {
+      noncurrent_days = 3
     }
   }
 }
