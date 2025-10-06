@@ -120,6 +120,8 @@ resource "aws_iam_role" "db_monitoring" {
     ]
   })
 
+  permissions_boundary = var.permissions_boundary_arn
+
   tags = local.common_tags
 }
 

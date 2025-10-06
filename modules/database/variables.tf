@@ -85,3 +85,9 @@ variable "DANGER_disable_deletion_protection" {
   type        = bool
   default     = false
 }
+
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
+  default     = null
+}

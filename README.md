@@ -41,6 +41,23 @@ This module creates two VPCs by default:
 - `main` VPC: This is the main VPC that contains the Braintrust services.
 - `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
 
+### Tagging and Naming
+
+If you have requirements to add custom tags to resources created by the module, you can do so by setting the `default_tags` variable on the AWS provider. The example directory [`examples/braintrust-data-plane`](examples/braintrust-data-plane) shows how to do this.
+
+Example:
+```hcl
+provider "aws" {
+  default_tags {
+    tags = {
+      YourCustomTag = "<your-custom-value>"
+    }
+  }
+}
+```
+
+The `deployment_name` variable is also used to prefix the names of the resources created by the module wherever possible. It will also be applied as a tag named `BraintrustDeploymentName` to all resources created by the module.
+
 ## Advanced: Customized Deployments
 
 ### Using an Existing VPC

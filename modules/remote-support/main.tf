@@ -24,6 +24,8 @@ resource "aws_iam_role" "braintrust_support" {
     ]
   })
 
+  permissions_boundary = var.permissions_boundary_arn
+
   tags = local.common_tags
 }
 
