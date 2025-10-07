@@ -50,4 +50,4 @@ braintrust-sandbox/*
 .idea
 
 scripts/logs*
-.vscode
+.vscode/*
