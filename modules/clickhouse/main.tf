@@ -50,7 +50,7 @@ resource "aws_instance" "clickhouse" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    aws_region                   = data.aws_region.current.name
+    aws_region                   = data.aws_region.current.region
     s3_bucket_name               = local.clickhouse_bucket_name
     clickhouse_secret_id         = aws_secretsmanager_secret.clickhouse_secret.arn
     clickhouse_secret_version_id = aws_secretsmanager_secret_version.clickhouse_secret.version_id
