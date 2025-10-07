@@ -427,7 +427,7 @@ Description: Storage IOPS for the RDS instance. Only applicable if storage\_type
 
 Type: `number`
 
-Default: `10000`
+Default: `12000`
 
 ### <a name="input_postgres_storage_size"></a> [postgres\_storage\_size](#input\_postgres\_storage\_size)
 
