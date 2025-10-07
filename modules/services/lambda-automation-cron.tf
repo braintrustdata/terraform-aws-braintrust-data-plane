@@ -16,7 +16,7 @@ resource "aws_lambda_function" "automation_cron" {
   architectures = ["arm64"]
 
   layers = [
-    "arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:14"
+    "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
   ]
 
   ephemeral_storage {

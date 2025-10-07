@@ -18,7 +18,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   origin {
     origin_id   = local.cloudfront_APIGatewayOrigin
     origin_path = "/api"
-    domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com"
+    domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${data.aws_region.current.region}.amazonaws.com"
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
