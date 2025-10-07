@@ -8,8 +8,8 @@ locals {
     PG_URL             = local.postgres_url
     REDIS_HOST         = var.redis_host
     REDIS_PORT         = var.redis_port
-    RESPONSE_BUCKET    = aws_s3_bucket.lambda_responses_bucket.id
-    CODE_BUNDLE_BUCKET = aws_s3_bucket.code_bundle_bucket.id
+    RESPONSE_BUCKET    = local.lambda_responses_bucket_id
+    CODE_BUNDLE_BUCKET = local.code_bundle_bucket_id
 
     WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
     OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = var.outbound_rate_limit_window_minutes

@@ -49,7 +49,7 @@ output "brainstore_security_group_id" {
 }
 
 output "brainstore_s3_bucket_name" {
-  value       = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
+  value       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
   description = "Name of the Brainstore S3 bucket"
 }
 

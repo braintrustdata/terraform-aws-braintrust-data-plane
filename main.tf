@@ -111,6 +111,15 @@ module "redis" {
   redis_version       = var.redis_version
 }
 
+module "storage" {
+  source = "./modules/storage"
+
+  deployment_name                     = var.deployment_name
+  kms_key_arn                         = local.kms_key_arn
+  brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
+  s3_additional_allowed_origins       = var.s3_additional_allowed_origins
+}
+
 module "services" {
   source = "./modules/services"
 
@@ -135,11 +144,15 @@ module "services" {
   brainstore_default                         = var.brainstore_default
   brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
   brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_s3_bucket_name                  = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
+  brainstore_s3_bucket_name                  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
   brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
   brainstore_backfill_new_objects            = var.brainstore_backfill_new_objects
   brainstore_etl_batch_size                  = var.brainstore_etl_batch_size
+
+  # Storage
+  code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
+  lambda_responses_bucket_arn = module.storage.lambda_responses_bucket_arn
 
   # Service configuration
   braintrust_org_name                        = var.braintrust_org_name
@@ -147,7 +160,6 @@ module "services" {
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
   whitelisted_origins                        = var.whitelisted_origins
-  s3_additional_allowed_origins              = var.s3_additional_allowed_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
   custom_domain                              = var.custom_domain
@@ -192,7 +204,6 @@ module "brainstore" {
   port                        = var.brainstore_port
   license_key                 = var.brainstore_license_key
   version_override            = var.brainstore_version_override
-  s3_bucket_retention_days    = var.brainstore_s3_bucket_retention_days
   brainstore_enable_retention = var.brainstore_enable_retention
   extra_env_vars              = var.brainstore_extra_env_vars
   extra_env_vars_writer       = var.brainstore_extra_env_vars_writer
@@ -205,6 +216,7 @@ module "brainstore" {
   redis_host                  = module.redis.redis_endpoint
   redis_port                  = module.redis.redis_port
   service_token_secret_key    = module.services.function_tools_secret_key
+  brainstore_s3_bucket_arn    = module.storage.brainstore_bucket_arn
 
   internal_observability_api_key  = var.internal_observability_api_key
   internal_observability_env_name = var.internal_observability_env_name
@@ -229,9 +241,4 @@ module "brainstore" {
   permissions_boundary_arn = var.permissions_boundary_arn
 }
 
-# Handle state migration since the VPC module became conditional
-# This ensures existing users don't destroy/create their VPC resources when upgrading
-moved {
-  from = module.main_vpc
-  to   = module.main_vpc[0]
-}
+

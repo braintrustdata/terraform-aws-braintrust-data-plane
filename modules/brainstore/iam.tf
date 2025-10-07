@@ -38,8 +38,8 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
           "s3:DeleteObject*"
         ]
         Resource = [
-          aws_s3_bucket.brainstore.arn,
-          "${aws_s3_bucket.brainstore.arn}/*"
+          var.brainstore_s3_bucket_arn,
+          "${var.brainstore_s3_bucket_arn}/*"
         ]
       }
     ]

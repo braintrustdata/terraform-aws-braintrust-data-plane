@@ -23,16 +23,6 @@ output "api_gateway_rest_api_arn" {
   value       = aws_api_gateway_rest_api.api.arn
 }
 
-output "code_bundle_bucket_arn" {
-  description = "The ARN of the code bundle bucket"
-  value       = aws_s3_bucket.code_bundle_bucket.arn
-}
-
-output "lambda_responses_bucket_arn" {
-  description = "The ARN of the lambda responses bucket"
-  value       = aws_s3_bucket.lambda_responses_bucket.arn
-}
-
 output "cloudfront_distribution_arn" {
   description = "The ARN of the cloudfront distribution"
   value       = aws_cloudfront_distribution.dataplane.arn
