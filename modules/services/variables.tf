@@ -128,12 +128,6 @@ variable "whitelisted_origins" {
   description = "List of origins to whitelist for CORS"
 }
 
-variable "s3_additional_allowed_origins" {
-  type        = list(string)
-  description = "Additional origins to allow for S3 bucket CORS configuration. Supports a wildcard in the domain name."
-  default     = []
-}
-
 variable "outbound_rate_limit_max_requests" {
   type        = number
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
@@ -306,4 +300,14 @@ variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
   default     = null
+}
+
+variable "code_bundle_bucket_arn" {
+  type        = string
+  description = "The ARN of the code bundle bucket"
+}
+
+variable "lambda_responses_bucket_arn" {
+  type        = string
+  description = "The ARN of the lambda responses bucket"
 }

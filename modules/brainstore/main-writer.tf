@@ -44,7 +44,7 @@ resource "aws_launch_template" "brainstore_writer" {
     redis_host                      = var.redis_host
     redis_port                      = var.redis_port
     brainstore_port                 = var.port
-    brainstore_s3_bucket            = aws_s3_bucket.brainstore.id
+    brainstore_s3_bucket            = local.brainstore_s3_bucket_id
     brainstore_license_key          = var.license_key
     brainstore_version_override     = var.version_override == null ? "" : var.version_override
     brainstore_release_version      = local.brainstore_release_version
