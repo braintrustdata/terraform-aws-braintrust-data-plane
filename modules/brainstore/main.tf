@@ -5,6 +5,8 @@ locals {
   }
   architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes = var.writer_instance_count > 0
+  # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
+  brainstore_s3_bucket_id = split(":::", var.brainstore_s3_bucket_arn)[1]
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -51,7 +53,7 @@ resource "aws_launch_template" "brainstore" {
     redis_host                  = var.redis_host
     redis_port                  = var.redis_port
     brainstore_port             = var.port
-    brainstore_s3_bucket        = aws_s3_bucket.brainstore.id
+    brainstore_s3_bucket        = local.brainstore_s3_bucket_id
     brainstore_license_key      = var.license_key
     brainstore_version_override = var.version_override == null ? "" : var.version_override
     brainstore_release_version  = local.brainstore_release_version

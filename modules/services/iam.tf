@@ -212,10 +212,10 @@ resource "aws_iam_policy" "api_handler_policy" {
         Action = "s3:*"
         Effect = "Allow"
         Resource = concat([
-          aws_s3_bucket.lambda_responses_bucket.arn,
-          "${aws_s3_bucket.lambda_responses_bucket.arn}/*",
-          aws_s3_bucket.code_bundle_bucket.arn,
-          "${aws_s3_bucket.code_bundle_bucket.arn}/*",
+          var.lambda_responses_bucket_arn,
+          "${var.lambda_responses_bucket_arn}/*",
+          var.code_bundle_bucket_arn,
+          "${var.code_bundle_bucket_arn}/*",
           ],
           var.brainstore_s3_bucket_name != null && var.brainstore_s3_bucket_name != "" ? [
             "arn:aws:s3:::${var.brainstore_s3_bucket_name}",
