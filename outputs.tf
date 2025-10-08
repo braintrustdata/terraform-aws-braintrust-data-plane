@@ -68,6 +68,11 @@ output "lambda_security_group_id" {
   description = "ID of the security group for the Lambda functions"
 }
 
+output "postgres_database_identifier" {
+  value       = module.database.postgres_database_identifier
+  description = "Identifier of the main Braintrust Postgres database"
+}
+
 output "postgres_database_arn" {
   value       = module.database.postgres_database_arn
   description = "ARN of the main Braintrust Postgres database"

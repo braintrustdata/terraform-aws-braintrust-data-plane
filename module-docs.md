@@ -681,6 +681,10 @@ Description: ID of the public subnet in the main VPC
 
 Description: ARN of the main Braintrust Postgres database
 
+### <a name="output_postgres_database_identifier"></a> [postgres\_database\_identifier](#output\_postgres\_database\_identifier)
+
+Description: Identifier of the main Braintrust Postgres database
+
 ### <a name="output_postgres_database_secret_arn"></a> [postgres\_database\_secret\_arn](#output\_postgres\_database\_secret\_arn)
 
 Description: ARN of the secret containing the main Postgres database credentials
