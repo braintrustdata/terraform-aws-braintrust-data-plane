@@ -163,23 +163,6 @@ variable "run_draft_migrations" {
   default     = false
 }
 
-variable "custom_domain" {
-  description = "Custom domain name for the CloudFront distribution"
-  type        = string
-  default     = null
-}
-
-variable "custom_certificate_arn" {
-  description = "ARN of the ACM certificate for the custom domain"
-  type        = string
-  default     = null
-}
-
-variable "use_global_ai_proxy" {
-  description = "Whether to use the global Cloudflare proxy"
-  type        = bool
-  default     = false
-}
 
 variable "kms_key_arn" {
   description = "KMS key ARN to use for encrypting resources. If not provided, the default AWS managed key is used. DO NOT change this after deployment. If you do, prior S3 objects will no longer be readable."
