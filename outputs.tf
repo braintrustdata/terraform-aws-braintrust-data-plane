@@ -89,9 +89,23 @@ output "redis_arn" {
 }
 
 output "api_url" {
-  value       = module.services.api_url
+  value       = module.ingress.api_url
   description = "The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL."
 }
+
+output "cloudfront_distribution_domain_name" {
+  value       = module.ingress.cloudfront_distribution_domain_name
+  description = "The domain name of the cloudfront distribution"
+}
+
+output "cloudfront_distribution_arn" {
+  value       = module.ingress.cloudfront_distribution_arn
+  description = "The ARN of the cloudfront distribution"
+}
+
+output "cloudfront_distribution_hosted_zone_id" {
+  value       = module.ingress.cloudfront_distribution_hosted_zone_id
+  description = "The hosted zone ID of the cloudfront distribution"
 
 output "kms_key_arn" {
   value       = local.kms_key_arn
