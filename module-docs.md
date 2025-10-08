@@ -597,6 +597,14 @@ Default:
 }
 ```
 
+### <a name="input_use_global_ai_proxy"></a> [use\_global\_ai\_proxy](#input\_use\_global\_ai\_proxy)
+
+Description: Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust.
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr)
 
 Description: CIDR block for the VPC (only used when create\_vpc is true)
@@ -637,9 +645,17 @@ Description: ID of the security group for the Brainstore instances
 
 Description: ARN of the Role that grants Braintrust team remote support. Share this with the Braintrust team.
 
-### <a name="output_kms_key_arn"></a> [kms\_key\_arn](#output\_kms\_key\_arn)
+### <a name="output_cloudfront_distribution_arn"></a> [cloudfront\_distribution\_arn](#output\_cloudfront\_distribution\_arn)
 
-Description: ARN of the KMS key used to encrypt Braintrust resources
+Description: The ARN of the cloudfront distribution
+
+### <a name="output_cloudfront_distribution_domain_name"></a> [cloudfront\_distribution\_domain\_name](#output\_cloudfront\_distribution\_domain\_name)
+
+Description: The domain name of the cloudfront distribution
+
+### <a name="output_cloudfront_distribution_hosted_zone_id"></a> [cloudfront\_distribution\_hosted\_zone\_id](#output\_cloudfront\_distribution\_hosted\_zone\_id)
+
+Description: The hosted zone ID of the cloudfront distribution
 
 ### <a name="output_lambda_security_group_id"></a> [lambda\_security\_group\_id](#output\_lambda\_security\_group\_id)
 

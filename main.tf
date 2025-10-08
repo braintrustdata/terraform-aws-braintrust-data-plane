@@ -162,8 +162,6 @@ module "services" {
   whitelisted_origins                        = var.whitelisted_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
-  custom_domain                              = var.custom_domain
-  custom_certificate_arn                     = var.custom_certificate_arn
   service_additional_policy_arns             = var.service_additional_policy_arns
   extra_env_vars                             = var.service_extra_env_vars
 
@@ -192,6 +190,16 @@ module "services" {
   permissions_boundary_arn = var.permissions_boundary_arn
 }
 
+module "ingress" {
+  source = "./modules/ingress"
+
+  deployment_name          = var.deployment_name
+  custom_domain            = var.custom_domain
+  custom_certificate_arn   = var.custom_certificate_arn
+  use_global_ai_proxy      = var.use_global_ai_proxy
+  ai_proxy_function_url    = module.services.ai_proxy_url
+  api_handler_function_arn = module.services.api_handler_arn
+}
 
 module "brainstore" {
   source = "./modules/brainstore"

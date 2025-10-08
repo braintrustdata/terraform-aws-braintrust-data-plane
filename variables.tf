@@ -530,3 +530,9 @@ variable "permissions_boundary_arn" {
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
   default     = null
 }
+
+variable "use_global_ai_proxy" {
+  description = "Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust."
+  type        = bool
+  default     = false
+}
