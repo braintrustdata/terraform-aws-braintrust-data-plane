@@ -18,7 +18,7 @@ output "cloudfront_distribution_id" {
   value       = aws_cloudfront_distribution.dataplane.id
 }
 
-output "cloudfront_hosted_zone_id" {
+output "cloudfront_distribution_hosted_zone_id" {
   description = "The hosted zone ID of the cloudfront distribution"
   value       = aws_cloudfront_distribution.dataplane.hosted_zone_id
 }
