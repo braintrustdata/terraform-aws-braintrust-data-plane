@@ -77,7 +77,7 @@ module "database" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
-      "Brainstore"      = var.enable_brainstore ? module.brainstore[0].brainstore_instance_security_group_id : null
+      "Brainstore"      = var.enable_brainstore ? module.services_common[0].brainstore_instance_security_group_id : null
     },
     local.bastion_security_group,
   )
@@ -103,7 +103,7 @@ module "redis" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
-      "Brainstore"      = var.enable_brainstore ? module.brainstore[0].brainstore_instance_security_group_id : null
+      "Brainstore"      = var.enable_brainstore ? module.services_common[0].brainstore_instance_security_group_id : null
     },
     local.bastion_security_group,
   )
@@ -201,36 +201,47 @@ module "ingress" {
   api_handler_function_arn = module.services.api_handler_arn
 }
 
+module "services_common" {
+  source = "./modules/services-common"
+  count  = var.enable_brainstore ? 1 : 0
+
+  deployment_name          = var.deployment_name
+  vpc_id                   = local.main_vpc_id
+  kms_key_arn              = local.kms_key_arn
+  brainstore_s3_bucket_arn = module.storage.brainstore_bucket_arn
+  database_secret_arn      = module.database.postgres_database_secret_arn
+  permissions_boundary_arn = var.permissions_boundary_arn
+}
+
 module "brainstore" {
   source = "./modules/brainstore"
   count  = var.enable_brainstore ? 1 : 0
 
-  deployment_name             = var.deployment_name
-  instance_count              = var.brainstore_instance_count
-  instance_type               = var.brainstore_instance_type
-  instance_key_pair_name      = var.brainstore_instance_key_pair_name
-  port                        = var.brainstore_port
-  license_key                 = var.brainstore_license_key
-  version_override            = var.brainstore_version_override
-  brainstore_enable_retention = var.brainstore_enable_retention
-  extra_env_vars              = var.brainstore_extra_env_vars
-  extra_env_vars_writer       = var.brainstore_extra_env_vars_writer
-  writer_instance_count       = var.brainstore_writer_instance_count
-  writer_instance_type        = var.brainstore_writer_instance_type
-  monitoring_telemetry        = var.monitoring_telemetry
-  database_host               = module.database.postgres_database_address
-  database_port               = module.database.postgres_database_port
-  database_secret_arn         = module.database.postgres_database_secret_arn
-  redis_host                  = module.redis.redis_endpoint
-  redis_port                  = module.redis.redis_port
-  service_token_secret_key    = module.services.function_tools_secret_key
-  brainstore_s3_bucket_arn    = module.storage.brainstore_bucket_arn
-
-  internal_observability_api_key  = var.internal_observability_api_key
-  internal_observability_env_name = var.internal_observability_env_name
-  internal_observability_region   = var.internal_observability_region
-
-  vpc_id = local.main_vpc_id
+  deployment_name                       = var.deployment_name
+  instance_count                        = var.brainstore_instance_count
+  instance_type                         = var.brainstore_instance_type
+  instance_key_pair_name                = var.brainstore_instance_key_pair_name
+  port                                  = var.brainstore_port
+  license_key                           = var.brainstore_license_key
+  version_override                      = var.brainstore_version_override
+  brainstore_enable_retention           = var.brainstore_enable_retention
+  extra_env_vars                        = var.brainstore_extra_env_vars
+  extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
+  writer_instance_count                 = var.brainstore_writer_instance_count
+  writer_instance_type                  = var.brainstore_writer_instance_type
+  monitoring_telemetry                  = var.monitoring_telemetry
+  database_host                         = module.database.postgres_database_address
+  database_port                         = module.database.postgres_database_port
+  database_secret_arn                   = module.database.postgres_database_secret_arn
+  redis_host                            = module.redis.redis_endpoint
+  redis_port                            = module.redis.redis_port
+  service_token_secret_key              = module.services.function_tools_secret_key
+  brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
+  internal_observability_api_key        = var.internal_observability_api_key
+  internal_observability_env_name       = var.internal_observability_env_name
+  internal_observability_region         = var.internal_observability_region
+  brainstore_instance_security_group_id = module.services_common[0].brainstore_instance_security_group_id
+  vpc_id                                = local.main_vpc_id
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
@@ -246,7 +257,7 @@ module "brainstore" {
   ]
 
   kms_key_arn              = local.kms_key_arn
-  permissions_boundary_arn = var.permissions_boundary_arn
+  brainstore_iam_role_name = module.services_common[0].brainstore_iam_role_name
 }
 
 

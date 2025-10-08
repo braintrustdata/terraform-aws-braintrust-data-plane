@@ -113,3 +113,41 @@ moved {
   from = module.services.aws_lambda_permission.api_gateway
   to   = module.ingress.aws_lambda_permission.api_gateway
 }
+
+# Handle state migration for IAM resources moved from brainstore to services-common
+moved {
+  from = module.brainstore[0].aws_iam_role.brainstore_ec2_role
+  to   = module.services_common[0].aws_iam_role.brainstore_ec2_role
+}
+
+moved {
+  from = module.brainstore[0].aws_iam_role_policy.brainstore_s3_access
+  to   = module.services_common[0].aws_iam_role_policy.brainstore_s3_access
+}
+
+moved {
+  from = module.brainstore[0].aws_iam_role_policy.brainstore_secrets_access
+  to   = module.services_common[0].aws_iam_role_policy.brainstore_secrets_access
+}
+
+moved {
+  from = module.brainstore[0].aws_iam_role_policy.brainstore_cloudwatch_logs_access
+  to   = module.services_common[0].aws_iam_role_policy.brainstore_cloudwatch_logs_access
+}
+
+moved {
+  from = module.brainstore[0].aws_iam_role_policy.brainstore_kms_policy
+  to   = module.services_common[0].aws_iam_role_policy.brainstore_kms_policy
+}
+
+# Handle state migration for security group moved from brainstore to services-common
+moved {
+  from = module.brainstore[0].aws_security_group.brainstore_instance
+  to   = module.services_common[0].aws_security_group.brainstore_instance
+}
+
+# Handle state migration for security group egress rule moved from brainstore to services-common
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_egress_rule.brainstore_instance_allow_egress_all
+  to   = module.services_common[0].aws_vpc_security_group_egress_rule.brainstore_instance_allow_egress_all
+}

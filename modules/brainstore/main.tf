@@ -20,7 +20,7 @@ resource "aws_launch_template" "brainstore" {
     arn = aws_iam_instance_profile.brainstore.arn
   }
 
-  vpc_security_group_ids = [aws_security_group.brainstore_instance.id]
+  vpc_security_group_ids = [var.brainstore_instance_security_group_id]
 
   block_device_mappings {
     device_name = "/dev/sda1"
@@ -216,5 +216,3 @@ data "aws_ec2_instance_type" "brainstore" {
 }
 
 data "aws_region" "current" {}
-
-data "aws_caller_identity" "current" {}
