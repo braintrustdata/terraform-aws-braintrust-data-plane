@@ -38,9 +38,9 @@ def main():
     with open(versions_path, "w") as f:
         json.dump(lambda_versions, f, indent=4)
 
-    # Write brainstore version to brainstore/VERSIONS.json
-    print("Writing brainstore version to modules/brainstore/VERSIONS.json...")
-    brainstore_versions_path = f"{script_dir}/modules/brainstore/VERSIONS.json"
+    # Write brainstore version to brainstore-ec2/VERSIONS.json
+    print("Writing brainstore version to modules/brainstore-ec2/VERSIONS.json...")
+    brainstore_versions_path = f"{script_dir}/modules/brainstore-ec2/VERSIONS.json"
     os.makedirs(os.path.dirname(brainstore_versions_path), exist_ok=True)
     with open(brainstore_versions_path, "w") as f:
         json.dump({"brainstore": version_tag}, f, indent=4)
