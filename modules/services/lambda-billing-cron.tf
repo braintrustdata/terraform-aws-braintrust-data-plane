@@ -4,6 +4,7 @@ locals {
 
 
 resource "aws_lambda_function" "billing_cron" {
+  depends_on = [aws_lambda_invocation.invoke_database_migration]
 
   function_name = local.billing_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
