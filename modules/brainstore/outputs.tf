@@ -17,8 +17,3 @@ output "brainstore_elb_security_group_id" {
   description = "The ID of the security group for the Brainstore ELB"
   value       = aws_security_group.brainstore_elb.id
 }
-
-output "brainstore_instance_security_group_id" {
-  description = "The ID of the security group for the Brainstore instances"
-  value       = aws_security_group.brainstore_instance.id
-}

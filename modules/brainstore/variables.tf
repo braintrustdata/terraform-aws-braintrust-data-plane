@@ -173,13 +173,17 @@ variable "service_token_secret_key" {
   sensitive   = true
 }
 
-variable "permissions_boundary_arn" {
-  type        = string
-  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
-  default     = null
-}
-
 variable "brainstore_s3_bucket_arn" {
   type        = string
   description = "The ARN of the S3 bucket used by Brainstore"
+}
+
+variable "brainstore_iam_role_name" {
+  type        = string
+  description = "The name of the IAM role for Brainstore EC2 instances"
+}
+
+variable "brainstore_instance_security_group_id" {
+  type        = string
+  description = "The ID of the security group to use for the Brainstore instances"
 }
