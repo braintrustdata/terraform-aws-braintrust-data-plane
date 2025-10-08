@@ -637,6 +637,10 @@ Description: ID of the security group for the Brainstore instances
 
 Description: ARN of the Role that grants Braintrust team remote support. Share this with the Braintrust team.
 
+### <a name="output_kms_key_arn"></a> [kms\_key\_arn](#output\_kms\_key\_arn)
+
+Description: ARN of the KMS key used to encrypt Braintrust resources
+
 ### <a name="output_lambda_security_group_id"></a> [lambda\_security\_group\_id](#output\_lambda\_security\_group\_id)
 
 Description: ID of the security group for the Lambda functions
@@ -676,6 +680,10 @@ Description: ID of the public subnet in the main VPC
 ### <a name="output_postgres_database_arn"></a> [postgres\_database\_arn](#output\_postgres\_database\_arn)
 
 Description: ARN of the main Braintrust Postgres database
+
+### <a name="output_postgres_database_secret_arn"></a> [postgres\_database\_secret\_arn](#output\_postgres\_database\_secret\_arn)
+
+Description: ARN of the secret containing the main Postgres database credentials
 
 ### <a name="output_quarantine_vpc_id"></a> [quarantine\_vpc\_id](#output\_quarantine\_vpc\_id)
 
