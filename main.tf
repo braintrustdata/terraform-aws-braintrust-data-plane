@@ -214,7 +214,7 @@ module "services_common" {
 }
 
 module "brainstore" {
-  source = "./modules/brainstore"
+  source = "./modules/brainstore-ec2"
   count  = var.enable_brainstore ? 1 : 0
 
   deployment_name                       = var.deployment_name
