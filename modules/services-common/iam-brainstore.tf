@@ -1,29 +1,69 @@
-resource "aws_iam_role" "brainstore_ec2_role" {
-  name = "${var.deployment_name}-brainstore-ec2-role"
+resource "aws_iam_role" "brainstore_role" {
+  name = "${var.deployment_name}-brainstore-role"
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
+    Statement = concat(
+      # EC2 trust relationship
+      [
+        {
+          Effect = "Allow"
+          Principal = {
+            Service = "ec2.amazonaws.com"
+          }
+          Action = "sts:AssumeRole"
         }
-        Action = "sts:AssumeRole"
-      }
-    ]
+      ],
+      # IRSA trust relationship (if cluster ARN is provided)
+      var.eks_cluster_arn != null ? [
+        {
+          Effect = "Allow"
+          Principal = {
+            Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(local.eks_oidc_issuer_url, "https://", "")}"
+          }
+          Action = "sts:AssumeRoleWithWebIdentity"
+          Condition = {
+            StringEquals = {
+              "${replace(local.eks_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:${var.eks_namespace != null ? var.eks_namespace : "*"}:*"
+              "${replace(local.eks_oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
+            }
+          }
+        }
+      ] : [],
+      # EKS Pod Identity trust relationship (always enabled)
+      [
+        {
+          Effect = "Allow"
+          Principal = {
+            Service = "pods.eks.amazonaws.com"
+          }
+          Action = [
+            "sts:AssumeRole",
+            "sts:TagSession"
+          ]
+          Condition = merge(
+            var.eks_cluster_arn != null ? {
+              "aws:RequestTag/kubernetes-cluster-arn" = var.eks_cluster_arn
+            } : {},
+            var.eks_namespace != null ? {
+              "aws:RequestTag/kubernetes-namespace" = var.eks_namespace
+            } : {}
+          )
+        }
+      ]
+    )
   })
 
   permissions_boundary = var.permissions_boundary_arn
 
   tags = merge({
-    Name = "${var.deployment_name}-brainstore-ec2-role"
+    Name = "${var.deployment_name}-brainstore-role"
   }, local.common_tags)
 }
 
 resource "aws_iam_role_policy" "brainstore_s3_access" {
   name = "brainstore-s3-bucket"
-  role = aws_iam_role.brainstore_ec2_role.id
+  role = aws_iam_role.brainstore_role.id
 
   policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -48,7 +88,7 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
 
 resource "aws_iam_role_policy" "brainstore_secrets_access" {
   name = "secrets-access"
-  role = aws_iam_role.brainstore_ec2_role.id
+  role = aws_iam_role.brainstore_role.id
 
   policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -64,7 +104,7 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
 
 resource "aws_iam_role_policy" "brainstore_cloudwatch_logs_access" {
   name = "cloudwatch-logs-access"
-  role = aws_iam_role.brainstore_ec2_role.id
+  role = aws_iam_role.brainstore_role.id
 
   policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -88,7 +128,7 @@ resource "aws_iam_role_policy" "brainstore_cloudwatch_logs_access" {
 
 resource "aws_iam_role_policy" "brainstore_kms_policy" {
   name = "${var.deployment_name}-brainstore-kms-policy"
-  role = aws_iam_role.brainstore_ec2_role.id
+  role = aws_iam_role.brainstore_role.id
 
   policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -107,4 +147,5 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
     ]
   })
 }
+
 

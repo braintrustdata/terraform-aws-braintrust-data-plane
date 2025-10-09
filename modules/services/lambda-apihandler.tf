@@ -93,7 +93,7 @@ resource "aws_lambda_function" "api_handler" {
 
   vpc_config {
     subnet_ids         = var.service_subnet_ids
-    security_group_ids = [aws_security_group.lambda.id]
+    security_group_ids = [var.api_security_group_id]
   }
 
   tracing_config {
