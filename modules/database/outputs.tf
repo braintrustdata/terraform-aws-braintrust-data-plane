@@ -8,6 +8,11 @@ output "postgres_database_port" {
   description = "The port of the main Postgres database"
 }
 
+output "postgres_database_identifier" {
+  value       = aws_db_instance.main.identifier
+  description = "The identifier of the main Postgres database"
+}
+
 output "postgres_database_arn" {
   value       = aws_db_instance.main.arn
   description = "The ARN of the main Postgres database"
