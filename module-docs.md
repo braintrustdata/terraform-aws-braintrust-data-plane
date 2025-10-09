@@ -559,7 +559,7 @@ Default: `[]`
 
 ### <a name="input_service_additional_policy_arns"></a> [service\_additional\_policy\_arns](#input\_service\_additional\_policy\_arns)
 
-Description: Additional policy ARNs to attach to the lambda functions that are the main braintrust service
+Description: Additional policy ARNs to attach to the main braintrust API service
 
 Type: `list(string)`
 

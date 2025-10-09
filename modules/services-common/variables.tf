@@ -41,3 +41,18 @@ variable "eks_namespace" {
   default     = null
 }
 
+variable "code_bundle_s3_bucket_arn" {
+  type        = string
+  description = "The ARN of the code bundle S3 bucket"
+}
+
+variable "lambda_responses_s3_bucket_arn" {
+  type        = string
+  description = "The ARN of the lambda responses S3 bucket"
+}
+
+variable "service_additional_policy_arns" {
+  type        = list(string)
+  description = "Additional policy ARNs to attach to the IAM role used by the main braintrust API service"
+  default     = []
+}

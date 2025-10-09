@@ -13,3 +13,17 @@ output "brainstore_iam_role_name" {
   value       = aws_iam_role.brainstore_role.name
 }
 
+output "api_handler_role_arn" {
+  description = "The ARN of the IAM role for the API handler"
+  value       = aws_iam_role.api_handler_role.arn
+}
+
+output "api_handler_role_name" {
+  description = "The name of the IAM role for the API handler"
+  value       = aws_iam_role.api_handler_role.name
+}
+
+output "api_security_group_id" {
+  description = "The ID of the security group for the API handler"
+  value       = aws_security_group.api.id
+}

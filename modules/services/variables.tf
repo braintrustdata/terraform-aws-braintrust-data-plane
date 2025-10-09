@@ -18,11 +18,6 @@ variable "service_subnet_ids" {
   description = "The subnet ids for the lambda functions that are the main braintrust service"
 }
 
-variable "service_additional_policy_arns" {
-  type        = list(string)
-  description = "Additional policy ARNs to attach to the lambda functions that are the main braintrust service"
-  default     = []
-}
 variable "postgres_username" {
   type        = string
   description = "The username of the postgres database"
@@ -298,4 +293,10 @@ variable "lambda_responses_bucket_arn" {
 variable "api_security_group_id" {
   type        = string
   description = "The ID of the security group for the API and other lambdas"
+}
+
+variable "api_handler_role_arn" {
+  type        = string
+  description = "The ARN of the API handler role used by the API handler lambda and various other lambdas"
+  default     = null
 }

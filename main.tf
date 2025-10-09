@@ -77,6 +77,7 @@ module "database" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
+      "API"             = module.services_common[0].api_security_group_id
       "Brainstore"      = var.enable_brainstore ? module.services_common[0].brainstore_instance_security_group_id : null
     },
     local.bastion_security_group,
@@ -103,6 +104,7 @@ module "redis" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
+      "API"             = module.services_common[0].api_security_group_id
       "Brainstore"      = var.enable_brainstore ? module.services_common[0].brainstore_instance_security_group_id : null
     },
     local.bastion_security_group,
@@ -188,6 +190,8 @@ module "services" {
 
   kms_key_arn              = local.kms_key_arn
   permissions_boundary_arn = var.permissions_boundary_arn
+  api_handler_role_arn     = module.services_common[0].api_handler_role_arn
+  api_security_group_id    = module.services_common[0].api_security_group_id
 }
 
 module "ingress" {
@@ -205,12 +209,15 @@ module "services_common" {
   source = "./modules/services-common"
   count  = var.enable_brainstore ? 1 : 0
 
-  deployment_name          = var.deployment_name
-  vpc_id                   = local.main_vpc_id
-  kms_key_arn              = local.kms_key_arn
-  brainstore_s3_bucket_arn = module.storage.brainstore_bucket_arn
-  database_secret_arn      = module.database.postgres_database_secret_arn
-  permissions_boundary_arn = var.permissions_boundary_arn
+  deployment_name                = var.deployment_name
+  vpc_id                         = local.main_vpc_id
+  kms_key_arn                    = local.kms_key_arn
+  brainstore_s3_bucket_arn       = module.storage.brainstore_bucket_arn
+  database_secret_arn            = module.database.postgres_database_secret_arn
+  permissions_boundary_arn       = var.permissions_boundary_arn
+  code_bundle_s3_bucket_arn      = module.storage.code_bundle_bucket_arn
+  lambda_responses_s3_bucket_arn = module.storage.lambda_responses_bucket_arn
+  service_additional_policy_arns = var.service_additional_policy_arns
 }
 
 module "brainstore" {
@@ -245,6 +252,7 @@ module "brainstore" {
   authorized_security_groups = merge(
     {
       "Lambda Services" = module.services.lambda_security_group_id
+      "API"             = module.services_common[0].api_security_group_id
     },
     local.bastion_security_group
   )

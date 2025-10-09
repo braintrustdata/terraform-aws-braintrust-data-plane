@@ -117,7 +117,7 @@ moved {
 # Handle state migration for IAM resources moved from brainstore to services-common
 moved {
   from = module.brainstore[0].aws_iam_role.brainstore_ec2_role
-  to   = module.services_common[0].aws_iam_role.brainstore_ec2_role
+  to   = module.services_common[0].aws_iam_role.brainstore_role
 }
 
 moved {
@@ -146,14 +146,28 @@ moved {
   to   = module.services_common[0].aws_security_group.brainstore_instance
 }
 
-# Handle state migration for security group egress rule moved from brainstore to services-common
 moved {
   from = module.brainstore[0].aws_vpc_security_group_egress_rule.brainstore_instance_allow_egress_all
   to   = module.services_common[0].aws_vpc_security_group_egress_rule.brainstore_instance_allow_egress_all
 }
 
-# Rename of brainstore role to make it not EC2 specific
+# Handle state migration for APIHandler IAM resources moved from services to services-common
 moved {
-  from = aws_iam_role.brainstore_ec2_role
-  to   = aws_iam_role.brainstore_role
+  from = module.services.aws_iam_role.api_handler_role
+  to   = module.services_common[0].aws_iam_role.api_handler_role
+}
+
+moved {
+  from = module.services.aws_iam_policy.api_handler_policy
+  to   = module.services_common[0].aws_iam_policy.api_handler_policy
+}
+
+moved {
+  from = module.services.aws_iam_role_policy_attachment.api_handler_policy
+  to   = module.services_common[0].aws_iam_role_policy_attachment.api_handler_policy
+}
+
+moved {
+  from = module.services.aws_iam_role_policy_attachment.api_handler_additional_policy
+  to   = module.services_common[0].aws_iam_role_policy_attachment.api_handler_additional_policy
 }

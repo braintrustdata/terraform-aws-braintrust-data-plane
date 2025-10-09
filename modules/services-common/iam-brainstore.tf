@@ -1,5 +1,6 @@
 resource "aws_iam_role" "brainstore_role" {
-  name = "${var.deployment_name}-brainstore-role"
+  # This is improperly named with "ec2" but changing it would cause a downtime for current customers
+  name = "${var.deployment_name}-brainstore-ec2-role"
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
