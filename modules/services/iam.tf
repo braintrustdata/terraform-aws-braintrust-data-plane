@@ -98,6 +98,7 @@ resource "aws_iam_role" "api_handler_role" {
   }
 }
 
+# This stays because it is lambda specific
 resource "aws_iam_role_policy_attachment" "vpc_access" {
   role       = aws_iam_role.api_handler_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
@@ -228,7 +229,6 @@ resource "aws_iam_policy" "api_handler_policy" {
         Effect   = "Allow"
         Resource = aws_lambda_function.catchup_etl.arn
       },
-
       {
         Action   = "iam:PassRole"
         Effect   = "Allow"

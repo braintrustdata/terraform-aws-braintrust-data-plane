@@ -28,3 +28,16 @@ variable "permissions_boundary_arn" {
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
   default     = null
 }
+
+variable "eks_cluster_arn" {
+  type        = string
+  description = "Optional. If you're using EKS this enables IRSA and EKS Pod Identity for the Braintrust IAM roles. It restricts them to this cluster."
+  default     = null
+}
+
+variable "eks_namespace" {
+  type        = string
+  description = "Optional. If you're using EKS with IRSA or EKS Pod Identity, this restricts the IAM roles to this namespace."
+  default     = null
+}
+
