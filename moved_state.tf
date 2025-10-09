@@ -151,3 +151,9 @@ moved {
   from = module.brainstore[0].aws_vpc_security_group_egress_rule.brainstore_instance_allow_egress_all
   to   = module.services_common[0].aws_vpc_security_group_egress_rule.brainstore_instance_allow_egress_all
 }
+
+# Rename of brainstore role to make it not EC2 specific
+moved {
+  from = aws_iam_role.brainstore_ec2_role
+  to   = aws_iam_role.brainstore_role
+}

@@ -294,3 +294,8 @@ variable "lambda_responses_bucket_arn" {
   type        = string
   description = "The ARN of the lambda responses bucket"
 }
+
+variable "api_security_group_id" {
+  type        = string
+  description = "The ID of the security group for the API and other lambdas"
+}

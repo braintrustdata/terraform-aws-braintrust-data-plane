@@ -4,12 +4,12 @@ output "brainstore_instance_security_group_id" {
 }
 
 output "brainstore_iam_role_arn" {
-  description = "The ARN of the IAM role for Brainstore EC2 instances"
-  value       = aws_iam_role.brainstore_ec2_role.arn
+  description = "The ARN of the IAM role for Brainstore instances (supports EC2, EKS Pod Identity, and IRSA)"
+  value       = aws_iam_role.brainstore_role.arn
 }
 
 output "brainstore_iam_role_name" {
-  description = "The name of the IAM role for Brainstore EC2 instances"
-  value       = aws_iam_role.brainstore_ec2_role.name
+  description = "The name of the IAM role for Brainstore instances (supports EC2, EKS Pod Identity, and IRSA)"
+  value       = aws_iam_role.brainstore_role.name
 }
 
