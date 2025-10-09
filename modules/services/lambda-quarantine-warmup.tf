@@ -8,7 +8,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
   function_name = local.quarantine_warmup_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["QuarantineWarmupFunction"]
-  role          = aws_iam_role.api_handler_role.arn
+  role          = var.api_handler_role_arn
   handler       = "index.handler"
   runtime       = "nodejs20.x"
   memory_size   = 1024

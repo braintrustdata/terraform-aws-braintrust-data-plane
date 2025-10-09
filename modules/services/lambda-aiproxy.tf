@@ -5,7 +5,7 @@ resource "aws_lambda_function" "ai_proxy" {
   function_name                  = local.ai_proxy_function_name
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["AIProxy"]
-  role                           = aws_iam_role.api_handler_role.arn
+  role                           = var.api_handler_role_arn
   handler                        = "index.handler"
   runtime                        = "nodejs22.x"
   architectures                  = ["arm64"]

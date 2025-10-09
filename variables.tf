@@ -343,7 +343,7 @@ variable "custom_certificate_arn" {
 
 variable "service_additional_policy_arns" {
   type        = list(string)
-  description = "Additional policy ARNs to attach to the lambda functions that are the main braintrust service"
+  description = "Additional policy ARNs to attach to the main braintrust API service"
   default     = []
 }
 
