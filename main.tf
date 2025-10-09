@@ -164,7 +164,6 @@ module "services" {
   whitelisted_origins                        = var.whitelisted_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
-  service_additional_policy_arns             = var.service_additional_policy_arns
   extra_env_vars                             = var.service_extra_env_vars
 
   # Billing usage telemetry
@@ -188,10 +187,11 @@ module "services" {
     module.quarantine_vpc[0].private_subnet_3_id
   ] : []
 
-  kms_key_arn              = local.kms_key_arn
-  permissions_boundary_arn = var.permissions_boundary_arn
-  api_handler_role_arn     = module.services_common[0].api_handler_role_arn
-  api_security_group_id    = module.services_common[0].api_security_group_id
+  kms_key_arn               = local.kms_key_arn
+  permissions_boundary_arn  = var.permissions_boundary_arn
+  api_handler_role_arn      = module.services_common[0].api_handler_role_arn
+  api_security_group_id     = module.services_common[0].api_security_group_id
+  function_tools_secret_key = module.services_common[0].function_tools_secret_key
 }
 
 module "ingress" {
@@ -242,7 +242,7 @@ module "brainstore" {
   database_secret_arn                   = module.database.postgres_database_secret_arn
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port
-  service_token_secret_key              = module.services.function_tools_secret_key
+  service_token_secret_key              = module.services_common[0].function_tools_secret_key
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   internal_observability_api_key        = var.internal_observability_api_key
   internal_observability_env_name       = var.internal_observability_env_name

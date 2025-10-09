@@ -300,3 +300,9 @@ variable "api_handler_role_arn" {
   description = "The ARN of the API handler role used by the API handler lambda and various other lambdas"
   default     = null
 }
+
+variable "function_tools_secret_key" {
+  type        = string
+  description = "The function tools encryption key used for environment variables"
+  sensitive   = true
+}

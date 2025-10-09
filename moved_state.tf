@@ -171,3 +171,14 @@ moved {
   from = module.services.aws_iam_role_policy_attachment.api_handler_additional_policy
   to   = module.services_common[0].aws_iam_role_policy_attachment.api_handler_additional_policy
 }
+
+# Handle state migration for function tools secret moved from services to services-common
+moved {
+  from = module.services.aws_secretsmanager_secret.function_tools_secret
+  to   = module.services_common[0].aws_secretsmanager_secret.function_tools_secret
+}
+
+moved {
+  from = module.services.aws_secretsmanager_secret_version.function_tools_secret
+  to   = module.services_common[0].aws_secretsmanager_secret_version.function_tools_secret
+}

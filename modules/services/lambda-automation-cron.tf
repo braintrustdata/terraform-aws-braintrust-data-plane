@@ -36,7 +36,7 @@ resource "aws_lambda_function" "automation_cron" {
       BRAINSTORE_URL                             = local.brainstore_url
       BRAINSTORE_WRITER_URL                      = local.brainstore_writer_url
       BRAINSTORE_REALTIME_WAL_BUCKET             = local.brainstore_s3_bucket
-      FUNCTION_SECRET_KEY                        = aws_secretsmanager_secret_version.function_tools_secret.secret_string
+      FUNCTION_SECRET_KEY                        = var.function_tools_secret_key
     }, var.extra_env_vars.AutomationCron)
   }
 
