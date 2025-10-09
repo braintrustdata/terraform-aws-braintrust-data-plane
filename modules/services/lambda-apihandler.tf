@@ -60,7 +60,7 @@ resource "aws_lambda_function" "api_handler" {
   function_name                  = local.api_handler_function_name
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["APIHandler"]
-  role                           = aws_iam_role.api_handler_role.arn
+  role                           = var.api_handler_role_arn
   handler                        = "index.handler"
   runtime                        = "nodejs22.x"
   memory_size                    = 10240 # Max that lambda supports
@@ -125,7 +125,7 @@ resource "aws_iam_role" "ai_proxy_invoke_role" {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          AWS = aws_iam_role.api_handler_role.arn
+          AWS = var.api_handler_role_arn
         }
       }
     ]
