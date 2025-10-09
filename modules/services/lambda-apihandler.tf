@@ -23,7 +23,7 @@ locals {
     QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : ""
     QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
 
-    FUNCTION_SECRET_KEY = aws_secretsmanager_secret_version.function_tools_secret.secret_string
+    FUNCTION_SECRET_KEY = var.function_tools_secret_key
 
     BRAINSTORE_ENABLED                         = var.brainstore_enabled
     BRAINSTORE_DEFAULT                         = var.brainstore_default
