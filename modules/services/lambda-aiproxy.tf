@@ -2,6 +2,8 @@ locals {
   ai_proxy_function_name = "${var.deployment_name}-AIProxy"
 }
 resource "aws_lambda_function" "ai_proxy" {
+  depends_on = [aws_lambda_invocation.invoke_database_migration]
+
   function_name                  = local.ai_proxy_function_name
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["AIProxy"]

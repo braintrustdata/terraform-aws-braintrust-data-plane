@@ -5,6 +5,8 @@ locals {
 resource "aws_lambda_function" "quarantine_warmup" {
   count = var.use_quarantine_vpc ? 1 : 0
 
+  depends_on = [aws_lambda_invocation.invoke_database_migration]
+
   function_name = local.quarantine_warmup_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["QuarantineWarmupFunction"]
