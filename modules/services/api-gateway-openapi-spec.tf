@@ -615,6 +615,21 @@ locals {
       "/sse" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
+      "/deep-search" = {
+        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/deep-search/{id}" = {
+        for method in ["get", "options", "patch", "delete"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
     }
 
     x-amazon-apigateway-binary-media-types = [
