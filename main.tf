@@ -76,9 +76,10 @@ module "database" {
   vpc_id                    = local.main_vpc_id
   authorized_security_groups = merge(
     {
-      "Lambda Services" = module.services.lambda_security_group_id
-      "API"             = module.services_common[0].api_security_group_id
-      "Brainstore"      = var.enable_brainstore ? module.services_common[0].brainstore_instance_security_group_id : null
+      # This is a deprecated security group that will be removed in the future
+      "Lambda Services" = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
+      "API"             = module.services_common.api_security_group_id
+      "Brainstore"      = module.services_common.brainstore_instance_security_group_id
     },
     local.bastion_security_group,
   )
@@ -103,9 +104,10 @@ module "redis" {
   vpc_id = local.main_vpc_id
   authorized_security_groups = merge(
     {
-      "Lambda Services" = module.services.lambda_security_group_id
-      "API"             = module.services_common[0].api_security_group_id
-      "Brainstore"      = var.enable_brainstore ? module.services_common[0].brainstore_instance_security_group_id : null
+      # This is a deprecated security group that will be removed in the future
+      "Lambda Services" = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
+      "API"             = module.services_common.api_security_group_id
+      "Brainstore"      = module.services_common.brainstore_instance_security_group_id
     },
     local.bastion_security_group,
   )
@@ -124,6 +126,7 @@ module "storage" {
 
 module "services" {
   source = "./modules/services"
+  count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
@@ -189,40 +192,44 @@ module "services" {
 
   kms_key_arn               = local.kms_key_arn
   permissions_boundary_arn  = var.permissions_boundary_arn
-  api_handler_role_arn      = module.services_common[0].api_handler_role_arn
-  api_security_group_id     = module.services_common[0].api_security_group_id
-  function_tools_secret_key = module.services_common[0].function_tools_secret_key
+  api_handler_role_arn      = module.services_common.api_handler_role_arn
+  api_security_group_id     = module.services_common.api_security_group_id
+  function_tools_secret_key = module.services_common.function_tools_secret_key
 }
 
 module "ingress" {
   source = "./modules/ingress"
+  count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   deployment_name          = var.deployment_name
   custom_domain            = var.custom_domain
   custom_certificate_arn   = var.custom_certificate_arn
   use_global_ai_proxy      = var.use_global_ai_proxy
-  ai_proxy_function_url    = module.services.ai_proxy_url
-  api_handler_function_arn = module.services.api_handler_arn
+  ai_proxy_function_url    = module.services[0].ai_proxy_url
+  api_handler_function_arn = module.services[0].api_handler_arn
 }
 
 module "services_common" {
   source = "./modules/services-common"
-  count  = var.enable_brainstore ? 1 : 0
 
   deployment_name                = var.deployment_name
   vpc_id                         = local.main_vpc_id
   kms_key_arn                    = local.kms_key_arn
-  brainstore_s3_bucket_arn       = module.storage.brainstore_bucket_arn
   database_secret_arn            = module.database.postgres_database_secret_arn
-  permissions_boundary_arn       = var.permissions_boundary_arn
+  brainstore_s3_bucket_arn       = module.storage.brainstore_bucket_arn
   code_bundle_s3_bucket_arn      = module.storage.code_bundle_bucket_arn
   lambda_responses_s3_bucket_arn = module.storage.lambda_responses_bucket_arn
   service_additional_policy_arns = var.service_additional_policy_arns
+  permissions_boundary_arn       = var.permissions_boundary_arn
+  eks_cluster_arn                = var.existing_eks_cluster_arn
+  eks_namespace                  = var.eks_namespace
+  enable_eks_pod_identity        = var.enable_eks_pod_identity
+  enable_eks_irsa                = var.enable_eks_irsa
 }
 
 module "brainstore" {
   source = "./modules/brainstore-ec2"
-  count  = var.enable_brainstore ? 1 : 0
+  count  = var.enable_brainstore && !var.use_deployment_mode_external_eks ? 1 : 0
 
   deployment_name                       = var.deployment_name
   instance_count                        = var.brainstore_instance_count
@@ -242,17 +249,18 @@ module "brainstore" {
   database_secret_arn                   = module.database.postgres_database_secret_arn
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port
-  service_token_secret_key              = module.services_common[0].function_tools_secret_key
+  service_token_secret_key              = module.services_common.function_tools_secret_key
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   internal_observability_api_key        = var.internal_observability_api_key
   internal_observability_env_name       = var.internal_observability_env_name
   internal_observability_region         = var.internal_observability_region
-  brainstore_instance_security_group_id = module.services_common[0].brainstore_instance_security_group_id
+  brainstore_instance_security_group_id = module.services_common.brainstore_instance_security_group_id
   vpc_id                                = local.main_vpc_id
   authorized_security_groups = merge(
     {
-      "Lambda Services" = module.services.lambda_security_group_id
-      "API"             = module.services_common[0].api_security_group_id
+      # This is a deprecated security group that will be removed in the future
+      "Lambda Services" = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
+      "API"             = module.services_common.api_security_group_id
     },
     local.bastion_security_group
   )
@@ -265,7 +273,7 @@ module "brainstore" {
   ]
 
   kms_key_arn              = local.kms_key_arn
-  brainstore_iam_role_name = module.services_common[0].brainstore_iam_role_name
+  brainstore_iam_role_name = module.services_common.brainstore_iam_role_name
 }
 
 

@@ -19,11 +19,11 @@ module "remote_support" {
   clickhouse_secret_arn = null
   kms_key_arn           = local.kms_key_arn
   lambda_function_arns = [
-    module.services.api_handler_arn,
-    module.services.migrate_database_arn,
-    module.services.ai_proxy_arn,
-    module.services.catchup_etl_arn,
-    module.services.quarantine_warmup_arn
+    !var.use_deployment_mode_external_eks ? module.services[0].api_handler_arn : null,
+    !var.use_deployment_mode_external_eks ? module.services[0].migrate_database_arn : null,
+    !var.use_deployment_mode_external_eks ? module.services[0].ai_proxy_arn : null,
+    !var.use_deployment_mode_external_eks ? module.services[0].catchup_etl_arn : null,
+    !var.use_deployment_mode_external_eks ? module.services[0].quarantine_warmup_arn : null,
   ]
   enable_braintrust_support_logs_access  = var.enable_braintrust_support_logs_access
   enable_braintrust_support_shell_access = var.enable_braintrust_support_shell_access
