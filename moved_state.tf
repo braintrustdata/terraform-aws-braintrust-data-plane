@@ -5,8 +5,13 @@ moved {
   to   = module.main_vpc[0]
 }
 
-# Handle state migration for S3 resources moved to storage module
-# Brainstore S3 bucket
+# The services module is now conditional. Note that some resources were split out into the services-common module.
+moved {
+  from = module.services
+  to   = module.services[0]
+}
+
+# Brainstore S3 bucket moved from brainstore -> storage
 moved {
   from = module.brainstore[0].aws_s3_bucket.brainstore
   to   = module.storage.aws_s3_bucket.brainstore
@@ -32,7 +37,7 @@ moved {
   to   = module.storage.aws_s3_bucket_public_access_block.brainstore
 }
 
-# Services S3 buckets
+# Code Bundle/Lambda Responses S3 buckets moved from services -> storage
 moved {
   from = module.services.aws_s3_bucket.code_bundle_bucket
   to   = module.storage.aws_s3_bucket.code_bundle_bucket
@@ -83,7 +88,7 @@ moved {
   to   = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket
 }
 
-# Handle state migration for CloudFront and API Gateway resources moved to ingress module
+# CloudFront and API Gateway resources moved from services -> ingress
 moved {
   from = module.services.aws_cloudfront_distribution.dataplane
   to   = module.ingress[0].aws_cloudfront_distribution.dataplane
@@ -114,7 +119,7 @@ moved {
   to   = module.ingress[0].aws_lambda_permission.api_gateway
 }
 
-# Handle state migration for IAM resources moved from brainstore to services-common
+# Brainstore IAM resources moved from brainstore -> services-common
 moved {
   from = module.brainstore[0].aws_iam_role.brainstore_ec2_role
   to   = module.services_common.aws_iam_role.brainstore_role
@@ -140,7 +145,7 @@ moved {
   to   = module.services_common.aws_iam_role_policy.brainstore_kms_policy
 }
 
-# Handle state migration for security group moved from brainstore to services-common
+# Brainstore security group moved from brainstore -> services-common
 moved {
   from = module.brainstore[0].aws_security_group.brainstore_instance
   to   = module.services_common.aws_security_group.brainstore_instance
@@ -151,7 +156,7 @@ moved {
   to   = module.services_common.aws_vpc_security_group_egress_rule.brainstore_instance_allow_egress_all
 }
 
-# Handle state migration for APIHandler IAM resources moved from services to services-common
+# APIHandler IAM resources moved from services -> services-common
 moved {
   from = module.services.aws_iam_role.api_handler_role
   to   = module.services_common.aws_iam_role.api_handler_role
@@ -172,22 +177,6 @@ moved {
   to   = module.services_common.aws_iam_role_policy_attachment.api_handler_additional_policy
 }
 
-# Handle state migration for function tools secret moved from services to services-common
-moved {
-  from = module.services.aws_secretsmanager_secret.function_tools_secret
-  to   = module.services_common.aws_secretsmanager_secret.function_tools_secret
-}
-moved {
-  from = module.services.aws_secretsmanager_secret_version.function_tools_secret
-  to   = module.services_common.aws_secretsmanager_secret_version.function_tools_secret
-}
-
-# The services module is now conditional. Note that some resources were moved out into the services-common module.
-moved {
-  from = module.services
-  to   = module.services[0]
-}
-
 # Secrets from services -> services-common
 moved {
   from = module.services.aws_secretsmanager_secret.function_tools_secret
@@ -197,3 +186,5 @@ moved {
   from = module.services.aws_secretsmanager_secret_version.function_tools_secret
   to   = module.services_common.aws_secretsmanager_secret_version.function_tools_secret
 }
+
+
