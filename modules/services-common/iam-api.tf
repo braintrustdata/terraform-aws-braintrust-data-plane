@@ -9,7 +9,44 @@ resource "aws_iam_role" "api_handler_role" {
         Principal = {
           Service = "lambda.amazonaws.com"
         }
-      }
+      },
+      # IRSA trust relationship (cluster ARN is required)
+      var.enable_eks_irsa && var.eks_cluster_arn != null ? [
+        {
+          Effect = "Allow"
+          Principal = {
+            Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(local.eks_oidc_issuer_url, "https://", "")}"
+          }
+          Action = "sts:AssumeRoleWithWebIdentity"
+          Condition = {
+            StringEquals = {
+              "${replace(local.eks_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:${var.eks_namespace != null ? var.eks_namespace : "*"}:*"
+              "${replace(local.eks_oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
+            }
+          }
+        }
+      ] : [],
+      # EKS Pod Identity trust relationship
+      var.enable_eks_pod_identity ? [
+        {
+          Effect = "Allow"
+          Principal = {
+            Service = "pods.eks.amazonaws.com"
+          }
+          Action = [
+            "sts:AssumeRole",
+            "sts:TagSession"
+          ]
+          Condition = merge(
+            var.eks_cluster_arn != null ? {
+              "aws:RequestTag/kubernetes-cluster-arn" = var.eks_cluster_arn
+            } : {},
+            var.eks_namespace != null ? {
+              "aws:RequestTag/kubernetes-namespace" = var.eks_namespace
+            } : {}
+          )
+        }
+      ] : []
     ]
     Version = "2012-10-17"
   })

@@ -15,8 +15,8 @@ resource "aws_iam_role" "brainstore_role" {
           Action = "sts:AssumeRole"
         }
       ],
-      # IRSA trust relationship (if cluster ARN is provided)
-      var.eks_cluster_arn != null ? [
+      # IRSA trust relationship (cluster ARN is required)
+      var.enable_eks_irsa && var.eks_cluster_arn != null ? [
         {
           Effect = "Allow"
           Principal = {
@@ -31,8 +31,8 @@ resource "aws_iam_role" "brainstore_role" {
           }
         }
       ] : [],
-      # EKS Pod Identity trust relationship (always enabled)
-      [
+      # EKS Pod Identity trust relationship
+      var.enable_eks_pod_identity ? [
         {
           Effect = "Allow"
           Principal = {
@@ -51,7 +51,7 @@ resource "aws_iam_role" "brainstore_role" {
             } : {}
           )
         }
-      ]
+      ] : []
     )
   })
 
