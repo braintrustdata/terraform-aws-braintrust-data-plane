@@ -237,6 +237,14 @@ Type: `bool`
 
 Default: `false`
 
+### <a name="input_eks_namespace"></a> [eks\_namespace](#input\_eks\_namespace)
+
+Description: Optional. Namespace to use for the EKS cluster. This is used to restrict the trust policy of IRSA and Pod Identity for the Braintrust IAM roles.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_enable_brainstore"></a> [enable\_brainstore](#input\_enable\_brainstore)
 
 Description: Enable Brainstore for faster analytics
@@ -261,6 +269,22 @@ Type: `bool`
 
 Default: `false`
 
+### <a name="input_enable_eks_irsa"></a> [enable\_eks\_irsa](#input\_enable\_eks\_irsa)
+
+Description: Optional. If you are using EKS this will enable IRSA for the Braintrust IAM roles.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_enable_eks_pod_identity"></a> [enable\_eks\_pod\_identity](#input\_enable\_eks\_pod\_identity)
+
+Description: Optional. If you are using EKS this will enable EKS Pod Identity for the Braintrust IAM roles.
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_enable_quarantine_vpc"></a> [enable\_quarantine\_vpc](#input\_enable\_quarantine\_vpc)
 
 Description: Enable the Quarantine VPC to run user defined functions in an isolated environment. If disabled, user defined functions will not be available.
@@ -268,6 +292,14 @@ Description: Enable the Quarantine VPC to run user defined functions in an isola
 Type: `bool`
 
 Default: `true`
+
+### <a name="input_existing_eks_cluster_arn"></a> [existing\_eks\_cluster\_arn](#input\_existing\_eks\_cluster\_arn)
+
+Description: Optional. ARN of an existing EKS cluster to use. This is used to further restrict the trust policy for IRSA and Pod Identity for the Braintrust IAM roles. When not specified, IRSA is disabled and any EKS cluster can use Pod Identity to assume Braintrust roles.
+
+Type: `string`
+
+Default: `null`
 
 ### <a name="input_existing_private_subnet_1_id"></a> [existing\_private\_subnet\_1\_id](#input\_existing\_private\_subnet\_1\_id)
 
@@ -596,6 +628,14 @@ Default:
   "QuarantineWarmupFunction": {}
 }
 ```
+
+### <a name="input_use_deployment_mode_external_eks"></a> [use\_deployment\_mode\_external\_eks](#input\_use\_deployment\_mode\_external\_eks)
+
+Description: Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform.
+
+Type: `bool`
+
+Default: `false`
 
 ### <a name="input_use_global_ai_proxy"></a> [use\_global\_ai\_proxy](#input\_use\_global\_ai\_proxy)
 

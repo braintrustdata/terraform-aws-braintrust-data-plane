@@ -41,6 +41,18 @@ variable "eks_namespace" {
   default     = null
 }
 
+variable "enable_eks_pod_identity" {
+  type        = bool
+  description = "Optional. If you are using EKS this will enable EKS Pod Identity for the Braintrust IAM roles."
+  default     = false
+}
+
+variable "enable_eks_irsa" {
+  type        = bool
+  description = "Optional. If you are using EKS this will enable IRSA for the Braintrust IAM roles."
+  default     = false
+}
+
 variable "code_bundle_s3_bucket_arn" {
   type        = string
   description = "The ARN of the code bundle S3 bucket"

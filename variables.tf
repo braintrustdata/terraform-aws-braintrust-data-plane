@@ -536,3 +536,33 @@ variable "use_global_ai_proxy" {
   type        = bool
   default     = false
 }
+
+variable "use_deployment_mode_external_eks" {
+  description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
+  type        = bool
+  default     = false
+}
+
+variable "existing_eks_cluster_arn" {
+  description = "Optional. ARN of an existing EKS cluster to use. This is used to further restrict the trust policy for IRSA and Pod Identity for the Braintrust IAM roles. When not specified, IRSA is disabled and any EKS cluster can use Pod Identity to assume Braintrust roles."
+  type        = string
+  default     = null
+}
+
+variable "eks_namespace" {
+  description = "Optional. Namespace to use for the EKS cluster. This is used to restrict the trust policy of IRSA and Pod Identity for the Braintrust IAM roles."
+  type        = string
+  default     = null
+}
+
+variable "enable_eks_pod_identity" {
+  description = "Optional. If you are using EKS this will enable EKS Pod Identity for the Braintrust IAM roles."
+  type        = bool
+  default     = false
+}
+
+variable "enable_eks_irsa" {
+  description = "Optional. If you are using EKS this will enable IRSA for the Braintrust IAM roles."
+  type        = bool
+  default     = false
+}
