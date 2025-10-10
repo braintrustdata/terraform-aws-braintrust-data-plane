@@ -58,7 +58,7 @@ resource "aws_iam_role" "brainstore_role" {
   permissions_boundary = var.permissions_boundary_arn
 
   tags = merge({
-    Name = "${var.deployment_name}-brainstore-role"
+    Name = "${var.deployment_name}-brainstore-ec2-role"
   }, local.common_tags)
 }
 
