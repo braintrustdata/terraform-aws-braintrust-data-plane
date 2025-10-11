@@ -2,14 +2,18 @@
 resource "aws_iam_role" "api_handler_role" {
   name = "${var.deployment_name}-APIHandlerRole"
   assume_role_policy = jsonencode({ # nosemgrep
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
+    Version = "2012-10-17"
+    Statement = concat(
+      # Lambda trust relationship
+      [
+        {
+          Effect = "Allow"
+          Principal = {
+            Service = "lambda.amazonaws.com"
+          }
+          Action = "sts:AssumeRole"
         }
-      },
+      ],
       # IRSA trust relationship (cluster ARN is required)
       var.enable_eks_irsa && var.eks_cluster_arn != null ? [
         {
@@ -47,8 +51,7 @@ resource "aws_iam_role" "api_handler_role" {
           )
         }
       ] : []
-    ]
-    Version = "2012-10-17"
+    )
   })
 
   permissions_boundary = var.permissions_boundary_arn
