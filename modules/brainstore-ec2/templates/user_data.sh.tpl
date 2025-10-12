@@ -57,6 +57,7 @@ wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/$arch/latest/amazon-
 dpkg -i amazon-cloudwatch-agent.deb
 
 # Configure CloudWatch agent
+# Configure CloudWatch agent (logs + memory)
 cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
 {
   "logs": {
@@ -71,6 +72,19 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
             "timezone": "UTC"
           }
         ]
+      }
+    }
+  },
+  "metrics": {
+    "metrics_collected": {
+      "mem": {
+        "measurement": [
+          {"name": "mem_used_percent", "rename": "MemoryUtilization", "unit": "Percent"},
+          {"name": "mem_used", "unit": "Bytes"},
+          {"name": "mem_available", "unit": "Bytes"},
+          {"name": "mem_total", "unit": "Bytes"}
+        ],
+        "metrics_collection_interval": 60
       }
     }
   }
