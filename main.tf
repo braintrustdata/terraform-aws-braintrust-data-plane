@@ -75,12 +75,14 @@ module "database" {
   database_subnet_ids       = local.database_subnet_ids
   vpc_id                    = local.main_vpc_id
   authorized_security_groups = merge(
-    {
+    merge(
+      {
+        "API"        = module.services_common.api_security_group_id
+        "Brainstore" = module.services_common.brainstore_instance_security_group_id
+      },
       # This is a deprecated security group that will be removed in the future
-      "Lambda Services" = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
-      "API"             = module.services_common.api_security_group_id
-      "Brainstore"      = module.services_common.brainstore_instance_security_group_id
-    },
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+    ),
     local.bastion_security_group,
   )
   postgres_storage_iops              = var.postgres_storage_iops
@@ -103,12 +105,14 @@ module "redis" {
   ]
   vpc_id = local.main_vpc_id
   authorized_security_groups = merge(
-    {
+    merge(
+      {
+        "API"        = module.services_common.api_security_group_id
+        "Brainstore" = module.services_common.brainstore_instance_security_group_id
+      },
       # This is a deprecated security group that will be removed in the future
-      "Lambda Services" = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
-      "API"             = module.services_common.api_security_group_id
-      "Brainstore"      = module.services_common.brainstore_instance_security_group_id
-    },
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+    ),
     local.bastion_security_group,
   )
   redis_instance_type = var.redis_instance_type
@@ -257,11 +261,13 @@ module "brainstore" {
   brainstore_instance_security_group_id = module.services_common.brainstore_instance_security_group_id
   vpc_id                                = local.main_vpc_id
   authorized_security_groups = merge(
-    {
+    merge(
+      {
+        "API" = module.services_common.api_security_group_id
+      },
       # This is a deprecated security group that will be removed in the future
-      "Lambda Services" = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
-      "API"             = module.services_common.api_security_group_id
-    },
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+    ),
     local.bastion_security_group
   )
   authorized_security_groups_ssh = local.bastion_security_group
