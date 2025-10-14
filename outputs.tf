@@ -106,6 +106,7 @@ output "cloudfront_distribution_arn" {
 output "cloudfront_distribution_hosted_zone_id" {
   value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
   description = "The hosted zone ID of the cloudfront distribution"
+}
 
 output "kms_key_arn" {
   value       = local.kms_key_arn

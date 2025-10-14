@@ -697,6 +697,10 @@ Description: The domain name of the cloudfront distribution
 
 Description: The hosted zone ID of the cloudfront distribution
 
+### <a name="output_kms_key_arn"></a> [kms\_key\_arn](#output\_kms\_key\_arn)
+
+Description: ARN of the KMS key used to encrypt Braintrust resources
+
 ### <a name="output_lambda_security_group_id"></a> [lambda\_security\_group\_id](#output\_lambda\_security\_group\_id)
 
 Description: ID of the security group for the Lambda functions
