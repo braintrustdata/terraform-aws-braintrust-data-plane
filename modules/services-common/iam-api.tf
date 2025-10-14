@@ -41,14 +41,16 @@ resource "aws_iam_role" "api_handler_role" {
             "sts:AssumeRole",
             "sts:TagSession"
           ]
-          Condition = merge(
-            var.eks_cluster_arn != null ? {
-              "aws:RequestTag/kubernetes-cluster-arn" = var.eks_cluster_arn
-            } : {},
-            var.eks_namespace != null ? {
-              "aws:RequestTag/kubernetes-namespace" = var.eks_namespace
-            } : {}
-          )
+          Condition = {
+            StringEquals = merge(
+              var.eks_cluster_arn != null ? {
+                "aws:RequestTag/kubernetes-cluster-arn" = [var.eks_cluster_arn]
+              } : {},
+              var.eks_namespace != null ? {
+                "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
+              } : {}
+            )
+          }
         }
       ] : []
     )
