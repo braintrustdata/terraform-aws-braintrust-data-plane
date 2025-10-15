@@ -210,6 +210,8 @@ module "brainstore" {
   internal_observability_env_name = var.internal_observability_env_name
   internal_observability_region   = var.internal_observability_region
 
+  custom_tags = var.custom_tags
+
   vpc_id = local.main_vpc_id
   authorized_security_groups = merge(
     {
