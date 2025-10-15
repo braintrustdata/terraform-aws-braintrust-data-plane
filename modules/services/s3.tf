@@ -33,6 +33,13 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucke
   }
 }
 
+resource "aws_s3_bucket_versioning" "code_bundle_bucket" {
+  bucket = aws_s3_bucket.code_bundle_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
   bucket = aws_s3_bucket.code_bundle_bucket.id
 
@@ -45,7 +52,8 @@ resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
-  bucket = aws_s3_bucket.code_bundle_bucket.id
+  bucket     = aws_s3_bucket.code_bundle_bucket.id
+  depends_on = [aws_s3_bucket_versioning.code_bundle_bucket]
 
   rule {
     id     = "DeleteIncompleteMultipartUploads"
@@ -57,6 +65,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 1
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
+    }
+
+    expiration {
+      expired_object_delete_marker = true
     }
   }
 }
@@ -83,9 +99,19 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
   tags = local.common_tags
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
+resource "aws_s3_bucket_versioning" "lambda_responses_bucket" {
   bucket = aws_s3_bucket.lambda_responses_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
 
+# Lifecycle configuration for the lambda responses bucket that manages object retention and cleanup
+resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
+  bucket     = aws_s3_bucket.lambda_responses_bucket.id
+  depends_on = [aws_s3_bucket_versioning.lambda_responses_bucket]
+
+  # Delete EVERYTHING from the bucket after 1 day
   rule {
     id     = "ExpireObjectsAfterOneDay"
     status = "Enabled"
@@ -100,6 +126,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 1
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
     }
   }
 }
