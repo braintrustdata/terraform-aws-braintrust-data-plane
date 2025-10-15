@@ -62,30 +62,6 @@ resource "aws_launch_template" "brainstore_writer" {
   tags = merge({
     Name = "${var.deployment_name}-brainstore-writer"
   }, local.common_tags)
-
-  tag_specifications {
-    resource_type = "instance"
-    tags = merge({
-      Name           = "${var.deployment_name}-brainstore-writer"
-      BrainstoreRole = "Writer"
-    }, local.common_tags)
-  }
-
-  tag_specifications {
-    resource_type = "volume"
-    tags = merge({
-      Name           = "${var.deployment_name}-brainstore-writer"
-      BrainstoreRole = "Writer"
-    }, local.common_tags)
-  }
-
-  tag_specifications {
-    resource_type = "network-interface"
-    tags = merge({
-      Name           = "${var.deployment_name}-brainstore-writer"
-      BrainstoreRole = "Writer"
-    }, local.common_tags)
-  }
 }
 
 resource "aws_lb" "brainstore_writer" {
@@ -168,6 +144,12 @@ resource "aws_autoscaling_group" "brainstore_writer" {
   tag {
     key                 = "Name"
     value               = "${var.deployment_name}-brainstore-writer"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "BrainstoreRole"
+    value               = "Writer"
     propagate_at_launch = true
   }
 
