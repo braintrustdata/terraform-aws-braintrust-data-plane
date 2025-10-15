@@ -64,16 +64,17 @@ module "quarantine_vpc" {
 }
 
 module "database" {
-  source                    = "./modules/database"
-  deployment_name           = var.deployment_name
-  postgres_instance_type    = var.postgres_instance_type
-  multi_az                  = var.postgres_multi_az
-  postgres_storage_size     = var.postgres_storage_size
-  postgres_max_storage_size = var.postgres_max_storage_size
-  postgres_storage_type     = var.postgres_storage_type
-  postgres_version          = var.postgres_version
-  database_subnet_ids       = local.database_subnet_ids
-  vpc_id                    = local.main_vpc_id
+  source                              = "./modules/database"
+  deployment_name                     = var.deployment_name
+  postgres_instance_type              = var.postgres_instance_type
+  multi_az                            = var.postgres_multi_az
+  postgres_storage_size               = var.postgres_storage_size
+  postgres_max_storage_size           = var.postgres_max_storage_size
+  postgres_storage_type               = var.postgres_storage_type
+  postgres_version                    = var.postgres_version
+  database_subnet_ids                 = local.database_subnet_ids
+  existing_database_subnet_group_name = var.existing_database_subnet_group_name
+  vpc_id                              = local.main_vpc_id
   authorized_security_groups = merge(
     merge(
       {

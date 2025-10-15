@@ -187,4 +187,8 @@ moved {
   to   = module.services_common.aws_secretsmanager_secret_version.function_tools_secret
 }
 
-
+# Database subnet group is now optional
+moved {
+  from = module.database.aws_db_subnet_group.main
+  to   = module.database.aws_db_subnet_group.main[0]
+}

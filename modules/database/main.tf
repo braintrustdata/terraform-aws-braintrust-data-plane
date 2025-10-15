@@ -4,6 +4,7 @@ locals {
   common_tags = {
     BraintrustDeploymentName = var.deployment_name
   }
+  database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
 }
 
 resource "aws_db_instance" "main" {
@@ -25,7 +26,7 @@ resource "aws_db_instance" "main" {
   username = local.postgres_username
   password = local.postgres_password
 
-  db_subnet_group_name   = aws_db_subnet_group.main.name
+  db_subnet_group_name   = local.database_subnet_group_name
   parameter_group_name   = aws_db_parameter_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
@@ -93,6 +94,7 @@ resource "aws_db_parameter_group" "main" {
 }
 
 resource "aws_db_subnet_group" "main" {
+  count       = var.existing_database_subnet_group_name == null ? 1 : 0
   name_prefix = "${var.deployment_name}-main"
   description = "Subnet group for the Braintrust main database"
   subnet_ids  = var.database_subnet_ids

@@ -293,6 +293,14 @@ Type: `bool`
 
 Default: `true`
 
+### <a name="input_existing_database_subnet_group_name"></a> [existing\_database\_subnet\_group\_name](#input\_existing\_database\_subnet\_group\_name)
+
+Description: Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created which is the default and preferred behavior.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_existing_eks_cluster_arn"></a> [existing\_eks\_cluster\_arn](#input\_existing\_eks\_cluster\_arn)
 
 Description: Optional. ARN of an existing EKS cluster to use. This is used to further restrict the trust policy for IRSA and Pod Identity for the Braintrust IAM roles. When not specified, IRSA is disabled and any EKS cluster can use Pod Identity to assume Braintrust roles.
