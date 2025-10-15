@@ -65,6 +65,12 @@ variable "database_subnet_ids" {
   type        = list(string)
 }
 
+variable "existing_database_subnet_group_name" {
+  description = "Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created using the provided database_subnet_ids."
+  type        = string
+  default     = null
+}
+
 variable "vpc_id" {
   type        = string
   description = "ID of VPC where RDS will be deployed."

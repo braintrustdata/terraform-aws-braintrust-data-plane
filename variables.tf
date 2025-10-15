@@ -233,6 +233,12 @@ variable "database_subnet_ids" {
   default     = null
 }
 
+variable "existing_database_subnet_group_name" {
+  type        = string
+  description = "Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created which is the default and preferred behavior."
+  default     = null
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
