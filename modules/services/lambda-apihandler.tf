@@ -49,6 +49,7 @@ locals {
     AI_PROXY_FN_URL      = aws_lambda_function_url.ai_proxy.function_url
     AI_PROXY_INVOKE_ROLE = aws_iam_role.ai_proxy_invoke_role.arn
     CATCHUP_ETL_ARN      = aws_lambda_function.catchup_etl.arn
+    INSERT_LOGS2         = "true"
   }
 }
 
