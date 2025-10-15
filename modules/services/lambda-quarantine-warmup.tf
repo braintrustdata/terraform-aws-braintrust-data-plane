@@ -12,10 +12,15 @@ resource "aws_lambda_function" "quarantine_warmup" {
   s3_key        = local.lambda_versions["QuarantineWarmupFunction"]
   role          = aws_iam_role.api_handler_role.arn
   handler       = "index.handler"
-  runtime       = "nodejs20.x"
+  runtime       = "nodejs22.x"
   memory_size   = 1024
   timeout       = 900
+  architectures = ["arm64"]
   kms_key_arn   = var.kms_key_arn
+
+  layers = [
+    "arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:14"
+  ]
 
   environment {
     variables = merge({
