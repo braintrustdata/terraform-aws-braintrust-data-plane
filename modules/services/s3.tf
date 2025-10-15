@@ -121,10 +121,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
     }
 
     expiration {
-      days = 1
-    }
-
-    expiration {
+      days                         = 1
       expired_object_delete_marker = true
     }
 
