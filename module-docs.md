@@ -423,7 +423,7 @@ Default: `false`
 
 ### <a name="input_postgres_storage_iops"></a> [postgres\_storage\_iops](#input\_postgres\_storage\_iops)
 
-Description: Storage IOPS for the RDS instance. Only applicable if storage\_type is io1, io2, or gp3.
+Description: Storage IOPS for the RDS instance. Only applicable if storage\_type is io1, io2, or gp3. For gp3 storage with PostgreSQL, IOPS can only be specified when storage size is >= 400GB.
 
 Type: `number`
 
@@ -439,7 +439,7 @@ Default: `1000`
 
 ### <a name="input_postgres_storage_throughput"></a> [postgres\_storage\_throughput](#input\_postgres\_storage\_throughput)
 
-Description: Throughput for the RDS instance. Only applicable if storage\_type is gp3.
+Description: Throughput for the RDS instance. Only applicable if storage\_type is gp3. For gp3 storage with PostgreSQL, throughput can only be specified when storage size is >= 400GB.
 
 Type: `number`
 
