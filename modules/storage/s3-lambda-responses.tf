@@ -11,9 +11,19 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
   tags = local.common_tags
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
+resource "aws_s3_bucket_versioning" "lambda_responses_bucket" {
   bucket = aws_s3_bucket.lambda_responses_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
 
+
+resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
+  bucket     = aws_s3_bucket.lambda_responses_bucket.id
+  depends_on = [aws_s3_bucket_versioning.lambda_responses_bucket]
+
+  # Delete EVERYTHING from the bucket after 1 day
   rule {
     id     = "ExpireObjectsAfterOneDay"
     status = "Enabled"
@@ -28,6 +38,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 1
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 1
     }
   }
 }
