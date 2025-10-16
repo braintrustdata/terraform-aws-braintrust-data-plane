@@ -41,7 +41,7 @@ resource "aws_instance" "bastion" {
 
   user_data = base64encode(templatefile("${path.module}/bastion-user-data.sh", {
     deployment_name       = var.deployment_name
-    region                = data.aws_region.current.region
+    region                = data.aws_region.current.name
     database_host         = var.database_host
     database_secret_arn   = var.database_secret_arn
     clickhouse_host       = var.clickhouse_host != null ? var.clickhouse_host : ""
@@ -160,7 +160,7 @@ resource "aws_iam_role_policy" "bastion" {
           "ec2-instance-connect:SendSSHPublicKey"
         ]
         Resource = [
-          "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*"
+          "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/*"
         ]
         Condition = {
           StringEquals = {
@@ -232,8 +232,8 @@ resource "aws_iam_role_policy" "braintrust_support_ec2_connect" {
           "ec2-instance-connect:OpenTunnel"
         ]
         Resource = [
-          "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.bastion[0].id}",
-          "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance-connect-endpoint/${aws_ec2_instance_connect_endpoint.endpoint[0].id}"
+          "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.bastion[0].id}",
+          "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance-connect-endpoint/${aws_ec2_instance_connect_endpoint.endpoint[0].id}"
         ]
       }
     ]

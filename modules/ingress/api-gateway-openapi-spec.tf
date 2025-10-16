@@ -19,7 +19,7 @@ locals {
     consumes = ["application/json", "text/plain"]
   })
   snippet_api_gateway_integration = {
-    "uri"                 = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${var.api_handler_function_arn}/invocations"
+    "uri"                 = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.api_handler_function_arn}/invocations"
     "type"                = "aws_proxy"
     "httpMethod"          = "POST"
     "contentHandling"     = "CONVERT_TO_TEXT"
