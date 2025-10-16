@@ -118,6 +118,7 @@ resource "aws_lb_target_group" "brainstore" {
   vpc_id      = var.vpc_id
   target_type = "instance"
 
+  connection_termination = true
   health_check {
     protocol            = "TCP"
     port                = var.port
