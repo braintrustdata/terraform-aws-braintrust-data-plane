@@ -64,6 +64,11 @@ moved {
 }
 
 moved {
+  from = module.services.aws_s3_bucket_versioning.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_versioning.code_bundle_bucket
+}
+
+moved {
   from = module.services.aws_s3_bucket.lambda_responses_bucket
   to   = module.storage.aws_s3_bucket.lambda_responses_bucket
 }
@@ -86,6 +91,11 @@ moved {
 moved {
   from = module.services.aws_s3_bucket_public_access_block.lambda_responses_bucket
   to   = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket
+}
+
+moved {
+  from = module.services.aws_s3_bucket_versioning.lambda_responses_bucket
+  to   = module.storage.aws_s3_bucket_versioning.lambda_responses_bucket
 }
 
 # CloudFront and API Gateway resources moved from services -> ingress
