@@ -33,26 +33,31 @@ resource "aws_iam_role" "brainstore_role" {
       ] : [],
       # EKS Pod Identity trust relationship
       var.enable_eks_pod_identity ? [
-        {
-          Effect = "Allow"
-          Principal = {
-            Service = "pods.eks.amazonaws.com"
-          }
-          Action = [
-            "sts:AssumeRole",
-            "sts:TagSession"
-          ]
-          Condition = {
-            StringEquals = merge(
-              var.eks_cluster_arn != null ? {
-                "aws:RequestTag/kubernetes-cluster-arn" = [var.eks_cluster_arn]
-              } : {},
-              var.eks_namespace != null ? {
-                "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
-              } : {}
-            )
-          }
-        }
+        merge(
+          {
+            Effect = "Allow"
+            Principal = {
+              Service = "pods.eks.amazonaws.com"
+            }
+            Action = [
+              "sts:AssumeRole",
+              "sts:TagSession"
+            ]
+          },
+          # Only include Condition block if at least one EKS restriction is provided
+          var.eks_cluster_arn != null || var.eks_namespace != null ? {
+            Condition = {
+              StringEquals = merge(
+                var.eks_cluster_arn != null ? {
+                  "aws:RequestTag/kubernetes-cluster-arn" = [var.eks_cluster_arn]
+                } : {},
+                var.eks_namespace != null ? {
+                  "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
+                } : {}
+              )
+            }
+          } : {}
+        )
       ] : []
     )
   })
