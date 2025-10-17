@@ -45,7 +45,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
 
     # Delete old versions after X days
     noncurrent_version_expiration {
-      noncurrent_days = var.s3_bucket_retention_days
+      noncurrent_days = var.brainstore_s3_bucket_retention_days
     }
 
     abort_incomplete_multipart_upload {
@@ -65,7 +65,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
     expiration {
       # We use the same var for the expiration interval and the delete interval
       # in cleanup-old-versions so the total time to deletion is 2 * var.s3_bucket_retention_days
-      days = var.s3_bucket_retention_days
+      days = var.brainstore_s3_bucket_retention_days
     }
   }
 
@@ -81,7 +81,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
     expiration {
       # We use the same var for the expiration interval and the delete interval
       # in cleanup-old-versions so the total time to deletion is 2 * var.s3_bucket_retention_days
-      days = var.s3_bucket_retention_days
+      days = var.brainstore_s3_bucket_retention_days
     }
   }
 }

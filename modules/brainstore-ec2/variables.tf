@@ -149,12 +149,6 @@ variable "monitoring_telemetry" {
   }
 }
 
-variable "s3_bucket_retention_days" {
-  type        = number
-  description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
-  default     = 7
-}
-
 variable "internal_observability_api_key" {
   type        = string
   description = "Support for internal observability agent. Do not set this unless instructed by support."
@@ -179,8 +173,17 @@ variable "service_token_secret_key" {
   sensitive   = true
 }
 
-variable "permissions_boundary_arn" {
+variable "brainstore_s3_bucket_arn" {
   type        = string
-  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
-  default     = null
+  description = "The ARN of the S3 bucket used by Brainstore"
+}
+
+variable "brainstore_iam_role_name" {
+  type        = string
+  description = "The name of the IAM role for Brainstore EC2 instances"
+}
+
+variable "brainstore_instance_security_group_id" {
+  type        = string
+  description = "The ID of the security group to use for the Brainstore instances"
 }

@@ -237,6 +237,14 @@ Type: `bool`
 
 Default: `false`
 
+### <a name="input_eks_namespace"></a> [eks\_namespace](#input\_eks\_namespace)
+
+Description: Optional. Namespace to use for the EKS cluster. This is used to restrict the trust policy of IRSA and Pod Identity for the Braintrust IAM roles.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_enable_brainstore"></a> [enable\_brainstore](#input\_enable\_brainstore)
 
 Description: Enable Brainstore for faster analytics
@@ -261,6 +269,22 @@ Type: `bool`
 
 Default: `false`
 
+### <a name="input_enable_eks_irsa"></a> [enable\_eks\_irsa](#input\_enable\_eks\_irsa)
+
+Description: Optional. If you are using EKS this will enable IRSA for the Braintrust IAM roles.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_enable_eks_pod_identity"></a> [enable\_eks\_pod\_identity](#input\_enable\_eks\_pod\_identity)
+
+Description: Optional. If you are using EKS this will enable EKS Pod Identity for the Braintrust IAM roles.
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_enable_quarantine_vpc"></a> [enable\_quarantine\_vpc](#input\_enable\_quarantine\_vpc)
 
 Description: Enable the Quarantine VPC to run user defined functions in an isolated environment. If disabled, user defined functions will not be available.
@@ -268,6 +292,22 @@ Description: Enable the Quarantine VPC to run user defined functions in an isola
 Type: `bool`
 
 Default: `true`
+
+### <a name="input_existing_database_subnet_group_name"></a> [existing\_database\_subnet\_group\_name](#input\_existing\_database\_subnet\_group\_name)
+
+Description: Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created which is the default and preferred behavior.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_existing_eks_cluster_arn"></a> [existing\_eks\_cluster\_arn](#input\_existing\_eks\_cluster\_arn)
+
+Description: Optional. ARN of an existing EKS cluster to use. This is used to further restrict the trust policy for IRSA and Pod Identity for the Braintrust IAM roles. When not specified, IRSA is disabled and any EKS cluster can use Pod Identity to assume Braintrust roles.
+
+Type: `string`
+
+Default: `null`
 
 ### <a name="input_existing_private_subnet_1_id"></a> [existing\_private\_subnet\_1\_id](#input\_existing\_private\_subnet\_1\_id)
 
@@ -559,7 +599,7 @@ Default: `[]`
 
 ### <a name="input_service_additional_policy_arns"></a> [service\_additional\_policy\_arns](#input\_service\_additional\_policy\_arns)
 
-Description: Additional policy ARNs to attach to the lambda functions that are the main braintrust service
+Description: Additional policy ARNs to attach to the main braintrust API service
 
 Type: `list(string)`
 
@@ -596,6 +636,22 @@ Default:
   "QuarantineWarmupFunction": {}
 }
 ```
+
+### <a name="input_use_deployment_mode_external_eks"></a> [use\_deployment\_mode\_external\_eks](#input\_use\_deployment\_mode\_external\_eks)
+
+Description: Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform.
+
+Type: `bool`
+
+Default: `false`
+
+### <a name="input_use_global_ai_proxy"></a> [use\_global\_ai\_proxy](#input\_use\_global\_ai\_proxy)
+
+Description: Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust.
+
+Type: `bool`
+
+Default: `false`
 
 ### <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr)
 
@@ -636,6 +692,18 @@ Description: ID of the security group for the Brainstore instances
 ### <a name="output_braintrust_support_role_arn"></a> [braintrust\_support\_role\_arn](#output\_braintrust\_support\_role\_arn)
 
 Description: ARN of the Role that grants Braintrust team remote support. Share this with the Braintrust team.
+
+### <a name="output_cloudfront_distribution_arn"></a> [cloudfront\_distribution\_arn](#output\_cloudfront\_distribution\_arn)
+
+Description: The ARN of the cloudfront distribution
+
+### <a name="output_cloudfront_distribution_domain_name"></a> [cloudfront\_distribution\_domain\_name](#output\_cloudfront\_distribution\_domain\_name)
+
+Description: The domain name of the cloudfront distribution
+
+### <a name="output_cloudfront_distribution_hosted_zone_id"></a> [cloudfront\_distribution\_hosted\_zone\_id](#output\_cloudfront\_distribution\_hosted\_zone\_id)
+
+Description: The hosted zone ID of the cloudfront distribution
 
 ### <a name="output_kms_key_arn"></a> [kms\_key\_arn](#output\_kms\_key\_arn)
 

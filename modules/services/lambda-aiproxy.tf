@@ -7,7 +7,7 @@ resource "aws_lambda_function" "ai_proxy" {
   function_name                  = local.ai_proxy_function_name
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["AIProxy"]
-  role                           = aws_iam_role.api_handler_role.arn
+  role                           = var.api_handler_role_arn
   handler                        = "index.handler"
   runtime                        = "nodejs22.x"
   architectures                  = ["arm64"]
@@ -37,7 +37,7 @@ resource "aws_lambda_function" "ai_proxy" {
 
   vpc_config {
     subnet_ids         = var.service_subnet_ids
-    security_group_ids = [aws_security_group.lambda.id]
+    security_group_ids = [var.api_security_group_id]
   }
 
   tracing_config {

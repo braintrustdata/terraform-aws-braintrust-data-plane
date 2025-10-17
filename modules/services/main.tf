@@ -6,6 +6,10 @@ locals {
   lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.name}"
   lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
+  # Extract bucket IDs from ARNs (format: arn:aws:s3:::bucket-name)
+  code_bundle_bucket_id      = split(":::", var.code_bundle_bucket_arn)[1]
+  lambda_responses_bucket_id = split(":::", var.lambda_responses_bucket_arn)[1]
+
   # Lambda versions can be specified statically through VERSIONS.json or dynamically via lambda_version_tag_override
   # If lambda_version_tag_override is provided, use it. Otherwise, use the lambda_version_tag from VERSIONS.json
   lambda_version_tag = var.lambda_version_tag_override != null ? var.lambda_version_tag_override : jsondecode(file("${path.module}/VERSIONS.json"))["lambda_version_tag"]

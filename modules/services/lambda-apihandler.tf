@@ -8,8 +8,8 @@ locals {
     PG_URL             = local.postgres_url
     REDIS_HOST         = var.redis_host
     REDIS_PORT         = var.redis_port
-    RESPONSE_BUCKET    = aws_s3_bucket.lambda_responses_bucket.id
-    CODE_BUNDLE_BUCKET = aws_s3_bucket.code_bundle_bucket.id
+    RESPONSE_BUCKET    = local.lambda_responses_bucket_id
+    CODE_BUNDLE_BUCKET = local.code_bundle_bucket_id
 
     WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
     OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = var.outbound_rate_limit_window_minutes
@@ -23,7 +23,7 @@ locals {
     QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : ""
     QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
 
-    FUNCTION_SECRET_KEY = aws_secretsmanager_secret_version.function_tools_secret.secret_string
+    FUNCTION_SECRET_KEY = var.function_tools_secret_key
 
     BRAINSTORE_ENABLED                         = var.brainstore_enabled
     BRAINSTORE_DEFAULT                         = var.brainstore_default
@@ -60,7 +60,7 @@ resource "aws_lambda_function" "api_handler" {
   function_name                  = local.api_handler_function_name
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["APIHandler"]
-  role                           = aws_iam_role.api_handler_role.arn
+  role                           = var.api_handler_role_arn
   handler                        = "index.handler"
   runtime                        = "nodejs22.x"
   memory_size                    = 10240 # Max that lambda supports
@@ -94,7 +94,7 @@ resource "aws_lambda_function" "api_handler" {
 
   vpc_config {
     subnet_ids         = var.service_subnet_ids
-    security_group_ids = [aws_security_group.lambda.id]
+    security_group_ids = [var.api_security_group_id]
   }
 
   tracing_config {
@@ -125,7 +125,7 @@ resource "aws_iam_role" "ai_proxy_invoke_role" {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          AWS = aws_iam_role.api_handler_role.arn
+          AWS = var.api_handler_role_arn
         }
       }
     ]

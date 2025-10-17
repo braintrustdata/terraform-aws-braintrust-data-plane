@@ -233,6 +233,12 @@ variable "database_subnet_ids" {
   default     = null
 }
 
+variable "existing_database_subnet_group_name" {
+  type        = string
+  description = "Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created which is the default and preferred behavior."
+  default     = null
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
@@ -327,7 +333,7 @@ variable "custom_certificate_arn" {
 
 variable "service_additional_policy_arns" {
   type        = list(string)
-  description = "Additional policy ARNs to attach to the lambda functions that are the main braintrust service"
+  description = "Additional policy ARNs to attach to the main braintrust API service"
   default     = []
 }
 
@@ -513,4 +519,40 @@ variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
   default     = null
+}
+
+variable "use_global_ai_proxy" {
+  description = "Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust."
+  type        = bool
+  default     = false
+}
+
+variable "use_deployment_mode_external_eks" {
+  description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
+  type        = bool
+  default     = false
+}
+
+variable "existing_eks_cluster_arn" {
+  description = "Optional. ARN of an existing EKS cluster to use. This is used to further restrict the trust policy for IRSA and Pod Identity for the Braintrust IAM roles. When not specified, IRSA is disabled and any EKS cluster can use Pod Identity to assume Braintrust roles."
+  type        = string
+  default     = null
+}
+
+variable "eks_namespace" {
+  description = "Optional. Namespace to use for the EKS cluster. This is used to restrict the trust policy of IRSA and Pod Identity for the Braintrust IAM roles."
+  type        = string
+  default     = null
+}
+
+variable "enable_eks_pod_identity" {
+  description = "Optional. If you are using EKS this will enable EKS Pod Identity for the Braintrust IAM roles."
+  type        = bool
+  default     = false
+}
+
+variable "enable_eks_irsa" {
+  description = "Optional. If you are using EKS this will enable IRSA for the Braintrust IAM roles."
+  type        = bool
+  default     = false
 }

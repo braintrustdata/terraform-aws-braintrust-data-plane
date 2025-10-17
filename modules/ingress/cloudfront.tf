@@ -7,6 +7,7 @@ locals {
   cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
 }
+
 resource "aws_cloudfront_distribution" "dataplane" {
   comment      = "Braintrust Dataplane - ${var.deployment_name}"
   enabled      = true
@@ -31,7 +32,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   origin {
-    domain_name = trimsuffix(trimprefix(aws_lambda_function_url.ai_proxy.function_url, "https://"), "/")
+    domain_name = trimsuffix(trimprefix(var.ai_proxy_function_url, "https://"), "/")
     origin_id   = local.cloudfront_AIProxyOrigin
 
     custom_origin_config {

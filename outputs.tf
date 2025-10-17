@@ -44,12 +44,12 @@ output "main_vpc_private_route_table_id" {
 }
 
 output "brainstore_security_group_id" {
-  value       = var.enable_brainstore ? module.brainstore[0].brainstore_instance_security_group_id : null
+  value       = var.enable_brainstore ? module.services_common.brainstore_instance_security_group_id : null
   description = "ID of the security group for the Brainstore instances"
 }
 
 output "brainstore_s3_bucket_name" {
-  value       = var.enable_brainstore ? module.brainstore[0].s3_bucket : null
+  value       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
   description = "Name of the Brainstore S3 bucket"
 }
 
@@ -64,7 +64,7 @@ output "redis_security_group_id" {
 }
 
 output "lambda_security_group_id" {
-  value       = module.services.lambda_security_group_id
+  value       = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
   description = "ID of the security group for the Lambda functions"
 }
 
@@ -89,8 +89,23 @@ output "redis_arn" {
 }
 
 output "api_url" {
-  value       = module.services.api_url
+  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : null
   description = "The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL."
+}
+
+output "cloudfront_distribution_domain_name" {
+  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : null
+  description = "The domain name of the cloudfront distribution"
+}
+
+output "cloudfront_distribution_arn" {
+  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : null
+  description = "The ARN of the cloudfront distribution"
+}
+
+output "cloudfront_distribution_hosted_zone_id" {
+  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
+  description = "The hosted zone ID of the cloudfront distribution"
 }
 
 output "kms_key_arn" {

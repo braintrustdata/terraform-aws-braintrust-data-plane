@@ -18,11 +18,6 @@ variable "service_subnet_ids" {
   description = "The subnet ids for the lambda functions that are the main braintrust service"
 }
 
-variable "service_additional_policy_arns" {
-  type        = list(string)
-  description = "Additional policy ARNs to attach to the lambda functions that are the main braintrust service"
-  default     = []
-}
 variable "postgres_username" {
   type        = string
   description = "The username of the postgres database"
@@ -128,12 +123,6 @@ variable "whitelisted_origins" {
   description = "List of origins to whitelist for CORS"
 }
 
-variable "s3_additional_allowed_origins" {
-  type        = list(string)
-  description = "Additional origins to allow for S3 bucket CORS configuration. Supports a wildcard in the domain name."
-  default     = []
-}
-
 variable "outbound_rate_limit_max_requests" {
   type        = number
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
@@ -169,23 +158,6 @@ variable "run_draft_migrations" {
   default     = false
 }
 
-variable "custom_domain" {
-  description = "Custom domain name for the CloudFront distribution"
-  type        = string
-  default     = null
-}
-
-variable "custom_certificate_arn" {
-  description = "ARN of the ACM certificate for the custom domain"
-  type        = string
-  default     = null
-}
-
-variable "use_global_ai_proxy" {
-  description = "Whether to use the global Cloudflare proxy"
-  type        = bool
-  default     = false
-}
 
 variable "kms_key_arn" {
   description = "KMS key ARN to use for encrypting resources. If not provided, the default AWS managed key is used. DO NOT change this after deployment. If you do, prior S3 objects will no longer be readable."
@@ -306,4 +278,31 @@ variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
   default     = null
+}
+
+variable "code_bundle_bucket_arn" {
+  type        = string
+  description = "The ARN of the code bundle bucket"
+}
+
+variable "lambda_responses_bucket_arn" {
+  type        = string
+  description = "The ARN of the lambda responses bucket"
+}
+
+variable "api_security_group_id" {
+  type        = string
+  description = "The ID of the security group for the API and other lambdas"
+}
+
+variable "api_handler_role_arn" {
+  type        = string
+  description = "The ARN of the API handler role used by the API handler lambda and various other lambdas"
+  default     = null
+}
+
+variable "function_tools_secret_key" {
+  type        = string
+  description = "The function tools encryption key used for environment variables"
+  sensitive   = true
 }

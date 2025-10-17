@@ -8,7 +8,7 @@ resource "aws_lambda_function" "automation_cron" {
   function_name = local.automation_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["AutomationCron"]
-  role          = aws_iam_role.api_handler_role.arn
+  role          = var.api_handler_role_arn
   handler       = "index.handler"
   runtime       = "nodejs22.x"
   timeout       = 300
@@ -38,7 +38,7 @@ resource "aws_lambda_function" "automation_cron" {
       BRAINSTORE_URL                             = local.brainstore_url
       BRAINSTORE_WRITER_URL                      = local.brainstore_writer_url
       BRAINSTORE_REALTIME_WAL_BUCKET             = local.brainstore_s3_bucket
-      FUNCTION_SECRET_KEY                        = aws_secretsmanager_secret_version.function_tools_secret.secret_string
+      FUNCTION_SECRET_KEY                        = var.function_tools_secret_key
     }, var.extra_env_vars.AutomationCron)
   }
 
@@ -49,7 +49,7 @@ resource "aws_lambda_function" "automation_cron" {
 
   vpc_config {
     subnet_ids         = var.service_subnet_ids
-    security_group_ids = [aws_security_group.lambda.id]
+    security_group_ids = [var.api_security_group_id]
   }
 
   tracing_config {

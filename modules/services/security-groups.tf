@@ -1,6 +1,6 @@
-#------------------------------------------------------------------------------
-# Security groups
-#------------------------------------------------------------------------------
+# At some point in the future this "lambda" security group should be removed
+# It is duplicative of the security group in services-common
+# but we have to keep it for now to avoid downtime for current customers
 resource "aws_security_group" "lambda" {
   name   = "${var.deployment_name}-lambda"
   vpc_id = var.vpc_id
