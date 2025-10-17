@@ -1,7 +1,7 @@
 [tools]
 tflint = "latest"
 pre-commit = "latest"
-terraform = "1.10"
+terraform = "1.12"
 uv = "latest"
 terraform-docs = "latest"
 
