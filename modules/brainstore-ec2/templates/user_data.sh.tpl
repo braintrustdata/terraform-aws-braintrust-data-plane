@@ -76,13 +76,20 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
     }
   },
   "metrics": {
+    "append_dimensions": {
+      "InstanceId": "$${aws:InstanceId}"
+    },
+    "aggregation_dimensions": [
+      ["InstanceId"],
+      []
+    ],
     "metrics_collected": {
       "mem": {
         "measurement": [
-          {"name": "mem_used_percent", "rename": "MemoryUtilization", "unit": "Percent"},
-          {"name": "mem_used", "unit": "Bytes"},
-          {"name": "mem_available", "unit": "Bytes"},
-          {"name": "mem_total", "unit": "Bytes"}
+          {"name":"mem_used_percent","rename":"MemoryUtilization","unit":"Percent"},
+          {"name":"mem_used","unit":"Bytes"},
+          {"name":"mem_available","unit":"Bytes"},
+          {"name":"mem_total","unit":"Bytes"}
         ],
         "metrics_collection_interval": 60
       }
