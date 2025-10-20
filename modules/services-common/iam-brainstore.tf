@@ -134,6 +134,11 @@ resource "aws_iam_role_policy" "brainstore_cloudwatch_metrics" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "brainstore_ssm" {
+  role       = aws_iam_role.brainstore_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_role_policy" "brainstore_cloudwatch_logs_access" {
   name = "cloudwatch-logs-access"
   role = aws_iam_role.brainstore_role.id

@@ -70,6 +70,12 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
             "log_group_name": "/braintrust/${deployment_name}/brainstore",
             "log_stream_name": "{instance_id}/containers",
             "timezone": "UTC"
+          },
+          {
+            "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+            "log_group_name": "/braintrust/${deployment_name}/brainstore",
+            "log_stream_name": "{instance_id}/cloudwatch-agent",
+            "timezone": "UTC"
           }
         ]
       }
@@ -77,7 +83,7 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
   },
   "metrics": {
     "append_dimensions": {
-      "InstanceId": "$${aws:InstanceId}"
+      "InstanceId": "\$${aws:InstanceId}"
     },
     "aggregation_dimensions": [
       ["InstanceId"],
