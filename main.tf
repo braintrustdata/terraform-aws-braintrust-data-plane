@@ -43,6 +43,8 @@ module "main_vpc" {
   private_subnet_2_az   = local.private_subnet_2_az
   private_subnet_3_cidr = cidrsubnet(var.vpc_cidr, 3, 3)
   private_subnet_3_az   = local.private_subnet_3_az
+
+  enable_brainstore_ec2_ssm = var.enable_brainstore_ec2_ssm
 }
 
 module "quarantine_vpc" {
@@ -230,6 +232,7 @@ module "services_common" {
   eks_namespace                  = var.eks_namespace
   enable_eks_pod_identity        = var.enable_eks_pod_identity
   enable_eks_irsa                = var.enable_eks_irsa
+  enable_brainstore_ec2_ssm      = var.enable_brainstore_ec2_ssm
 }
 
 module "brainstore" {

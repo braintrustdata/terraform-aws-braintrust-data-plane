@@ -134,6 +134,12 @@ resource "aws_iam_role_policy" "brainstore_cloudwatch_logs_access" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "brainstore_ssm" {
+  count      = var.enable_brainstore_ec2_ssm ? 1 : 0
+  role       = aws_iam_role.brainstore_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_role_policy" "brainstore_kms_policy" {
   name = "${var.deployment_name}-brainstore-kms-policy"
   role = aws_iam_role.brainstore_role.id

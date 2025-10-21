@@ -51,4 +51,10 @@ variable "private_subnet_3_cidr" {
 variable "private_subnet_3_az" {
   description = "Availability zone for private subnet 3"
   type        = string
-} 
+}
+
+variable "enable_brainstore_ec2_ssm" {
+  description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
+  type        = bool
+  default     = false
+}
