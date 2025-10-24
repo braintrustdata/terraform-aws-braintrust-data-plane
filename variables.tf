@@ -556,3 +556,9 @@ variable "enable_eks_irsa" {
   type        = bool
   default     = false
 }
+
+variable "enable_brainstore_ec2_ssm" {
+  description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
+  type        = bool
+  default     = false
+}

@@ -68,3 +68,9 @@ variable "service_additional_policy_arns" {
   description = "Additional policy ARNs to attach to the IAM role used by the main braintrust API service"
   default     = []
 }
+
+variable "enable_brainstore_ec2_ssm" {
+  description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
+  type        = bool
+  default     = false
+}

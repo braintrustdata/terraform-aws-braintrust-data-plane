@@ -253,6 +253,14 @@ Type: `bool`
 
 Default: `true`
 
+### <a name="input_enable_brainstore_ec2_ssm"></a> [enable\_brainstore\_ec2\_ssm](#input\_enable\_brainstore\_ec2\_ssm)
+
+Description: Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules
+
+Type: `bool`
+
+Default: `false`
+
 ### <a name="input_enable_braintrust_support_logs_access"></a> [enable\_braintrust\_support\_logs\_access](#input\_enable\_braintrust\_support\_logs\_access)
 
 Description: Enable Cloudwatch logs access for Braintrust staff
