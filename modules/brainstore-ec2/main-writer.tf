@@ -43,6 +43,7 @@ resource "aws_launch_template" "brainstore_writer" {
     database_port                   = var.database_port
     redis_host                      = var.redis_host
     redis_port                      = var.redis_port
+    redis_url                       = "redis://${var.redis_host}:${var.redis_port}"
     brainstore_port                 = var.port
     brainstore_s3_bucket            = local.brainstore_s3_bucket_id
     brainstore_license_key          = var.license_key
