@@ -107,7 +107,7 @@ SERVICE_TOKEN_SECRET_KEY=${service_token_secret_key}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
-BRAINSTORE_REDIS_URL=${redis_url}
+BRAINSTORE_REDIS_URL=redis://${redis_host}:${redis_port}
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}
 %{ endfor ~}
