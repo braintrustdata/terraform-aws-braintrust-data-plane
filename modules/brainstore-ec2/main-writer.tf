@@ -145,7 +145,7 @@ resource "aws_autoscaling_group" "brainstore_writer" {
   desired_capacity          = var.writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
-  health_check_grace_period = 60
+  health_check_grace_period = 180
   target_group_arns         = [aws_lb_target_group.brainstore_writer[0].arn]
   wait_for_elb_capacity     = var.writer_instance_count
   launch_template {

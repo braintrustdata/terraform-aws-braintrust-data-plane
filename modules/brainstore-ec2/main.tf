@@ -154,7 +154,7 @@ resource "aws_autoscaling_group" "brainstore" {
   health_check_type   = "EBS,ELB"
   # This is essentially the expected boot and setup time of the instance.
   # If too low, the ASG may terminate the instance before it has a chance to boot.
-  health_check_grace_period = 60
+  health_check_grace_period = 180
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
   wait_for_elb_capacity     = var.instance_count
   launch_template {
