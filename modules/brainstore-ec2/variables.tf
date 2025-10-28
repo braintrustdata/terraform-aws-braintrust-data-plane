@@ -187,3 +187,9 @@ variable "brainstore_instance_security_group_id" {
   type        = string
   description = "The ID of the security group to use for the Brainstore instances"
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

@@ -30,3 +30,9 @@ variable "api_handler_function_arn" {
   description = "The ARN of the API handler lambda function"
   type        = string
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

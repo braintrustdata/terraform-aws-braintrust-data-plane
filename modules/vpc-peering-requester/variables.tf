@@ -33,3 +33,9 @@ variable "initiate_request_only" {
   description = "Just initiate the request for the peer to accept it. Set this the first time you run, and then set it to false after the peer has accepted the request."
   default     = true
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

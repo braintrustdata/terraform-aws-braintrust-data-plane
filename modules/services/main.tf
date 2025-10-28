@@ -26,9 +26,9 @@ locals {
   brainstore_s3_bucket    = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
   clickhouse_pg_url       = var.clickhouse_host != null ? "postgres://default:${var.clickhouse_secret}@${var.clickhouse_host}:9005/default" : ""
   clickhouse_connect_url  = var.clickhouse_host != null ? "http://default:${var.clickhouse_secret}@${var.clickhouse_host}:8123/default" : ""
-  common_tags = {
+  common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
-  }
+  }, var.custom_tags)
 }
 
 # Data source for dynamic lambda version lookups

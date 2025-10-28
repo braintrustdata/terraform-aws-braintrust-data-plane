@@ -8,7 +8,7 @@ locals {
 
   all_origins = concat(local.default_origins, var.s3_additional_allowed_origins)
 
-  common_tags = {
+  common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
-  }
+  }, var.custom_tags)
 }
