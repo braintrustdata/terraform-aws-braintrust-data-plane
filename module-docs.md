@@ -61,7 +61,6 @@ Type: `string`
 
 Default: `""`
 
-
 ### <a name="input_brainstore_default"></a> [brainstore\_default](#input\_brainstore\_default)
 
 Description: Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag.
