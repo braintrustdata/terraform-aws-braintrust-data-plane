@@ -61,13 +61,6 @@ Type: `string`
 
 Default: `""`
 
-### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
-
-Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
-
-Type: `bool`
-
-Default: `true`
 
 ### <a name="input_brainstore_default"></a> [brainstore\_default](#input\_brainstore\_default)
 
@@ -77,13 +70,6 @@ Type: `string`
 
 Default: `"force"`
 
-### <a name="input_brainstore_enable_historical_full_backfill"></a> [brainstore\_enable\_historical\_full\_backfill](#input\_brainstore\_enable\_historical\_full\_backfill)
-
-Description: Enable historical full backfill for Brainstore. Don't modify this unless instructed by Braintrust.
-
-Type: `bool`
-
-Default: `true`
 
 ### <a name="input_brainstore_enable_retention"></a> [brainstore\_enable\_retention](#input\_brainstore\_enable\_retention)
 
