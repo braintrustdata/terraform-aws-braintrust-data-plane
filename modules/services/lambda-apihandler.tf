@@ -30,8 +30,6 @@ locals {
     BRAINSTORE_URL                             = local.brainstore_url
     BRAINSTORE_WRITER_URL                      = local.brainstore_writer_url
     BRAINSTORE_REALTIME_WAL_BUCKET             = local.brainstore_s3_bucket
-    BRAINSTORE_ENABLE_HISTORICAL_FULL_BACKFILL = var.brainstore_enable_historical_full_backfill
-    BRAINSTORE_BACKFILL_NEW_OBJECTS            = var.brainstore_backfill_new_objects
     BRAINSTORE_INSERT_ROW_REFS                 = "true"
 
     CLICKHOUSE_PG_URL      = local.clickhouse_pg_url

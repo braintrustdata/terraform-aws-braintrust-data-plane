@@ -408,17 +408,6 @@ variable "brainstore_version_override" {
   default     = null
 }
 
-variable "brainstore_enable_historical_full_backfill" {
-  type        = bool
-  description = "Enable historical full backfill for Brainstore. Don't modify this unless instructed by Braintrust."
-  default     = true
-}
-
-variable "brainstore_backfill_new_objects" {
-  type        = bool
-  description = "Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust."
-  default     = true
-}
 
 variable "brainstore_etl_batch_size" {
   type        = number

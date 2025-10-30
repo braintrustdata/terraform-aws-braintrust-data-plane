@@ -158,8 +158,6 @@ module "services" {
   brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
   brainstore_s3_bucket_name                  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
   brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
-  brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
-  brainstore_backfill_new_objects            = var.brainstore_backfill_new_objects
   brainstore_etl_batch_size                  = var.brainstore_etl_batch_size
 
   # Storage
