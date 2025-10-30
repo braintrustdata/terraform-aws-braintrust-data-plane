@@ -1,8 +1,8 @@
 locals {
   clickhouse_bucket_name = var.external_clickhouse_s3_bucket_name == null ? aws_s3_bucket.clickhouse_s3_bucket[0].id : var.external_clickhouse_s3_bucket_name
-  common_tags = {
+  common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
-  }
+  }, var.custom_tags)
 }
 
 data "aws_region" "current" {}

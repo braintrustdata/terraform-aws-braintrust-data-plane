@@ -1,9 +1,9 @@
 data "aws_region" "current" {}
 
 locals {
-  common_tags = {
+  common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
-  }
+  }, var.custom_tags)
   ssm_vpc_endpoint_services = {
     "ssm" : "com.amazonaws.${data.aws_region.current.name}.ssm",
     "ssmmessages" : "com.amazonaws.${data.aws_region.current.name}.ssmmessages",

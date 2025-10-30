@@ -71,6 +71,14 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
+  ### Tagging
+  # `default_tags` set in the AWS provider are not passed automatically to the data plane module. You can use
+  # the `aws_default_tags` data source to retrieve default tags and merge them with any additional tags.
+  #
+  # custom_tags = merge(data.aws_default_tags.root.tags, { CustomTagKey = "SomeValue" })
+  custom_tags = {
+    CustomTagKey = "SomeValue"
+  }
 
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.

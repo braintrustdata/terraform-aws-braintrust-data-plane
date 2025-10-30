@@ -11,5 +11,6 @@ resource "aws_vpc_security_group_egress_rule" "brainstore_instance_allow_egress_
   cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from Brainstore instances."
   security_group_id = aws_security_group.brainstore_instance.id
+  tags              = local.common_tags
 }
 

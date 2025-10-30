@@ -295,3 +295,9 @@ variable "function_tools_secret_key" {
   description = "The function tools encryption key used for environment variables"
   sensitive   = true
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

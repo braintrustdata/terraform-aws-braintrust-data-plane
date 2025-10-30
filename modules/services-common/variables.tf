@@ -74,3 +74,9 @@ variable "enable_brainstore_ec2_ssm" {
   type        = bool
   default     = false
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

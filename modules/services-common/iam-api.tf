@@ -63,9 +63,7 @@ resource "aws_iam_role" "api_handler_role" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "api_handler_policy" {
@@ -135,7 +133,5 @@ resource "aws_iam_policy" "api_handler_policy" {
     Version = "2012-10-17"
   })
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }

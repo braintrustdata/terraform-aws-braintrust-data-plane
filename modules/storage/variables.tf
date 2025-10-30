@@ -20,3 +20,9 @@ variable "s3_additional_allowed_origins" {
   description = "Additional origins to allow for S3 bucket CORS configuration. Supports a wildcard in the domain name."
   default     = []
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

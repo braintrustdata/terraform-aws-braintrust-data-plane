@@ -52,3 +52,9 @@ variable "kms_key_arn" {
   description = "The ARN of the KMS key to use for encrypting the EBS volumes. If not provided, AWS managed keys will be used."
   default     = null
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

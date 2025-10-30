@@ -1,9 +1,9 @@
 locals {
   postgres_username = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["username"]
   postgres_password = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["password"]
-  common_tags = {
+  common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
-  }
+  }, var.custom_tags)
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
 }
 
@@ -177,6 +177,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorize
   description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from ${each.key}."
 
   security_group_id = aws_security_group.rds.id
+  tags              = local.common_tags
 }
 
 resource "aws_vpc_security_group_egress_rule" "rds_allow_egress_all" {
@@ -187,4 +188,5 @@ resource "aws_vpc_security_group_egress_rule" "rds_allow_egress_all" {
   cidr_ipv4         = "0.0.0.0/0"
   description       = "Allow all outbound traffic from RDS instances."
   security_group_id = aws_security_group.rds.id
+  tags              = local.common_tags
 }

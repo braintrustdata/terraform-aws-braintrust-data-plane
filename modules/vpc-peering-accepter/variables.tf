@@ -12,3 +12,9 @@ variable "vpc_peering_connection_id" {
   type        = string
   description = "The ID of the VPC peering connection to accept. You need to get this from the requester."
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}
