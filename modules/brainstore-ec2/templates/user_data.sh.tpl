@@ -166,3 +166,8 @@ docker run -d \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
+
+%{ if custom_post_install_script != "" ~}
+echo "Running custom post-install script..."
+${custom_post_install_script}
+%{ endif ~}
