@@ -69,7 +69,6 @@ Type: `string`
 
 Default: `"force"`
 
-
 ### <a name="input_brainstore_enable_retention"></a> [brainstore\_enable\_retention](#input\_brainstore\_enable\_retention)
 
 Description: Enable time-based retention for Brainstore
