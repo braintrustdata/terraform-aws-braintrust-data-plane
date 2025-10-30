@@ -213,6 +213,14 @@ Type: `string`
 
 Default: `null`
 
+### <a name="input_custom_tags"></a> [custom\_tags](#input\_custom\_tags)
+
+Description: Custom tags to apply to all created resources
+
+Type: `map(string)`
+
+Default: `{}`
+
 ### <a name="input_database_subnet_ids"></a> [database\_subnet\_ids](#input\_database\_subnet\_ids)
 
 Description: Optional list of subnet IDs for the database. If not provided, uses the main VPC's private subnets.
