@@ -264,6 +264,12 @@ variable "redis_version" {
   default     = "7.0"
 }
 
+variable "redis_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the Redis instance. Format: { name = <security_group_id> }"
+  default     = {}
+}
+
 ## Services
 
 variable "api_handler_provisioned_concurrency" {

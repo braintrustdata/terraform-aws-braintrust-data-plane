@@ -112,6 +112,7 @@ module "redis" {
         "API"        = module.services_common.api_security_group_id
         "Brainstore" = module.services_common.brainstore_instance_security_group_id
       },
+      var.redis_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
