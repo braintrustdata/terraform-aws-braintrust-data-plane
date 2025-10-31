@@ -233,6 +233,12 @@ variable "database_subnet_ids" {
   default     = null
 }
 
+variable "database_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the RDS instance. Format: { name = <security_group_id> }"
+  default     = {}
+}
+
 variable "existing_database_subnet_group_name" {
   type        = string
   description = "Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created which is the default and preferred behavior."
