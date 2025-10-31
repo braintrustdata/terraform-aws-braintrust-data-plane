@@ -45,7 +45,7 @@ resource "aws_launch_template" "brainstore" {
   }
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data.sh.tpl", {
-    aws_region                  = data.aws_region.current.name
+    aws_region                  = data.aws_region.current.region
     deployment_name             = var.deployment_name
     database_secret_arn         = var.database_secret_arn
     database_host               = var.database_host
