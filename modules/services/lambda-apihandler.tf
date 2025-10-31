@@ -25,12 +25,12 @@ locals {
 
     FUNCTION_SECRET_KEY = var.function_tools_secret_key
 
-    BRAINSTORE_ENABLED                         = var.brainstore_enabled
-    BRAINSTORE_DEFAULT                         = var.brainstore_default
-    BRAINSTORE_URL                             = local.brainstore_url
-    BRAINSTORE_WRITER_URL                      = local.brainstore_writer_url
-    BRAINSTORE_REALTIME_WAL_BUCKET             = local.brainstore_s3_bucket
-    BRAINSTORE_INSERT_ROW_REFS                 = "true"
+    BRAINSTORE_ENABLED             = var.brainstore_enabled
+    BRAINSTORE_DEFAULT             = var.brainstore_default
+    BRAINSTORE_URL                 = local.brainstore_url
+    BRAINSTORE_WRITER_URL          = local.brainstore_writer_url
+    BRAINSTORE_REALTIME_WAL_BUCKET = local.brainstore_s3_bucket
+    BRAINSTORE_INSERT_ROW_REFS     = "true"
 
     CLICKHOUSE_PG_URL      = local.clickhouse_pg_url
     CLICKHOUSE_CONNECT_URL = local.clickhouse_connect_url

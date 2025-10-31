@@ -152,13 +152,13 @@ module "services" {
   clickhouse_host   = null
   clickhouse_secret = null
 
-  brainstore_enabled                         = var.enable_brainstore
-  brainstore_default                         = var.brainstore_default
-  brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_s3_bucket_name                  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
-  brainstore_etl_batch_size                  = var.brainstore_etl_batch_size
+  brainstore_enabled         = var.enable_brainstore
+  brainstore_default         = var.brainstore_default
+  brainstore_hostname        = var.enable_brainstore ? module.brainstore[0].dns_name : null
+  brainstore_writer_hostname = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_s3_bucket_name  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+  brainstore_port            = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_etl_batch_size  = var.brainstore_etl_batch_size
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn

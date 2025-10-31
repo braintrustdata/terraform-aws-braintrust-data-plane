@@ -25,18 +25,18 @@ resource "aws_lambda_function" "automation_cron" {
 
   environment {
     variables = merge({
-      ORG_NAME                                   = var.braintrust_org_name
-      PG_URL                                     = local.postgres_url
-      REDIS_HOST                                 = var.redis_host
-      REDIS_PORT                                 = var.redis_port
-      REDIS_URL                                  = "redis://${var.redis_host}:${var.redis_port}"
-      BRAINSTORE_ENABLED                         = var.brainstore_enabled
-      BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE  = var.brainstore_etl_batch_size
-      BRAINSTORE_BACKFILL_ENABLE_NONHISTORICAL   = var.brainstore_default
-      BRAINSTORE_URL                             = local.brainstore_url
-      BRAINSTORE_WRITER_URL                      = local.brainstore_writer_url
-      BRAINSTORE_REALTIME_WAL_BUCKET             = local.brainstore_s3_bucket
-      FUNCTION_SECRET_KEY                        = var.function_tools_secret_key
+      ORG_NAME                                  = var.braintrust_org_name
+      PG_URL                                    = local.postgres_url
+      REDIS_HOST                                = var.redis_host
+      REDIS_PORT                                = var.redis_port
+      REDIS_URL                                 = "redis://${var.redis_host}:${var.redis_port}"
+      BRAINSTORE_ENABLED                        = var.brainstore_enabled
+      BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = var.brainstore_etl_batch_size
+      BRAINSTORE_BACKFILL_ENABLE_NONHISTORICAL  = var.brainstore_default
+      BRAINSTORE_URL                            = local.brainstore_url
+      BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
+      BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
+      FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
     }, var.extra_env_vars.AutomationCron)
   }
 
