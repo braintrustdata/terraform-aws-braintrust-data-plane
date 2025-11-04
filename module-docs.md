@@ -665,6 +665,10 @@ Default: `[]`
 
 The following outputs are exported:
 
+### <a name="output_api_security_group_id"></a> [api\_security\_group\_id](#output\_api\_security\_group\_id)
+
+Description: ID of the security group for the API handler
+
 ### <a name="output_api_url"></a> [api\_url](#output\_api\_url)
 
 Description: The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL.
