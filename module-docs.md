@@ -61,6 +61,14 @@ Type: `string`
 
 Default: `""`
 
+### <a name="input_brainstore_custom_post_install_script"></a> [brainstore\_custom\_post\_install\_script](#input\_brainstore\_custom\_post\_install\_script)
+
+Description: Optional custom bash script to run at the end of the Brainstore user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file("${path.module}/scripts/brainstore-post-install.sh")
+
+Type: `string`
+
+Default: `""`
+
 ### <a name="input_brainstore_default"></a> [brainstore\_default](#input\_brainstore\_default)
 
 Description: Whether to set Brainstore as the default rather than requiring users to opt-in via feature flag.

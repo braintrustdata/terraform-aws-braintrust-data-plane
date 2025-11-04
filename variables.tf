@@ -551,3 +551,9 @@ variable "enable_brainstore_ec2_ssm" {
   type        = bool
   default     = false
 }
+
+variable "brainstore_custom_post_install_script" {
+  type        = string
+  description = "Optional custom bash script to run at the end of the Brainstore user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file(\"$${path.module}/scripts/brainstore-post-install.sh\")"
+  default     = ""
+}
