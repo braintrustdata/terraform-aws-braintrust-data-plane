@@ -557,3 +557,15 @@ variable "brainstore_custom_post_install_script" {
   description = "Optional custom bash script to run at the end of the Brainstore user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file(\"$${path.module}/scripts/brainstore-post-install.sh\")"
   default     = ""
 }
+
+variable "override_api_iam_role_trust_policy" {
+  type        = string
+  description = "Advanced: If provided, this will completely replace the trust policy for the API handler IAM role. Must be a valid JSON string representing the IAM trust policy document."
+  default     = null
+}
+
+variable "override_brainstore_iam_role_trust_policy" {
+  type        = string
+  description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
+  default     = null
+}

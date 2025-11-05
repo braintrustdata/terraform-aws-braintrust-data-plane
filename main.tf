@@ -217,20 +217,22 @@ module "ingress" {
 module "services_common" {
   source = "./modules/services-common"
 
-  deployment_name                = var.deployment_name
-  vpc_id                         = local.main_vpc_id
-  kms_key_arn                    = local.kms_key_arn
-  database_secret_arn            = module.database.postgres_database_secret_arn
-  brainstore_s3_bucket_arn       = module.storage.brainstore_bucket_arn
-  code_bundle_s3_bucket_arn      = module.storage.code_bundle_bucket_arn
-  lambda_responses_s3_bucket_arn = module.storage.lambda_responses_bucket_arn
-  service_additional_policy_arns = var.service_additional_policy_arns
-  permissions_boundary_arn       = var.permissions_boundary_arn
-  eks_cluster_arn                = var.existing_eks_cluster_arn
-  eks_namespace                  = var.eks_namespace
-  enable_eks_pod_identity        = var.enable_eks_pod_identity
-  enable_eks_irsa                = var.enable_eks_irsa
-  enable_brainstore_ec2_ssm      = var.enable_brainstore_ec2_ssm
+  deployment_name                           = var.deployment_name
+  vpc_id                                    = local.main_vpc_id
+  kms_key_arn                               = local.kms_key_arn
+  database_secret_arn                       = module.database.postgres_database_secret_arn
+  brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
+  code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
+  lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
+  service_additional_policy_arns            = var.service_additional_policy_arns
+  permissions_boundary_arn                  = var.permissions_boundary_arn
+  eks_cluster_arn                           = var.existing_eks_cluster_arn
+  eks_namespace                             = var.eks_namespace
+  enable_eks_pod_identity                   = var.enable_eks_pod_identity
+  enable_eks_irsa                           = var.enable_eks_irsa
+  enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
+  override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
+  override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
 }
 
 module "brainstore" {

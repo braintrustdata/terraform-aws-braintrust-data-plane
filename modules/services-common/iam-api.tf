@@ -1,7 +1,7 @@
 # The role used by the API handler and AI proxy
 resource "aws_iam_role" "api_handler_role" {
   name = "${var.deployment_name}-APIHandlerRole"
-  assume_role_policy = jsonencode({ # nosemgrep
+  assume_role_policy = var.override_api_iam_role_trust_policy != null ? var.override_api_iam_role_trust_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = concat(
       # Lambda trust relationship

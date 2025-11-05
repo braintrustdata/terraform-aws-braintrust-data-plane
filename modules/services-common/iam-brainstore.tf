@@ -2,7 +2,7 @@ resource "aws_iam_role" "brainstore_role" {
   # This is improperly named with "ec2" but changing it would cause a downtime for current customers
   name = "${var.deployment_name}-brainstore-ec2-role"
 
-  assume_role_policy = jsonencode({ # nosemgrep
+  assume_role_policy = var.override_brainstore_iam_role_trust_policy != null ? var.override_brainstore_iam_role_trust_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = concat(
       # EC2 trust relationship
