@@ -1,7 +1,7 @@
 # The role used by the API handler and AI proxy
 resource "aws_iam_role" "api_handler_role" {
   name = "${var.deployment_name}-APIHandlerRole"
-  assume_role_policy = jsonencode({ # nosemgrep
+  assume_role_policy = var.override_api_iam_role_trust_policy != null ? var.override_api_iam_role_trust_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = concat(
       # Lambda trust relationship
@@ -48,7 +48,7 @@ resource "aws_iam_role" "api_handler_role" {
             Condition = {
               StringEquals = merge(
                 var.eks_cluster_arn != null ? {
-                  "aws:RequestTag/kubernetes-cluster-arn" = [var.eks_cluster_arn]
+                  "aws:RequestTag/eks-cluster-arn" = [var.eks_cluster_arn]
                 } : {},
                 var.eks_namespace != null ? {
                   "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
