@@ -24,8 +24,11 @@ jobs:
       - name: Run lint task
         run: mise run lint
 
-      - name: Run validate task
+      - name: Validate module and example code with Terraform
         run: mise run validate
+
+      - name: Validate module and example code with OpenTofu
+        run: mise run validate-tofu
 
       - name: Check terraform docs
         run: mise run docs --output-check
