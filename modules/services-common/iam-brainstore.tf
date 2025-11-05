@@ -6,7 +6,7 @@ resource "aws_iam_role" "brainstore_role" {
     Version = "2012-10-17"
     Statement = concat(
       # EC2 trust relationship
-      [
+      var.enable_eks_pod_identity ? [] : [
         {
           Effect = "Allow"
           Principal = {
@@ -48,8 +48,9 @@ resource "aws_iam_role" "brainstore_role" {
           var.eks_cluster_arn != null || var.eks_namespace != null ? {
             Condition = {
               StringEquals = merge(
+                { "aws:RequestTag/kubernetes-service-account" = "brainstore" },
                 var.eks_cluster_arn != null ? {
-                  "aws:RequestTag/kubernetes-cluster-arn" = [var.eks_cluster_arn]
+                  "aws:RequestTag/eks-cluster-arn" = [var.eks_cluster_arn]
                 } : {},
                 var.eks_namespace != null ? {
                   "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
@@ -155,5 +156,3 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
     ]
   })
 }
-
-
