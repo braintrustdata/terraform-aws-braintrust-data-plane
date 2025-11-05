@@ -421,6 +421,22 @@ Type: `number`
 
 Default: `1`
 
+### <a name="input_override_api_iam_role_trust_policy"></a> [override\_api\_iam\_role\_trust\_policy](#input\_override\_api\_iam\_role\_trust\_policy)
+
+Description: Advanced: If provided, this will completely replace the trust policy for the API handler IAM role. Must be a valid JSON string representing the IAM trust policy document.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_override_brainstore_iam_role_trust_policy"></a> [override\_brainstore\_iam\_role\_trust\_policy](#input\_override\_brainstore\_iam\_role\_trust\_policy)
+
+Description: Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_permissions_boundary_arn"></a> [permissions\_boundary\_arn](#input\_permissions\_boundary\_arn)
 
 Description: ARN of the IAM permissions boundary to apply to all IAM roles created by this module
