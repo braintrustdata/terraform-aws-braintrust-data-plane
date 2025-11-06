@@ -7,3 +7,9 @@ variable "additional_key_policies" {
   type        = list(any)
   default     = []
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

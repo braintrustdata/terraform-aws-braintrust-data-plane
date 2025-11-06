@@ -71,6 +71,12 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
+  ### Tagging
+  # Optionally add any custom AWS tags you want to apply to all resources created by the module
+  #  custom_tags = {
+  #    CustomTagKey = "SomeValue"
+  #  }
+  #
 
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.

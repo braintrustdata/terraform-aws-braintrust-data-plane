@@ -4,6 +4,7 @@ module "kms" {
 
   deployment_name         = var.deployment_name
   additional_key_policies = var.additional_kms_key_policies
+  custom_tags             = var.custom_tags
 }
 
 locals {
@@ -35,16 +36,16 @@ module "main_vpc" {
   vpc_name        = "main"
   vpc_cidr        = var.vpc_cidr
 
-  public_subnet_1_cidr  = cidrsubnet(var.vpc_cidr, 3, 0)
-  public_subnet_1_az    = local.public_subnet_1_az
-  private_subnet_1_cidr = cidrsubnet(var.vpc_cidr, 3, 1)
-  private_subnet_1_az   = local.private_subnet_1_az
-  private_subnet_2_cidr = cidrsubnet(var.vpc_cidr, 3, 2)
-  private_subnet_2_az   = local.private_subnet_2_az
-  private_subnet_3_cidr = cidrsubnet(var.vpc_cidr, 3, 3)
-  private_subnet_3_az   = local.private_subnet_3_az
-
+  public_subnet_1_cidr      = cidrsubnet(var.vpc_cidr, 3, 0)
+  public_subnet_1_az        = local.public_subnet_1_az
+  private_subnet_1_cidr     = cidrsubnet(var.vpc_cidr, 3, 1)
+  private_subnet_1_az       = local.private_subnet_1_az
+  private_subnet_2_cidr     = cidrsubnet(var.vpc_cidr, 3, 2)
+  private_subnet_2_az       = local.private_subnet_2_az
+  private_subnet_3_cidr     = cidrsubnet(var.vpc_cidr, 3, 3)
+  private_subnet_3_az       = local.private_subnet_3_az
   enable_brainstore_ec2_ssm = var.enable_brainstore_ec2_ssm
+  custom_tags               = var.custom_tags
 }
 
 module "quarantine_vpc" {
@@ -63,6 +64,7 @@ module "quarantine_vpc" {
   private_subnet_2_az   = local.quarantine_private_subnet_2_az
   private_subnet_3_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
   private_subnet_3_az   = local.quarantine_private_subnet_3_az
+  custom_tags           = var.custom_tags
 }
 
 module "database" {
@@ -96,6 +98,7 @@ module "database" {
 
   kms_key_arn              = local.kms_key_arn
   permissions_boundary_arn = var.permissions_boundary_arn
+  custom_tags              = var.custom_tags
 }
 
 module "redis" {
@@ -122,6 +125,7 @@ module "redis" {
   )
   redis_instance_type = var.redis_instance_type
   redis_version       = var.redis_version
+  custom_tags         = var.custom_tags
 }
 
 module "storage" {
@@ -131,6 +135,7 @@ module "storage" {
   kms_key_arn                         = local.kms_key_arn
   brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins       = var.s3_additional_allowed_origins
+  custom_tags                         = var.custom_tags
 }
 
 module "services" {
@@ -202,6 +207,7 @@ module "services" {
   api_handler_role_arn      = module.services_common.api_handler_role_arn
   api_security_group_id     = module.services_common.api_security_group_id
   function_tools_secret_key = module.services_common.function_tools_secret_key
+  custom_tags               = var.custom_tags
 }
 
 module "ingress" {
@@ -214,6 +220,7 @@ module "ingress" {
   use_global_ai_proxy      = var.use_global_ai_proxy
   ai_proxy_function_url    = module.services[0].ai_proxy_url
   api_handler_function_arn = module.services[0].api_handler_arn
+  custom_tags              = var.custom_tags
 }
 
 module "services_common" {
@@ -233,6 +240,7 @@ module "services_common" {
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
+  custom_tags                               = var.custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
 }
@@ -286,6 +294,7 @@ module "brainstore" {
 
   kms_key_arn                = local.kms_key_arn
   brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
+  custom_tags                = var.custom_tags
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer

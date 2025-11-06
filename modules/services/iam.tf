@@ -20,9 +20,7 @@ resource "aws_iam_role" "quarantine_invoke_role" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy" "quarantine_invoke_policy" {
@@ -69,9 +67,7 @@ resource "aws_iam_role" "quarantine_function_role" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "quarantine_function_role" {
@@ -134,9 +130,7 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
     Version = "2012-10-17"
   })
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 resource "aws_iam_policy" "api_handler_quarantine" {
@@ -193,9 +187,7 @@ resource "aws_iam_policy" "api_handler_quarantine" {
     ]
   })
 
-  tags = {
-    BraintrustDeploymentName = var.deployment_name
-  }
+  tags = local.common_tags
 }
 
 

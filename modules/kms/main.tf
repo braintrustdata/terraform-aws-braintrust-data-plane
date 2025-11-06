@@ -71,10 +71,10 @@ resource "aws_kms_key" "braintrust" {
     )
   })
 
-  tags = {
+  tags = merge({
     Name                     = "${var.deployment_name}-main"
     BraintrustDeploymentName = var.deployment_name
-  }
+  }, var.custom_tags)
 }
 
 resource "aws_kms_alias" "braintrust" {

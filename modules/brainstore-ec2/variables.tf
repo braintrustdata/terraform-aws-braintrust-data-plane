@@ -188,6 +188,12 @@ variable "brainstore_instance_security_group_id" {
   description = "The ID of the security group to use for the Brainstore instances"
 }
 
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}
+
 variable "custom_post_install_script" {
   type        = string
   description = "Optional custom bash script to run at the end of the user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file(\"$${path.module}/scripts/brainstore-post-install.sh\")"
