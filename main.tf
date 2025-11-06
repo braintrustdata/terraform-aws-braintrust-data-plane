@@ -284,9 +284,11 @@ module "brainstore" {
     local.main_vpc_private_subnet_3_id
   ]
 
-  kms_key_arn                = local.kms_key_arn
-  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
+  kms_key_arn              = local.kms_key_arn
+  brainstore_iam_role_name = module.services_common.brainstore_iam_role_name
   custom_post_install_script = var.brainstore_custom_post_install_script
+  cache_file_size_reader   = var.brainstore_cache_file_size_reader
+  cache_file_size_writer   = var.brainstore_cache_file_size_writer
 }
 
 

@@ -193,3 +193,15 @@ variable "custom_post_install_script" {
   description = "Optional custom bash script to run at the end of the user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file(\"$${path.module}/scripts/brainstore-post-install.sh\")"
   default     = ""
 }
+
+variable "cache_file_size_reader" {
+  type        = string
+  description = "Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
+variable "cache_file_size_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}

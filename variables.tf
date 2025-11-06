@@ -420,6 +420,17 @@ variable "brainstore_version_override" {
   default     = null
 }
 
+variable "brainstore_cache_file_size_reader" {
+  type        = string
+  description = "Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
+variable "brainstore_cache_file_size_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
 
 variable "brainstore_etl_batch_size" {
   type        = number
