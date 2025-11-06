@@ -12,7 +12,7 @@ NVME_DEVICES=($(nvme list | grep 'Instance Storage' | awk '{print $1}'))
 if [ "$${#NVME_DEVICES[@]}" -ge 2 ]; then
   echo "Multiple NVMe instance storage devices found: $${NVME_DEVICES[*]}"
   # Create RAID0 array
-  mdadm --create --yes --verbose /dev/md0 --level=0 --raid-devices=$${#NVME_DEVICES[@]} "$${NVME_DEVICES[@]}"
+  mdadm --create --verbose /dev/md0 --level=0 --raid-devices=$${#NVME_DEVICES[@]} "$${NVME_DEVICES[@]}"
   # Wait for /dev/md0 to be available
   udevadm settle
   DEVICE="/dev/md0"
