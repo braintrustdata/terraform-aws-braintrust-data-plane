@@ -61,6 +61,22 @@ Type: `string`
 
 Default: `""`
 
+### <a name="input_brainstore_cache_file_size_reader"></a> [brainstore\_cache\_file\_size\_reader](#input\_brainstore\_cache\_file\_size\_reader)
+
+Description: Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_brainstore_cache_file_size_writer"></a> [brainstore\_cache\_file\_size\_writer](#input\_brainstore\_cache\_file\_size\_writer)
+
+Description: Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_brainstore_custom_post_install_script"></a> [brainstore\_custom\_post\_install\_script](#input\_brainstore\_custom\_post\_install\_script)
 
 Description: Optional custom bash script to run at the end of the Brainstore user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file("${path.module}/scripts/brainstore-post-install.sh")
