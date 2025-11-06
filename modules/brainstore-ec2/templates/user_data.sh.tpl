@@ -113,6 +113,19 @@ ${env_key}=${env_value}
 %{ endfor ~}
 EOF
 
+AI_PROXY_URL=$(aws ssm get-parameter \
+  --name /braintrust/${deployment_name}/brainstore-proxy-url \
+  --query 'Parameter.Value' \
+  --output text \
+  --region ${aws_region})
+
+if [ -n "$AI_PROXY_URL" ]; then
+  echo "AI_PROXY_URL=$AI_PROXY_URL" >> /etc/brainstore.env
+else
+  echo "ERROR: Failed to resolve AI_PROXY_URL, aborting" >&2
+  exit 1
+fi
+
 if [ "${is_dedicated_writer_node}" = "true" ]; then
   # Until we are comfortable with stability
   echo '0 * * * * root /usr/bin/docker restart brainstore > /var/log/brainstore-restart.log 2>&1' > /etc/cron.d/restart-brainstore

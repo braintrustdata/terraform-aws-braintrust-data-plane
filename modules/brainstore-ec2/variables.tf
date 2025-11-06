@@ -95,6 +95,11 @@ variable "redis_port" {
   description = "The port of the Redis instance"
 }
 
+variable "ai_proxy_url" {
+  type        = string
+  description = "The URL of the AI proxy lambda function"
+}
+
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore reader or dual use nodes"

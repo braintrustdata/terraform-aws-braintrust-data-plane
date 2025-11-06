@@ -257,6 +257,7 @@ module "brainstore" {
   database_secret_arn                   = module.database.postgres_database_secret_arn
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port
+  ai_proxy_url                          = module.services[0].ai_proxy_url
   service_token_secret_key              = module.services_common.function_tools_secret_key
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   internal_observability_api_key        = var.internal_observability_api_key
