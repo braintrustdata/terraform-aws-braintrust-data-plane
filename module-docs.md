@@ -205,6 +205,14 @@ Type: `string`
 
 Default: `null`
 
+### <a name="input_database_authorized_security_groups"></a> [database\_authorized\_security\_groups](#input\_database\_authorized\_security\_groups)
+
+Description: Map of security group names to their IDs that are authorized to access the RDS instance. Format: { name = <security\_group\_id> }
+
+Type: `map(string)`
+
+Default: `{}`
+
 ### <a name="input_database_subnet_ids"></a> [database\_subnet\_ids](#input\_database\_subnet\_ids)
 
 Description: Optional list of subnet IDs for the database. If not provided, uses the main VPC's private subnets.
@@ -588,6 +596,14 @@ Description: CIDR block for the Quarantined VPC
 Type: `string`
 
 Default: `"10.175.8.0/21"`
+
+### <a name="input_redis_authorized_security_groups"></a> [redis\_authorized\_security\_groups](#input\_redis\_authorized\_security\_groups)
+
+Description: Map of security group names to their IDs that are authorized to access the Redis instance. Format: { name = <security\_group\_id> }
+
+Type: `map(string)`
+
+Default: `{}`
 
 ### <a name="input_redis_instance_type"></a> [redis\_instance\_type](#input\_redis\_instance\_type)
 
