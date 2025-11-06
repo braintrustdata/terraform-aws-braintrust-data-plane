@@ -177,17 +177,6 @@ variable "clickhouse_secret" {
   default     = null
 }
 
-variable "brainstore_enable_historical_full_backfill" {
-  type        = bool
-  description = "Enable historical full backfill for Brainstore"
-  default     = true
-}
-
-variable "brainstore_backfill_new_objects" {
-  type        = bool
-  description = "Enable backfill for new objects for Brainstore"
-  default     = true
-}
 
 variable "brainstore_etl_batch_size" {
   type        = number

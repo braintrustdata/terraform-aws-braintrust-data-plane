@@ -85,6 +85,7 @@ module "database" {
         "API"        = module.services_common.api_security_group_id
         "Brainstore" = module.services_common.brainstore_instance_security_group_id
       },
+      var.database_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
@@ -116,6 +117,7 @@ module "redis" {
         "API"        = module.services_common.api_security_group_id
         "Brainstore" = module.services_common.brainstore_instance_security_group_id
       },
+      var.redis_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
@@ -157,15 +159,13 @@ module "services" {
   clickhouse_host   = null
   clickhouse_secret = null
 
-  brainstore_enabled                         = var.enable_brainstore
-  brainstore_default                         = var.brainstore_default
-  brainstore_hostname                        = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname                 = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_s3_bucket_name                  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  brainstore_port                            = var.enable_brainstore ? module.brainstore[0].port : null
-  brainstore_enable_historical_full_backfill = var.brainstore_enable_historical_full_backfill
-  brainstore_backfill_new_objects            = var.brainstore_backfill_new_objects
-  brainstore_etl_batch_size                  = var.brainstore_etl_batch_size
+  brainstore_enabled         = var.enable_brainstore
+  brainstore_default         = var.brainstore_default
+  brainstore_hostname        = var.enable_brainstore ? module.brainstore[0].dns_name : null
+  brainstore_writer_hostname = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_s3_bucket_name  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+  brainstore_port            = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_etl_batch_size  = var.brainstore_etl_batch_size
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -226,21 +226,23 @@ module "ingress" {
 module "services_common" {
   source = "./modules/services-common"
 
-  deployment_name                = var.deployment_name
-  vpc_id                         = local.main_vpc_id
-  kms_key_arn                    = local.kms_key_arn
-  database_secret_arn            = module.database.postgres_database_secret_arn
-  brainstore_s3_bucket_arn       = module.storage.brainstore_bucket_arn
-  code_bundle_s3_bucket_arn      = module.storage.code_bundle_bucket_arn
-  lambda_responses_s3_bucket_arn = module.storage.lambda_responses_bucket_arn
-  service_additional_policy_arns = var.service_additional_policy_arns
-  permissions_boundary_arn       = var.permissions_boundary_arn
-  eks_cluster_arn                = var.existing_eks_cluster_arn
-  eks_namespace                  = var.eks_namespace
-  enable_eks_pod_identity        = var.enable_eks_pod_identity
-  enable_eks_irsa                = var.enable_eks_irsa
-  enable_brainstore_ec2_ssm      = var.enable_brainstore_ec2_ssm
-  custom_tags                    = var.custom_tags
+  deployment_name                           = var.deployment_name
+  vpc_id                                    = local.main_vpc_id
+  kms_key_arn                               = local.kms_key_arn
+  database_secret_arn                       = module.database.postgres_database_secret_arn
+  brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
+  code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
+  lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
+  service_additional_policy_arns            = var.service_additional_policy_arns
+  permissions_boundary_arn                  = var.permissions_boundary_arn
+  eks_cluster_arn                           = var.existing_eks_cluster_arn
+  eks_namespace                             = var.eks_namespace
+  enable_eks_pod_identity                   = var.enable_eks_pod_identity
+  enable_eks_irsa                           = var.enable_eks_irsa
+  enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
+  custom_tags                               = var.custom_tags
+  override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
+  override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
 }
 
 module "brainstore" {
@@ -290,9 +292,12 @@ module "brainstore" {
     local.main_vpc_private_subnet_3_id
   ]
 
-  kms_key_arn              = local.kms_key_arn
-  brainstore_iam_role_name = module.services_common.brainstore_iam_role_name
-  custom_tags              = var.custom_tags
+  kms_key_arn                = local.kms_key_arn
+  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
+  custom_tags                = var.custom_tags
+  custom_post_install_script = var.brainstore_custom_post_install_script
+  cache_file_size_reader     = var.brainstore_cache_file_size_reader
+  cache_file_size_writer     = var.brainstore_cache_file_size_writer
 }
 
 

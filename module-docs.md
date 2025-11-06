@@ -61,13 +61,29 @@ Type: `string`
 
 Default: `""`
 
-### <a name="input_brainstore_backfill_new_objects"></a> [brainstore\_backfill\_new\_objects](#input\_brainstore\_backfill\_new\_objects)
+### <a name="input_brainstore_cache_file_size_reader"></a> [brainstore\_cache\_file\_size\_reader](#input\_brainstore\_cache\_file\_size\_reader)
 
-Description: Enable backfill for new objects for Brainstore. Don't modify this unless instructed by Braintrust.
+Description: Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size.
 
-Type: `bool`
+Type: `string`
 
-Default: `true`
+Default: `null`
+
+### <a name="input_brainstore_cache_file_size_writer"></a> [brainstore\_cache\_file\_size\_writer](#input\_brainstore\_cache\_file\_size\_writer)
+
+Description: Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_brainstore_custom_post_install_script"></a> [brainstore\_custom\_post\_install\_script](#input\_brainstore\_custom\_post\_install\_script)
+
+Description: Optional custom bash script to run at the end of the Brainstore user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file("${path.module}/scripts/brainstore-post-install.sh")
+
+Type: `string`
+
+Default: `""`
 
 ### <a name="input_brainstore_default"></a> [brainstore\_default](#input\_brainstore\_default)
 
@@ -76,14 +92,6 @@ Description: Whether to set Brainstore as the default rather than requiring user
 Type: `string`
 
 Default: `"force"`
-
-### <a name="input_brainstore_enable_historical_full_backfill"></a> [brainstore\_enable\_historical\_full\_backfill](#input\_brainstore\_enable\_historical\_full\_backfill)
-
-Description: Enable historical full backfill for Brainstore. Don't modify this unless instructed by Braintrust.
-
-Type: `bool`
-
-Default: `true`
 
 ### <a name="input_brainstore_enable_retention"></a> [brainstore\_enable\_retention](#input\_brainstore\_enable\_retention)
 
@@ -213,9 +221,9 @@ Type: `string`
 
 Default: `null`
 
-### <a name="input_custom_tags"></a> [custom\_tags](#input\_custom\_tags)
+### <a name="input_database_authorized_security_groups"></a> [database\_authorized\_security\_groups](#input\_database\_authorized\_security\_groups)
 
-Description: Custom tags to apply to all created resources
+Description: Map of security group names to their IDs that are authorized to access the RDS instance. Format: { name = <security\_group\_id> }
 
 Type: `map(string)`
 
@@ -437,6 +445,22 @@ Type: `number`
 
 Default: `1`
 
+### <a name="input_override_api_iam_role_trust_policy"></a> [override\_api\_iam\_role\_trust\_policy](#input\_override\_api\_iam\_role\_trust\_policy)
+
+Description: Advanced: If provided, this will completely replace the trust policy for the API handler IAM role. Must be a valid JSON string representing the IAM trust policy document.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_override_brainstore_iam_role_trust_policy"></a> [override\_brainstore\_iam\_role\_trust\_policy](#input\_override\_brainstore\_iam\_role\_trust\_policy)
+
+Description: Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_permissions_boundary_arn"></a> [permissions\_boundary\_arn](#input\_permissions\_boundary\_arn)
 
 Description: ARN of the IAM permissions boundary to apply to all IAM roles created by this module
@@ -589,6 +613,14 @@ Type: `string`
 
 Default: `"10.175.8.0/21"`
 
+### <a name="input_redis_authorized_security_groups"></a> [redis\_authorized\_security\_groups](#input\_redis\_authorized\_security\_groups)
+
+Description: Map of security group names to their IDs that are authorized to access the Redis instance. Format: { name = <security\_group\_id> }
+
+Type: `map(string)`
+
+Default: `{}`
+
 ### <a name="input_redis_instance_type"></a> [redis\_instance\_type](#input\_redis\_instance\_type)
 
 Description: Instance type for the Redis cluster
@@ -688,6 +720,10 @@ Default: `[]`
 ## Outputs
 
 The following outputs are exported:
+
+### <a name="output_api_security_group_id"></a> [api\_security\_group\_id](#output\_api\_security\_group\_id)
+
+Description: ID of the security group for the API handler
 
 ### <a name="output_api_url"></a> [api\_url](#output\_api\_url)
 

@@ -4,10 +4,21 @@
 echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
 
 # Mount the local SSD if it exists
-apt-get install -y nvme-cli
+apt-get install -y nvme-cli mdadm
 MOUNT_DIR="/mnt/tmp/brainstore"
 mkdir -p "$MOUNT_DIR"
-DEVICE=$(nvme list | grep 'Instance Storage' | head -n1 | awk '{print $1}')
+
+NVME_DEVICES=($(nvme list | grep 'Instance Storage' | awk '{print $1}'))
+if [ "$${#NVME_DEVICES[@]}" -ge 2 ]; then
+  echo "Multiple NVMe instance storage devices found: $${NVME_DEVICES[*]}"
+  # Create RAID0 array
+  mdadm --create --verbose /dev/md0 --level=0 --raid-devices=$${#NVME_DEVICES[@]} "$${NVME_DEVICES[@]}"
+  # Wait for /dev/md0 to be available
+  udevadm settle
+  DEVICE="/dev/md0"
+else
+  DEVICE="$${NVME_DEVICES[0]}"
+fi
 if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
   blkid "$DEVICE" >/dev/null || mkfs.ext4 -F "$DEVICE"
@@ -107,7 +118,8 @@ SERVICE_TOKEN_SECRET_KEY=${service_token_secret_key}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
-BRAINSTORE_REDIS_URL=redis://${redis_host}:${redis_port}
+BRAINSTORE_REDIS_URI=redis://${redis_host}:${redis_port}
+BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}
 %{ endfor ~}
@@ -166,3 +178,8 @@ docker run -d \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
+
+%{ if custom_post_install_script != "" ~}
+echo "Running custom post-install script..."
+${custom_post_install_script}
+%{ endif ~}

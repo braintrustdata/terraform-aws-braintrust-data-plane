@@ -31,27 +31,11 @@ variable "postgres_storage_type" {
 variable "postgres_storage_iops" {
   description = "Storage IOPS for the RDS instance. Only applicable if storage_type is io1, io2, or gp3. For gp3 storage with PostgreSQL, IOPS can only be specified when storage size is >= 400GB."
   type        = number
-  validation {
-    condition = (
-      var.postgres_storage_type != "gp3" ||
-      (var.postgres_storage_size < 400 && var.postgres_storage_iops == null) ||
-      (var.postgres_storage_size >= 400 && var.postgres_storage_iops != null && var.postgres_storage_iops >= 12000)
-    )
-    error_message = "For gp3 storage with size < 400GB, IOPS must be null (AWS restriction). For gp3 storage with size >= 400GB, IOPS must be specified and >= 12000."
-  }
 }
 
 variable "postgres_storage_throughput" {
   description = "Storage throughput for the RDS instance. Only applicable if storage_type is gp3. For gp3 storage with PostgreSQL, throughput can only be specified when storage size is >= 400GB."
   type        = number
-  validation {
-    condition = (
-      var.postgres_storage_type != "gp3" ||
-      (var.postgres_storage_size < 400 && var.postgres_storage_throughput == null) ||
-      (var.postgres_storage_size >= 400 && var.postgres_storage_throughput != null && var.postgres_storage_throughput >= 500)
-    )
-    error_message = "For gp3 storage with size < 400GB, throughput must be null (AWS restriction). For gp3 storage with size >= 400GB, throughput must be specified and >= 500."
-  }
 }
 
 variable "postgres_version" {
