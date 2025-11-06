@@ -221,6 +221,14 @@ Type: `string`
 
 Default: `null`
 
+### <a name="input_custom_tags"></a> [custom\_tags](#input\_custom\_tags)
+
+Description: Custom tags to apply to all created resources
+
+Type: `map(string)`
+
+Default: `{}`
+
 ### <a name="input_database_authorized_security_groups"></a> [database\_authorized\_security\_groups](#input\_database\_authorized\_security\_groups)
 
 Description: Map of security group names to their IDs that are authorized to access the RDS instance. Format: { name = <security\_group\_id> }
