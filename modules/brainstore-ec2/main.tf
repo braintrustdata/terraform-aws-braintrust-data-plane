@@ -12,7 +12,7 @@ locals {
 resource "aws_ssm_parameter" "ai_proxy_url" {
   name        = "/braintrust/${var.deployment_name}/brainstore-proxy-url"
   type        = "String"
-  value       = var.ai_proxy_url
+  value       = data.aws_lambda_function_url.ai_proxy.function_url
   description = "AIProxy Lambda URL for Brainstore"
 
   tags = local.common_tags
@@ -229,3 +229,11 @@ data "aws_ec2_instance_type" "brainstore" {
 }
 
 data "aws_region" "current" {}
+
+data "aws_lambda_function" "ai_proxy" {
+  function_name = "${var.deployment_name}-AIProxy"
+}
+
+data "aws_lambda_function_url" "ai_proxy" {
+  function_name = data.aws_lambda_function.ai_proxy.function_name
+}
