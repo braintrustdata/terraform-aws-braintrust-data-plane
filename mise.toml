@@ -1,7 +1,8 @@
 [tools]
 tflint = "latest"
 pre-commit = "latest"
-terraform = "1.12"
+terraform = "1.10"
+opentofu = "1.10"
 uv = "latest"
 terraform-docs = "latest"
 
@@ -32,4 +33,27 @@ module "braintrust-data-plane" {
 EOF
 terraform init
 terraform validate
+"""
+
+[tasks.validate-tofu]
+description = "Validate the Terraform module and example code using OpenTofu"
+run = """
+#!/usr/bin/env bash
+set -e
+echo "Validating module with OpenTofu"
+tofu init
+tofu validate
+
+echo "Validating example code with OpenTofu"
+cd examples/braintrust-data-plane
+# Override the module source to point to the local module.
+# '*_override.tf' is a lesser known native terraform feature
+trap 'rm -f main_override.tf' EXIT
+cat <<EOF> main_override.tf
+module "braintrust-data-plane" {
+  source = "../../"
+}
+EOF
+tofu init
+tofu validate
 """
