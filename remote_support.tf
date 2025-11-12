@@ -31,6 +31,7 @@ module "remote_support" {
   private_subnet_ids                     = [local.main_vpc_private_subnet_1_id]
   public_subnet_ids                      = [local.main_vpc_public_subnet_1_id]
   permissions_boundary_arn               = var.permissions_boundary_arn
+  custom_tags                            = var.custom_tags
 }
 
 variable "enable_braintrust_support_logs_access" {

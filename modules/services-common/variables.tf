@@ -75,6 +75,12 @@ variable "enable_brainstore_ec2_ssm" {
   default     = false
 }
 
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}
+
 variable "override_api_iam_role_trust_policy" {
   type        = string
   description = "Advanced: If provided, this will completely replace the trust policy for the API handler IAM role. Must be a valid JSON string representing the IAM trust policy document."

@@ -61,6 +61,22 @@ Type: `string`
 
 Default: `""`
 
+### <a name="input_brainstore_cache_file_size_reader"></a> [brainstore\_cache\_file\_size\_reader](#input\_brainstore\_cache\_file\_size\_reader)
+
+Description: Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size.
+
+Type: `string`
+
+Default: `null`
+
+### <a name="input_brainstore_cache_file_size_writer"></a> [brainstore\_cache\_file\_size\_writer](#input\_brainstore\_cache\_file\_size\_writer)
+
+Description: Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_brainstore_custom_post_install_script"></a> [brainstore\_custom\_post\_install\_script](#input\_brainstore\_custom\_post\_install\_script)
 
 Description: Optional custom bash script to run at the end of the Brainstore user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file("${path.module}/scripts/brainstore-post-install.sh")
@@ -204,6 +220,22 @@ Description: Custom domain name for the CloudFront distribution
 Type: `string`
 
 Default: `null`
+
+### <a name="input_custom_tags"></a> [custom\_tags](#input\_custom\_tags)
+
+Description: Custom tags to apply to all created resources
+
+Type: `map(string)`
+
+Default: `{}`
+
+### <a name="input_database_authorized_security_groups"></a> [database\_authorized\_security\_groups](#input\_database\_authorized\_security\_groups)
+
+Description: Map of security group names to their IDs that are authorized to access the RDS instance. Format: { name = <security\_group\_id> }
+
+Type: `map(string)`
+
+Default: `{}`
 
 ### <a name="input_database_subnet_ids"></a> [database\_subnet\_ids](#input\_database\_subnet\_ids)
 
@@ -588,6 +620,14 @@ Description: CIDR block for the Quarantined VPC
 Type: `string`
 
 Default: `"10.175.8.0/21"`
+
+### <a name="input_redis_authorized_security_groups"></a> [redis\_authorized\_security\_groups](#input\_redis\_authorized\_security\_groups)
+
+Description: Map of security group names to their IDs that are authorized to access the Redis instance. Format: { name = <security\_group\_id> }
+
+Type: `map(string)`
+
+Default: `{}`
 
 ### <a name="input_redis_instance_type"></a> [redis\_instance\_type](#input\_redis\_instance\_type)
 

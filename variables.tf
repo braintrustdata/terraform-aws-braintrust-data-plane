@@ -233,6 +233,12 @@ variable "database_subnet_ids" {
   default     = null
 }
 
+variable "database_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the RDS instance. Format: { name = <security_group_id> }"
+  default     = {}
+}
+
 variable "existing_database_subnet_group_name" {
   type        = string
   description = "Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created which is the default and preferred behavior."
@@ -256,6 +262,12 @@ variable "redis_version" {
   description = "Redis engine version"
   type        = string
   default     = "7.0"
+}
+
+variable "redis_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the Redis instance. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
 ## Services
@@ -408,6 +420,17 @@ variable "brainstore_version_override" {
   default     = null
 }
 
+variable "brainstore_cache_file_size_reader" {
+  type        = string
+  description = "Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
+variable "brainstore_cache_file_size_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
 
 variable "brainstore_etl_batch_size" {
   type        = number
@@ -550,6 +573,12 @@ variable "enable_brainstore_ec2_ssm" {
   description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
   type        = bool
   default     = false
+}
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
 }
 
 variable "brainstore_custom_post_install_script" {

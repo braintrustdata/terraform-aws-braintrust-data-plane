@@ -7,9 +7,9 @@ resource "aws_vpc_peering_connection" "requester" {
   vpc_id        = var.source_vpc_id
   auto_accept   = false
 
-  tags = {
+  tags = merge({
     Name = "braintrust-peer-requester"
-  }
+  }, var.custom_tags)
 }
 
 resource "aws_vpc_peering_connection_options" "accept-dns" {

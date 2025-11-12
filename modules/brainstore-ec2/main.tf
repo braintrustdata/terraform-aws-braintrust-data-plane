@@ -1,12 +1,19 @@
 locals {
   brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
-  common_tags = {
+  common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
-  }
+  }, var.custom_tags)
   architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes = var.writer_instance_count > 0
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id = split(":::", var.brainstore_s3_bucket_arn)[1]
+  # Calculate cache file size from ephemeral storage (total_instance_storage is in GB)
+  # If total_instance_storage is 0 or null, instances won't have ephemeral storage
+  # The user_data script already validates ephemeral device exists, so this should always be > 0 for valid instance types
+  # Reduce by 10% to leave buffer space on the disk
+  # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
+  brainstore_cache_file_size        = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
+  brainstore_writer_cache_file_size = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
 }
 
 resource "aws_ssm_parameter" "ai_proxy_url" {
@@ -77,6 +84,7 @@ resource "aws_launch_template" "brainstore" {
     internal_observability_region   = var.internal_observability_region
     service_token_secret_key        = var.service_token_secret_key
     custom_post_install_script      = var.custom_post_install_script
+    brainstore_cache_file_size      = local.brainstore_cache_file_size
   }))
 
   tags = merge({
@@ -226,6 +234,10 @@ data "aws_ami" "ubuntu_24_04" {
 
 data "aws_ec2_instance_type" "brainstore" {
   instance_type = var.instance_type
+}
+
+data "aws_ec2_instance_type" "brainstore_writer" {
+  instance_type = var.writer_instance_type
 }
 
 data "aws_region" "current" {}

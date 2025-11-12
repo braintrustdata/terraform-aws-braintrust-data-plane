@@ -30,3 +30,9 @@ variable "redis_version" {
   description = "Redis engine version"
   default     = "7.0"
 }
+
+variable "custom_tags" {
+  description = "Custom tags to apply to all created resources"
+  type        = map(string)
+  default     = {}
+}

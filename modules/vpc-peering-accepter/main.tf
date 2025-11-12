@@ -4,9 +4,9 @@ resource "aws_vpc_peering_connection_accepter" "accepter" {
   vpc_peering_connection_id = var.vpc_peering_connection_id
   auto_accept               = true
 
-  tags = {
+  tags = merge({
     Name = "braintrust-peer-accepter"
-  }
+  }, var.custom_tags)
 }
 
 resource "aws_vpc_peering_connection_options" "accept-dns" {
