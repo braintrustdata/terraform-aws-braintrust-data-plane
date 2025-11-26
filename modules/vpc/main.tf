@@ -5,9 +5,9 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
   ssm_vpc_endpoint_services = {
-    "ssm" : "com.amazonaws.${data.aws_region.current.name}.ssm",
-    "ssmmessages" : "com.amazonaws.${data.aws_region.current.name}.ssmmessages",
-    "ec2messages" : "com.amazonaws.${data.aws_region.current.name}.ec2messages",
+    "ssm" : "com.amazonaws.${data.aws_region.current.region}.ssm",
+    "ssmmessages" : "com.amazonaws.${data.aws_region.current.region}.ssmmessages",
+    "ec2messages" : "com.amazonaws.${data.aws_region.current.region}.ec2messages",
   }
 }
 
@@ -156,7 +156,7 @@ resource "aws_route_table_association" "public_subnet_1_association" {
 
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.vpc.id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [aws_route_table.private_route_table.id]
 

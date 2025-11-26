@@ -3,7 +3,7 @@ locals {
   # the regions where we currently host our lambda code.
   # Contact support if you need a new region to be supported.
   supported_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "ca-central-1", "ap-southeast-2"]
-  lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.name}"
+  lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.region}"
   lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
   # Extract bucket IDs from ARNs (format: arn:aws:s3:::bucket-name)
@@ -35,13 +35,13 @@ locals {
 data "http" "lambda_versions" {
   for_each = toset(local.lambda_names)
 
-  url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.name}.amazonaws.com/lambda/${each.value}/version-${local.lambda_version_tag}"
+  url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.region}.amazonaws.com/lambda/${each.value}/version-${local.lambda_version_tag}"
 }
 
 data "aws_region" "current" {
   lifecycle {
     postcondition {
-      condition     = contains(local.supported_regions, self.name)
+      condition     = contains(local.supported_regions, self.region)
       error_message = "Region must be one of: us-east-1, us-east-2, us-west-2, eu-west-1, ca-central-1, ap-southeast-2. Contact support if you need a new region to be supported."
     }
   }
