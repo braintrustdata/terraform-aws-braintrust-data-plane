@@ -125,16 +125,16 @@ ${env_key}=${env_value}
 %{ endfor ~}
 EOF
 
-AI_PROXY_URL=$(aws ssm get-parameter \
+BRAINSTORE_AI_PROXY_URL=$(aws ssm get-parameter \
   --name /braintrust/${deployment_name}/brainstore-proxy-url \
   --query 'Parameter.Value' \
   --output text \
   --region ${aws_region})
 
-if [ -n "$AI_PROXY_URL" ]; then
-  echo "AI_PROXY_URL=$AI_PROXY_URL" >> /etc/brainstore.env
+if [ -n "$BRAINSTORE_AI_PROXY_URL" ]; then
+  echo "BRAINSTORE_AI_PROXY_URL=$BRAINSTORE_AI_PROXY_URL" >> /etc/brainstore.env
 else
-  echo "ERROR: Failed to resolve AI_PROXY_URL, aborting" >&2
+  echo "ERROR: Failed to resolve BRAINSTORE_AI_PROXY_URL, aborting" >&2
   exit 1
 fi
 
