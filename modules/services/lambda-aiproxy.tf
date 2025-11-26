@@ -17,7 +17,7 @@ resource "aws_lambda_function" "ai_proxy" {
   publish                        = true
   kms_key_arn                    = var.kms_key_arn
   # See https://github.com/tobilg/duckdb-nodejs-layer
-  layers = ["arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:14"]
+  layers = ["arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"]
 
   logging_config {
     log_format = "Text"
