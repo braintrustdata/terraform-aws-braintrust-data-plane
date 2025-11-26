@@ -19,7 +19,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
   kms_key_arn   = var.kms_key_arn
 
   layers = [
-    "arn:aws:lambda:${data.aws_region.current.name}:041475135427:layer:duckdb-nodejs-arm64:14"
+    "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
   ]
 
   environment {
