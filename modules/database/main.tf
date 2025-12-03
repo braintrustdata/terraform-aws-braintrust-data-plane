@@ -5,6 +5,7 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
+  kms_key_arn_db             = var.kms_key_arn_db == null ? var.kms_key_arn : var.kms_key_arn_db
 }
 
 resource "aws_db_instance" "main" {
@@ -46,7 +47,7 @@ resource "aws_db_instance" "main" {
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
   deletion_protection        = !var.DANGER_disable_deletion_protection
 
-  kms_key_id = var.kms_key_arn
+  kms_key_id = var.kms_key_arn_db
 
   tags = local.common_tags
 
