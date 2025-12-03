@@ -17,7 +17,7 @@ resource "aws_lambda_function" "catchup_etl" {
   architectures = ["arm64"]
   kms_key_arn   = var.kms_key_arn
 
-  layers = local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_layer_arn] : []
+  layers = local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
 
   environment {
     variables = merge({
@@ -35,7 +35,7 @@ resource "aws_lambda_function" "catchup_etl" {
       },
       var.extra_env_vars.CatchupETL,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = "CatchupETL"
+        DD_SERVICE        = local.catchup_etl_function_name
         DD_LAMBDA_HANDLER = local.catchup_etl_original_handler
       }) : {}
     )

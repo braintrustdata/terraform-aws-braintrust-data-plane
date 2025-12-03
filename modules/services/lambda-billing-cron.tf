@@ -17,7 +17,7 @@ resource "aws_lambda_function" "billing_cron" {
   memory_size   = 1024
   architectures = ["arm64"]
 
-  layers = local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_layer_arn] : []
+  layers = local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
 
   environment {
     variables = merge({
@@ -32,7 +32,7 @@ resource "aws_lambda_function" "billing_cron" {
       },
       var.extra_env_vars.BillingCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = "BillingCron"
+        DD_SERVICE        = local.billing_cron_function_name
         DD_LAMBDA_HANDLER = local.billing_cron_original_handler
       }) : {}
     )

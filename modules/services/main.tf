@@ -6,10 +6,10 @@ locals {
   lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.region}"
   lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
-  observability_enabled       = var.observability_api_key != null && var.observability_api_key != ""
-  datadog_node_layer_arn      = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:129"
-  datadog_extension_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:88"
-  datadog_handler             = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
+  observability_enabled           = var.observability_api_key != null && var.observability_api_key != ""
+  datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:129"
+  datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:88"
+  datadog_handler                 = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
 
   datadog_env_vars = {
     DD_SITE            = "${var.observability_region}.datadoghq.com"

@@ -19,7 +19,7 @@ resource "aws_lambda_function" "automation_cron" {
   # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
     ["arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"],
-    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_layer_arn] : []
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
   )
 
   ephemeral_storage {
@@ -43,7 +43,7 @@ resource "aws_lambda_function" "automation_cron" {
       },
       var.extra_env_vars.AutomationCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = "AutomationCron"
+        DD_SERVICE        = local.automation_cron_function_name
         DD_LAMBDA_HANDLER = local.automation_cron_original_handler
       }) : {}
     )
