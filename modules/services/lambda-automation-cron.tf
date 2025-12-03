@@ -18,7 +18,7 @@ resource "aws_lambda_function" "automation_cron" {
 
   # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
-    ["arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"],
+    [local.duckdb_nodejs_arm64_layer_arn],
     local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
   )
 

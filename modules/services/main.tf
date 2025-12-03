@@ -6,9 +6,12 @@ locals {
   lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.region}"
   lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
+  duckdb_nodejs_arm64_layer_arn   = "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
   observability_enabled           = var.observability_api_key != null && var.observability_api_key != ""
-  datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:129"
-  datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:88"
+  datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:131"
+  datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:90"
+  datadog_python_layer_arn        = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Python313:118"
+  datadog_extension_layer_arn     = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension:70"
   datadog_handler                 = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
 
   datadog_env_vars = {
