@@ -343,6 +343,12 @@ variable "custom_certificate_arn" {
   default     = null
 }
 
+variable "waf_acl_id" {
+  description = "Optional WAF Web ACL ID to associate with the CloudFront distribution"
+  type        = string
+  default     = null
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
