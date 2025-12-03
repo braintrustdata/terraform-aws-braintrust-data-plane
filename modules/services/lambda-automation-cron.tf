@@ -1,5 +1,6 @@
 locals {
-  automation_cron_function_name = "${var.deployment_name}-AutomationCron"
+  automation_cron_function_name    = "${var.deployment_name}-AutomationCron"
+  automation_cron_original_handler = "index.handler"
 }
 
 resource "aws_lambda_function" "automation_cron" {
@@ -9,15 +10,17 @@ resource "aws_lambda_function" "automation_cron" {
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["AutomationCron"]
   role          = var.api_handler_role_arn
-  handler       = "index.handler"
+  handler       = local.observability_enabled ? local.datadog_handler : local.automation_cron_original_handler
   runtime       = "nodejs22.x"
   timeout       = 300
   memory_size   = 2048
   architectures = ["arm64"]
 
-  layers = [
-    "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
-  ]
+  # See https://github.com/tobilg/duckdb-nodejs-layer
+  layers = concat(
+    ["arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"],
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_layer_arn] : []
+  )
 
   ephemeral_storage {
     size = 4096
@@ -37,11 +40,17 @@ resource "aws_lambda_function" "automation_cron" {
       BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
       BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
       FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
-    }, var.extra_env_vars.AutomationCron)
+      },
+      var.extra_env_vars.AutomationCron,
+      local.observability_enabled ? merge(local.datadog_env_vars, {
+        DD_SERVICE        = "AutomationCron"
+        DD_LAMBDA_HANDLER = local.automation_cron_original_handler
+      }) : {}
+    )
   }
 
   logging_config {
-    log_format = "Text"
+    log_format = local.observability_enabled ? "JSON" : "Text"
     log_group  = "/braintrust/${var.deployment_name}/${local.automation_cron_function_name}"
   }
 

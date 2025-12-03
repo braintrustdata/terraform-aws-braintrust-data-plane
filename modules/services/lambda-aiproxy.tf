@@ -1,5 +1,6 @@
 locals {
-  ai_proxy_function_name = "${var.deployment_name}-AIProxy"
+  ai_proxy_function_name    = "${var.deployment_name}-AIProxy"
+  ai_proxy_original_handler = "index.handler"
 }
 resource "aws_lambda_function" "ai_proxy" {
   depends_on = [aws_lambda_invocation.invoke_database_migration]
@@ -8,7 +9,7 @@ resource "aws_lambda_function" "ai_proxy" {
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["AIProxy"]
   role                           = var.api_handler_role_arn
-  handler                        = "index.handler"
+  handler                        = local.observability_enabled ? local.datadog_handler : local.ai_proxy_original_handler
   runtime                        = "nodejs22.x"
   architectures                  = ["arm64"]
   memory_size                    = 10240 # Max that lambda supports
@@ -17,10 +18,13 @@ resource "aws_lambda_function" "ai_proxy" {
   publish                        = true
   kms_key_arn                    = var.kms_key_arn
   # See https://github.com/tobilg/duckdb-nodejs-layer
-  layers = ["arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"]
+  layers = concat(
+    ["arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"],
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_layer_arn] : []
+  )
 
   logging_config {
-    log_format = "Text"
+    log_format = local.observability_enabled ? "JSON" : "Text"
     log_group  = "/braintrust/${var.deployment_name}/${local.ai_proxy_function_name}"
   }
 
@@ -31,7 +35,11 @@ resource "aws_lambda_function" "ai_proxy" {
   environment {
     variables = merge(
       local.api_common_env_vars,
-      var.extra_env_vars.AIProxy
+      var.extra_env_vars.AIProxy,
+      local.observability_enabled ? merge(local.datadog_env_vars, {
+        DD_SERVICE        = "AIProxy"
+        DD_LAMBDA_HANDLER = local.ai_proxy_original_handler
+      }) : {}
     )
   }
 

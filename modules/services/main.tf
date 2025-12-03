@@ -6,6 +6,18 @@ locals {
   lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.region}"
   lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
+  observability_enabled       = var.observability_api_key != null && var.observability_api_key != ""
+  datadog_node_layer_arn      = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:129"
+  datadog_extension_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:88"
+  datadog_handler             = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
+
+  datadog_env_vars = {
+    DD_SITE            = "us5.datadoghq.com"
+    DD_API_KEY         = var.observability_api_key != null ? var.observability_api_key : ""
+    DD_ENV             = var.observability_env_name
+    OTLP_HTTP_ENDPOINT = "http://localhost:4318"
+  }
+
   # Extract bucket IDs from ARNs (format: arn:aws:s3:::bucket-name)
   code_bundle_bucket_id      = split(":::", var.code_bundle_bucket_arn)[1]
   lambda_responses_bucket_id = split(":::", var.lambda_responses_bucket_arn)[1]

@@ -1,5 +1,6 @@
 locals {
-  api_handler_function_name = "${var.deployment_name}-APIHandler"
+  api_handler_function_name    = "${var.deployment_name}-APIHandler"
+  api_handler_original_handler = "index.handler"
   # Shared between the AI Proxy and API Handler
   api_common_env_vars = {
     ORG_NAME                   = var.braintrust_org_name
@@ -59,7 +60,7 @@ resource "aws_lambda_function" "api_handler" {
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["APIHandler"]
   role                           = var.api_handler_role_arn
-  handler                        = "index.handler"
+  handler                        = local.observability_enabled ? local.datadog_handler : local.api_handler_original_handler
   runtime                        = "nodejs22.x"
   memory_size                    = 10240 # Max that lambda supports
   reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
@@ -69,14 +70,15 @@ resource "aws_lambda_function" "api_handler" {
   kms_key_arn                    = var.kms_key_arn
 
   logging_config {
-    log_format = "Text"
+    log_format = local.observability_enabled ? "JSON" : "Text"
     log_group  = "/braintrust/${var.deployment_name}/${local.api_handler_function_name}"
   }
 
-  layers = [
-    # See https://github.com/tobilg/duckdb-nodejs-layer
-    "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
-  ]
+  # See https://github.com/tobilg/duckdb-nodejs-layer
+  layers = concat(
+    ["arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"],
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_layer_arn] : []
+  )
 
   ephemeral_storage {
     size = 4096
@@ -86,7 +88,11 @@ resource "aws_lambda_function" "api_handler" {
     variables = merge(
       local.api_common_env_vars,
       local.api_handler_specific_env_vars,
-      var.extra_env_vars.APIHandler
+      var.extra_env_vars.APIHandler,
+      local.observability_enabled ? merge(local.datadog_env_vars, {
+        DD_SERVICE        = "APIHandler"
+        DD_LAMBDA_HANDLER = local.api_handler_original_handler
+      }) : {}
     )
   }
 
