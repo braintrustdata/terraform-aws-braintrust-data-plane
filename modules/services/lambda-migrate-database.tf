@@ -8,7 +8,7 @@ resource "aws_lambda_function" "migrate_database" {
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["MigrateDatabaseFunction"]
   role          = aws_iam_role.default_role.arn
-  handler       = "lambda_function.lambda_handler"
+  handler       = local.observability_enabled ? local.python_datadog_handler : local.migrate_database_original_handler
   runtime       = "python3.13"
   memory_size   = 1024
   timeout       = 900

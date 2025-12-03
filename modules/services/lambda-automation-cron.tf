@@ -10,7 +10,7 @@ resource "aws_lambda_function" "automation_cron" {
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["AutomationCron"]
   role          = var.api_handler_role_arn
-  handler       = local.observability_enabled ? local.datadog_handler : local.automation_cron_original_handler
+  handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.automation_cron_original_handler
   runtime       = "nodejs22.x"
   timeout       = 300
   memory_size   = 2048

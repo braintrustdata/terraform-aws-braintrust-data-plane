@@ -10,7 +10,7 @@ resource "aws_lambda_function" "catchup_etl" {
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["CatchupETL"]
   role          = aws_iam_role.default_role.arn
-  handler       = local.observability_enabled ? local.datadog_handler : local.catchup_etl_original_handler
+  handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.catchup_etl_original_handler
   runtime       = "nodejs22.x"
   memory_size   = 1024
   timeout       = 900

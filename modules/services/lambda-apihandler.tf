@@ -60,7 +60,7 @@ resource "aws_lambda_function" "api_handler" {
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["APIHandler"]
   role                           = var.api_handler_role_arn
-  handler                        = local.observability_enabled ? local.datadog_handler : local.api_handler_original_handler
+  handler                        = local.observability_enabled ? local.nodejs_datadog_handler : local.api_handler_original_handler
   runtime                        = "nodejs22.x"
   memory_size                    = 10240 # Max that lambda supports
   reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions

@@ -12,7 +12,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions["QuarantineWarmupFunction"]
   role          = var.api_handler_role_arn
-  handler       = local.observability_enabled ? local.datadog_handler : local.quarantine_warmup_original_handler
+  handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.quarantine_warmup_original_handler
   runtime       = "nodejs22.x"
   memory_size   = 1024
   timeout       = 900

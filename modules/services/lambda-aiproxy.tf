@@ -9,7 +9,7 @@ resource "aws_lambda_function" "ai_proxy" {
   s3_bucket                      = local.lambda_s3_bucket
   s3_key                         = local.lambda_versions["AIProxy"]
   role                           = var.api_handler_role_arn
-  handler                        = local.observability_enabled ? local.datadog_handler : local.ai_proxy_original_handler
+  handler                        = local.observability_enabled ? local.nodejs_datadog_handler : local.ai_proxy_original_handler
   runtime                        = "nodejs22.x"
   architectures                  = ["arm64"]
   memory_size                    = 10240 # Max that lambda supports
