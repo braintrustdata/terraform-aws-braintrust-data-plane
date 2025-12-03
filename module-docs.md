@@ -717,6 +717,14 @@ Type: `string`
 
 Default: `"10.175.0.0/21"`
 
+### <a name="input_waf_acl_id"></a> [waf\_acl\_id](#input\_waf\_acl\_id)
+
+Description: Optional WAF Web ACL ID to associate with the CloudFront distribution
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_whitelisted_origins"></a> [whitelisted\_origins](#input\_whitelisted\_origins)
 
 Description: List of origins to whitelist for CORS
