@@ -208,6 +208,11 @@ module "services" {
   api_security_group_id     = module.services_common.api_security_group_id
   function_tools_secret_key = module.services_common.function_tools_secret_key
   custom_tags               = var.custom_tags
+
+  # Observability
+  observability_api_key  = var.internal_observability_api_key
+  observability_env_name = var.internal_observability_env_name
+  observability_region   = var.internal_observability_region
 }
 
 module "ingress" {

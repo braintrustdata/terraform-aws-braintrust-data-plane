@@ -12,7 +12,7 @@ locals {
   datadog_handler             = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
 
   datadog_env_vars = {
-    DD_SITE            = "us5.datadoghq.com"
+    DD_SITE            = "${var.observability_region}.datadoghq.com"
     DD_API_KEY         = var.observability_api_key != null ? var.observability_api_key : ""
     DD_ENV             = var.observability_env_name
     OTLP_HTTP_ENDPOINT = "http://localhost:4318"

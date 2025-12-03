@@ -314,3 +314,9 @@ variable "observability_env_name" {
   type        = string
   default     = ""
 }
+
+variable "observability_region" {
+  description = "Datadog region for observability (e.g., us5, us1, eu1)."
+  type        = string
+  default     = "us5"
+}
