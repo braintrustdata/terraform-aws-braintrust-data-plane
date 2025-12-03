@@ -7,7 +7,9 @@ module "kms" {
 }
 
 locals {
-  kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
+  kms_key_arn    = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
+  kms_key_arn_s3 = var.kms_key_arn_s3 != "" ? var.kms_key_arn_s3 : local.kms_key_arn
+  kms_key_arn_db = var.kms_key_arn_db != "" ? var.kms_key_arn_db : local.kms_key_arn
   bastion_security_group = var.enable_braintrust_support_shell_access ? {
     "Remote Support Bastion" = module.remote_support[0].remote_support_security_group_id
   } : {}
@@ -94,7 +96,7 @@ module "database" {
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
-  kms_key_arn              = local.kms_key_arn
+  kms_key_arn              = local.kms_key_arn_db
   permissions_boundary_arn = var.permissions_boundary_arn
 }
 
@@ -128,7 +130,7 @@ module "storage" {
   source = "./modules/storage"
 
   deployment_name                     = var.deployment_name
-  kms_key_arn                         = local.kms_key_arn
+  kms_key_arn                         = local.kms_key_arn_s3
   brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins       = var.s3_additional_allowed_origins
 }
@@ -288,5 +290,3 @@ module "brainstore" {
   brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
   custom_post_install_script = var.brainstore_custom_post_install_script
 }
-
-
