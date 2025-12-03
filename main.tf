@@ -224,6 +224,7 @@ module "services_common" {
   deployment_name                           = var.deployment_name
   vpc_id                                    = local.main_vpc_id
   kms_key_arn                               = local.kms_key_arn
+  kms_key_arn_s3                            = var.kms_key_arn_s3
   database_secret_arn                       = module.database.postgres_database_secret_arn
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
   code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
