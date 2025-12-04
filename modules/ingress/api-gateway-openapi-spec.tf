@@ -633,6 +633,18 @@ locals {
           ]
         })
       }
+      "/mcp-client/well-known" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/mcp-client/token" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/mcp-client/proxy" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/mcp-client/oauth-register" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
     }
 
     x-amazon-apigateway-binary-media-types = [
