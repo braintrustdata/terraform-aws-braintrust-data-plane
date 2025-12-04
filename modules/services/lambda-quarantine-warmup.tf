@@ -1,6 +1,7 @@
 locals {
-  quarantine_warmup_function_name    = "${var.deployment_name}-QuarantineWarmupFunction"
-  quarantine_warmup_original_handler = "index.handler"
+  quarantine_warmup_base_function_name = "QuarantineWarmupFunction"
+  quarantine_warmup_function_name      = "${var.deployment_name}-${local.quarantine_warmup_base_function_name}"
+  quarantine_warmup_original_handler   = "index.handler"
 }
 
 resource "aws_lambda_function" "quarantine_warmup" {
@@ -10,7 +11,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
 
   function_name = local.quarantine_warmup_function_name
   s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["QuarantineWarmupFunction"]
+  s3_key        = local.lambda_versions[local.quarantine_warmup_base_function_name]
   role          = var.api_handler_role_arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.quarantine_warmup_original_handler
   runtime       = "nodejs22.x"
@@ -44,7 +45,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
       },
       var.extra_env_vars.QuarantineWarmupFunction,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = local.quarantine_warmup_function_name
+        DD_SERVICE        = local.quarantine_warmup_base_function_name
         DD_LAMBDA_HANDLER = local.quarantine_warmup_original_handler
       }) : {}
     )

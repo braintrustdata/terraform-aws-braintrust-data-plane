@@ -1,12 +1,13 @@
 locals {
-  migrate_database_function_name    = "${var.deployment_name}-MigrateDatabaseFunction"
-  migrate_database_original_handler = "lambda_function.lambda_handler"
+  migrate_database_base_function_name = "MigrateDatabaseFunction"
+  migrate_database_function_name      = "${var.deployment_name}-${local.migrate_database_base_function_name}"
+  migrate_database_original_handler   = "lambda_function.lambda_handler"
 }
 
 resource "aws_lambda_function" "migrate_database" {
   function_name = local.migrate_database_function_name
   s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["MigrateDatabaseFunction"]
+  s3_key        = local.lambda_versions[local.migrate_database_base_function_name]
   role          = aws_iam_role.default_role.arn
   handler       = local.observability_enabled ? local.python_datadog_handler : local.migrate_database_original_handler
   runtime       = "python3.13"
@@ -30,7 +31,7 @@ resource "aws_lambda_function" "migrate_database" {
       },
       var.extra_env_vars.MigrateDatabaseFunction,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = local.migrate_database_function_name
+        DD_SERVICE        = local.migrate_database_base_function_name
         DD_LAMBDA_HANDLER = local.migrate_database_original_handler
       }) : {}
     )

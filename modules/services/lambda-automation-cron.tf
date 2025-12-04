@@ -1,6 +1,7 @@
 locals {
-  automation_cron_function_name    = "${var.deployment_name}-AutomationCron"
-  automation_cron_original_handler = "index.handler"
+  automation_cron_base_function_name = "AutomationCron"
+  automation_cron_function_name      = "${var.deployment_name}-${local.automation_cron_base_function_name}"
+  automation_cron_original_handler   = "index.handler"
 }
 
 resource "aws_lambda_function" "automation_cron" {
@@ -8,7 +9,7 @@ resource "aws_lambda_function" "automation_cron" {
 
   function_name = local.automation_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["AutomationCron"]
+  s3_key        = local.lambda_versions[local.automation_cron_base_function_name]
   role          = var.api_handler_role_arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.automation_cron_original_handler
   runtime       = "nodejs22.x"
@@ -43,7 +44,7 @@ resource "aws_lambda_function" "automation_cron" {
       },
       var.extra_env_vars.AutomationCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = local.automation_cron_function_name
+        DD_SERVICE        = local.automation_cron_base_function_name
         DD_LAMBDA_HANDLER = local.automation_cron_original_handler
       }) : {}
     )

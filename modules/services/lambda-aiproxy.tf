@@ -1,13 +1,14 @@
 locals {
-  ai_proxy_function_name    = "${var.deployment_name}-AIProxy"
-  ai_proxy_original_handler = "index.handler"
+  ai_proxy_base_function_name = "AIProxy"
+  ai_proxy_function_name      = "${var.deployment_name}-${local.ai_proxy_base_function_name}"
+  ai_proxy_original_handler   = "index.handler"
 }
 resource "aws_lambda_function" "ai_proxy" {
   depends_on = [aws_lambda_invocation.invoke_database_migration]
 
   function_name                  = local.ai_proxy_function_name
   s3_bucket                      = local.lambda_s3_bucket
-  s3_key                         = local.lambda_versions["AIProxy"]
+  s3_key                         = local.lambda_versions[local.ai_proxy_base_function_name]
   role                           = var.api_handler_role_arn
   handler                        = local.observability_enabled ? local.nodejs_datadog_handler : local.ai_proxy_original_handler
   runtime                        = "nodejs22.x"
@@ -37,7 +38,7 @@ resource "aws_lambda_function" "ai_proxy" {
       local.api_common_env_vars,
       var.extra_env_vars.AIProxy,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = local.ai_proxy_function_name
+        DD_SERVICE        = local.ai_proxy_base_function_name
         DD_LAMBDA_HANDLER = local.ai_proxy_original_handler
       }) : {}
     )

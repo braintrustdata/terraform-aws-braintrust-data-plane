@@ -1,6 +1,7 @@
 locals {
-  catchup_etl_function_name    = "${var.deployment_name}-CatchupETL"
-  catchup_etl_original_handler = "index.handler"
+  catchup_etl_base_function_name = "CatchupETL"
+  catchup_etl_function_name      = "${var.deployment_name}-${local.catchup_etl_base_function_name}"
+  catchup_etl_original_handler   = "index.handler"
 }
 
 resource "aws_lambda_function" "catchup_etl" {
@@ -8,7 +9,7 @@ resource "aws_lambda_function" "catchup_etl" {
 
   function_name = local.catchup_etl_function_name
   s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["CatchupETL"]
+  s3_key        = local.lambda_versions[local.catchup_etl_base_function_name]
   role          = aws_iam_role.default_role.arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.catchup_etl_original_handler
   runtime       = "nodejs22.x"
@@ -35,7 +36,7 @@ resource "aws_lambda_function" "catchup_etl" {
       },
       var.extra_env_vars.CatchupETL,
       local.observability_enabled ? merge(local.datadog_env_vars, {
-        DD_SERVICE        = local.catchup_etl_function_name
+        DD_SERVICE        = local.catchup_etl_base_function_name
         DD_LAMBDA_HANDLER = local.catchup_etl_original_handler
       }) : {}
     )
