@@ -110,6 +110,30 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
   })
 }
 
+resource "aws_iam_role_policy" "brainstore_cloudwatch_metrics" {
+  name = "cloudwatch-agent-metrics"
+  role = aws_iam_role.brainstore_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect : "Allow",
+        Action : ["cloudwatch:PutMetricData"],
+        Resource : "*",
+        Condition : {
+          StringEquals : { "cloudwatch:namespace" : "CWAgent" }
+        }
+      },
+      {
+        Effect : "Allow",
+        Action : ["ec2:DescribeTags"],
+        Resource : "*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "brainstore_cloudwatch_logs_access" {
   name = "cloudwatch-logs-access"
   role = aws_iam_role.brainstore_role.id
