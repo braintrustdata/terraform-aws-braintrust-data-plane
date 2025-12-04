@@ -7,11 +7,3 @@ repos:
       args: ["run", "lint"]
       language: system
       pass_filenames: false
-- repo: local
-  hooks:
-    - id: terraform-docs
-      name: mise terraform docs
-      entry: mise
-      args: ["run", "docs"]
-      language: system
-      pass_filenames: false

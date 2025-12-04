@@ -11,8 +11,7 @@ The default configuration is a large production-sized deployment. Please conside
 If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
 
 ## Module Configuration
-All module input variables and outputs are documented here:
-[`module-docs.md`](module-docs.md)
+All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
 
 ## Useful scripts
 
