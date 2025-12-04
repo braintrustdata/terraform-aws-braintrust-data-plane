@@ -16,7 +16,7 @@ run = """
 #!/usr/bin/env bash
 set -e
 echo "Validating module"
-terraform init
+terraform init -upgrade
 terraform validate
 
 echo "Validating example code"
@@ -29,7 +29,7 @@ module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
-terraform init
+terraform init -upgrade
 terraform validate
 """
 
@@ -39,7 +39,7 @@ run = """
 #!/usr/bin/env bash
 set -e
 echo "Validating module with OpenTofu"
-tofu init
+tofu init -upgrade
 tofu validate
 
 echo "Validating example code with OpenTofu"
@@ -52,6 +52,6 @@ module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
-tofu init
+tofu init -upgrade
 tofu validate
 """
