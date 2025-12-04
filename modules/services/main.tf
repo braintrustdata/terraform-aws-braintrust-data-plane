@@ -18,6 +18,8 @@ locals {
     DD_SITE            = "${var.internal_observability_region}.datadoghq.com"
     DD_API_KEY         = var.internal_observability_api_key != null ? var.internal_observability_api_key : ""
     DD_ENV             = var.internal_observability_env_name
+    DD_VERSION         = local.lambda_version_tag
+    DD_TAGS            = "braintrustdeploymentname:${var.deployment_name}"
     OTLP_HTTP_ENDPOINT = "http://localhost:4318"
   }
 
