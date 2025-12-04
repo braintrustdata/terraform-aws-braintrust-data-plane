@@ -1,5 +1,7 @@
 locals {
-  billing_cron_function_name = "${var.deployment_name}-BillingCron"
+  billing_cron_base_function_name = "BillingCron"
+  billing_cron_function_name      = "${var.deployment_name}-${local.billing_cron_base_function_name}"
+  billing_cron_original_handler   = "lambda.handler"
 }
 
 
@@ -8,13 +10,15 @@ resource "aws_lambda_function" "billing_cron" {
 
   function_name = local.billing_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["BillingCron"]
+  s3_key        = local.lambda_versions[local.billing_cron_base_function_name]
   role          = aws_iam_role.default_role.arn
-  handler       = "lambda.handler"
+  handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.billing_cron_original_handler
   runtime       = "nodejs22.x"
   timeout       = 300
   memory_size   = 1024
   architectures = ["arm64"]
+
+  layers = local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
 
   environment {
     variables = merge({
@@ -26,11 +30,17 @@ resource "aws_lambda_function" "billing_cron" {
       TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
       TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
       SERVICE_TOKEN_SECRET_KEY      = random_password.service_token_secret_key.result
-    }, var.extra_env_vars.BillingCron)
+      },
+      var.extra_env_vars.BillingCron,
+      local.observability_enabled ? merge(local.datadog_env_vars, {
+        DD_SERVICE        = local.billing_cron_base_function_name
+        DD_LAMBDA_HANDLER = local.billing_cron_original_handler
+      }) : {}
+    )
   }
 
   logging_config {
-    log_format = "Text"
+    log_format = local.observability_enabled ? "JSON" : "Text"
     log_group  = "/braintrust/${var.deployment_name}/${local.billing_cron_function_name}"
   }
 

@@ -1,5 +1,7 @@
 locals {
-  quarantine_warmup_function_name = "${var.deployment_name}-QuarantineWarmupFunction"
+  quarantine_warmup_base_function_name = "QuarantineWarmupFunction"
+  quarantine_warmup_function_name      = "${var.deployment_name}-${local.quarantine_warmup_base_function_name}"
+  quarantine_warmup_original_handler   = "index.handler"
 }
 
 resource "aws_lambda_function" "quarantine_warmup" {
@@ -9,18 +11,20 @@ resource "aws_lambda_function" "quarantine_warmup" {
 
   function_name = local.quarantine_warmup_function_name
   s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["QuarantineWarmupFunction"]
+  s3_key        = local.lambda_versions[local.quarantine_warmup_base_function_name]
   role          = var.api_handler_role_arn
-  handler       = "index.handler"
+  handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.quarantine_warmup_original_handler
   runtime       = "nodejs22.x"
   memory_size   = 1024
   timeout       = 900
   architectures = ["arm64"]
   kms_key_arn   = var.kms_key_arn
 
-  layers = [
-    "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
-  ]
+  # See https://github.com/tobilg/duckdb-nodejs-layer
+  layers = concat(
+    [local.duckdb_nodejs_arm64_layer_arn],
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
+  )
 
   environment {
     variables = merge({
@@ -38,11 +42,17 @@ resource "aws_lambda_function" "quarantine_warmup" {
       QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
       QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : ""
       QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
-    }, var.extra_env_vars.QuarantineWarmupFunction)
+      },
+      var.extra_env_vars.QuarantineWarmupFunction,
+      local.observability_enabled ? merge(local.datadog_env_vars, {
+        DD_SERVICE        = local.quarantine_warmup_base_function_name
+        DD_LAMBDA_HANDLER = local.quarantine_warmup_original_handler
+      }) : {}
+    )
   }
 
   logging_config {
-    log_format = "Text"
+    log_format = local.observability_enabled ? "JSON" : "Text"
     log_group  = "/braintrust/${var.deployment_name}/${local.quarantine_warmup_function_name}"
   }
 
