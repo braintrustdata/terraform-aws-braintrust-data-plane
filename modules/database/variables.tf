@@ -72,6 +72,12 @@ variable "kms_key_arn" {
   default     = null
 }
 
+variable "kms_key_arn_db" {
+  description = "KMS key ARN to use for encrypting DB resources. If not provided kms_key_arn is used. DO NOT change this after deployment. If you do, it will attempt to destroy your DB."
+  type        = string
+  default     = null
+}
+
 variable "multi_az" {
   description = "Specifies if the RDS instance is multi-AZ. Increases cost but provides higher availability. Recommended for production environments."
   type        = bool
