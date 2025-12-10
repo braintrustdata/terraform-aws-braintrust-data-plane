@@ -37,6 +37,18 @@ variable "kms_key_arn" {
   default     = ""
 }
 
+variable "kms_key_arn_s3" {
+  description = "Existing KMS key ARN to use for encrypting S3 resources.  Overrides kms_key_arn for buckets."
+  type        = string
+  default     = ""
+}
+
+variable "kms_key_arn_db" {
+  description = "Existing KMS key ARN to use for encrypting DB resources.  Overrides kms_key_arn for the database."
+  type        = string
+  default     = ""
+}
+
 variable "additional_kms_key_policies" {
   description = "Additional IAM policy statements to append to the generated KMS key."
   type        = list(any)

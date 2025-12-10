@@ -13,6 +13,11 @@ variable "kms_key_arn" {
   description = "The ARN of the KMS key to use for encrypting the Brainstore disks and S3 bucket. If not provided, AWS managed keys will be used."
 }
 
+variable "kms_key_arn_s3" {
+  type        = string
+  description = "The ARN of the KMS key to use for encrypting the S3 bucket. If not provided, kms_key_arn is used."
+}
+
 variable "brainstore_s3_bucket_arn" {
   type        = string
   description = "The ARN of the S3 bucket used by Brainstore"

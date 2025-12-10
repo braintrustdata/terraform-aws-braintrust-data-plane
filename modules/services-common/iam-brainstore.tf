@@ -146,7 +146,7 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
 
   policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Effect = "Allow"
         Action = [
@@ -158,8 +158,20 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
         ]
         Resource = var.kms_key_arn
       }
-    ]
+      ],
+      var.kms_key_arn_s3 == "" ? [] : [
+        {
+          Effect = "Allow"
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey"
+          ]
+          Resource = var.kms_key_arn_s3
+        }
+      ]
+    )
   })
 }
-
-

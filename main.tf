@@ -8,7 +8,9 @@ module "kms" {
 }
 
 locals {
-  kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
+  kms_key_arn    = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
+  kms_key_arn_s3 = var.kms_key_arn_s3 != "" ? var.kms_key_arn_s3 : local.kms_key_arn
+  kms_key_arn_db = var.kms_key_arn_db != "" ? var.kms_key_arn_db : local.kms_key_arn
   bastion_security_group = var.enable_braintrust_support_shell_access ? {
     "Remote Support Bastion" = module.remote_support[0].remote_support_security_group_id
   } : {}
@@ -96,7 +98,7 @@ module "database" {
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
-  kms_key_arn              = local.kms_key_arn
+  kms_key_arn_db           = local.kms_key_arn_db
   permissions_boundary_arn = var.permissions_boundary_arn
   custom_tags              = var.custom_tags
 }
@@ -132,7 +134,7 @@ module "storage" {
   source = "./modules/storage"
 
   deployment_name                     = var.deployment_name
-  kms_key_arn                         = local.kms_key_arn
+  kms_key_arn                         = local.kms_key_arn_s3
   brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins       = var.s3_additional_allowed_origins
   custom_tags                         = var.custom_tags
@@ -235,6 +237,7 @@ module "services_common" {
   deployment_name                           = var.deployment_name
   vpc_id                                    = local.main_vpc_id
   kms_key_arn                               = local.kms_key_arn
+  kms_key_arn_s3                            = var.kms_key_arn_s3
   database_secret_arn                       = module.database.postgres_database_secret_arn
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
   code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
@@ -305,5 +308,3 @@ module "brainstore" {
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
 }
-
-

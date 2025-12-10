@@ -80,7 +80,7 @@ resource "aws_iam_role_policy_attachment" "api_handler_additional_policy" {
 resource "aws_iam_policy" "api_handler_policy" {
   name = "${var.deployment_name}-APIHandlerRolePolicy"
   policy = jsonencode({ # nosemgrep
-    Statement = [
+    Statement = concat([
       {
         Sid      = "ElasticacheAccess"
         Action   = ["elasticache:DescribeCacheClusters"]
@@ -129,7 +129,21 @@ resource "aws_iam_policy" "api_handler_policy" {
           }
         }
       }
-    ]
+      ],
+      var.kms_key_arn_s3 == "" ? [] : [
+        {
+          Effect = "Allow"
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey"
+          ]
+          Resource = var.kms_key_arn_s3
+        },
+      ]
+    )
     Version = "2012-10-17"
   })
 

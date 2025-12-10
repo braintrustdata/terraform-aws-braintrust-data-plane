@@ -117,3 +117,13 @@ output "kms_key_arn" {
   value       = local.kms_key_arn
   description = "ARN of the KMS key used to encrypt Braintrust resources"
 }
+
+output "kms_key_arn_s3" {
+  value       = local.kms_key_arn_s3
+  description = "ARN of the KMS key used to encrypt S3 resources"
+}
+
+output "kms_key_arn_db" {
+  value       = local.kms_key_arn_db
+  description = "ARN of the KMS key used to encrypt DB resources"
+}
