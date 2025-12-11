@@ -172,7 +172,7 @@ resource "aws_iam_role_policy" "brainstore_ssm_parameter_access" {
       {
         Effect   = "Allow"
         Action   = "ssm:GetParameter"
-        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/braintrust/${var.deployment_name}/ai-proxy-url"
+        Resource = "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/braintrust/${var.deployment_name}/ai-proxy-url"
       }
     ]
   })
