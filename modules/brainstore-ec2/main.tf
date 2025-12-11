@@ -16,15 +16,6 @@ locals {
   brainstore_writer_cache_file_size = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
 }
 
-resource "aws_ssm_parameter" "ai_proxy_url" {
-  name        = "/braintrust/${var.deployment_name}/brainstore-proxy-url"
-  type        = "String"
-  value       = data.aws_lambda_function_url.ai_proxy.function_url
-  description = "AIProxy Lambda URL for Brainstore"
-
-  tags = local.common_tags
-}
-
 resource "aws_launch_template" "brainstore" {
   name                   = "${var.deployment_name}-brainstore"
   image_id               = data.aws_ami.ubuntu_24_04.id
@@ -164,8 +155,6 @@ resource "aws_lb_listener" "brainstore" {
 }
 
 resource "aws_autoscaling_group" "brainstore" {
-  depends_on = [aws_ssm_parameter.ai_proxy_url]
-
   name_prefix         = "${var.deployment_name}-brainstore"
   min_size            = var.instance_count
   max_size            = var.instance_count * 2
@@ -241,11 +230,3 @@ data "aws_ec2_instance_type" "brainstore_writer" {
 }
 
 data "aws_region" "current" {}
-
-data "aws_lambda_function" "ai_proxy" {
-  function_name = "${var.deployment_name}-AIProxy"
-}
-
-data "aws_lambda_function_url" "ai_proxy" {
-  function_name = data.aws_lambda_function.ai_proxy.function_name
-}

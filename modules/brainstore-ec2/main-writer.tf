@@ -140,9 +140,7 @@ resource "aws_lb_listener" "brainstore_writer" {
 }
 
 resource "aws_autoscaling_group" "brainstore_writer" {
-  count      = local.has_writer_nodes ? 1 : 0
-  depends_on = [aws_ssm_parameter.ai_proxy_url]
-
+  count                     = local.has_writer_nodes ? 1 : 0
   name_prefix               = "${var.deployment_name}-brainstore-writer"
   min_size                  = var.writer_instance_count
   max_size                  = var.writer_instance_count * 2

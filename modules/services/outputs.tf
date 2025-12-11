@@ -38,3 +38,8 @@ output "quarantine_lambda_security_group_id" {
   value       = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : null
 }
 
+output "ai_proxy_url_ssm_arn" {
+  description = "The ARN of the SSM parameter containing the AI proxy URL"
+  value       = aws_ssm_parameter.ai_proxy_url.arn
+}
+
