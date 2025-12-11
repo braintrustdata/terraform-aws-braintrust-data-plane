@@ -15,8 +15,8 @@
 
 # Store terraform state locally. Only use this for local testing.
 # Use S3 or other remote backends for production deployments.
-terraform {
-  backend "local" {
-    path = "terraform.tfstate"
-  }
-}
+# terraform {
+#   backend "local" {
+#     path = "terraform.tfstate"
+#   }
+# }

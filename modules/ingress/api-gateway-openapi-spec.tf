@@ -190,6 +190,9 @@ locals {
       "/logs3" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/logs-migration/status" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
       "/migration-status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
@@ -629,6 +632,18 @@ locals {
             }
           ]
         })
+      }
+      "/mcp-client/well-known" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/mcp-client/token" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/mcp-client/proxy" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/mcp-client/oauth-register" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
     }
 

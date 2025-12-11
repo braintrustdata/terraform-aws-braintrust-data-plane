@@ -15,6 +15,12 @@ variable "custom_certificate_arn" {
   default     = null
 }
 
+variable "waf_acl_id" {
+  description = "Optional WAF Web ACL ID to associate with the CloudFront distribution"
+  type        = string
+  default     = null
+}
+
 variable "use_global_ai_proxy" {
   description = "Whether to use the global Cloudflare proxy"
   type        = bool

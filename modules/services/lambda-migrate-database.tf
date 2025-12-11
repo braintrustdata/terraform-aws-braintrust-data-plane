@@ -1,21 +1,25 @@
 locals {
-  migrate_database_function_name = "${var.deployment_name}-MigrateDatabaseFunction"
+  migrate_database_base_function_name = "MigrateDatabaseFunction"
+  migrate_database_function_name      = "${var.deployment_name}-${local.migrate_database_base_function_name}"
+  migrate_database_original_handler   = "lambda_function.lambda_handler"
 }
 
 resource "aws_lambda_function" "migrate_database" {
   function_name = local.migrate_database_function_name
   s3_bucket     = local.lambda_s3_bucket
-  s3_key        = local.lambda_versions["MigrateDatabaseFunction"]
+  s3_key        = local.lambda_versions[local.migrate_database_base_function_name]
   role          = aws_iam_role.default_role.arn
-  handler       = "lambda_function.lambda_handler"
+  handler       = local.observability_enabled ? local.python_datadog_handler : local.migrate_database_original_handler
   runtime       = "python3.13"
   memory_size   = 1024
   timeout       = 900
   publish       = true
   kms_key_arn   = var.kms_key_arn
 
+  layers = local.observability_enabled ? [local.datadog_python_layer_arn, local.datadog_extension_layer_arn] : []
+
   logging_config {
-    log_format = "Text"
+    log_format = local.observability_enabled ? "JSON" : "Text"
     log_group  = "/braintrust/${var.deployment_name}/${local.migrate_database_function_name}"
   }
   environment {
@@ -24,7 +28,13 @@ resource "aws_lambda_function" "migrate_database" {
       PG_URL                          = local.postgres_url
       CLICKHOUSE_CONNECT_URL          = local.clickhouse_connect_url
       INSERT_LOGS2                    = "true"
-    }, var.extra_env_vars.MigrateDatabaseFunction)
+      },
+      var.extra_env_vars.MigrateDatabaseFunction,
+      local.observability_enabled ? merge(local.datadog_env_vars, {
+        DD_SERVICE        = local.migrate_database_base_function_name
+        DD_LAMBDA_HANDLER = local.migrate_database_original_handler
+      }) : {}
+    )
   }
 
   vpc_config {

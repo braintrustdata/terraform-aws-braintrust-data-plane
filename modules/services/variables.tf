@@ -301,3 +301,22 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "internal_observability_api_key" {
+  description = "Datadog API key for Lambda observability. When set, enables Datadog tracing on Lambda functions."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "internal_observability_env_name" {
+  description = "Environment name for Datadog observability (e.g., prod, staging)."
+  type        = string
+  default     = ""
+}
+
+variable "internal_observability_region" {
+  description = "Datadog region for observability (e.g., us5, us1, eu1)."
+  type        = string
+  default     = "us5"
+}

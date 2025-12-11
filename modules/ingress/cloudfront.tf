@@ -12,6 +12,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   comment      = "Braintrust Dataplane - ${var.deployment_name}"
   enabled      = true
   http_version = "http2and3"
+  web_acl_id   = var.waf_acl_id
   # Deploy only in North America and Europe. Reduces costs and deployment time.
   price_class = "PriceClass_100"
   aliases     = var.custom_domain != null ? [var.custom_domain] : null
@@ -94,7 +95,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     acm_certificate_arn            = var.custom_certificate_arn
 
     # These can only be set if cloudfront_default_certificate is false
-    minimum_protocol_version = var.custom_certificate_arn != null ? "TLSv1.2_2021" : null
+    minimum_protocol_version = var.custom_certificate_arn != null ? "TLSv1.3_2025" : null
     ssl_support_method       = var.custom_certificate_arn != null ? "sni-only" : null
   }
 

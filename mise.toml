@@ -4,13 +4,11 @@ pre-commit = "latest"
 terraform = "1.10"
 opentofu = "1.10"
 uv = "latest"
-terraform-docs = "latest"
 
 [tasks]
 lint = ["terraform fmt -recursive", "tflint --recursive"]
 setup = ["pre-commit install", "tflint --init"]
 precommit = ["pre-commit run --all-files"]
-docs = "terraform-docs ."
 
 [tasks.validate]
 description = "Validate the Terraform module and example code"
@@ -18,7 +16,7 @@ run = """
 #!/usr/bin/env bash
 set -e
 echo "Validating module"
-terraform init
+terraform init -upgrade
 terraform validate
 
 echo "Validating example code"
@@ -31,7 +29,7 @@ module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
-terraform init
+terraform init -upgrade
 terraform validate
 """
 
@@ -41,7 +39,7 @@ run = """
 #!/usr/bin/env bash
 set -e
 echo "Validating module with OpenTofu"
-tofu init
+tofu init -upgrade
 tofu validate
 
 echo "Validating example code with OpenTofu"
@@ -54,6 +52,6 @@ module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
-tofu init
+tofu init -upgrade
 tofu validate
 """

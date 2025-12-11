@@ -1,6 +1,0 @@
-formatter: "markdown document"
-sections:
-  show: ['header', 'inputs', 'outputs']
-output:
-  mode: "replace"
-  file: "module-docs.md"

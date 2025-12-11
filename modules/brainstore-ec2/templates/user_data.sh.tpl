@@ -139,8 +139,8 @@ else
 fi
 
 if [ "${is_dedicated_writer_node}" = "true" ]; then
-  # Until we are comfortable with stability
-  echo '0 * * * * root /usr/bin/docker restart brainstore > /var/log/brainstore-restart.log 2>&1' > /etc/cron.d/restart-brainstore
+  # Until we are comfortable with stability, restart the writer node hourly with a random delay up to 30 minutes
+  echo '0 * * * * root sleep $(shuf -i 0-1800 -n 1) && /usr/bin/docker restart brainstore >> /var/log/brainstore-restart.log 2>&1' > /etc/cron.d/restart-brainstore
 fi
 
 if [ -n "${internal_observability_api_key}" ]; then
@@ -184,6 +184,7 @@ BRAINSTORE_VERSION_OVERRIDE=${brainstore_version_override}
 BRAINSTORE_VERSION=$${BRAINSTORE_VERSION_OVERRIDE:-$${BRAINSTORE_RELEASE_VERSION}}
 
 docker run -d \
+  --init \
   --network host \
   --name brainstore \
   --env-file /etc/brainstore.env \
