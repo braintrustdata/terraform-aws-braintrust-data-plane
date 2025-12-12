@@ -107,3 +107,12 @@ resource "aws_lambda_permission" "ai_proxy" {
   principal              = "*"
   function_url_auth_type = "NONE"
 }
+
+resource "aws_ssm_parameter" "ai_proxy_url" {
+  name        = "/braintrust/${var.deployment_name}/ai-proxy-url"
+  type        = "String"
+  value       = aws_lambda_function_url.ai_proxy.function_url
+  description = "AIProxy Lambda URL for Brainstore"
+
+  tags = local.common_tags
+}
