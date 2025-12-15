@@ -30,6 +30,15 @@ resource "aws_cloudfront_distribution" "dataplane" {
       http_port                = 80
       origin_ssl_protocols     = ["TLSv1.2"]
     }
+
+    # This is required so that the MCP server can redirect to the correct domain
+    dynamic "custom_header" {
+      for_each = var.custom_domain != null ? [1] : []
+      content {
+        name  = "X-CloudFront-Domain"
+        value = var.custom_domain
+      }
+    }
   }
 
   origin {
