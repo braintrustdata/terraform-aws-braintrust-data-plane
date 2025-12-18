@@ -270,6 +270,17 @@ variable "redis_authorized_security_groups" {
   default     = {}
 }
 
+variable "cache_mode" {
+  description = "Cache backend to use. 'default' runs both old ElastiCache and new Valkey Serverless (migration state), 'serverless' runs only Valkey Serverless"
+  type        = string
+  default     = "default"
+
+  validation {
+    condition     = contains(["default", "serverless"], var.cache_mode)
+    error_message = "cache_mode must be 'default' or 'serverless'"
+  }
+}
+
 ## Services
 
 variable "api_handler_provisioned_concurrency" {

@@ -126,6 +126,7 @@ module "redis" {
   redis_instance_type = var.redis_instance_type
   redis_version       = var.redis_version
   custom_tags         = var.custom_tags
+  cache_mode          = var.cache_mode
 }
 
 module "storage" {

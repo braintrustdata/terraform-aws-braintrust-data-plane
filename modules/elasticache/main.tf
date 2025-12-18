@@ -2,6 +2,12 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+
+  # Migration logic:
+  # "default" = both old and new exist (migration state)
+  # "serverless" = only new exists (final state)
+  use_old_cluster = var.cache_mode == "default"
+  use_serverless  = true  # Always create serverless during migration
 }
 
 resource "aws_elasticache_subnet_group" "main" {
@@ -12,6 +18,8 @@ resource "aws_elasticache_subnet_group" "main" {
 }
 
 resource "aws_elasticache_cluster" "main" {
+  count = local.use_old_cluster ? 1 : 0
+
   cluster_id         = "${var.deployment_name}-redis"
   engine             = "redis"
   node_type          = var.redis_instance_type
@@ -19,6 +27,31 @@ resource "aws_elasticache_cluster" "main" {
   engine_version     = var.redis_version
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = [aws_security_group.elasticache.id]
+  tags               = local.common_tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_elasticache_serverless_cache" "valkey" {
+  count = local.use_serverless ? 1 : 0
+
+  engine = "valkey"
+  name   = "${var.deployment_name}-valkey"
+
+  cache_usage_limits {
+    data_storage {
+      maximum = 10
+      unit    = "GB"
+    }
+    ecpu_per_second {
+      maximum = 5000
+    }
+  }
+
+  security_group_ids = [aws_security_group.elasticache.id]
+  subnet_ids         = var.subnet_ids
   tags               = local.common_tags
 }
 
