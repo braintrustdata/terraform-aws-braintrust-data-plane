@@ -140,6 +140,12 @@ resource "aws_iam_role_policy_attachment" "brainstore_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy_attachment" "brainstore_additional_policy" {
+  count      = length(var.brainstore_additional_policy_arns)
+  role       = aws_iam_role.brainstore_role.name
+  policy_arn = var.brainstore_additional_policy_arns[count.index]
+}
+
 resource "aws_iam_role_policy" "brainstore_kms_policy" {
   name = "${var.deployment_name}-brainstore-kms-policy"
   role = aws_iam_role.brainstore_role.id

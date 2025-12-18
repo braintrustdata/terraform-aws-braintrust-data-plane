@@ -69,6 +69,12 @@ variable "service_additional_policy_arns" {
   default     = []
 }
 
+variable "brainstore_additional_policy_arns" {
+  type        = list(string)
+  description = "Additional policy ARNs to attach to the IAM role used by Brainstore"
+  default     = []
+}
+
 variable "enable_brainstore_ec2_ssm" {
   description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
   type        = bool

@@ -240,6 +240,7 @@ module "services_common" {
   code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
   service_additional_policy_arns            = var.service_additional_policy_arns
+  brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = var.existing_eks_cluster_arn
   eks_namespace                             = var.eks_namespace
