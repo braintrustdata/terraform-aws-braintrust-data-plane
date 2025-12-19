@@ -7,12 +7,16 @@ locals {
 resource "aws_cloudwatch_log_group" "catchup_etl" {
   name              = "/braintrust/${var.deployment_name}/${local.catchup_etl_function_name}"
   retention_in_days = 90
+  kms_key_id        = var.kms_key_arn
 
   tags = local.common_tags
 }
 
 resource "aws_lambda_function" "catchup_etl" {
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [
+    aws_lambda_invocation.invoke_database_migration,
+    aws_cloudwatch_log_group.catchup_etl
+  ]
 
   function_name = local.catchup_etl_function_name
   s3_bucket     = local.lambda_s3_bucket

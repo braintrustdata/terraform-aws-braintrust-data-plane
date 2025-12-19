@@ -9,6 +9,7 @@ resource "aws_cloudwatch_log_group" "quarantine_warmup" {
 
   name              = "/braintrust/${var.deployment_name}/${local.quarantine_warmup_function_name}"
   retention_in_days = 90
+  kms_key_id        = var.kms_key_arn
 
   tags = local.common_tags
 }
@@ -16,7 +17,10 @@ resource "aws_cloudwatch_log_group" "quarantine_warmup" {
 resource "aws_lambda_function" "quarantine_warmup" {
   count = var.use_quarantine_vpc ? 1 : 0
 
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [
+    aws_lambda_invocation.invoke_database_migration,
+    aws_cloudwatch_log_group.quarantine_warmup
+  ]
 
   function_name = local.quarantine_warmup_function_name
   s3_bucket     = local.lambda_s3_bucket
