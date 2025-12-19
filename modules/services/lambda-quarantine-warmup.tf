@@ -4,6 +4,16 @@ locals {
   quarantine_warmup_original_handler   = "index.handler"
 }
 
+resource "aws_cloudwatch_log_group" "quarantine_warmup" {
+  count = var.use_quarantine_vpc ? 1 : 0
+
+  name              = "/braintrust/${var.deployment_name}/${local.quarantine_warmup_function_name}"
+  retention_in_days = 90
+  kms_key_id        = var.kms_key_arn
+
+  tags = local.common_tags
+}
+
 resource "aws_lambda_function" "quarantine_warmup" {
   count = var.use_quarantine_vpc ? 1 : 0
 

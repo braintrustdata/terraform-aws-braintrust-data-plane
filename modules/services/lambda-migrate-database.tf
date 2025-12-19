@@ -4,6 +4,14 @@ locals {
   migrate_database_original_handler   = "lambda_function.lambda_handler"
 }
 
+resource "aws_cloudwatch_log_group" "migrate_database" {
+  name              = "/braintrust/${var.deployment_name}/${local.migrate_database_function_name}"
+  retention_in_days = 90
+  kms_key_id        = var.kms_key_arn
+
+  tags = local.common_tags
+}
+
 resource "aws_lambda_function" "migrate_database" {
   function_name = local.migrate_database_function_name
   s3_bucket     = local.lambda_s3_bucket
