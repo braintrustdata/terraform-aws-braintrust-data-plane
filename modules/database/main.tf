@@ -42,6 +42,7 @@ resource "aws_db_instance" "main" {
 
   performance_insights_enabled          = true
   performance_insights_retention_period = 7
+  performance_insights_kms_key_id       = var.kms_key_arn
 
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
   deletion_protection        = !var.DANGER_disable_deletion_protection
