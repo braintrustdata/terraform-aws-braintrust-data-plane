@@ -7,7 +7,6 @@ locals {
 resource "aws_cloudwatch_log_group" "migrate_database" {
   name              = "/braintrust/${var.deployment_name}/${local.migrate_database_function_name}"
   retention_in_days = 90
-  kms_key_id        = var.kms_key_arn
 
   tags = local.common_tags
 }
