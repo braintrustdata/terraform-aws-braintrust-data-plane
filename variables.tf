@@ -599,6 +599,12 @@ variable "brainstore_custom_post_install_script" {
   default     = ""
 }
 
+variable "advanced_brainstore_locks_path" {
+  type        = string
+  description = "Advanced: Custom path for BRAINSTORE_LOCKS_URI. Defaults to '/locks'. DO NOT USE THIS UNLESS INSTRUCTED BY Braintrust."
+  default     = null
+}
+
 variable "override_api_iam_role_trust_policy" {
   type        = string
   description = "Advanced: If provided, this will completely replace the trust policy for the API handler IAM role. Must be a valid JSON string representing the IAM trust policy document."

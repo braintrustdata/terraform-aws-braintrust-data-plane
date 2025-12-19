@@ -211,3 +211,13 @@ variable "cache_file_size_writer" {
   description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
 }
+
+variable "advanced_brainstore_locks_path" {
+  type        = string
+  description = "Advanced: Custom path for BRAINSTORE_LOCKS_URI. Defaults to '/locks'. DO NOT USE THIS UNLESS INSTRUCTED BY Braintrust."
+  default     = "/locks"
+  validation {
+    condition     = can(regex("^/", var.advanced_brainstore_locks_path))
+    error_message = "The advanced_brainstore_locks_path must start with a '/'."
+  }
+}

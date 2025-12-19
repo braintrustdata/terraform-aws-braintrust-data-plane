@@ -76,6 +76,7 @@ resource "aws_launch_template" "brainstore" {
     service_token_secret_key        = var.service_token_secret_key
     custom_post_install_script      = var.custom_post_install_script
     brainstore_cache_file_size      = local.brainstore_cache_file_size
+    brainstore_locks_path           = var.advanced_brainstore_locks_path
   }))
 
   tags = merge({
