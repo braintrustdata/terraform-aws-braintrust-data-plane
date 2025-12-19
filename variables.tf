@@ -355,6 +355,12 @@ variable "service_additional_policy_arns" {
   default     = []
 }
 
+variable "brainstore_additional_policy_arns" {
+  type        = list(string)
+  description = "Additional policy ARNs to attach to Brainstore"
+  default     = []
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. Don't set this unless instructed by Braintrust."
   type        = string
