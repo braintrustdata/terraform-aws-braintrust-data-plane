@@ -59,7 +59,7 @@ output "rds_security_group_id" {
 }
 
 output "valkey_security_group_id" {
-  value       = module.redis.valkey_security_group_id
+  value       = module.elasticache.valkey_security_group_id
   description = "ID of the security group for the Elasticache instance"
 }
 
@@ -89,7 +89,7 @@ output "postgres_database_secret_arn" {
 }
 
 output "valkey_arn" {
-  value       = module.redis.valkey_arn
+  value       = module.elasticache.valkey_arn
   description = "ARN of the Valkey instance"
 }
 

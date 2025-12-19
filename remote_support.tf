@@ -13,8 +13,8 @@ module "remote_support" {
 
   database_host         = module.database.postgres_database_address
   database_secret_arn   = module.database.postgres_database_secret_arn
-  redis_host            = module.redis.valkey_endpoint
-  redis_port            = module.redis.valkey_port
+  redis_host            = module.elasticache.valkey_endpoint
+  redis_port            = module.elasticache.valkey_port
   clickhouse_host       = null
   clickhouse_secret_arn = null
   kms_key_arn           = local.kms_key_arn

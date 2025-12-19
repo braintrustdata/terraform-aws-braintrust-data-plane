@@ -101,7 +101,12 @@ module "database" {
   custom_tags              = var.custom_tags
 }
 
-module "redis" {
+moved {
+  from = module.redis
+  to   = module.elasticache
+}
+
+module "elasticache" {
   source = "./modules/elasticache"
 
   deployment_name = var.deployment_name
@@ -154,8 +159,8 @@ module "services" {
   postgres_password = module.database.postgres_database_password
   postgres_host     = module.database.postgres_database_address
   postgres_port     = module.database.postgres_database_port
-  redis_host        = module.redis.valkey_endpoint
-  redis_port        = module.redis.valkey_port
+  redis_host        = module.elasticache.valkey_endpoint
+  redis_port        = module.elasticache.valkey_port
 
   clickhouse_host   = null
   clickhouse_secret = null
@@ -272,8 +277,8 @@ module "brainstore" {
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
   database_secret_arn                   = module.database.postgres_database_secret_arn
-  redis_host                            = module.redis.valkey_endpoint
-  redis_port                            = module.redis.valkey_port
+  redis_host                            = module.elasticache.valkey_endpoint
+  redis_port                            = module.elasticache.valkey_port
   service_token_secret_key              = module.services_common.function_tools_secret_key
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   internal_observability_api_key        = var.internal_observability_api_key
