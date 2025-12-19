@@ -1,27 +1,15 @@
 output "redis_endpoint" {
-  value = local.use_serverless ? (
-    aws_elasticache_serverless_cache.valkey[0].endpoint[0].address
-  ) : (
-    local.use_old_cluster ? aws_elasticache_cluster.main[0].cache_nodes[0].address : null
-  )
+  value       = aws_elasticache_serverless_cache.valkey.endpoint[0].address
   description = "Redis endpoint address"
 }
 
 output "redis_port" {
-  value = local.use_serverless ? (
-    aws_elasticache_serverless_cache.valkey[0].endpoint[0].port
-  ) : (
-    local.use_old_cluster ? aws_elasticache_cluster.main[0].cache_nodes[0].port : null
-  )
+  value       = aws_elasticache_serverless_cache.valkey.endpoint[0].port
   description = "Redis port"
 }
 
 output "redis_arn" {
-  value = local.use_serverless ? (
-    aws_elasticache_serverless_cache.valkey[0].arn
-  ) : (
-    local.use_old_cluster ? aws_elasticache_cluster.main[0].arn : null
-  )
+  value       = aws_elasticache_serverless_cache.valkey.arn
   description = "Redis ARN"
 }
 

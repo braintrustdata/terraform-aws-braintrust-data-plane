@@ -7,7 +7,6 @@ locals {
   # "default" = both old and new exist (migration state)
   # "serverless" = only new exists (final state)
   use_old_cluster = var.cache_mode == "default"
-  use_serverless  = true  # Always create serverless during migration
 }
 
 resource "aws_elasticache_subnet_group" "main" {
@@ -35,8 +34,6 @@ resource "aws_elasticache_cluster" "main" {
 }
 
 resource "aws_elasticache_serverless_cache" "valkey" {
-  count = local.use_serverless ? 1 : 0
-
   engine = "valkey"
   name   = "${var.deployment_name}-valkey"
 
