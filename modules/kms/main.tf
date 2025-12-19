@@ -49,6 +49,27 @@ resource "aws_kms_key" "braintrust" {
           Resource = "*"
         },
         {
+          Sid    = "Allow CloudWatch Logs to use the key"
+          Effect = "Allow"
+          Principal = {
+            Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+          }
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey",
+            "kms:CreateGrant"
+          ]
+          Resource = "*"
+          Condition = {
+            ArnLike = {
+              "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:*"
+            }
+          }
+        },
+        {
           Sid    = "Allow attachment of persistent resources"
           Effect = "Allow"
           Principal = {
@@ -83,3 +104,5 @@ resource "aws_kms_alias" "braintrust" {
 }
 
 data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
