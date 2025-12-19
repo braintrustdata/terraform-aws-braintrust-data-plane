@@ -4,6 +4,10 @@ resource "aws_secretsmanager_secret" "function_tools_secret" {
   description = "Function environment variables encryption key"
   kms_key_id  = var.kms_key_arn
   tags        = local.common_tags
+
+  lifecycle {
+    ignore_changes = [name, name_prefix]
+  }
 }
 
 data "aws_secretsmanager_random_password" "function_tools_secret" {
