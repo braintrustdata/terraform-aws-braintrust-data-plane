@@ -33,3 +33,8 @@ output "function_tools_secret_key" {
   value       = aws_secretsmanager_secret_version.function_tools_secret.secret_string
   sensitive   = true
 }
+
+output "function_tools_secret_arn" {
+  description = "The ARN of the function tools secret"
+  value       = aws_secretsmanager_secret.function_tools_secret.arn
+}

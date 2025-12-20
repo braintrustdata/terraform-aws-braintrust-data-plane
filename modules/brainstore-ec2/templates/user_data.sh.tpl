@@ -95,7 +95,7 @@ systemctl daemon-reload
 systemctl start amazon-cloudwatch-agent
 systemctl enable amazon-cloudwatch-agent
 
-# Get database credentials from Secrets Manager
+SERVICE_TOKEN_SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id ${service_token_secret_arn} --query SecretString --output text)
 DB_CREDS=$(aws secretsmanager get-secret-value --secret-id ${database_secret_arn} --query SecretString --output text)
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
@@ -114,7 +114,7 @@ BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
 BRAINSTORE_TIME_BASED_RETENTION_OBJECT_ALL=${brainstore_enable_retention}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
-SERVICE_TOKEN_SECRET_KEY=${service_token_secret_key}
+SERVICE_TOKEN_SECRET_KEY=$SERVICE_TOKEN_SECRET_KEY
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
