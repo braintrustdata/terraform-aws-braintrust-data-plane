@@ -15,7 +15,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
   role          = var.api_handler_role_arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.quarantine_warmup_original_handler
   runtime       = "nodejs22.x"
-  memory_size   = 1024
+  memory_size   = 2048
   timeout       = 900
   architectures = ["arm64"]
   kms_key_arn   = var.kms_key_arn
