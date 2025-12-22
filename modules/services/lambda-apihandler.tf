@@ -34,9 +34,6 @@ locals {
     BRAINSTORE_REALTIME_WAL_BUCKET = local.brainstore_s3_bucket
     BRAINSTORE_INSERT_ROW_REFS     = "true"
 
-    CLICKHOUSE_PG_URL      = local.clickhouse_pg_url
-    CLICKHOUSE_CONNECT_URL = local.clickhouse_connect_url
-
     CONTROL_PLANE_TELEMETRY       = var.monitoring_telemetry
     TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
     TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
