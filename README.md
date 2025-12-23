@@ -2,6 +2,11 @@
 
 This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
 
+## Architecture Diagram
+
+![Architecture Diagram](assets/diagram-export-12-23-2025.png)
+
+
 ## How to use this module
 
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
