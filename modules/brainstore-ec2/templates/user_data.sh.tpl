@@ -68,6 +68,7 @@ wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/$arch/latest/amazon-
 dpkg -i amazon-cloudwatch-agent.deb
 
 # Configure CloudWatch agent
+# Configure CloudWatch agent (logs + memory)
 cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
 {
   "logs": {
@@ -80,8 +81,34 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
             "log_group_name": "/braintrust/${deployment_name}/brainstore",
             "log_stream_name": "{instance_id}/containers",
             "timezone": "UTC"
+          },
+          {
+            "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+            "log_group_name": "/braintrust/${deployment_name}/brainstore",
+            "log_stream_name": "{instance_id}/cloudwatch-agent",
+            "timezone": "UTC"
           }
         ]
+      }
+    }
+  },
+  "metrics": {
+    "append_dimensions": {
+      "InstanceId": "\$${aws:InstanceId}"
+    },
+    "aggregation_dimensions": [
+      ["InstanceId"],
+      []
+    ],
+    "metrics_collected": {
+      "mem": {
+        "measurement": [
+          {"name":"mem_used_percent","rename":"MemoryUtilization","unit":"Percent"},
+          {"name":"mem_used","unit":"Bytes"},
+          {"name":"mem_available","unit":"Bytes"},
+          {"name":"mem_total","unit":"Bytes"}
+        ],
+        "metrics_collection_interval": 60
       }
     }
   }
