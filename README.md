@@ -4,7 +4,7 @@ This module is used to create the VPC, Databases, Lambdas, and associated resour
 
 ## Architecture Diagram
 
-![Architecture Diagram](assets/diagram-export-12-23-2025.png)
+![Architecture Diagram](assets/lambda-arch-diagram-export-12-23-2025.png)
 
 
 ## How to use this module
