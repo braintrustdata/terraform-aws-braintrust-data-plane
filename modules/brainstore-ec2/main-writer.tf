@@ -49,7 +49,6 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_version_override     = var.version_override == null ? "" : var.version_override
     brainstore_release_version      = local.brainstore_release_version
     monitoring_telemetry            = var.monitoring_telemetry
-    brainstore_enable_retention     = var.brainstore_enable_retention ? "true" : "false"
     is_dedicated_reader_node        = "false"
     is_dedicated_writer_node        = "true"
     extra_env_vars                  = var.extra_env_vars_writer
