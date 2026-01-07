@@ -165,19 +165,6 @@ variable "kms_key_arn" {
   default     = null
 }
 
-variable "clickhouse_host" {
-  description = "The host of the clickhouse instance"
-  type        = string
-  default     = null
-}
-
-variable "clickhouse_secret" {
-  description = "The secret containing the clickhouse credentials"
-  type        = string
-  default     = null
-}
-
-
 variable "brainstore_etl_batch_size" {
   type        = number
   description = "The batch size for the ETL process"
