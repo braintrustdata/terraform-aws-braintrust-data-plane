@@ -263,7 +263,6 @@ module "brainstore" {
   port                                  = var.brainstore_port
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
-  brainstore_enable_retention           = var.brainstore_enable_retention
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
