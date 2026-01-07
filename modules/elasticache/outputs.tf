@@ -1,19 +1,19 @@
-output "redis_endpoint" {
-  value       = aws_elasticache_cluster.main.cache_nodes[0].address
-  description = "Redis endpoint address"
+output "valkey_endpoint" {
+  value       = aws_elasticache_serverless_cache.valkey.endpoint[0].address
+  description = "Valkey endpoint address"
 }
 
-output "redis_port" {
-  value       = aws_elasticache_cluster.main.cache_nodes[0].port
-  description = "Redis port"
+output "valkey_port" {
+  value       = aws_elasticache_serverless_cache.valkey.endpoint[0].port
+  description = "Valkey port"
 }
 
-output "redis_arn" {
-  value       = aws_elasticache_cluster.main.arn
-  description = "Redis ARN"
+output "valkey_arn" {
+  value       = aws_elasticache_serverless_cache.valkey.arn
+  description = "Valkey ARN"
 }
 
-output "redis_security_group_id" {
+output "valkey_security_group_id" {
   value       = aws_security_group.elasticache.id
   description = "The ID of the security group for the Elasticache instance"
 }

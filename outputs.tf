@@ -58,8 +58,8 @@ output "rds_security_group_id" {
   description = "ID of the security group for the RDS instance"
 }
 
-output "redis_security_group_id" {
-  value       = module.redis.redis_security_group_id
+output "valkey_security_group_id" {
+  value       = module.elasticache.valkey_security_group_id
   description = "ID of the security group for the Elasticache instance"
 }
 
@@ -88,9 +88,9 @@ output "postgres_database_secret_arn" {
   description = "ARN of the secret containing the main Postgres database credentials"
 }
 
-output "redis_arn" {
-  value       = module.redis.redis_arn
-  description = "ARN of the Redis instance"
+output "valkey_arn" {
+  value       = module.elasticache.valkey_arn
+  description = "ARN of the Valkey instance"
 }
 
 output "api_url" {

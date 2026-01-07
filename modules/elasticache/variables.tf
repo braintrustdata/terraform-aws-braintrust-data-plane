@@ -36,3 +36,14 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "cache_mode" {
+  description = "Cache backend to use. 'default' runs both old and new (migration state), 'serverless' runs only Valkey Serverless"
+  type        = string
+  default     = "default"
+
+  validation {
+    condition     = contains(["default", "serverless"], var.cache_mode)
+    error_message = "cache_mode must be 'default' or 'serverless'"
+  }
+}
