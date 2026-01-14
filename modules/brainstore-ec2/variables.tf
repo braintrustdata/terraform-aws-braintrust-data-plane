@@ -205,3 +205,9 @@ variable "cache_file_size_writer" {
   description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
 }
+
+variable "active_writes_bucket" {
+  type        = string
+  description = "The S3 bucket name for Brainstore active writes"
+  default     = ""
+}

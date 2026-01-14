@@ -456,6 +456,13 @@ variable "brainstore_s3_bucket_retention_days" {
   default     = 7
 }
 
+# Generally only useful for advanced usage and testing.
+variable "brainstore_active_writes_bucket_override" {
+  type        = string
+  description = "Override the S3 bucket name for Brainstore active writes. If empty, defaults to the Lambda responses bucket."
+  default     = ""
+}
+
 variable "monitoring_telemetry" {
   description = <<-EOT
     The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values.

@@ -320,3 +320,9 @@ variable "internal_observability_region" {
   type        = string
   default     = "us5"
 }
+
+variable "brainstore_active_writes_bucket" {
+  type        = string
+  description = "The S3 bucket name for Brainstore active writes"
+  default     = ""
+}

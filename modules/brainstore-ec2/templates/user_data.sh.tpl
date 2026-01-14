@@ -119,6 +119,7 @@ AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
 BRAINSTORE_REDIS_URI=redis://${redis_host}:${redis_port}
 BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
+BRAINSTORE_ACTIVE_WRITES_URI=s3://${active_writes_bucket}/brainstore/wal
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}
 %{ endfor ~}

@@ -13,6 +13,9 @@ locals {
     "Remote Support Bastion" = module.remote_support[0].remote_support_security_group_id
   } : {}
 
+  # Active writes bucket: use override if specified, otherwise default to lambda responses bucket
+  brainstore_active_writes_bucket = var.brainstore_active_writes_bucket_override != "" ? var.brainstore_active_writes_bucket_override : module.storage.lambda_responses_bucket_id
+
   # VPC configuration - handle both created and existing VPCs
   main_vpc_id                  = var.create_vpc ? module.main_vpc[0].vpc_id : var.existing_vpc_id
   main_vpc_private_subnet_1_id = var.create_vpc ? module.main_vpc[0].private_subnet_1_id : var.existing_private_subnet_1_id
@@ -159,13 +162,14 @@ module "services" {
   clickhouse_host   = null
   clickhouse_secret = null
 
-  brainstore_enabled         = var.enable_brainstore
-  brainstore_default         = var.brainstore_default
-  brainstore_hostname        = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_s3_bucket_name  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  brainstore_port            = var.enable_brainstore ? module.brainstore[0].port : null
-  brainstore_etl_batch_size  = var.brainstore_etl_batch_size
+  brainstore_enabled              = var.enable_brainstore
+  brainstore_default              = var.brainstore_default
+  brainstore_hostname             = var.enable_brainstore ? module.brainstore[0].dns_name : null
+  brainstore_writer_hostname      = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_s3_bucket_name       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+  brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
+  brainstore_active_writes_bucket = local.brainstore_active_writes_bucket
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -304,6 +308,7 @@ module "brainstore" {
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
+  active_writes_bucket       = local.brainstore_active_writes_bucket
 }
 
 
