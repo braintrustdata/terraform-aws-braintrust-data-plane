@@ -54,16 +54,6 @@ variable "database_secret_arn" {
   type        = string
 }
 
-variable "clickhouse_host" {
-  description = "Hostname of the ClickHouse instance"
-  type        = string
-}
-
-variable "clickhouse_secret_arn" {
-  description = "ARN of the ClickHouse credentials secret"
-  type        = string
-}
-
 variable "redis_host" {
   description = "Hostname of the Redis instance"
   type        = string

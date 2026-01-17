@@ -11,13 +11,11 @@ module "remote_support" {
 
   deployment_name = var.deployment_name
 
-  database_host         = module.database.postgres_database_address
-  database_secret_arn   = module.database.postgres_database_secret_arn
-  redis_host            = module.redis.redis_endpoint
-  redis_port            = module.redis.redis_port
-  clickhouse_host       = null
-  clickhouse_secret_arn = null
-  kms_key_arn           = local.kms_key_arn
+  database_host       = module.database.postgres_database_address
+  database_secret_arn = module.database.postgres_database_secret_arn
+  redis_host          = module.redis.redis_endpoint
+  redis_port          = module.redis.redis_port
+  kms_key_arn         = local.kms_key_arn
   lambda_function_arns = [
     !var.use_deployment_mode_external_eks ? module.services[0].api_handler_arn : null,
     !var.use_deployment_mode_external_eks ? module.services[0].migrate_database_arn : null,

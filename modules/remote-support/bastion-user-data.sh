@@ -7,11 +7,9 @@ snap install aws-cli --classic
 
 TPL_REGION="${region}"
 TPL_DATABASE_SECRET_ARN="${database_secret_arn}"
-TPL_CLICKHOUSE_SECRET_ARN="${clickhouse_secret_arn}"
 TPL_REDIS_HOST="${redis_host}"
 TPL_REDIS_PORT="${redis_port}"
 TPL_DATABASE_HOST="${database_host}"
-TPL_CLICKHOUSE_HOST="${clickhouse_host}"
 
 export AWS_REGION=$TPL_REGION
 export AWS_DEFAULT_REGION=$TPL_REGION
@@ -20,19 +18,12 @@ DB_CREDS=$(aws secretsmanager get-secret-value --secret-id "$TPL_DATABASE_SECRET
 DB_USERNAME=$(echo "$DB_CREDS" | jq -r .username)
 DB_PASSWORD=$(echo "$DB_CREDS" | jq -r .password)
 
-CLICKHOUSE_PG_URL=""
-if [ -n "$TPL_CLICKHOUSE_HOST" ]; then
-  CLICKHOUSE_PASSWORD=$(aws secretsmanager get-secret-value --secret-id "$TPL_CLICKHOUSE_SECRET_ARN" --query SecretString --output text | jq -r .password)
-  CLICKHOUSE_PG_URL="http://default:$CLICKHOUSE_PASSWORD@$TPL_CLICKHOUSE_HOST:8123/default"
-fi
-
 # Do NOT use quotes here. Docker will include them as literals.
 cat <<EOF > /etc/braintrust.env
 export AWS_REGION=$TPL_REGION
 export AWS_DEFAULT_REGION=$TPL_REGION
 export REDIS_URL=redis://$TPL_REDIS_HOST:$TPL_REDIS_PORT
 export PG_URL=postgres://$DB_USERNAME:$DB_PASSWORD@$TPL_DATABASE_HOST/postgres
-export CLICKHOUSE_PG_URL=$CLICKHOUSE_PG_URL
 EOF
 
 echo -e "\nsource /etc/braintrust.env\n" >> /home/ubuntu/.bashrc

@@ -40,15 +40,13 @@ resource "aws_instance" "bastion" {
   }
 
   user_data = base64encode(templatefile("${path.module}/bastion-user-data.sh", {
-    deployment_name       = var.deployment_name
-    region                = data.aws_region.current.region
-    database_host         = var.database_host
-    database_secret_arn   = var.database_secret_arn
-    clickhouse_host       = var.clickhouse_host != null ? var.clickhouse_host : ""
-    clickhouse_secret_arn = var.clickhouse_secret_arn != null ? var.clickhouse_secret_arn : ""
-    redis_host            = var.redis_host
-    redis_port            = var.redis_port
-    lambda_function_arns  = var.lambda_function_arns
+    deployment_name      = var.deployment_name
+    region               = data.aws_region.current.region
+    database_host        = var.database_host
+    database_secret_arn  = var.database_secret_arn
+    redis_host           = var.redis_host
+    redis_port           = var.redis_port
+    lambda_function_arns = var.lambda_function_arns
   }))
 
   tags = merge({
@@ -188,10 +186,9 @@ resource "aws_iam_role_policy" "bastion" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = compact([
-          var.database_secret_arn,
-          var.clickhouse_secret_arn
-        ])
+        Resource = [
+          var.database_secret_arn
+        ]
       },
       {
         Effect = "Allow"

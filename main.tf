@@ -156,9 +156,6 @@ module "services" {
   redis_host        = module.redis.redis_endpoint
   redis_port        = module.redis.redis_port
 
-  clickhouse_host   = null
-  clickhouse_secret = null
-
   brainstore_enabled         = var.enable_brainstore
   brainstore_default         = var.brainstore_default
   brainstore_hostname        = var.enable_brainstore ? module.brainstore[0].dns_name : null
