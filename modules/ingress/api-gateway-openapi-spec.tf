@@ -441,6 +441,12 @@ locals {
       "/brainstore/status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
+      "/apiserver/status" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/status" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
       "/brainstore/backfill/status/active" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
