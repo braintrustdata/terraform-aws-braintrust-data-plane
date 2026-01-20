@@ -5,7 +5,8 @@ locals {
 }
 
 resource "aws_lambda_function" "quarantine_warmup" {
-  count = var.use_quarantine_vpc ? 1 : 0
+  # Only create the quarantine warmup Lambda when quarantine VPC is enabled AND not using external quarantine
+  count = var.use_quarantine_vpc && !var.use_external_quarantine ? 1 : 0
 
   depends_on = [aws_lambda_invocation.invoke_database_migration]
 
@@ -35,8 +36,8 @@ resource "aws_lambda_function" "quarantine_warmup" {
       REDIS_HOST = var.redis_host
       REDIS_PORT = var.redis_port
 
-      QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc ? aws_iam_role.quarantine_invoke_role.arn : ""
-      QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc ? aws_iam_role.quarantine_function_role.arn : ""
+      QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc && var.quarantine_invoke_role_arn != null ? var.quarantine_invoke_role_arn : (var.use_quarantine_vpc ? aws_iam_role.quarantine_invoke_role[0].arn : "")
+      QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : (var.use_quarantine_vpc ? aws_iam_role.quarantine_function_role[0].arn : "")
       QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
       QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
       QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
@@ -73,8 +74,9 @@ resource "aws_lambda_function" "quarantine_warmup" {
 }
 
 # Invoke the quarantine warmup lambda function every time the api handler is deployed
+# Only invoke when the Lambda function is actually created (not using external quarantine)
 resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
-  count      = var.use_quarantine_vpc ? 1 : 0
+  count      = var.use_quarantine_vpc && !var.use_external_quarantine ? 1 : 0
   depends_on = [aws_lambda_function.quarantine_warmup]
 
   function_name = aws_lambda_function.quarantine_warmup[0].function_name

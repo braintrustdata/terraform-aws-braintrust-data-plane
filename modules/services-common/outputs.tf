@@ -33,3 +33,13 @@ output "function_tools_secret_key" {
   value       = aws_secretsmanager_secret_version.function_tools_secret.secret_string
   sensitive   = true
 }
+
+output "quarantine_invoke_role_arn" {
+  description = "The ARN of the IAM role used by the API handler to invoke quarantined functions"
+  value       = var.enable_quarantine_vpc ? aws_iam_role.quarantine_invoke_role[0].arn : null
+}
+
+output "quarantine_function_role_arn" {
+  description = "The ARN of the IAM role used by quarantined Lambda functions"
+  value       = var.enable_quarantine_vpc ? aws_iam_role.quarantine_function_role[0].arn : null
+}

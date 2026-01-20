@@ -141,6 +141,12 @@ variable "enable_quarantine_vpc" {
   default     = true
 }
 
+variable "use_external_quarantine" {
+  type        = bool
+  description = "When true, quarantine functions will run externally (e.g., in EKS) rather than as Lambda functions managed by Terraform. The API handler will handle quarantine warmup functionality. IAM roles and policies will still be created for quarantine operations."
+  default     = false
+}
+
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"

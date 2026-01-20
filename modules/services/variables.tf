@@ -56,6 +56,12 @@ variable "use_quarantine_vpc" {
   default     = true
 }
 
+variable "use_external_quarantine" {
+  type        = bool
+  description = "When true, quarantine functions will run externally (e.g., in EKS) rather than as Lambda functions. The API handler will handle quarantine warmup functionality."
+  default     = false
+}
+
 variable "quarantine_vpc_id" {
   type        = string
   description = "The ID of the quarantine VPC"
@@ -287,6 +293,18 @@ variable "api_security_group_id" {
 variable "api_handler_role_arn" {
   type        = string
   description = "The ARN of the API handler role used by the API handler lambda and various other lambdas"
+  default     = null
+}
+
+variable "quarantine_invoke_role_arn" {
+  type        = string
+  description = "The ARN of the IAM role used by the API handler to invoke quarantined functions"
+  default     = null
+}
+
+variable "quarantine_function_role_arn" {
+  type        = string
+  description = "The ARN of the IAM role used by quarantined Lambda functions"
   default     = null
 }
 
