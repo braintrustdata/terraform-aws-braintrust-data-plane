@@ -22,10 +22,10 @@ resource "aws_lambda_function" "catchup_etl" {
 
   environment {
     variables = merge({
-      ORG_NAME                       = var.braintrust_org_name
-      PG_URL                         = local.postgres_url
-      REDIS_HOST                     = var.redis_host
-      REDIS_PORT                     = var.redis_port
+      ORG_NAME                                  = var.braintrust_org_name
+      PG_URL                                    = local.postgres_url
+      REDIS_HOST                                = var.redis_host
+      REDIS_PORT                                = var.redis_port
       BRAINSTORE_ENABLED                        = var.brainstore_enabled
       BRAINSTORE_URL                            = local.brainstore_url
       BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
