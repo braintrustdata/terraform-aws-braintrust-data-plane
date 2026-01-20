@@ -1,0 +1,9 @@
+var.brainstore_license_key
+  The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > Data Plane.
+
+  Enter a value: 
+
+Interrupt received.
+Please wait for Terraform to exit or data loss may occur.
+Gracefully shutting down...
+
