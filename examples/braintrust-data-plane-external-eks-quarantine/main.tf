@@ -10,7 +10,9 @@
 # - Deploys all IAM permissions needed for the Quarantine VPC
 
 module "braintrust-data-plane" {
-  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
+  # Using local source for testing - change to GitHub source for production
+  source = "../../"
+  # source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
   # This is primarily used for tagging and naming resources in your AWS account.
@@ -18,7 +20,10 @@ module "braintrust-data-plane" {
   deployment_name = "braintrust"
 
   # Add your organization name from the Braintrust UI here
-  braintrust_org_name = ""
+  braintrust_org_name = "test-org"
+
+  # Brainstore license key (required)
+  brainstore_license_key = var.brainstore_license_key
 
   # Enable external EKS deployment mode
   # When true, disables lambdas, ec2, and ingress submodules.

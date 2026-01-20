@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1"  # Change this to your AWS region
+  region = "us-east-1" # Change this to your AWS region
 
   # Optional, but recommended. Use a specific AWS credential profile for creating the Braintrust
   # resources. This helps prevent accidental changes in the wrong account.

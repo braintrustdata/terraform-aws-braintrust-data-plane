@@ -194,23 +194,23 @@ module "services" {
   ]
 
   # Quarantine VPC
-  use_quarantine_vpc       = var.enable_quarantine_vpc
-  use_external_quarantine  = var.use_external_quarantine
-  quarantine_vpc_id        = var.enable_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
+  use_quarantine_vpc      = var.enable_quarantine_vpc
+  use_external_quarantine = var.use_external_quarantine
+  quarantine_vpc_id       = var.enable_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
   quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
     module.quarantine_vpc[0].private_subnet_1_id,
     module.quarantine_vpc[0].private_subnet_2_id,
     module.quarantine_vpc[0].private_subnet_3_id
   ] : []
 
-  kms_key_arn                = local.kms_key_arn
-  permissions_boundary_arn   = var.permissions_boundary_arn
-  api_handler_role_arn       = module.services_common.api_handler_role_arn
-  api_security_group_id      = module.services_common.api_security_group_id
-  function_tools_secret_key   = module.services_common.function_tools_secret_key
-  quarantine_invoke_role_arn  = module.services_common.quarantine_invoke_role_arn
+  kms_key_arn                  = local.kms_key_arn
+  permissions_boundary_arn     = var.permissions_boundary_arn
+  api_handler_role_arn         = module.services_common.api_handler_role_arn
+  api_security_group_id        = module.services_common.api_security_group_id
+  function_tools_secret_key    = module.services_common.function_tools_secret_key
+  quarantine_invoke_role_arn   = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn = module.services_common.quarantine_function_role_arn
-  custom_tags                = var.custom_tags
+  custom_tags                  = var.custom_tags
 
   # Observability
   internal_observability_api_key  = var.internal_observability_api_key

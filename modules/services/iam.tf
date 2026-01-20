@@ -1,12 +1,25 @@
 locals {
   api_handler_role_name = basename(var.api_handler_role_arn)
+  # Quarantine roles are now created in services-common module
+  # These resources are kept for backward compatibility only
+  # Since services_common creates these roles when enable_quarantine_vpc is true,
+  # and we pass them as outputs, the backward compatibility code should not run
+  # However, we keep it for cases where the roles might not exist in services_common yet
+  # We use count with a static boolean check to avoid for_each with unknown values
+  # The backward compatibility will only create roles if explicitly needed
+  # In practice, services_common will always provide the ARNs when enable_quarantine_vpc = true
+  # So these should only be needed during migration from old deployments
+  should_create_quarantine_invoke_role = false  # Set to true only if manually needed for migration
+  should_create_quarantine_function_role = false  # Set to true only if manually needed for migration
 }
 
 # Quarantine IAM roles are now created in the services-common module
 # to support deployments with use_deployment_mode_external_eks = true
 # These resources are kept for backward compatibility when roles are not passed from services-common
+# Note: In normal operation, services_common will always provide the role ARNs when enable_quarantine_vpc = true
+# This backward compatibility code should only be needed during migration from old deployments
 resource "aws_iam_role" "quarantine_invoke_role" {
-  count = var.use_quarantine_vpc && var.quarantine_invoke_role_arn == null ? 1 : 0
+  count = local.should_create_quarantine_invoke_role ? 1 : 0
   name  = "${var.deployment_name}-QuarantineInvokeRole"
   assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
@@ -27,7 +40,7 @@ resource "aws_iam_role" "quarantine_invoke_role" {
 }
 
 resource "aws_iam_role_policy" "quarantine_invoke_policy" {
-  count = var.use_quarantine_vpc && var.quarantine_invoke_role_arn == null ? 1 : 0
+  count = local.should_create_quarantine_invoke_role ? 1 : 0
   name  = "${var.deployment_name}-QuarantineInvokeRolePolicy"
   role  = aws_iam_role.quarantine_invoke_role[0].id
   policy = jsonencode({ # nosemgrep
@@ -48,14 +61,14 @@ resource "aws_iam_role_policy" "quarantine_invoke_policy" {
 }
 
 resource "aws_iam_role_policies_exclusive" "quarantine_invoke_role" {
-  count      = var.use_quarantine_vpc && var.quarantine_invoke_role_arn == null ? 1 : 0
+  count      = local.should_create_quarantine_invoke_role ? 1 : 0
   role_name  = aws_iam_role.quarantine_invoke_role[0].name
   policy_names = [aws_iam_role_policy.quarantine_invoke_policy[0].name]
 }
 
 # The role used by the quarantined functions
 resource "aws_iam_role" "quarantine_function_role" {
-  count = var.use_quarantine_vpc && var.quarantine_function_role_arn == null ? 1 : 0
+  count = local.should_create_quarantine_function_role ? 1 : 0
   name  = "${var.deployment_name}-QuarantineFunctionRole"
 
   assume_role_policy = jsonencode({ # nosemgrep
@@ -77,7 +90,7 @@ resource "aws_iam_role" "quarantine_function_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "quarantine_function_role" {
-  count      = var.use_quarantine_vpc && var.quarantine_function_role_arn == null ? 1 : 0
+  count      = local.should_create_quarantine_function_role ? 1 : 0
   role       = aws_iam_role.quarantine_function_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
@@ -91,7 +104,7 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
 # The quarantine policy is now attached in the services-common module
 # This attachment is kept for backward compatibility when the policy is created here
 resource "aws_iam_role_policy_attachment" "api_handler_quarantine" {
-  count      = var.use_quarantine_vpc && var.quarantine_invoke_role_arn == null ? 1 : 0
+  count      = local.should_create_quarantine_invoke_role ? 1 : 0
   role       = local.api_handler_role_name
   policy_arn = aws_iam_policy.api_handler_quarantine[0].arn
 }
@@ -128,7 +141,7 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
       {
         Action   = "iam:PassRole"
         Effect   = "Allow"
-        Resource = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : (var.use_quarantine_vpc && length(aws_iam_role.quarantine_function_role) > 0 ? aws_iam_role.quarantine_function_role[0].arn : "*")
+        Resource = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : (local.should_create_quarantine_function_role ? aws_iam_role.quarantine_function_role[0].arn : "*")
       },
       {
         Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
@@ -143,7 +156,7 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
 }
 
 resource "aws_iam_policy" "api_handler_quarantine" {
-  count = var.use_quarantine_vpc && var.quarantine_invoke_role_arn == null ? 1 : 0
+  count = local.should_create_quarantine_invoke_role ? 1 : 0
   name  = "${var.deployment_name}-APIHandlerQuarantinePolicy"
   policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"

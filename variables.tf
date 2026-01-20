@@ -428,8 +428,12 @@ variable "brainstore_port" {
 
 variable "brainstore_license_key" {
   type        = string
-  description = "The license key for the Brainstore instance"
-  default     = null
+  description = "The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > Data Plane."
+  # No default value - this makes the variable required and Terraform will prompt for it if not provided
+  validation {
+    condition     = var.brainstore_license_key != null && var.brainstore_license_key != ""
+    error_message = "The brainstore_license_key must be set and cannot be empty."
+  }
 }
 
 variable "brainstore_version_override" {
