@@ -202,3 +202,101 @@ moved {
   from = module.database.aws_db_subnet_group.main
   to   = module.database.aws_db_subnet_group.main[0]
 }
+
+# Brainstore module refactored to be generic - Reader/ReaderWriter resources
+moved {
+  from = module.brainstore[0].aws_launch_template.brainstore
+  to   = module.brainstore_reader[0].aws_launch_template.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb.brainstore
+  to   = module.brainstore_reader[0].aws_lb.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_target_group.brainstore
+  to   = module.brainstore_reader[0].aws_lb_target_group.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_listener.brainstore
+  to   = module.brainstore_reader[0].aws_lb_listener.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_autoscaling_group.brainstore
+  to   = module.brainstore_reader[0].aws_autoscaling_group.brainstore
+}
+
+# Brainstore module refactored - Writer resources (only if writers were enabled)
+moved {
+  from = module.brainstore[0].aws_launch_template.brainstore_writer[0]
+  to   = module.brainstore_writer[0].aws_launch_template.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb.brainstore_writer[0]
+  to   = module.brainstore_writer[0].aws_lb.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_target_group.brainstore_writer[0]
+  to   = module.brainstore_writer[0].aws_lb_target_group.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_listener.brainstore_writer[0]
+  to   = module.brainstore_writer[0].aws_lb_listener.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_autoscaling_group.brainstore_writer[0]
+  to   = module.brainstore_writer[0].aws_autoscaling_group.brainstore
+}
+
+# Brainstore security group and data sources remain in the module (shared across instances)
+moved {
+  from = module.brainstore[0].aws_security_group.brainstore_elb
+  to   = module.brainstore_reader[0].aws_security_group.brainstore_elb
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups
+  to   = module.brainstore_reader[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_egress_rule.brainstore_elb_allow_egress_all
+  to   = module.brainstore_reader[0].aws_vpc_security_group_egress_rule.brainstore_elb_allow_egress_all
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_nlb
+  to   = module.brainstore_reader[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_nlb
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_authorized_security_groups_ssh
+  to   = module.brainstore_reader[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_authorized_security_groups_ssh
+}
+
+moved {
+  from = module.brainstore[0].aws_iam_instance_profile.brainstore
+  to   = module.brainstore_reader[0].aws_iam_instance_profile.brainstore
+}
+
+moved {
+  from = module.brainstore[0].data.aws_ami.ubuntu_24_04
+  to   = module.brainstore_reader[0].data.aws_ami.ubuntu_24_04
+}
+
+moved {
+  from = module.brainstore[0].data.aws_ec2_instance_type.brainstore
+  to   = module.brainstore_reader[0].data.aws_ec2_instance_type.brainstore
+}
+
+moved {
+  from = module.brainstore[0].data.aws_ec2_instance_type.brainstore_writer
+  to   = module.brainstore_writer[0].data.aws_ec2_instance_type.brainstore
+}

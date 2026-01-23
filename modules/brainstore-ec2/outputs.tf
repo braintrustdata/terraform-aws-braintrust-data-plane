@@ -3,11 +3,6 @@ output "dns_name" {
   value       = aws_lb.brainstore.dns_name
 }
 
-output "writer_dns_name" {
-  description = "The DNS name of the Brainstore writer NLB, if enabled"
-  value       = local.has_writer_nodes ? aws_lb.brainstore_writer[0].dns_name : null
-}
-
 output "port" {
   description = "The port used by Brainstore"
   value       = var.port

@@ -158,10 +158,10 @@ module "services" {
 
   brainstore_enabled         = var.enable_brainstore
   brainstore_default         = var.brainstore_default
-  brainstore_hostname        = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_hostname        = var.enable_brainstore ? module.brainstore_reader[0].dns_name : null
+  brainstore_writer_hostname = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore_writer[0].dns_name : null
   brainstore_s3_bucket_name  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  brainstore_port            = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_port            = var.enable_brainstore ? module.brainstore_reader[0].port : null
   brainstore_etl_batch_size  = var.brainstore_etl_batch_size
 
   # Storage
@@ -249,11 +249,15 @@ module "services_common" {
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
 }
 
-module "brainstore" {
+# Reader/ReaderWriter instances - if no writers are configured, these act as ReaderWriter
+module "brainstore_reader" {
   source = "./modules/brainstore-ec2"
   count  = var.enable_brainstore && !var.use_deployment_mode_external_eks ? 1 : 0
 
   deployment_name                       = var.deployment_name
+  role                                  = var.brainstore_writer_instance_count > 0 ? "Reader" : "ReaderWriter"
+  mode                                  = var.brainstore_writer_instance_count > 0 ? "reader" : "readerwriter"
+  instance_name_suffix                  = var.brainstore_writer_instance_count > 0 ? "reader" : ""
   instance_count                        = var.brainstore_instance_count
   instance_type                         = var.brainstore_instance_type
   instance_key_pair_name                = var.brainstore_instance_key_pair_name
@@ -261,9 +265,6 @@ module "brainstore" {
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
   extra_env_vars                        = var.brainstore_extra_env_vars
-  extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
-  writer_instance_count                 = var.brainstore_writer_instance_count
-  writer_instance_type                  = var.brainstore_writer_instance_type
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
@@ -299,8 +300,61 @@ module "brainstore" {
   brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
   custom_tags                = var.custom_tags
   custom_post_install_script = var.brainstore_custom_post_install_script
-  cache_file_size_reader     = var.brainstore_cache_file_size_reader
-  cache_file_size_writer     = var.brainstore_cache_file_size_writer
+  cache_file_size            = var.brainstore_cache_file_size_reader
+}
+
+# Writer instances - only created if writer_instance_count > 0
+module "brainstore_writer" {
+  source = "./modules/brainstore-ec2"
+  count  = var.enable_brainstore && !var.use_deployment_mode_external_eks && var.brainstore_writer_instance_count > 0 ? 1 : 0
+
+  deployment_name                       = var.deployment_name
+  role                                  = "Writer"
+  mode                                  = "writer"
+  instance_name_suffix                  = "writer"
+  instance_count                        = var.brainstore_writer_instance_count
+  instance_type                         = var.brainstore_writer_instance_type
+  instance_key_pair_name                = var.brainstore_instance_key_pair_name
+  port                                  = var.brainstore_port
+  license_key                           = var.brainstore_license_key
+  version_override                      = var.brainstore_version_override
+  extra_env_vars                        = var.brainstore_extra_env_vars_writer
+  monitoring_telemetry                  = var.monitoring_telemetry
+  database_host                         = module.database.postgres_database_address
+  database_port                         = module.database.postgres_database_port
+  database_secret_arn                   = module.database.postgres_database_secret_arn
+  redis_host                            = module.redis.redis_endpoint
+  redis_port                            = module.redis.redis_port
+  service_token_secret_key              = module.services_common.function_tools_secret_key
+  brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
+  internal_observability_api_key        = var.internal_observability_api_key
+  internal_observability_env_name       = var.internal_observability_env_name
+  internal_observability_region         = var.internal_observability_region
+  brainstore_instance_security_group_id = module.services_common.brainstore_instance_security_group_id
+  vpc_id                                = local.main_vpc_id
+  authorized_security_groups = merge(
+    merge(
+      {
+        "API" = module.services_common.api_security_group_id
+      },
+      # This is a deprecated security group that will be removed in the future
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+    ),
+    local.bastion_security_group
+  )
+  authorized_security_groups_ssh = local.bastion_security_group
+
+  private_subnet_ids = [
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id
+  ]
+
+  kms_key_arn                = local.kms_key_arn
+  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
+  custom_tags                = var.custom_tags
+  custom_post_install_script = var.brainstore_custom_post_install_script
+  cache_file_size            = var.brainstore_cache_file_size_writer
 }
 
 
