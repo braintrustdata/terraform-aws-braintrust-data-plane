@@ -26,15 +26,16 @@ locals {
   # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
   brainstore_cache_file_size = var.cache_file_size != null ? var.cache_file_size : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
 
-  # Determine NLB name using mode mapping, unless nlb_name is provided
+  # Determine NLB name using role mapping, unless nlb_name is provided
+  # Use lower() to normalize role for lookup (handles both "Reader" and "reader")
   nlb_name = var.nlb_name != null && var.nlb_name != "" ? var.nlb_name : lookup(
     {
       "writer"       = "${var.deployment_name}-bstr-w"
       "reader"       = "${var.deployment_name}-brainstore"
       "readerwriter" = "${var.deployment_name}-brainstore"
     },
-    var.role,
-    "${var.deployment_name}-bstr-${var.role}"
+    lower(var.role),
+    "${var.deployment_name}-bstr-${lower(var.role)}"
   )
 }
 
