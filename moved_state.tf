@@ -202,3 +202,91 @@ moved {
   from = module.database.aws_db_subnet_group.main
   to   = module.database.aws_db_subnet_group.main[0]
 }
+
+# =============================================================================
+# Brainstore EC2 module moved from root -> nested under services
+# =============================================================================
+
+# Reader resources (no count)
+moved {
+  from = module.brainstore[0].aws_launch_template.brainstore
+  to   = module.services[0].module.brainstore[0].aws_launch_template.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb.brainstore
+  to   = module.services[0].module.brainstore[0].aws_lb.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_target_group.brainstore
+  to   = module.services[0].module.brainstore[0].aws_lb_target_group.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_listener.brainstore
+  to   = module.services[0].module.brainstore[0].aws_lb_listener.brainstore
+}
+
+moved {
+  from = module.brainstore[0].aws_autoscaling_group.brainstore
+  to   = module.services[0].module.brainstore[0].aws_autoscaling_group.brainstore
+}
+
+# Writer resources (with count)
+moved {
+  from = module.brainstore[0].aws_launch_template.brainstore_writer
+  to   = module.services[0].module.brainstore[0].aws_launch_template.brainstore_writer
+}
+
+moved {
+  from = module.brainstore[0].aws_lb.brainstore_writer
+  to   = module.services[0].module.brainstore[0].aws_lb.brainstore_writer
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_target_group.brainstore_writer
+  to   = module.services[0].module.brainstore[0].aws_lb_target_group.brainstore_writer
+}
+
+moved {
+  from = module.brainstore[0].aws_lb_listener.brainstore_writer
+  to   = module.services[0].module.brainstore[0].aws_lb_listener.brainstore_writer
+}
+
+moved {
+  from = module.brainstore[0].aws_autoscaling_group.brainstore_writer
+  to   = module.services[0].module.brainstore[0].aws_autoscaling_group.brainstore_writer
+}
+
+# Security groups
+moved {
+  from = module.brainstore[0].aws_security_group.brainstore_elb
+  to   = module.services[0].module.brainstore[0].aws_security_group.brainstore_elb
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups
+  to   = module.services[0].module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_egress_rule.brainstore_elb_allow_egress_all
+  to   = module.services[0].module.brainstore[0].aws_vpc_security_group_egress_rule.brainstore_elb_allow_egress_all
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_nlb
+  to   = module.services[0].module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_nlb
+}
+
+moved {
+  from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_authorized_security_groups_ssh
+  to   = module.services[0].module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_authorized_security_groups_ssh
+}
+
+# IAM
+moved {
+  from = module.brainstore[0].aws_iam_instance_profile.brainstore
+  to   = module.services[0].module.brainstore[0].aws_iam_instance_profile.brainstore
+}

@@ -82,40 +82,140 @@ variable "brainstore_enabled" {
   default     = true
 }
 
-variable "brainstore_hostname" {
-  type        = string
-  description = "Hostname for Brainstore"
-  default     = ""
-  validation {
-    condition     = var.brainstore_enabled ? var.brainstore_hostname != null : true
-    error_message = "Brainstore hostname is required when Brainstore is enabled."
-  }
-}
-
-variable "brainstore_writer_hostname" {
-  type        = string
-  description = "Hostname for the dedicated Brainstore writer nodes, if enabled"
-  default     = null
-}
-
 variable "brainstore_port" {
   type        = number
   description = "Port for Brainstore"
   default     = 4000
-  validation {
-    condition     = var.brainstore_enabled ? var.brainstore_port != null : true
-    error_message = "Brainstore port is required when Brainstore is enabled."
-  }
 }
 
-variable "brainstore_s3_bucket_name" {
+# =============================================================================
+# Brainstore EC2 Configuration (passed to nested brainstore-ec2 module)
+# =============================================================================
+
+variable "brainstore_instance_count" {
+  type        = number
+  description = "The number of Brainstore reader instances to provision"
+  default     = 2
+}
+
+variable "brainstore_instance_type" {
   type        = string
-  description = "Name of the Brainstore S3 bucket"
+  description = "The instance type to use for Brainstore reader nodes"
+  default     = "c8gd.4xlarge"
+}
+
+variable "brainstore_instance_key_pair_name" {
+  type        = string
+  description = "The name of the key pair to use for the Brainstore instances"
+  default     = null
+}
+
+variable "brainstore_license_key" {
+  type        = string
+  description = "The license key for the Brainstore instance"
+  default     = null
+}
+
+variable "brainstore_version_override" {
+  type        = string
+  description = "Lock Brainstore on a specific version"
+  default     = null
+}
+
+variable "brainstore_extra_env_vars" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore reader or dual use nodes"
+  default     = {}
+}
+
+variable "brainstore_extra_env_vars_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore writer nodes"
+  default     = {}
+}
+
+variable "brainstore_writer_instance_count" {
+  type        = number
+  description = "The number of dedicated writer nodes to create"
+  default     = 1
+}
+
+variable "brainstore_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore writer nodes"
+  default     = "c8gd.8xlarge"
+}
+
+variable "database_host" {
+  type        = string
+  description = "The hostname of the database (for brainstore)"
+  default     = null
+}
+
+variable "database_port" {
+  type        = string
+  description = "The port of the database (for brainstore)"
+  default     = null
+}
+
+variable "database_secret_arn" {
+  type        = string
+  description = "The ARN of the secret containing database credentials"
+  default     = null
+}
+
+variable "brainstore_s3_bucket_arn" {
+  type        = string
+  description = "The ARN of the S3 bucket used by Brainstore"
+  default     = null
+}
+
+variable "brainstore_instance_security_group_id" {
+  type        = string
+  description = "The ID of the security group for Brainstore instances"
+  default     = null
+}
+
+variable "brainstore_iam_role_name" {
+  type        = string
+  description = "The name of the IAM role for Brainstore EC2 instances"
+  default     = null
+}
+
+variable "brainstore_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to IDs authorized to access Brainstore ELB"
+  default     = {}
+}
+
+variable "brainstore_authorized_security_groups_ssh" {
+  type        = map(string)
+  description = "Map of security group names to IDs authorized to access Brainstore via SSH"
+  default     = {}
+}
+
+variable "brainstore_custom_post_install_script" {
+  type        = string
+  description = "Optional custom bash script to run at the end of the user-data script"
   default     = ""
-  validation {
-    condition     = var.brainstore_enabled ? var.brainstore_s3_bucket_name != null : true
-    error_message = "Brainstore S3 bucket name is required when Brainstore is enabled."
-  }
+}
+
+variable "brainstore_cache_file_size_reader" {
+  type        = string
+  description = "Optional. Override the cache file size for reader nodes"
+  default     = null
+}
+
+variable "brainstore_cache_file_size_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for writer nodes"
+  default     = null
+}
+
+variable "private_subnet_ids" {
+  type        = list(string)
+  description = "The IDs of the private subnets (used by brainstore)"
+  default     = []
 }
 
 variable "whitelisted_origins" {

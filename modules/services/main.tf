@@ -36,11 +36,18 @@ locals {
     lambda => trimspace(data.http.lambda_versions[lambda].response_body)
   }
 
-  postgres_url            = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
-  using_brainstore_writer = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
-  brainstore_url          = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
-  brainstore_writer_url   = var.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-  brainstore_s3_bucket    = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
+  postgres_url = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
+
+  # Brainstore URLs - derived from internal brainstore module when enabled
+  brainstore_dns_name        = var.brainstore_enabled ? module.brainstore[0].dns_name : null
+  brainstore_writer_dns_name = var.brainstore_enabled && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_port_internal   = var.brainstore_enabled ? module.brainstore[0].port : var.brainstore_port
+  brainstore_url             = var.brainstore_enabled ? "http://${local.brainstore_dns_name}:${local.brainstore_port_internal}" : ""
+  brainstore_writer_url      = var.brainstore_enabled && var.brainstore_writer_instance_count > 0 ? "http://${local.brainstore_writer_dns_name}:${local.brainstore_port_internal}" : ""
+
+  # Extract bucket ID from ARN for brainstore
+  brainstore_s3_bucket_id = var.brainstore_enabled && var.brainstore_s3_bucket_arn != null ? split(":::", var.brainstore_s3_bucket_arn)[1] : ""
+  brainstore_s3_bucket    = local.brainstore_s3_bucket_id
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
