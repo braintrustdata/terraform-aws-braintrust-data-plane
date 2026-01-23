@@ -144,7 +144,44 @@ variable "enable_quarantine_vpc" {
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"
-  description = "CIDR block for the Quarantined VPC"
+  description = "CIDR block for the Quarantined VPC (only used when creating a new quarantine VPC)"
+}
+
+# Existing Quarantine VPC variables (when provided, uses existing VPC instead of creating one)
+variable "existing_quarantine_vpc_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine VPC to use. If provided, the quarantine VPC will not be created."
+}
+
+variable "existing_quarantine_private_subnet_1_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine private subnet 1 (required when existing_quarantine_vpc_id is provided)"
+  validation {
+    condition     = var.existing_quarantine_vpc_id == null || var.existing_quarantine_private_subnet_1_id != null
+    error_message = "existing_quarantine_private_subnet_1_id is required when existing_quarantine_vpc_id is provided."
+  }
+}
+
+variable "existing_quarantine_private_subnet_2_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine private subnet 2 (required when existing_quarantine_vpc_id is provided)"
+  validation {
+    condition     = var.existing_quarantine_vpc_id == null || var.existing_quarantine_private_subnet_2_id != null
+    error_message = "existing_quarantine_private_subnet_2_id is required when existing_quarantine_vpc_id is provided."
+  }
+}
+
+variable "existing_quarantine_private_subnet_3_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine private subnet 3 (required when existing_quarantine_vpc_id is provided)"
+  validation {
+    condition     = var.existing_quarantine_vpc_id == null || var.existing_quarantine_private_subnet_3_id != null
+    error_message = "existing_quarantine_private_subnet_3_id is required when existing_quarantine_vpc_id is provided."
+  }
 }
 
 variable "quarantine_private_subnet_1_az" {
