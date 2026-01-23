@@ -33,8 +33,8 @@ locals {
       "reader"       = "${var.deployment_name}-brainstore"
       "readerwriter" = "${var.deployment_name}-brainstore"
     },
-    var.mode,
-    "${var.deployment_name}-bstr-${var.mode}"
+    var.role,
+    "${var.deployment_name}-bstr-${var.role}"
   )
 }
 
