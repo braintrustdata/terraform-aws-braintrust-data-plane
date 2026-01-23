@@ -26,8 +26,16 @@ locals {
   # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
   brainstore_cache_file_size = var.cache_file_size != null ? var.cache_file_size : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
 
-  # NLB name - use short name for writers to fit within 32 char limit
-  nlb_name = var.mode == "writer" ? "${var.deployment_name}-bstr-w" : "${var.deployment_name}-brainstore${local.name_suffix}"
+  # Determine NLB name using mode mapping, unless nlb_name is provided
+  nlb_name = var.nlb_name != null && var.nlb_name != "" ? var.nlb_name : lookup(
+    {
+      "writer"       = "${var.deployment_name}-bstr-w"
+      "reader"       = "${var.deployment_name}-brainstore"
+      "readerwriter" = "${var.deployment_name}-brainstore"
+    },
+    var.mode,
+    "${var.deployment_name}-bstr-${var.mode}"
+  )
 }
 
 resource "aws_launch_template" "brainstore" {
