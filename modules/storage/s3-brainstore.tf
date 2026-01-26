@@ -48,6 +48,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
       noncurrent_days = var.brainstore_s3_bucket_retention_days
     }
 
+    expiration {
+      expired_object_delete_marker = true
+    }
+
     abort_incomplete_multipart_upload {
       days_after_initiation = 1
     }

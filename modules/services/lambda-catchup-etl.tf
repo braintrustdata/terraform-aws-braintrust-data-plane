@@ -22,17 +22,15 @@ resource "aws_lambda_function" "catchup_etl" {
 
   environment {
     variables = merge({
-      ORG_NAME                       = var.braintrust_org_name
-      PG_URL                         = local.postgres_url
-      REDIS_HOST                     = var.redis_host
-      REDIS_PORT                     = var.redis_port
-      BRAINSTORE_ENABLED             = var.brainstore_enabled
-      BRAINSTORE_URL                 = local.brainstore_url
-      BRAINSTORE_WRITER_URL          = local.brainstore_writer_url
-      BRAINSTORE_REALTIME_WAL_BUCKET = local.brainstore_s3_bucket
-      CLICKHOUSE_ETL_BATCH_SIZE      = var.brainstore_etl_batch_size
-      CLICKHOUSE_PG_URL              = local.clickhouse_pg_url
-      CLICKHOUSE_CONNECT_URL         = local.clickhouse_connect_url
+      ORG_NAME                                  = var.braintrust_org_name
+      PG_URL                                    = local.postgres_url
+      REDIS_HOST                                = var.redis_host
+      REDIS_PORT                                = var.redis_port
+      BRAINSTORE_ENABLED                        = var.brainstore_enabled
+      BRAINSTORE_URL                            = local.brainstore_url
+      BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
+      BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
+      BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = var.brainstore_etl_batch_size
       },
       var.extra_env_vars.CatchupETL,
       local.observability_enabled ? merge(local.datadog_env_vars, {

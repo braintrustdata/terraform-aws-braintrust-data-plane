@@ -20,6 +20,13 @@ locals {
   main_vpc_private_subnet_3_id = var.create_vpc ? module.main_vpc[0].private_subnet_3_id : var.existing_private_subnet_3_id
   main_vpc_public_subnet_1_id  = var.create_vpc ? module.main_vpc[0].public_subnet_1_id : var.existing_public_subnet_1_id
 
+  # Quarantine VPC configuration - handle both created and existing VPCs
+  create_quarantine_vpc              = var.enable_quarantine_vpc && var.existing_quarantine_vpc_id == null
+  quarantine_vpc_id                  = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_vpc_id : module.quarantine_vpc[0].vpc_id) : null
+  quarantine_vpc_private_subnet_1_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_1_id : module.quarantine_vpc[0].private_subnet_1_id) : null
+  quarantine_vpc_private_subnet_2_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_2_id : module.quarantine_vpc[0].private_subnet_2_id) : null
+  quarantine_vpc_private_subnet_3_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id : module.quarantine_vpc[0].private_subnet_3_id) : null
+
   # Database subnet configuration - use custom subnets if provided, otherwise use main VPC private subnets
   database_subnet_ids = var.database_subnet_ids != null ? var.database_subnet_ids : [
     local.main_vpc_private_subnet_1_id,
@@ -50,7 +57,7 @@ module "main_vpc" {
 
 module "quarantine_vpc" {
   source = "./modules/vpc"
-  count  = var.enable_quarantine_vpc ? 1 : 0
+  count  = local.create_quarantine_vpc ? 1 : 0
 
   deployment_name = var.deployment_name
   vpc_name        = "quarantine"
@@ -156,9 +163,6 @@ module "services" {
   redis_host        = module.redis.redis_endpoint
   redis_port        = module.redis.redis_port
 
-  clickhouse_host   = null
-  clickhouse_secret = null
-
   brainstore_enabled         = var.enable_brainstore
   brainstore_default         = var.brainstore_default
   brainstore_hostname        = var.enable_brainstore ? module.brainstore[0].dns_name : null
@@ -196,11 +200,11 @@ module "services" {
   # Quarantine VPC
   use_quarantine_vpc      = var.enable_quarantine_vpc
   use_external_quarantine = var.use_external_quarantine
-  quarantine_vpc_id       = var.enable_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
+  quarantine_vpc_id       = local.quarantine_vpc_id
   quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
-    module.quarantine_vpc[0].private_subnet_1_id,
-    module.quarantine_vpc[0].private_subnet_2_id,
-    module.quarantine_vpc[0].private_subnet_3_id
+    local.quarantine_vpc_private_subnet_1_id,
+    local.quarantine_vpc_private_subnet_2_id,
+    local.quarantine_vpc_private_subnet_3_id
   ] : []
 
   kms_key_arn                  = local.kms_key_arn

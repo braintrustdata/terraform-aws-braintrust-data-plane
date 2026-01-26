@@ -44,6 +44,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_responses_bucket" {
       noncurrent_days = 1
     }
   }
+
+  rule {
+    id     = "ExpireDeleteMarkers"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    expiration {
+      expired_object_delete_marker = true
+    }
+  }
 }
 
 resource "aws_s3_bucket_cors_configuration" "lambda_responses_bucket" {
