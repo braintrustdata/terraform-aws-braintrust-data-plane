@@ -9,8 +9,8 @@ locals {
   # The backward compatibility will only create roles if explicitly needed
   # In practice, services_common will always provide the ARNs when enable_quarantine_vpc = true
   # So these should only be needed during migration from old deployments
-  should_create_quarantine_invoke_role = false  # Set to true only if manually needed for migration
-  should_create_quarantine_function_role = false  # Set to true only if manually needed for migration
+  should_create_quarantine_invoke_role   = false # Set to true only if manually needed for migration
+  should_create_quarantine_function_role = false # Set to true only if manually needed for migration
 }
 
 # Quarantine IAM roles are now created in the services-common module
@@ -61,8 +61,8 @@ resource "aws_iam_role_policy" "quarantine_invoke_policy" {
 }
 
 resource "aws_iam_role_policies_exclusive" "quarantine_invoke_role" {
-  count      = local.should_create_quarantine_invoke_role ? 1 : 0
-  role_name  = aws_iam_role.quarantine_invoke_role[0].name
+  count        = local.should_create_quarantine_invoke_role ? 1 : 0
+  role_name    = aws_iam_role.quarantine_invoke_role[0].name
   policy_names = [aws_iam_role_policy.quarantine_invoke_policy[0].name]
 }
 
