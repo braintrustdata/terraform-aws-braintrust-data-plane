@@ -1,7 +1,7 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 module "braintrust-data-plane" {
-  source = "../../"
+  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
   ### Examples below are shown with the module defaults. You do not have to uncomment them
