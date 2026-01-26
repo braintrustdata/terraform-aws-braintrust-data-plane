@@ -23,8 +23,6 @@ These resources are available for use by your EKS-deployed services via EKS Pod 
 1. **EKS Configuration**:
    - Set `use_deployment_mode_external_eks = true`
    - Set `enable_eks_pod_identity = true`
-   - Optionally set `existing_eks_cluster_arn` to restrict trust policies
-   - Optionally set `eks_namespace` to restrict trust policies
 
 2. **Quarantine VPC**:
    - Set `enable_quarantine_vpc = true` (this is the default)
@@ -40,14 +38,47 @@ These resources are available for use by your EKS-deployed services via EKS Pod 
 2. **Initialize your AWS account**:
    - If using a brand new AWS account, run `./scripts/create-service-linked-roles.sh` once
 
-3. **Deploy the infrastructure**:
+3. **Deploy the infrastructure** (initial deployment):
    ```bash
    terraform init
    terraform plan
    terraform apply
    ```
 
-4. **Configure your EKS cluster**:
+4. **Create your EKS cluster** (outside of this Terraform module):
+   - Deploy your EKS cluster in your AWS account
+   - Note the EKS cluster ARN, namespace, and security group ID
+
+5. **Configure post-EKS settings** (after EKS cluster exists):
+
+   After your EKS cluster is created, update `main.tf` with the following configurations and re-apply:
+
+   a. **Enable EKS Pod Identity or IRSA**:
+
+      ```hcl
+      existing_eks_cluster_arn = "<your EKS cluster ARN>"
+      eks_namespace = "<your EKS namespace>"
+      ```
+
+   b. **Configure database and Redis security groups**:
+
+      ```hcl
+      database_authorized_security_groups = {
+        "<your EKS cluster security group name>" = "<your EKS cluster security group ID>"
+      }
+      redis_authorized_security_groups = {
+        "<your EKS cluster security group name>" = "<your EKS cluster security group ID>"
+      }
+      ```
+
+   c. **Re-apply Terraform**:
+
+      ```bash
+      terraform plan
+      terraform apply
+      ```
+
+6. **Deploy Braintrust services to EKS**:
    - Set up EKS Pod Identity associations for the Braintrust IAM roles
    - Deploy your Braintrust services to the EKS cluster
    - Ensure services can access the Quarantine VPC
