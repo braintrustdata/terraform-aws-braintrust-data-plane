@@ -30,17 +30,21 @@ module "braintrust-data-plane" {
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
+  # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module. 
   # Enable EKS Pod Identity for the Braintrust IAM roles
-  enable_eks_pod_identity = true
-
-  # Optional: Specify your EKS cluster ARN to restrict the trust policy
-  # existing_eks_cluster_arn = "arn:aws:eks:us-east-1:123456789012:cluster/my-cluster"
-
-  # Optional: Specify the EKS namespace to restrict the trust policy
-  # eks_namespace = "braintrust"
-
+  #enable_eks_pod_identity = true
+  #enable_eks_irsa = true
+  #existing_eks_cluster_arn = "<your EKS cluster ARN>"
+  #eks_namespace = "<your EKS namespace>"
   # Enable the Quarantine VPC to run user defined functions in an isolated environment
   enable_quarantine_vpc = true
+
+  #database_authorized_security_groups = {
+  #  "<your EKS cluster security group name>" = "<your EKS cluster security group ID>"
+  #}
+  #redis_authorized_security_groups = {
+  #   "<your EKS cluster security group name>" = "<your EKS cluster security group ID>"
+  # }
 
   # CIDR block for the Quarantined VPC
   # You might need to adjust this so it does not conflict with any other VPC CIDR blocks
