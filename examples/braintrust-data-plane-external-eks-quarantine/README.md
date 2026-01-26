@@ -92,8 +92,19 @@ terraform output
 ```
 
 Key outputs:
+
+**Quarantine VPC Resources:**
+
 - `quarantine_vpc_id` - The Quarantine VPC ID for configuring your EKS services
-- `api_handler_role_arn` - The API handler IAM role ARN for EKS Pod Identity
+- `quarantine_invoke_role_arn` - IAM role ARN used by the API handler to invoke quarantined functions
+- `quarantine_function_role_arn` - IAM role ARN used by quarantined Lambda functions
+- `quarantine_private_subnet_1_id` - First private subnet ID in the quarantine VPC
+- `quarantine_private_subnet_2_id` - Second private subnet ID in the quarantine VPC
+- `quarantine_private_subnet_3_id` - Third private subnet ID in the quarantine VPC
+- `quarantine_vpc_default_security_group_id` - Default security group ID for the quarantine VPC
+
+**Other Resources:**
+
 - `main_vpc_id` - The main VPC ID
 
 ## Network Configuration
