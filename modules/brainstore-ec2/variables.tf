@@ -205,3 +205,9 @@ variable "cache_file_size_writer" {
   description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
 }
+
+variable "locks_s3_path" {
+  type        = string
+  description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
+  default     = "/locks"
+}
