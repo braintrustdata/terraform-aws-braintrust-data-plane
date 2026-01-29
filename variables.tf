@@ -481,6 +481,12 @@ variable "brainstore_cache_file_size_writer" {
   default     = null
 }
 
+variable "brainstore_locks_s3_path" {
+  type        = string
+  description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
+  default     = "/locks"
+}
+
 variable "brainstore_etl_batch_size" {
   type        = number
   description = "The batch size for the ETL process"

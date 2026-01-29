@@ -308,6 +308,7 @@ module "brainstore" {
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
+  locks_s3_path              = var.brainstore_locks_s3_path
 }
 
 
