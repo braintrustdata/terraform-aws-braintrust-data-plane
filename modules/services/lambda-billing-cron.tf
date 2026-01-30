@@ -77,3 +77,9 @@ resource "aws_lambda_permission" "allow_billing_cron_eventbridge" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.billing_cron_schedule.arn
 }
+
+# TODO: remove this after automation cron migration
+resource "random_password" "service_token_secret_key" {
+  length  = 32
+  special = false
+}
