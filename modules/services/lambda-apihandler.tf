@@ -39,6 +39,7 @@ locals {
     TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
 
     SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
+    CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
   }
   # There env vars are specific to the API Handler. Don't add env vars here if you need them for the AI Proxy as well.
   api_handler_specific_env_vars = {
