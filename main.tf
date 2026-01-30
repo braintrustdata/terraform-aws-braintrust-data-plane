@@ -198,9 +198,9 @@ module "services" {
   ]
 
   # Quarantine VPC
-  use_quarantine_vpc      = var.enable_quarantine_vpc
-  use_external_quarantine = var.use_external_quarantine
-  quarantine_vpc_id       = local.quarantine_vpc_id
+  use_quarantine_vpc               = var.enable_quarantine_vpc
+  use_deployment_mode_external_eks = var.use_deployment_mode_external_eks
+  quarantine_vpc_id                = local.quarantine_vpc_id
   quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
     local.quarantine_vpc_private_subnet_1_id,
     local.quarantine_vpc_private_subnet_2_id,

@@ -5,8 +5,8 @@ locals {
 }
 
 resource "aws_lambda_function" "quarantine_warmup" {
-  # Only create the quarantine warmup Lambda when quarantine VPC is enabled AND not using external quarantine
-  count = var.use_quarantine_vpc && !var.use_external_quarantine ? 1 : 0
+  # Only create the quarantine warmup Lambda when quarantine VPC is enabled AND not using external EKS deployment mode
+  count = var.use_quarantine_vpc && !var.use_deployment_mode_external_eks ? 1 : 0
 
   depends_on = [aws_lambda_invocation.invoke_database_migration]
 
@@ -74,9 +74,9 @@ resource "aws_lambda_function" "quarantine_warmup" {
 }
 
 # Invoke the quarantine warmup lambda function every time the api handler is deployed
-# Only invoke when the Lambda function is actually created (not using external quarantine)
+# Only invoke when the Lambda function is actually created (not using external EKS deployment mode)
 resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
-  count      = var.use_quarantine_vpc && !var.use_external_quarantine ? 1 : 0
+  count      = var.use_quarantine_vpc && !var.use_deployment_mode_external_eks ? 1 : 0
   depends_on = [aws_lambda_function.quarantine_warmup]
 
   function_name = aws_lambda_function.quarantine_warmup[0].function_name

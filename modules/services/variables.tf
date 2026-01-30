@@ -56,9 +56,9 @@ variable "use_quarantine_vpc" {
   default     = true
 }
 
-variable "use_external_quarantine" {
+variable "use_deployment_mode_external_eks" {
   type        = bool
-  description = "When true, quarantine functions will run externally (e.g., in EKS) rather than as Lambda functions. The API handler will handle quarantine warmup functionality."
+  description = "Whether services are deployed externally in EKS. When true, quarantine warmup is handled by the EKS-deployed API handler instead of Lambda."
   default     = false
 }
 
