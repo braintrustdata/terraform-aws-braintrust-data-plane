@@ -98,3 +98,19 @@ variable "override_brainstore_iam_role_trust_policy" {
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
   default     = null
 }
+
+variable "enable_quarantine_vpc" {
+  type        = bool
+  description = "Whether to enable Quarantine VPC IAM resources. These are needed for running user-defined functions in an isolated environment."
+  default     = false
+}
+
+variable "quarantine_vpc_id" {
+  type        = string
+  description = "The ID of the quarantine VPC. Required when enable_quarantine_vpc is true."
+  default     = null
+  validation {
+    condition     = var.enable_quarantine_vpc ? var.quarantine_vpc_id != null : true
+    error_message = "quarantine_vpc_id is required when enable_quarantine_vpc is true."
+  }
+}
