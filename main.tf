@@ -258,7 +258,7 @@ module "services_common" {
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
   enable_quarantine_vpc                     = var.enable_quarantine_vpc
-  quarantine_vpc_id                         = var.enable_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
+  quarantine_vpc_id                         = local.quarantine_vpc_id
 }
 
 module "brainstore" {
