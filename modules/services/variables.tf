@@ -295,6 +295,12 @@ variable "quarantine_function_role_arn" {
   default     = null
 }
 
+variable "quarantine_lambda_security_group_id" {
+  type        = string
+  description = "The ID of the security group for quarantine Lambda functions"
+  default     = null
+}
+
 variable "function_tools_secret_key" {
   type        = string
   description = "The function tools encryption key used for environment variables"

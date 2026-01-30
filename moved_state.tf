@@ -239,3 +239,15 @@ moved {
   from = module.services.aws_iam_role_policy_attachment.api_handler_quarantine[0]
   to   = module.services_common.aws_iam_role_policy_attachment.api_handler_quarantine[0]
 }
+
+# Quarantine security group moved from services -> services-common
+# This ensures the security group is available in both Lambda and EKS deployment modes
+moved {
+  from = module.services[0].aws_security_group.quarantine_lambda[0]
+  to   = module.services_common.aws_security_group.quarantine_lambda[0]
+}
+
+moved {
+  from = module.services[0].aws_security_group_rule.quarantine_lambda_allow_egress_all[0]
+  to   = module.services_common.aws_security_group_rule.quarantine_lambda_allow_egress_all[0]
+}
