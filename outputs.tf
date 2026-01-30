@@ -129,21 +129,21 @@ output "quarantine_function_role_arn" {
 }
 
 output "quarantine_private_subnet_1_id" {
-  value       = var.enable_quarantine_vpc ? module.quarantine_vpc[0].private_subnet_1_id : null
+  value       = local.quarantine_vpc_private_subnet_1_id
   description = "ID of the first private subnet in the quarantine VPC"
 }
 
 output "quarantine_private_subnet_2_id" {
-  value       = var.enable_quarantine_vpc ? module.quarantine_vpc[0].private_subnet_2_id : null
+  value       = local.quarantine_vpc_private_subnet_2_id
   description = "ID of the second private subnet in the quarantine VPC"
 }
 
 output "quarantine_private_subnet_3_id" {
-  value       = var.enable_quarantine_vpc ? module.quarantine_vpc[0].private_subnet_3_id : null
+  value       = local.quarantine_vpc_private_subnet_3_id
   description = "ID of the third private subnet in the quarantine VPC"
 }
 
-output "quarantine_vpc_default_security_group_id" {
-  value       = var.enable_quarantine_vpc ? module.quarantine_vpc[0].default_security_group_id : null
-  description = "ID of the default security group for the quarantine VPC"
+output "quarantine_lambda_security_group_id" {
+  value       = !var.use_deployment_mode_external_eks ? module.services[0].quarantine_lambda_security_group_id : null
+  description = "ID of the security group for quarantine Lambda functions (null in external EKS mode)"
 }

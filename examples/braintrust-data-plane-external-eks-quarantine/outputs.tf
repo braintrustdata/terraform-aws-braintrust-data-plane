@@ -29,9 +29,9 @@ output "quarantine_private_subnet_3_id" {
   value       = module.braintrust-data-plane.quarantine_private_subnet_3_id
 }
 
-output "quarantine_vpc_default_security_group_id" {
-  description = "ID of the default security group for the quarantine VPC"
-  value       = module.braintrust-data-plane.quarantine_vpc_default_security_group_id
+output "quarantine_lambda_security_group_id" {
+  description = "ID of the security group for quarantine Lambda functions (null in external EKS mode)"
+  value       = module.braintrust-data-plane.quarantine_lambda_security_group_id
 }
 
 output "main_vpc_id" {
