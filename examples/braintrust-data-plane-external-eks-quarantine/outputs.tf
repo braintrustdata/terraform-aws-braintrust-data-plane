@@ -30,7 +30,7 @@ output "quarantine_private_subnet_3_id" {
 }
 
 output "quarantine_lambda_security_group_id" {
-  description = "ID of the security group for quarantine Lambda functions (null in external EKS mode)"
+  description = "ID of the security group for quarantine Lambda functions"
   value       = module.braintrust-data-plane.quarantine_lambda_security_group_id
 }
 

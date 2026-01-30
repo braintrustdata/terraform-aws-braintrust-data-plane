@@ -144,6 +144,6 @@ output "quarantine_private_subnet_3_id" {
 }
 
 output "quarantine_lambda_security_group_id" {
-  value       = !var.use_deployment_mode_external_eks ? module.services[0].quarantine_lambda_security_group_id : null
-  description = "ID of the security group for quarantine Lambda functions (null in external EKS mode)"
+  value       = module.services_common.quarantine_lambda_security_group_id
+  description = "ID of the security group for quarantine Lambda functions"
 }
