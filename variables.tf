@@ -282,6 +282,12 @@ variable "existing_database_subnet_group_name" {
   default     = null
 }
 
+variable "postgres_backup_retention_period" {
+  description = "Number of days to retain automated RDS backups."
+  type        = number
+  default     = 14
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
