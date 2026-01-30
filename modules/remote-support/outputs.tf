@@ -12,3 +12,8 @@ output "remote_support_security_group_id" {
   description = "Security Group ID for the Remote Support bastion host."
   value       = try(aws_security_group.bastion_ssh[0].id, null)
 }
+
+output "instance_connect_endpoint_security_group_id" {
+  description = "Security Group ID for the EC2 Instance Connect Endpoint. Required for brainstore instances to allow aws ec2-instance-connect ssh (connection originates from this endpoint)."
+  value       = try(aws_security_group.instance_connect_endpoint[0].id, null)
+}
