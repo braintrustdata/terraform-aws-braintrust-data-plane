@@ -180,6 +180,7 @@ module "services" {
 
   # Service configuration
   braintrust_org_name                        = var.braintrust_org_name
+  primary_org_name                           = var.primary_org_name
   api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
