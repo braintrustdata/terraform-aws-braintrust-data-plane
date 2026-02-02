@@ -12,6 +12,9 @@ locals {
   bastion_security_group = var.enable_braintrust_support_shell_access ? {
     "Remote Support Bastion" = module.remote_support[0].remote_support_security_group_id
   } : {}
+  instance_connect_endpoint_security_group = var.enable_braintrust_support_shell_access ? {
+    "EC2 Instance Connect Endpoint" = module.remote_support[0].instance_connect_endpoint_security_group_id
+  } : {}
 
   # VPC configuration - handle both created and existing VPCs
   main_vpc_id                  = var.create_vpc ? module.main_vpc[0].vpc_id : var.existing_vpc_id
@@ -19,6 +22,13 @@ locals {
   main_vpc_private_subnet_2_id = var.create_vpc ? module.main_vpc[0].private_subnet_2_id : var.existing_private_subnet_2_id
   main_vpc_private_subnet_3_id = var.create_vpc ? module.main_vpc[0].private_subnet_3_id : var.existing_private_subnet_3_id
   main_vpc_public_subnet_1_id  = var.create_vpc ? module.main_vpc[0].public_subnet_1_id : var.existing_public_subnet_1_id
+
+  # Quarantine VPC configuration - handle both created and existing VPCs
+  create_quarantine_vpc              = var.enable_quarantine_vpc && var.existing_quarantine_vpc_id == null
+  quarantine_vpc_id                  = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_vpc_id : module.quarantine_vpc[0].vpc_id) : null
+  quarantine_vpc_private_subnet_1_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_1_id : module.quarantine_vpc[0].private_subnet_1_id) : null
+  quarantine_vpc_private_subnet_2_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_2_id : module.quarantine_vpc[0].private_subnet_2_id) : null
+  quarantine_vpc_private_subnet_3_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id : module.quarantine_vpc[0].private_subnet_3_id) : null
 
   # Database subnet configuration - use custom subnets if provided, otherwise use main VPC private subnets
   database_subnet_ids = var.database_subnet_ids != null ? var.database_subnet_ids : [
@@ -50,7 +60,7 @@ module "main_vpc" {
 
 module "quarantine_vpc" {
   source = "./modules/vpc"
-  count  = var.enable_quarantine_vpc ? 1 : 0
+  count  = local.create_quarantine_vpc ? 1 : 0
 
   deployment_name = var.deployment_name
   vpc_name        = "quarantine"
@@ -192,11 +202,11 @@ module "services" {
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
-  quarantine_vpc_id  = var.enable_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
+  quarantine_vpc_id  = local.quarantine_vpc_id
   quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
-    module.quarantine_vpc[0].private_subnet_1_id,
-    module.quarantine_vpc[0].private_subnet_2_id,
-    module.quarantine_vpc[0].private_subnet_3_id
+    local.quarantine_vpc_private_subnet_1_id,
+    local.quarantine_vpc_private_subnet_2_id,
+    local.quarantine_vpc_private_subnet_3_id
   ] : []
 
   kms_key_arn               = local.kms_key_arn
@@ -288,7 +298,10 @@ module "brainstore_reader" {
     ),
     local.bastion_security_group
   )
-  authorized_security_groups_ssh = local.bastion_security_group
+  authorized_security_groups_ssh = merge(
+    local.bastion_security_group,
+    local.instance_connect_endpoint_security_group
+  )
 
   private_subnet_ids = [
     local.main_vpc_private_subnet_1_id,
@@ -301,6 +314,7 @@ module "brainstore_reader" {
   custom_tags                = var.custom_tags
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size            = var.brainstore_cache_file_size_reader
+  locks_s3_path              = var.brainstore_locks_s3_path
 }
 
 # Writer instances - only created if writer_instance_count > 0
@@ -355,6 +369,7 @@ module "brainstore_writer" {
   custom_tags                = var.custom_tags
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size            = var.brainstore_cache_file_size_writer
+  locks_s3_path              = var.brainstore_locks_s3_path
 }
 
 

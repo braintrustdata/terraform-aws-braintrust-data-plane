@@ -144,7 +144,44 @@ variable "enable_quarantine_vpc" {
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"
-  description = "CIDR block for the Quarantined VPC"
+  description = "CIDR block for the Quarantined VPC (only used when creating a new quarantine VPC)"
+}
+
+# Existing Quarantine VPC variables (when provided, uses existing VPC instead of creating one)
+variable "existing_quarantine_vpc_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine VPC to use. If provided, the quarantine VPC will not be created."
+}
+
+variable "existing_quarantine_private_subnet_1_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine private subnet 1 (required when existing_quarantine_vpc_id is provided)"
+  validation {
+    condition     = var.existing_quarantine_vpc_id == null || var.existing_quarantine_private_subnet_1_id != null
+    error_message = "existing_quarantine_private_subnet_1_id is required when existing_quarantine_vpc_id is provided."
+  }
+}
+
+variable "existing_quarantine_private_subnet_2_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine private subnet 2 (required when existing_quarantine_vpc_id is provided)"
+  validation {
+    condition     = var.existing_quarantine_vpc_id == null || var.existing_quarantine_private_subnet_2_id != null
+    error_message = "existing_quarantine_private_subnet_2_id is required when existing_quarantine_vpc_id is provided."
+  }
+}
+
+variable "existing_quarantine_private_subnet_3_id" {
+  type        = string
+  default     = null
+  description = "ID of existing Quarantine private subnet 3 (required when existing_quarantine_vpc_id is provided)"
+  validation {
+    condition     = var.existing_quarantine_vpc_id == null || var.existing_quarantine_private_subnet_3_id != null
+    error_message = "existing_quarantine_private_subnet_3_id is required when existing_quarantine_vpc_id is provided."
+  }
 }
 
 variable "quarantine_private_subnet_1_az" {
@@ -442,6 +479,12 @@ variable "brainstore_cache_file_size_writer" {
   type        = string
   description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
+}
+
+variable "brainstore_locks_s3_path" {
+  type        = string
+  description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
+  default     = "/locks"
 }
 
 variable "brainstore_etl_batch_size" {

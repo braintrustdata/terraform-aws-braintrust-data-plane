@@ -206,3 +206,9 @@ variable "nlb_name" {
   description = "Optional. Override the NLB and target group name. If not set, automatically generates based on mode. Must be 32 characters or less."
   default     = null
 }
+
+variable "locks_s3_path" {
+  type        = string
+  description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
+  default     = "/locks"
+}
