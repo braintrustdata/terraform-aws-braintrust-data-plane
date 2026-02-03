@@ -309,12 +309,12 @@ module "brainstore_reader" {
     local.main_vpc_private_subnet_3_id
   ]
 
-  kms_key_arn                = local.kms_key_arn
-  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
-  custom_tags                = var.custom_tags
-  custom_post_install_script = var.brainstore_custom_post_install_script
-  cache_file_size            = var.brainstore_cache_file_size_reader
-  locks_s3_path              = var.brainstore_locks_s3_path
+  kms_key_arn                     = local.kms_key_arn
+  brainstore_instance_profile_arn = module.services_common.brainstore_instance_profile_arn
+  custom_tags                     = var.custom_tags
+  custom_post_install_script      = var.brainstore_custom_post_install_script
+  cache_file_size                 = var.brainstore_cache_file_size_reader
+  locks_s3_path                   = var.brainstore_locks_s3_path
 }
 
 # Writer instances - only created if writer_instance_count > 0
@@ -363,12 +363,12 @@ module "brainstore_writer" {
     local.main_vpc_private_subnet_3_id
   ]
 
-  kms_key_arn                = local.kms_key_arn
-  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
-  custom_tags                = var.custom_tags
-  custom_post_install_script = var.brainstore_custom_post_install_script
-  cache_file_size            = var.brainstore_cache_file_size_writer
-  locks_s3_path              = var.brainstore_locks_s3_path
+  kms_key_arn                     = local.kms_key_arn
+  brainstore_instance_profile_arn = module.services_common.brainstore_instance_profile_arn
+  custom_tags                     = var.custom_tags
+  custom_post_install_script      = var.brainstore_custom_post_install_script
+  cache_file_size                 = var.brainstore_cache_file_size_writer
+  locks_s3_path                   = var.brainstore_locks_s3_path
 }
 
 
