@@ -57,12 +57,6 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
-variable "authorized_security_groups_ssh" {
-  type        = map(string)
-  description = "Map of security group names to their IDs that are authorized to access Brainstore instances via SSH. Format: { name = <security_group_id> }"
-  default     = {}
-}
-
 variable "private_subnet_ids" {
   type        = list(string)
   description = "The IDs of the private subnets where Brainstore instances will be launched"

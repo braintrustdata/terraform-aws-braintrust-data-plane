@@ -257,6 +257,10 @@ module "services_common" {
   custom_tags                               = var.custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
+  brainstore_authorized_security_groups_ssh = merge(
+    local.bastion_security_group,
+    local.instance_connect_endpoint_security_group
+  )
 }
 
 # Reader/ReaderWriter instances - if no writers are configured, these act as ReaderWriter
@@ -297,10 +301,6 @@ module "brainstore_reader" {
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group
-  )
-  authorized_security_groups_ssh = merge(
-    local.bastion_security_group,
-    local.instance_connect_endpoint_security_group
   )
 
   private_subnet_ids = [
@@ -356,7 +356,6 @@ module "brainstore_writer" {
     ),
     local.bastion_security_group
   )
-  authorized_security_groups_ssh = local.bastion_security_group
 
   private_subnet_ids = [
     local.main_vpc_private_subnet_1_id,

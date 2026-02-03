@@ -278,7 +278,7 @@ moved {
 
 moved {
   from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_authorized_security_groups_ssh
-  to   = module.brainstore_reader[0].aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_authorized_security_groups_ssh
+  to   = module.services_common.aws_vpc_security_group_ingress_rule.brainstore_instance_allow_ingress_from_authorized_security_groups_ssh
 }
 
 moved {

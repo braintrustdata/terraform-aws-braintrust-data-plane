@@ -37,15 +37,3 @@ resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingres
   tags                         = local.common_tags
 }
 
-resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingress_from_authorized_security_groups_ssh" {
-  for_each = var.authorized_security_groups_ssh
-
-  from_port                    = 22
-  to_port                      = 22
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = each.value
-  description                  = "Allow inbound SSH to Brainstore instances from ${each.key}."
-  security_group_id            = var.brainstore_instance_security_group_id
-  tags                         = local.common_tags
-}
-
