@@ -402,6 +402,12 @@ variable "waf_acl_id" {
   default     = null
 }
 
+variable "cloudfront_price_class" {
+  description = "The price class for the CloudFront distribution. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PriceClass.html"
+  type        = string
+  default     = "PriceClass_100"
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
