@@ -37,6 +37,12 @@ variable "api_handler_function_arn" {
   type        = string
 }
 
+variable "cloudfront_price_class" {
+  description = "The price class for the CloudFront distribution"
+  type        = string
+  default     = "PriceClass_100"
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

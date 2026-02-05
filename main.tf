@@ -232,6 +232,7 @@ module "ingress" {
   custom_domain            = var.custom_domain
   custom_certificate_arn   = var.custom_certificate_arn
   waf_acl_id               = var.waf_acl_id
+  cloudfront_price_class   = var.cloudfront_price_class
   use_global_ai_proxy      = var.use_global_ai_proxy
   ai_proxy_function_url    = module.services[0].ai_proxy_url
   api_handler_function_arn = module.services[0].api_handler_arn
