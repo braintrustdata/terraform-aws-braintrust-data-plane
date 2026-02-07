@@ -124,7 +124,7 @@ locals {
       "/brainstore/backfill/track" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
-      "/brainstore/object-metadata-exists" = {
+      "/brainstore/object-data-exists" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/brainstore/segment/{segment_id}" = {
