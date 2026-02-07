@@ -5,8 +5,7 @@ variable "deployment_name" {
 
 variable "instance_type" {
   type        = string
-  description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
-  default     = "c8gd.4xlarge"
+  description = "The instance type to use for the Brainstore instances. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
 }
 
 variable "license_key" {
@@ -58,12 +57,6 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
-variable "authorized_security_groups_ssh" {
-  type        = map(string)
-  description = "Map of security group names to their IDs that are authorized to access Brainstore instances via SSH. Format: { name = <security_group_id> }"
-  default     = {}
-}
-
 variable "private_subnet_ids" {
   type        = list(string)
   description = "The IDs of the private subnets where Brainstore instances will be launched"
@@ -97,26 +90,8 @@ variable "redis_port" {
 
 variable "extra_env_vars" {
   type        = map(string)
-  description = "Extra environment variables to set for Brainstore reader or dual use nodes"
+  description = "Extra environment variables to set for Brainstore instances"
   default     = {}
-}
-
-variable "extra_env_vars_writer" {
-  type        = map(string)
-  description = "Extra environment variables to set for Brainstore writer nodes if enabled"
-  default     = {}
-}
-
-variable "writer_instance_count" {
-  type        = number
-  description = "The number of dedicated writer nodes to create"
-  default     = 1
-}
-
-variable "writer_instance_type" {
-  type        = string
-  description = "The instance type to use for the Brainstore writer nodes"
-  default     = "c8gd.8xlarge"
 }
 
 variable "monitoring_telemetry" {
@@ -172,9 +147,9 @@ variable "brainstore_s3_bucket_arn" {
   description = "The ARN of the S3 bucket used by Brainstore"
 }
 
-variable "brainstore_iam_role_name" {
+variable "brainstore_instance_profile_arn" {
   type        = string
-  description = "The name of the IAM role for Brainstore EC2 instances"
+  description = "The ARN of the IAM instance profile for Brainstore EC2 instances"
 }
 
 variable "brainstore_instance_security_group_id" {
@@ -194,15 +169,35 @@ variable "custom_post_install_script" {
   default     = ""
 }
 
-variable "cache_file_size_reader" {
+variable "cache_file_size" {
   type        = string
-  description = "Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
 }
 
-variable "cache_file_size_writer" {
+variable "role" {
   type        = string
-  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "A label for this brainstore instance group. Can be a standard role like 'Reader', 'ReaderWriter', 'Writer', or a custom identifier like 'HighMemoryWriter', etc. Used for resource naming and tagging."
+}
+
+variable "mode" {
+  type        = string
+  description = "The operational mode of the brainstore instances: 'reader' (read-only), 'writer' (write-only), or 'readerwriter' (both). This controls BRAINSTORE_READER_ONLY_MODE and is_dedicated_writer_node settings."
+  validation {
+    condition     = contains(["reader", "writer", "readerwriter"], var.mode)
+    error_message = "Mode must be one of: reader, writer, readerwriter"
+  }
+}
+
+variable "instance_name_suffix" {
+  type        = string
+  description = "Suffix to append to resource names to make them unique when multiple instances of the module are used. For example, 'reader' or 'writer'"
+  default     = ""
+}
+
+variable "nlb_name" {
+  type        = string
+  description = "Optional. Override the NLB and target group name. If not set, automatically generates based on mode. Must be 32 characters or less."
   default     = null
 }
 

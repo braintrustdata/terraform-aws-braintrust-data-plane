@@ -1,7 +1,7 @@
 resource "aws_security_group" "brainstore_elb" {
-  name   = "${var.deployment_name}-brainstore-elb"
+  name   = var.instance_name_suffix != "" ? "${var.deployment_name}-brainstore-elb-${var.instance_name_suffix}" : "${var.deployment_name}-brainstore-elb"
   vpc_id = var.vpc_id
-  tags   = merge({ "Name" = "${var.deployment_name}-brainstore-elb" }, local.common_tags)
+  tags   = merge({ "Name" = var.instance_name_suffix != "" ? "${var.deployment_name}-brainstore-elb-${var.instance_name_suffix}" : "${var.deployment_name}-brainstore-elb" }, local.common_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "brainstore_elb_allow_ingress_from_authorized_security_groups" {
@@ -33,18 +33,6 @@ resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingres
   ip_protocol                  = "tcp"
   referenced_security_group_id = aws_security_group.brainstore_elb.id
   description                  = "Allow inbound to Brainstore instances from NLB."
-  security_group_id            = var.brainstore_instance_security_group_id
-  tags                         = local.common_tags
-}
-
-resource "aws_vpc_security_group_ingress_rule" "brainstore_instance_allow_ingress_from_authorized_security_groups_ssh" {
-  for_each = var.authorized_security_groups_ssh
-
-  from_port                    = 22
-  to_port                      = 22
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = each.value
-  description                  = "Allow inbound SSH to Brainstore instances from ${each.key}."
   security_group_id            = var.brainstore_instance_security_group_id
   tags                         = local.common_tags
 }

@@ -208,4 +208,11 @@ resource "aws_iam_role_policy" "brainstore_ssm_parameter_access" {
   })
 }
 
+resource "aws_iam_instance_profile" "brainstore" {
+  name = "${var.deployment_name}-brainstore-instance-profile"
+  role = aws_iam_role.brainstore_role.name
+
+  tags = local.common_tags
+}
+
 
