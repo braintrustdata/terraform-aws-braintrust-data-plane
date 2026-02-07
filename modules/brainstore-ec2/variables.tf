@@ -13,7 +13,7 @@ variable "license_key" {
   type        = string
   description = "The license key for the Brainstore"
   validation {
-    condition     = length(var.license_key) > 0
+    condition     = var.license_key != null && length(var.license_key) > 0
     error_message = "The license key cannot be empty."
   }
 }

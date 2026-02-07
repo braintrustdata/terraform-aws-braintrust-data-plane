@@ -2,89 +2,10 @@ locals {
   api_handler_role_name = basename(var.api_handler_role_arn)
 }
 
-# The role used by the API handler to invoke the used-defined quarantined function
-resource "aws_iam_role" "quarantine_invoke_role" {
-  name = "${var.deployment_name}-QuarantineInvokeRole"
-  assume_role_policy = jsonencode({ # nosemgrep
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          AWS = var.api_handler_role_arn
-        }
-      }
-    ]
-    Version = "2012-10-17"
-  })
-
-  permissions_boundary = var.permissions_boundary_arn
-
-  tags = local.common_tags
-}
-
-resource "aws_iam_role_policy" "quarantine_invoke_policy" {
-  name = "${var.deployment_name}-QuarantineInvokeRolePolicy"
-  role = aws_iam_role.quarantine_invoke_role.id
-  policy = jsonencode({ # nosemgrep
-    Statement = [
-      {
-        Action   = "lambda:InvokeFunction"
-        Effect   = "Allow"
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:ResourceTag/BraintrustQuarantine" = "true"
-          }
-        }
-      }
-    ]
-    Version = "2012-10-17"
-  })
-}
-
-resource "aws_iam_role_policies_exclusive" "quarantine_invoke_role" {
-  role_name    = aws_iam_role.quarantine_invoke_role.name
-  policy_names = [aws_iam_role_policy.quarantine_invoke_policy.name]
-}
-
-# The role used by the quarantined functions
-resource "aws_iam_role" "quarantine_function_role" {
-  name = "${var.deployment_name}-QuarantineFunctionRole"
-
-  assume_role_policy = jsonencode({ # nosemgrep
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  permissions_boundary = var.permissions_boundary_arn
-
-  tags = local.common_tags
-}
-
-resource "aws_iam_role_policy_attachment" "quarantine_function_role" {
-  role       = aws_iam_role.quarantine_function_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
 # This stays because it is lambda specific
 resource "aws_iam_role_policy_attachment" "vpc_access" {
   role       = local.api_handler_role_name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-resource "aws_iam_role_policy_attachment" "api_handler_quarantine" {
-  count      = var.use_quarantine_vpc ? 1 : 0
-  role       = local.api_handler_role_name
-  policy_arn = aws_iam_policy.api_handler_quarantine[0].arn
 }
 
 # Additional policies for API handler that are lambda-specific
@@ -117,11 +38,6 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
         Resource = aws_lambda_function.catchup_etl.arn
       },
       {
-        Action   = "iam:PassRole"
-        Effect   = "Allow"
-        Resource = aws_iam_role.quarantine_function_role.arn
-      },
-      {
         Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
         Effect   = "Allow"
         Resource = "*"
@@ -132,64 +48,6 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
 
   tags = local.common_tags
 }
-
-resource "aws_iam_policy" "api_handler_quarantine" {
-  count = var.use_quarantine_vpc ? 1 : 0
-  name  = "${var.deployment_name}-APIHandlerQuarantinePolicy"
-  policy = jsonencode({ # nosemgrep
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action   = "lambda:InvokeFunction"
-        Effect   = "Allow"
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:ResourceTag/BraintrustQuarantine" = "true"
-          }
-        }
-      },
-      {
-        Action = [
-          "lambda:CreateFunction",
-          "lambda:PublishVersion"
-        ],
-        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:*"
-        Effect   = "Allow"
-        Sid      = "QuarantinePublish"
-        Condition = {
-          StringEquals = {
-            "lambda:VpcIds" = var.quarantine_vpc_id
-          }
-        }
-      },
-      {
-        Action   = ["lambda:TagResource"]
-        Effect   = "Allow"
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:ResourceTag/BraintrustQuarantine" = "true"
-          }
-        }
-        Sid = "TagQuarantine"
-      },
-      {
-        Action   = ["lambda:DeleteFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
-        Effect   = "Allow"
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:ResourceTag/BraintrustQuarantine" = "true"
-          }
-        }
-      },
-    ]
-  })
-
-  tags = local.common_tags
-}
-
 
 resource "aws_iam_role" "default_role" {
   name = "${var.deployment_name}-DefaultRole"
