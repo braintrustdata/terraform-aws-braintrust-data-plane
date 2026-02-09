@@ -70,6 +70,13 @@ resource "aws_db_parameter_group" "main" {
   family      = "postgres${split(".", var.postgres_version)[0]}"
   description = "DB parameter group for the Braintrust main database"
 
+  # This is already the default in PG 15+, but we want to be explicit to
+  # avoid static checkers complaining about it being missing.
+  parameter {
+    name  = "rds.force_ssl"
+    value = "1"
+  }
+
   parameter {
     name  = "random_page_cost"
     value = "1"
