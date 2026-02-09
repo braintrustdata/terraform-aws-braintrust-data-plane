@@ -51,6 +51,13 @@ data "http" "lambda_versions" {
   for_each = toset(local.lambda_names)
 
   url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.region}.amazonaws.com/lambda/${each.value}/version-${local.lambda_version_tag}"
+
+  lifecycle {
+    postcondition {
+      condition     = self.status_code < 400
+      error_message = "Failed to fetch lambda version for ${each.value}: HTTP ${self.status_code}."
+    }
+  }
 }
 
 data "aws_region" "current" {
