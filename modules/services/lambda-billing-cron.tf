@@ -82,4 +82,8 @@ resource "aws_lambda_permission" "allow_billing_cron_eventbridge" {
 resource "random_password" "service_token_secret_key" {
   length  = 32
   special = false
+
+  lifecycle {
+    ignore_changes = [special]
+  }
 }
