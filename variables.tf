@@ -17,6 +17,16 @@ variable "braintrust_org_name" {
   description = "The name of your organization in Braintrust (e.g. acme.com)"
 }
 
+variable "primary_org_name" {
+  type        = string
+  default     = ""
+  description = "This is only required if you intend have multiple organizations on your data plane. Owners in this organization will have special permissions to manage data plane internals."
+  validation {
+    condition     = var.braintrust_org_name != "*" || trimspace(var.primary_org_name) != ""
+    error_message = "primary_org_name is required when braintrust_org_name is \"*\" (multiple organizations on the data plane)."
+  }
+}
+
 variable "deployment_name" {
   type        = string
   default     = "braintrust"
@@ -282,6 +292,12 @@ variable "existing_database_subnet_group_name" {
   default     = null
 }
 
+variable "postgres_backup_retention_period" {
+  description = "Number of days to retain automated RDS backups."
+  type        = number
+  default     = 14
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
@@ -384,6 +400,12 @@ variable "waf_acl_id" {
   description = "Optional WAF Web ACL ID to associate with the CloudFront distribution"
   type        = string
   default     = null
+}
+
+variable "cloudfront_price_class" {
+  description = "The price class for the CloudFront distribution. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PriceClass.html"
+  type        = string
+  default     = "PriceClass_100"
 }
 
 variable "service_additional_policy_arns" {

@@ -104,6 +104,7 @@ module "database" {
   postgres_storage_iops              = var.postgres_storage_iops
   postgres_storage_throughput        = var.postgres_storage_throughput
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
+  backup_retention_period            = var.postgres_backup_retention_period
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
   kms_key_arn              = local.kms_key_arn
@@ -180,6 +181,7 @@ module "services" {
 
   # Service configuration
   braintrust_org_name                        = var.braintrust_org_name
+  primary_org_name                           = var.primary_org_name
   api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
@@ -230,6 +232,7 @@ module "ingress" {
   custom_domain            = var.custom_domain
   custom_certificate_arn   = var.custom_certificate_arn
   waf_acl_id               = var.waf_acl_id
+  cloudfront_price_class   = var.cloudfront_price_class
   use_global_ai_proxy      = var.use_global_ai_proxy
   ai_proxy_function_url    = module.services[0].ai_proxy_url
   api_handler_function_arn = module.services[0].api_handler_arn

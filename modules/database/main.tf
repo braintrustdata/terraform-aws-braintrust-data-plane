@@ -36,7 +36,7 @@ resource "aws_db_instance" "main" {
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.deployment_name}-main-final-snapshot-${random_id.snapshot_suffix.hex}"
   copy_tags_to_snapshot     = true
-  backup_retention_period   = 3
+  backup_retention_period   = var.backup_retention_period
   backup_window             = "00:00-00:30"
   maintenance_window        = "Mon:08:00-Mon:11:00" # This is in UTC, so it is 12am-3am in PST
 
@@ -69,6 +69,13 @@ resource "aws_db_parameter_group" "main" {
   name_prefix = "${var.deployment_name}-main"
   family      = "postgres${split(".", var.postgres_version)[0]}"
   description = "DB parameter group for the Braintrust main database"
+
+  # This is already the default in PG 15+, but we want to be explicit to
+  # avoid static checkers complaining about it being missing.
+  parameter {
+    name  = "rds.force_ssl"
+    value = "1"
+  }
 
   parameter {
     name  = "random_page_cost"

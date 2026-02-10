@@ -57,6 +57,12 @@ provider "aws" {
 
 The `deployment_name` variable is also used to prefix the names of the resources created by the module wherever possible. It will also be applied as a tag named `BraintrustDeploymentName` to all resources created by the module.
 
+### CloudFront Access Logging
+
+If you need to enable CloudFront standard access logging, you can configure it independently by referencing the `cloudfront_distribution_arn` output from the module. This approach gives you full flexibility over the logging configuration without requiring changes to the module itself.
+
+See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
+
 ## Advanced: Customized Deployments
 
 ### Using an Existing VPC
