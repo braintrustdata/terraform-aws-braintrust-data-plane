@@ -272,7 +272,6 @@ module "brainstore_reader" {
   count  = var.enable_brainstore && !var.use_deployment_mode_external_eks ? 1 : 0
 
   deployment_name                       = var.deployment_name
-  role                                  = var.brainstore_writer_instance_count > 0 ? "Reader" : "ReaderWriter"
   mode                                  = var.brainstore_writer_instance_count > 0 ? "reader" : "readerwriter"
   instance_count                        = var.brainstore_instance_count
   instance_type                         = var.brainstore_instance_type
@@ -325,7 +324,6 @@ module "brainstore_writer" {
   count  = var.enable_brainstore && !var.use_deployment_mode_external_eks && var.brainstore_writer_instance_count > 0 ? 1 : 0
 
   deployment_name                       = var.deployment_name
-  role                                  = "Writer"
   mode                                  = "writer"
   instance_count                        = var.brainstore_writer_instance_count
   instance_type                         = var.brainstore_writer_instance_type

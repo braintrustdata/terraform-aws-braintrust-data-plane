@@ -9,8 +9,7 @@ locals {
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id = split(":::", var.brainstore_s3_bucket_arn)[1]
 
-  # Role-based config: NLB name and resource name suffix (single source of truth per role)
-  # Use lower() to normalize role for lookup (handles both "Reader" and "reader")
+  # Special case naming to ensure the existing resources with old naming conventions don't get destroyed/recreated
   role_config = lookup(
     {
       "writer" = {
@@ -26,10 +25,10 @@ locals {
         name_suffix = ""
       }
     },
-    lower(var.role),
+    lower(var.mode),
     {
-      nlb_name    = "${var.deployment_name}-bstr-${lower(var.role)}"
-      name_suffix = "-${lower(var.role)}"
+      nlb_name    = "${var.deployment_name}-bstr-${lower(var.mode)}"
+      name_suffix = "-${lower(var.mode)}"
     }
   )
   nlb_name    = local.role_config.nlb_name
@@ -119,7 +118,7 @@ resource "aws_launch_template" "brainstore" {
     resource_type = "instance"
     tags = merge({
       Name           = "${var.deployment_name}-brainstore${local.name_suffix}"
-      BrainstoreRole = var.role
+      BrainstoreRole = var.mode
     }, local.common_tags)
   }
 
@@ -127,7 +126,7 @@ resource "aws_launch_template" "brainstore" {
     resource_type = "volume"
     tags = merge({
       Name           = "${var.deployment_name}-brainstore${local.name_suffix}"
-      BrainstoreRole = var.role
+      BrainstoreRole = var.mode
     }, local.common_tags)
   }
 
@@ -135,7 +134,7 @@ resource "aws_launch_template" "brainstore" {
     resource_type = "network-interface"
     tags = merge({
       Name           = "${var.deployment_name}-brainstore${local.name_suffix}"
-      BrainstoreRole = var.role
+      BrainstoreRole = var.mode
     }, local.common_tags)
   }
 }

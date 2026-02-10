@@ -175,11 +175,6 @@ variable "cache_file_size" {
   default     = null
 }
 
-variable "role" {
-  type        = string
-  description = "A label for this brainstore instance group. Can be a standard role like 'Reader', 'ReaderWriter', 'Writer', or a custom identifier like 'HighMemoryWriter', etc. Used for resource naming and tagging."
-}
-
 variable "mode" {
   type        = string
   description = "The operational mode of the brainstore instances: 'reader' (read-only), 'writer' (write-only), or 'readerwriter' (both). This controls BRAINSTORE_READER_ONLY_MODE and is_dedicated_writer_node settings."
