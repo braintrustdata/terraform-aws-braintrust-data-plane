@@ -34,7 +34,3 @@ output "function_tools_secret_key" {
   sensitive   = true
 }
 
-output "brainstore_instance_profile_arn" {
-  description = "The ARN of the IAM instance profile for Brainstore EC2 instances"
-  value       = aws_iam_instance_profile.brainstore.arn
-}

@@ -39,6 +39,13 @@ locals {
   )
 }
 
+resource "aws_iam_instance_profile" "brainstore" {
+  name = "${var.deployment_name}-brainstore${local.name_suffix}-instance-profile"
+  role = var.brainstore_iam_role_name
+
+  tags = local.common_tags
+}
+
 resource "aws_launch_template" "brainstore" {
   name                   = "${var.deployment_name}-brainstore${local.name_suffix}"
   image_id               = data.aws_ami.ubuntu_24_04.id
@@ -47,7 +54,7 @@ resource "aws_launch_template" "brainstore" {
   update_default_version = true
 
   iam_instance_profile {
-    arn = var.brainstore_instance_profile_arn
+    arn = aws_iam_instance_profile.brainstore.arn
   }
 
   vpc_security_group_ids = [var.brainstore_instance_security_group_id]

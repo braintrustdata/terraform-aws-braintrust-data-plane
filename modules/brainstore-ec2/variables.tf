@@ -147,9 +147,9 @@ variable "brainstore_s3_bucket_arn" {
   description = "The ARN of the S3 bucket used by Brainstore"
 }
 
-variable "brainstore_instance_profile_arn" {
+variable "brainstore_iam_role_name" {
   type        = string
-  description = "The ARN of the IAM instance profile for Brainstore EC2 instances"
+  description = "The name of the IAM role for Brainstore EC2 instances"
 }
 
 variable "brainstore_instance_security_group_id" {
