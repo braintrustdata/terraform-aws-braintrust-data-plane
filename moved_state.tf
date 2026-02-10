@@ -210,6 +210,11 @@ moved {
 }
 
 moved {
+  from = module.brainstore[0].aws_iam_instance_profile.brainstore
+  to   = module.brainstore_reader[0].aws_iam_instance_profile.brainstore
+}
+
+moved {
   from = module.brainstore[0].aws_lb.brainstore
   to   = module.brainstore_reader[0].aws_lb.brainstore
 }
