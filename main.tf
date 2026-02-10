@@ -271,7 +271,6 @@ module "brainstore_reader" {
   deployment_name                       = var.deployment_name
   role                                  = var.brainstore_writer_instance_count > 0 ? "Reader" : "ReaderWriter"
   mode                                  = var.brainstore_writer_instance_count > 0 ? "reader" : "readerwriter"
-  instance_name_suffix                  = "" # Keep empty for backward compatibility with existing deployments
   instance_count                        = var.brainstore_instance_count
   instance_type                         = var.brainstore_instance_type
   instance_key_pair_name                = var.brainstore_instance_key_pair_name
@@ -325,7 +324,6 @@ module "brainstore_writer" {
   deployment_name                       = var.deployment_name
   role                                  = "Writer"
   mode                                  = "writer"
-  instance_name_suffix                  = "writer"
   instance_count                        = var.brainstore_writer_instance_count
   instance_type                         = var.brainstore_writer_instance_type
   instance_key_pair_name                = var.brainstore_instance_key_pair_name

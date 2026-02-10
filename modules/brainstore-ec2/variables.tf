@@ -189,18 +189,6 @@ variable "mode" {
   }
 }
 
-variable "instance_name_suffix" {
-  type        = string
-  description = "Suffix to append to resource names to make them unique when multiple instances of the module are used. For example, 'reader' or 'writer'"
-  default     = ""
-}
-
-variable "nlb_name" {
-  type        = string
-  description = "Optional. Override the NLB and target group name. If not set, automatically generates based on mode. Must be 32 characters or less."
-  default     = null
-}
-
 variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."

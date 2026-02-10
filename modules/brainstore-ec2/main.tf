@@ -9,8 +9,31 @@ locals {
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id = split(":::", var.brainstore_s3_bucket_arn)[1]
 
-  # Resource name suffix - add dash if suffix is provided
-  name_suffix = var.instance_name_suffix != "" ? "-${var.instance_name_suffix}" : ""
+  # Role-based config: NLB name and resource name suffix (single source of truth per role)
+  # Use lower() to normalize role for lookup (handles both "Reader" and "reader")
+  role_config = lookup(
+    {
+      "writer" = {
+        nlb_name    = "${var.deployment_name}-bstr-w"
+        name_suffix = "-writer"
+      }
+      "reader" = {
+        nlb_name    = "${var.deployment_name}-brainstore"
+        name_suffix = ""
+      }
+      "readerwriter" = {
+        nlb_name    = "${var.deployment_name}-brainstore"
+        name_suffix = ""
+      }
+    },
+    lower(var.role),
+    {
+      nlb_name    = "${var.deployment_name}-bstr-${lower(var.role)}"
+      name_suffix = "-${lower(var.role)}"
+    }
+  )
+  nlb_name    = local.role_config.nlb_name
+  name_suffix = local.role_config.name_suffix
 
   # Determine mode-specific settings (controls actual brainstore behavior)
   is_dedicated_reader_node = var.mode == "reader" ? "true" : "false"
@@ -25,18 +48,6 @@ locals {
   # Reduce by 10% to leave buffer space on the disk
   # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
   brainstore_cache_file_size = var.cache_file_size != null ? var.cache_file_size : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
-
-  # Determine NLB name using role mapping, unless nlb_name is provided
-  # Use lower() to normalize role for lookup (handles both "Reader" and "reader")
-  nlb_name = var.nlb_name != null && var.nlb_name != "" ? var.nlb_name : lookup(
-    {
-      "writer"       = "${var.deployment_name}-bstr-w"
-      "reader"       = "${var.deployment_name}-brainstore"
-      "readerwriter" = "${var.deployment_name}-brainstore"
-    },
-    lower(var.role),
-    "${var.deployment_name}-bstr-${lower(var.role)}"
-  )
 }
 
 resource "aws_iam_instance_profile" "brainstore" {
