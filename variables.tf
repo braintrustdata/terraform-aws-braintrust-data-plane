@@ -557,6 +557,36 @@ variable "brainstore_extra_env_vars_writer" {
   default     = {}
 }
 
+variable "brainstore_fast_reader_instance_count" {
+  type        = number
+  description = "The number of dedicated fast reader nodes to create"
+  default     = 0
+}
+
+variable "brainstore_fast_reader_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore fast reader nodes"
+  default     = "c8gd.4xlarge"
+}
+
+variable "brainstore_extra_env_vars_fast_reader" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore fast reader nodes"
+  default     = {}
+}
+
+variable "brainstore_cache_file_size_fast_reader" {
+  type        = string
+  description = "Optional. Override the cache file size for fast reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
+variable "brainstore_fast_reader_query_sources" {
+  type        = string
+  description = "Comma-separated list of query sources to route to the fast reader"
+  default     = ""
+}
+
 variable "service_extra_env_vars" {
   type = object({
     APIHandler               = map(string)

@@ -36,11 +36,13 @@ locals {
     lambda => trimspace(data.http.lambda_versions[lambda].response_body)
   }
 
-  postgres_url            = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
-  using_brainstore_writer = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
-  brainstore_url          = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
-  brainstore_writer_url   = var.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-  brainstore_s3_bucket    = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
+  postgres_url                 = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
+  using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
+  using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
+  brainstore_url               = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
+  brainstore_writer_url        = var.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+  brainstore_fast_reader_url   = var.brainstore_enabled && local.using_brainstore_fast_reader ? "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}" : ""
+  brainstore_s3_bucket         = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)

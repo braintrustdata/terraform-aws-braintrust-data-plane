@@ -206,6 +206,30 @@ variable "cache_file_size_writer" {
   default     = null
 }
 
+variable "fast_reader_instance_count" {
+  type        = number
+  description = "The number of dedicated fast reader nodes to create"
+  default     = 0
+}
+
+variable "fast_reader_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore fast reader nodes"
+  default     = "c8gd.4xlarge"
+}
+
+variable "extra_env_vars_fast_reader" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore fast reader nodes if enabled"
+  default     = {}
+}
+
+variable "cache_file_size_fast_reader" {
+  type        = string
+  description = "Optional. Override the cache file size for fast reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
 variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
