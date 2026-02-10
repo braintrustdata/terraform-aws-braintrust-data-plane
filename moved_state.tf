@@ -282,11 +282,6 @@ moved {
 }
 
 moved {
-  from = module.brainstore[0].aws_iam_instance_profile.brainstore
-  to   = module.services_common.aws_iam_instance_profile.brainstore
-}
-
-moved {
   from = module.brainstore[0].data.aws_ami.ubuntu_24_04
   to   = module.brainstore_reader[0].data.aws_ami.ubuntu_24_04
 }
