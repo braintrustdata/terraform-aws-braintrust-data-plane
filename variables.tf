@@ -581,12 +581,6 @@ variable "brainstore_cache_file_size_fast_reader" {
   default     = null
 }
 
-variable "brainstore_fast_reader_query_sources" {
-  type        = string
-  description = "Comma-separated list of query sources to route to the fast reader"
-  default     = ""
-}
-
 variable "service_extra_env_vars" {
   type = object({
     APIHandler               = map(string)

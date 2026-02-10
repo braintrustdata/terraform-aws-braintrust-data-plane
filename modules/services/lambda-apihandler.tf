@@ -33,7 +33,7 @@ locals {
     BRAINSTORE_URL                       = local.brainstore_url
     BRAINSTORE_WRITER_URL                = local.brainstore_writer_url
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
-    BRAINSTORE_FAST_READER_QUERY_SOURCES = var.brainstore_fast_reader_query_sources
+    BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
     BRAINSTORE_REALTIME_WAL_BUCKET       = local.brainstore_s3_bucket
     BRAINSTORE_INSERT_ROW_REFS           = "true"
 

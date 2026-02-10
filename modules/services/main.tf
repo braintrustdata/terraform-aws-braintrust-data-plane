@@ -46,6 +46,12 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+
+  default_fast_reader_query_sources = [
+    "summaryPaginatedObjectViewer [realtime]",
+    "summaryPaginatedObjectViewer",
+    "a602c972-1843-4ee1-b6bc-d3c1075cd7e7"
+  ]
 }
 
 # Data source for dynamic lambda version lookups
