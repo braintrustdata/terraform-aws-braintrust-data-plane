@@ -50,13 +50,6 @@ locals {
   brainstore_cache_file_size = var.cache_file_size != null ? var.cache_file_size : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
 }
 
-resource "aws_iam_instance_profile" "brainstore" {
-  name = "${var.deployment_name}-brainstore${local.name_suffix}-instance-profile"
-  role = var.brainstore_iam_role_name
-
-  tags = local.common_tags
-}
-
 resource "aws_launch_template" "brainstore" {
   name                   = "${var.deployment_name}-brainstore${local.name_suffix}"
   image_id               = data.aws_ami.ubuntu_24_04.id
