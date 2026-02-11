@@ -50,7 +50,11 @@ locals {
   default_fast_reader_query_sources = [
     "summaryPaginatedObjectViewer [realtime]",
     "summaryPaginatedObjectViewer",
-    "a602c972-1843-4ee1-b6bc-d3c1075cd7e7"
+    "a602c972-1843-4ee1-b6bc-d3c1075cd7e7",
+    "traceQueryFn-id",
+    "traceQueryFn-rootSpanId",
+    "fullSpanQueryFn-root_span_id",
+    "fullSpanQueryFn-id"
   ]
 }
 
