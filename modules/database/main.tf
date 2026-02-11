@@ -45,7 +45,7 @@ resource "aws_db_instance" "main" {
 
   allow_major_version_upgrade = true
   auto_minor_version_upgrade  = var.auto_minor_version_upgrade
-  deletion_protection        = !var.DANGER_disable_deletion_protection
+  deletion_protection         = !var.DANGER_disable_deletion_protection
 
   kms_key_id = var.kms_key_arn
 
