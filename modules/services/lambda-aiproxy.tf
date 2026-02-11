@@ -99,9 +99,20 @@ resource "aws_lambda_alias" "ai_proxy_live" {
   function_version = aws_lambda_function.ai_proxy.version
 }
 
+# Function URL auth model (by Nov 2026) requires both InvokeFunctionUrl and InvokeFunction
 resource "aws_lambda_permission" "ai_proxy" {
   statement_id = "AllowFunctionURLInvoke"
   action       = "lambda:InvokeFunctionUrl"
+
+  function_name          = aws_lambda_function.ai_proxy.function_name
+  qualifier              = aws_lambda_alias.ai_proxy_live.name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
+resource "aws_lambda_permission" "ai_proxy_invoke" {
+  statement_id = "AllowFunctionInvoke"
+  action       = "lambda:InvokeFunction"
 
   function_name          = aws_lambda_function.ai_proxy.function_name
   qualifier              = aws_lambda_alias.ai_proxy_live.name
