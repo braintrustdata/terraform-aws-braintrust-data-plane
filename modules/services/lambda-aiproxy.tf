@@ -115,10 +115,11 @@ resource "aws_lambda_permission" "ai_proxy_invoke" {
   statement_id = "AllowFunctionInvoke"
   action       = "lambda:InvokeFunction"
 
-  function_name          = aws_lambda_function.ai_proxy.function_name
-  qualifier              = aws_lambda_alias.ai_proxy_live.name
-  principal              = "*"
-  function_url_auth_type = "NONE"
+  function_name            = aws_lambda_function.ai_proxy.function_name
+  qualifier                = aws_lambda_alias.ai_proxy_live.name
+  principal                = "*"
+  function_url_auth_type   = "NONE"
+  invoked_via_function_url = true
 }
 
 resource "aws_ssm_parameter" "ai_proxy_url" {
