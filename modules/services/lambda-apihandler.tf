@@ -28,14 +28,12 @@ locals {
 
     FUNCTION_SECRET_KEY = var.function_tools_secret_key
 
-    BRAINSTORE_ENABLED                   = var.brainstore_enabled
-    BRAINSTORE_DEFAULT                   = var.brainstore_default
-    BRAINSTORE_URL                       = local.brainstore_url
-    BRAINSTORE_WRITER_URL                = local.brainstore_writer_url
-    BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
-    BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
-    BRAINSTORE_REALTIME_WAL_BUCKET       = local.brainstore_s3_bucket
-    BRAINSTORE_INSERT_ROW_REFS           = "true"
+    BRAINSTORE_ENABLED             = var.brainstore_enabled
+    BRAINSTORE_DEFAULT             = var.brainstore_default
+    BRAINSTORE_URL                 = local.brainstore_url
+    BRAINSTORE_WRITER_URL          = local.brainstore_writer_url
+    BRAINSTORE_REALTIME_WAL_BUCKET = local.brainstore_s3_bucket
+    BRAINSTORE_INSERT_ROW_REFS     = "true"
 
     CONTROL_PLANE_TELEMETRY       = var.monitoring_telemetry
     TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
@@ -43,6 +41,10 @@ locals {
 
     SERVICE_TOKEN_SECRET_KEY = random_password.service_token_secret_key.result
   }
+  api_fast_reader_env_vars = local.using_brainstore_fast_reader ? {
+    BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
+    BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
+  } : {}
   # There env vars are specific to the API Handler. Don't add env vars here if you need them for the AI Proxy as well.
   api_handler_specific_env_vars = {
     AI_PROXY_FN_ARN      = aws_lambda_function.ai_proxy.arn
@@ -88,6 +90,7 @@ resource "aws_lambda_function" "api_handler" {
   environment {
     variables = merge(
       local.api_common_env_vars,
+      local.api_fast_reader_env_vars,
       local.api_handler_specific_env_vars,
       var.extra_env_vars.APIHandler,
       local.observability_enabled ? merge(local.datadog_env_vars, {
