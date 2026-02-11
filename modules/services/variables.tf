@@ -104,6 +104,12 @@ variable "brainstore_writer_hostname" {
   default     = null
 }
 
+variable "brainstore_fast_reader_hostname" {
+  type        = string
+  description = "Hostname for the dedicated Brainstore fast reader nodes, if enabled"
+  default     = null
+}
+
 variable "brainstore_port" {
   type        = number
   description = "Port for Brainstore"

@@ -73,8 +73,9 @@ resource "aws_db_parameter_group" "main" {
   # This is already the default in PG 15+, but we want to be explicit to
   # avoid static checkers complaining about it being missing.
   parameter {
-    name  = "rds.force_ssl"
-    value = "1"
+    apply_method = "pending-reboot"
+    name         = "rds.force_ssl"
+    value        = "1"
   }
 
   parameter {
