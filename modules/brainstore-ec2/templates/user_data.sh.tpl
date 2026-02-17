@@ -197,12 +197,37 @@ config_providers:
 logs_config:
     container_collect_all: true
 EOF
+
+  # Configure Datadog agent to collect network metrics
+  cat <<EOF > /etc/datadog-agent/conf.d/network.d/network.yaml
+
+instances:
+  -
+    collect_connection_state: true
+    collect_connection_queues: true
+    collect_ethtool_metrics: true
+    combine_connection_states: false
+    collect_aws_ena_metrics: true
+EOF
+
+  # Restart Datadog Agent to pick up new configuration
+  systemctl restart datadog-agent
+
+  # Configure auto-restart for Datadog agent
+  mkdir -p /etc/systemd/system/datadog-agent.service.d
+  cat <<EOF > /etc/systemd/system/datadog-agent.service.d/override.conf
+[Service]
+Restart=always
+RestartSec=10
+EOF
+
+  systemctl daemon-reload
+  systemctl enable datadog-agent
+
   # Configure Brainstore to send traces to Datadog
   cat <<EOF >> /etc/brainstore.env
 BRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318
 EOF
-  # Restart Datadog Agent to pick up new configuration
-  systemctl restart datadog-agent
 fi
 
 BRAINSTORE_RELEASE_VERSION=${brainstore_release_version}
