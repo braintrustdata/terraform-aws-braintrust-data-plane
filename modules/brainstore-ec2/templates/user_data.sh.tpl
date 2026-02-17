@@ -199,7 +199,7 @@ logs_config:
 EOF
 
   # Configure Datadog agent to collect network metrics
-  cat <<EOF > /etc/datadog-agent/conf.d/network.d/network.yaml
+  cat <<EOF > /etc/datadog-agent/conf.d/network.d/conf.yaml
 
 instances:
   -
