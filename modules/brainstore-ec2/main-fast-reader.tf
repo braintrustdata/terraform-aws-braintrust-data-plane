@@ -1,9 +1,9 @@
 
-resource "aws_launch_template" "brainstore_writer" {
-  count                  = local.has_writer_nodes ? 1 : 0
-  name                   = "${var.deployment_name}-brainstore-writer"
+resource "aws_launch_template" "brainstore_fast_reader" {
+  count                  = local.has_fast_reader_nodes ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-fast-reader"
   image_id               = data.aws_ami.ubuntu_24_04.id
-  instance_type          = var.writer_instance_type
+  instance_type          = var.fast_reader_instance_type
   key_name               = var.instance_key_pair_name
   update_default_version = true
 
@@ -50,49 +50,49 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_version_override     = var.version_override == null ? "" : var.version_override
     brainstore_release_version      = local.brainstore_release_version
     monitoring_telemetry            = var.monitoring_telemetry
-    is_dedicated_reader_node        = "false"
-    is_dedicated_writer_node        = "true"
-    extra_env_vars                  = var.extra_env_vars_writer
+    is_dedicated_reader_node        = "true"
+    is_dedicated_writer_node        = "false"
+    extra_env_vars                  = var.extra_env_vars_fast_reader
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
     service_token_secret_key        = var.service_token_secret_key
     custom_post_install_script      = var.custom_post_install_script
-    brainstore_cache_file_size      = local.brainstore_writer_cache_file_size
+    brainstore_cache_file_size      = local.brainstore_fast_reader_cache_file_size
   }))
 
   tags = merge({
-    Name = "${var.deployment_name}-brainstore-writer"
+    Name = "${var.deployment_name}-brainstore-fast-reader"
   }, local.common_tags)
 
   tag_specifications {
     resource_type = "instance"
     tags = merge({
-      Name           = "${var.deployment_name}-brainstore-writer"
-      BrainstoreRole = "Writer"
+      Name           = "${var.deployment_name}-brainstore-fast-reader"
+      BrainstoreRole = "FastReader"
     }, local.common_tags)
   }
 
   tag_specifications {
     resource_type = "volume"
     tags = merge({
-      Name           = "${var.deployment_name}-brainstore-writer"
-      BrainstoreRole = "Writer"
+      Name           = "${var.deployment_name}-brainstore-fast-reader"
+      BrainstoreRole = "FastReader"
     }, local.common_tags)
   }
 
   tag_specifications {
     resource_type = "network-interface"
     tags = merge({
-      Name           = "${var.deployment_name}-brainstore-writer"
-      BrainstoreRole = "Writer"
+      Name           = "${var.deployment_name}-brainstore-fast-reader"
+      BrainstoreRole = "FastReader"
     }, local.common_tags)
   }
 }
 
-resource "aws_lb" "brainstore_writer" {
-  count              = local.has_writer_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-w"
+resource "aws_lb" "brainstore_fast_reader" {
+  count              = local.has_fast_reader_nodes ? 1 : 0
+  name               = "${var.deployment_name}-bstr-fr"
   internal           = true
   load_balancer_type = "network"
   subnets            = var.private_subnet_ids
@@ -105,9 +105,9 @@ resource "aws_lb" "brainstore_writer" {
   tags = local.common_tags
 }
 
-resource "aws_lb_target_group" "brainstore_writer" {
-  count       = local.has_writer_nodes ? 1 : 0
-  name        = "${var.deployment_name}-bstr-w"
+resource "aws_lb_target_group" "brainstore_fast_reader" {
+  count       = local.has_fast_reader_nodes ? 1 : 0
+  name        = "${var.deployment_name}-bstr-fr"
   port        = var.port
   protocol    = "TCP"
   vpc_id      = var.vpc_id
@@ -126,33 +126,33 @@ resource "aws_lb_target_group" "brainstore_writer" {
   tags = local.common_tags
 }
 
-resource "aws_lb_listener" "brainstore_writer" {
-  count             = local.has_writer_nodes ? 1 : 0
-  load_balancer_arn = aws_lb.brainstore_writer[0].arn
+resource "aws_lb_listener" "brainstore_fast_reader" {
+  count             = local.has_fast_reader_nodes ? 1 : 0
+  load_balancer_arn = aws_lb.brainstore_fast_reader[0].arn
   port              = var.port
   protocol          = "TCP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.brainstore_writer[0].arn
+    target_group_arn = aws_lb_target_group.brainstore_fast_reader[0].arn
   }
   tags = local.common_tags
 }
 
-resource "aws_autoscaling_group" "brainstore_writer" {
-  count                     = local.has_writer_nodes ? 1 : 0
-  name_prefix               = "${var.deployment_name}-brainstore-writer"
-  min_size                  = var.writer_instance_count
-  max_size                  = var.writer_instance_count * 2
-  desired_capacity          = var.writer_instance_count
+resource "aws_autoscaling_group" "brainstore_fast_reader" {
+  count                     = local.has_fast_reader_nodes ? 1 : 0
+  name_prefix               = "${var.deployment_name}-brainstore-fast-reader"
+  min_size                  = var.fast_reader_instance_count
+  max_size                  = var.fast_reader_instance_count * 2
+  desired_capacity          = var.fast_reader_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
-  target_group_arns         = [aws_lb_target_group.brainstore_writer[0].arn]
-  wait_for_elb_capacity     = var.writer_instance_count
+  target_group_arns         = [aws_lb_target_group.brainstore_fast_reader[0].arn]
+  wait_for_elb_capacity     = var.fast_reader_instance_count
   launch_template {
-    id      = aws_launch_template.brainstore_writer[0].id
-    version = aws_launch_template.brainstore_writer[0].latest_version
+    id      = aws_launch_template.brainstore_fast_reader[0].id
+    version = aws_launch_template.brainstore_fast_reader[0].latest_version
   }
 
   lifecycle {
@@ -170,7 +170,7 @@ resource "aws_autoscaling_group" "brainstore_writer" {
 
   tag {
     key                 = "Name"
-    value               = "${var.deployment_name}-brainstore-writer"
+    value               = "${var.deployment_name}-brainstore-fast-reader"
     propagate_at_launch = true
   }
 

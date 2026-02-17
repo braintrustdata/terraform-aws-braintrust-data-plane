@@ -104,6 +104,7 @@ module "database" {
   postgres_storage_iops              = var.postgres_storage_iops
   postgres_storage_throughput        = var.postgres_storage_throughput
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
+  backup_retention_period            = var.postgres_backup_retention_period
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
   kms_key_arn              = local.kms_key_arn
@@ -166,13 +167,14 @@ module "services" {
   redis_host        = module.redis.redis_endpoint
   redis_port        = module.redis.redis_port
 
-  brainstore_enabled         = var.enable_brainstore
-  brainstore_default         = var.brainstore_default
-  brainstore_hostname        = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_s3_bucket_name  = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  brainstore_port            = var.enable_brainstore ? module.brainstore[0].port : null
-  brainstore_etl_batch_size  = var.brainstore_etl_batch_size
+  brainstore_enabled              = var.enable_brainstore
+  brainstore_default              = var.brainstore_default
+  brainstore_hostname             = var.enable_brainstore ? module.brainstore[0].dns_name : null
+  brainstore_writer_hostname      = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname = var.enable_brainstore && var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+  brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -180,6 +182,7 @@ module "services" {
 
   # Service configuration
   braintrust_org_name                        = var.braintrust_org_name
+  primary_org_name                           = var.primary_org_name
   api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
@@ -230,6 +233,7 @@ module "ingress" {
   custom_domain            = var.custom_domain
   custom_certificate_arn   = var.custom_certificate_arn
   waf_acl_id               = var.waf_acl_id
+  cloudfront_price_class   = var.cloudfront_price_class
   use_global_ai_proxy      = var.use_global_ai_proxy
   ai_proxy_function_url    = module.services[0].ai_proxy_url
   api_handler_function_arn = module.services[0].api_handler_arn
@@ -274,6 +278,10 @@ module "brainstore" {
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
   writer_instance_type                  = var.brainstore_writer_instance_type
+  fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
+  fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
+  extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
+  cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
@@ -314,6 +322,7 @@ module "brainstore" {
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
+  locks_s3_path              = var.brainstore_locks_s3_path
 }
 
 
