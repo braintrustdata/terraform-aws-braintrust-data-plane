@@ -29,7 +29,7 @@ resource "aws_lambda_function" "billing_cron" {
       CONTROL_PLANE_TELEMETRY       = var.monitoring_telemetry
       TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
       TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
-      SERVICE_TOKEN_SECRET_KEY      = random_password.service_token_secret_key.result
+      SERVICE_TOKEN_SECRET_KEY      = var.function_tools_secret_key
       },
       var.extra_env_vars.BillingCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {
@@ -78,9 +78,12 @@ resource "aws_lambda_permission" "allow_billing_cron_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.billing_cron_schedule.arn
 }
 
-
-# TODO: automation cron / service token keys will replace this
+# TODO: remove this after automation cron migration
 resource "random_password" "service_token_secret_key" {
   length  = 32
   special = false
+
+  lifecycle {
+    ignore_changes = [special]
+  }
 }

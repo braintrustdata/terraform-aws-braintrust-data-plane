@@ -39,7 +39,8 @@ locals {
     TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
     TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
 
-    SERVICE_TOKEN_SECRET_KEY = random_password.service_token_secret_key.result
+    SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
+    CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
   }
   api_fast_reader_env_vars = local.using_brainstore_fast_reader ? {
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
