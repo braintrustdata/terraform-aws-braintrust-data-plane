@@ -90,3 +90,28 @@ resource "aws_s3_bucket_public_access_block" "lambda_responses_bucket" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+resource "aws_s3_bucket_policy" "lambda_responses_bucket" {
+  bucket = aws_s3_bucket.lambda_responses_bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.lambda_responses_bucket.arn,
+          "${aws_s3_bucket.lambda_responses_bucket.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
+}
