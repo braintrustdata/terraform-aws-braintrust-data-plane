@@ -13,9 +13,8 @@ resource "aws_cloudfront_distribution" "dataplane" {
   enabled      = true
   http_version = "http2and3"
   web_acl_id   = var.waf_acl_id
-  # Deploy only in North America and Europe. Reduces costs and deployment time.
-  price_class = "PriceClass_100"
-  aliases     = var.custom_domain != null ? [var.custom_domain] : null
+  price_class  = var.cloudfront_price_class
+  aliases      = var.custom_domain != null ? [var.custom_domain] : null
 
   origin {
     origin_id   = local.cloudfront_APIGatewayOrigin

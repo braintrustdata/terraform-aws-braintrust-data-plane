@@ -17,6 +17,16 @@ variable "braintrust_org_name" {
   description = "The name of your organization in Braintrust (e.g. acme.com)"
 }
 
+variable "primary_org_name" {
+  type        = string
+  default     = ""
+  description = "This is only required if you intend have multiple organizations on your data plane. Owners in this organization will have special permissions to manage data plane internals."
+  validation {
+    condition     = var.braintrust_org_name != "*" || trimspace(var.primary_org_name) != ""
+    error_message = "primary_org_name is required when braintrust_org_name is \"*\" (multiple organizations on the data plane)."
+  }
+}
+
 variable "deployment_name" {
   type        = string
   default     = "braintrust"
@@ -282,6 +292,12 @@ variable "existing_database_subnet_group_name" {
   default     = null
 }
 
+variable "postgres_backup_retention_period" {
+  description = "Number of days to retain automated RDS backups."
+  type        = number
+  default     = 14
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
@@ -386,6 +402,12 @@ variable "waf_acl_id" {
   default     = null
 }
 
+variable "cloudfront_price_class" {
+  description = "The price class for the CloudFront distribution. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PriceClass.html"
+  type        = string
+  default     = "PriceClass_100"
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
@@ -481,6 +503,12 @@ variable "brainstore_cache_file_size_writer" {
   default     = null
 }
 
+variable "brainstore_locks_s3_path" {
+  type        = string
+  description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
+  default     = "/locks"
+}
+
 variable "brainstore_etl_batch_size" {
   type        = number
   description = "The batch size for the ETL process"
@@ -527,6 +555,30 @@ variable "brainstore_extra_env_vars_writer" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore writer nodes"
   default     = {}
+}
+
+variable "brainstore_fast_reader_instance_count" {
+  type        = number
+  description = "The number of dedicated fast reader nodes to create"
+  default     = 0
+}
+
+variable "brainstore_fast_reader_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore fast reader nodes"
+  default     = "c8gd.4xlarge"
+}
+
+variable "brainstore_extra_env_vars_fast_reader" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore fast reader nodes"
+  default     = {}
+}
+
+variable "brainstore_cache_file_size_fast_reader" {
+  type        = string
+  description = "Optional. Override the cache file size for fast reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
 }
 
 variable "service_extra_env_vars" {

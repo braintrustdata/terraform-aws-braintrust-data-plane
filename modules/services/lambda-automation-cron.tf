@@ -41,6 +41,7 @@ resource "aws_lambda_function" "automation_cron" {
       BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
       BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
       FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
+      CRON_OVERRIDE_SECRET_KEY                  = random_password.service_token_secret_key.result
       },
       var.extra_env_vars.AutomationCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {

@@ -3,6 +3,12 @@ variable "braintrust_org_name" {
   description = "The name of your organization in Braintrust (e.g. acme.com)"
 }
 
+variable "primary_org_name" {
+  type        = string
+  default     = ""
+  description = "Enter your primary organization's name. This is only required if you intend have multiple organizations on your data plane. Owners in this organization will have special permissions to manage data plane internals."
+}
+
 variable "deployment_name" {
   type        = string
   description = "Name of this deployment. Will be included in resource names"
@@ -96,6 +102,12 @@ variable "brainstore_hostname" {
 variable "brainstore_writer_hostname" {
   type        = string
   description = "Hostname for the dedicated Brainstore writer nodes, if enabled"
+  default     = null
+}
+
+variable "brainstore_fast_reader_hostname" {
+  type        = string
+  description = "Hostname for the dedicated Brainstore fast reader nodes, if enabled"
   default     = null
 }
 

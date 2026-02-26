@@ -124,6 +124,9 @@ locals {
       "/brainstore/backfill/track" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/brainstore/object-data-exists" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/brainstore/segment/{segment_id}" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
@@ -135,6 +138,9 @@ locals {
             }
           ]
         })
+      }
+      "/brainstore/recently-updated-objects-processing-lag" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
       "/broadcast-key" = {
         for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method

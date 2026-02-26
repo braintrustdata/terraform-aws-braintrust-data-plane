@@ -84,6 +84,12 @@ variable "auto_minor_version_upgrade" {
   default     = true
 }
 
+variable "backup_retention_period" {
+  description = "Number of days to retain automated RDS backups."
+  type        = number
+  default     = 14
+}
+
 variable "DANGER_disable_deletion_protection" {
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
   type        = bool
