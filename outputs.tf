@@ -117,3 +117,33 @@ output "kms_key_arn" {
   value       = local.kms_key_arn
   description = "ARN of the KMS key used to encrypt Braintrust resources"
 }
+
+output "quarantine_invoke_role_arn" {
+  value       = module.services_common.quarantine_invoke_role_arn
+  description = "ARN of the IAM role used by the API handler to invoke quarantined functions"
+}
+
+output "quarantine_function_role_arn" {
+  value       = module.services_common.quarantine_function_role_arn
+  description = "ARN of the IAM role used by quarantined Lambda functions"
+}
+
+output "quarantine_private_subnet_1_id" {
+  value       = local.quarantine_vpc_private_subnet_1_id
+  description = "ID of the first private subnet in the quarantine VPC"
+}
+
+output "quarantine_private_subnet_2_id" {
+  value       = local.quarantine_vpc_private_subnet_2_id
+  description = "ID of the second private subnet in the quarantine VPC"
+}
+
+output "quarantine_private_subnet_3_id" {
+  value       = local.quarantine_vpc_private_subnet_3_id
+  description = "ID of the third private subnet in the quarantine VPC"
+}
+
+output "quarantine_lambda_security_group_id" {
+  value       = module.services_common.quarantine_lambda_security_group_id
+  description = "ID of the security group for quarantine Lambda functions"
+}

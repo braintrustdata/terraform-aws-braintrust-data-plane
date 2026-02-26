@@ -35,12 +35,12 @@ resource "aws_lambda_function" "quarantine_warmup" {
       REDIS_HOST = var.redis_host
       REDIS_PORT = var.redis_port
 
-      QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc ? aws_iam_role.quarantine_invoke_role.arn : ""
-      QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc ? aws_iam_role.quarantine_function_role.arn : ""
+      QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc && var.quarantine_invoke_role_arn != null ? var.quarantine_invoke_role_arn : ""
+      QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : ""
       QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
       QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
       QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
-      QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : ""
+      QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc && var.quarantine_lambda_security_group_id != null ? var.quarantine_lambda_security_group_id : ""
       QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
       },
       var.extra_env_vars.QuarantineWarmupFunction,
@@ -73,6 +73,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
 }
 
 # Invoke the quarantine warmup lambda function every time the api handler is deployed
+# Only invoke when the Lambda function is actually created (not using external EKS deployment mode)
 resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
   count      = var.use_quarantine_vpc ? 1 : 0
   depends_on = [aws_lambda_function.quarantine_warmup]

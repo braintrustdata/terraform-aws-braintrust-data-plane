@@ -212,12 +212,15 @@ module "services" {
     local.quarantine_vpc_private_subnet_3_id
   ] : []
 
-  kms_key_arn               = local.kms_key_arn
-  permissions_boundary_arn  = var.permissions_boundary_arn
-  api_handler_role_arn      = module.services_common.api_handler_role_arn
-  api_security_group_id     = module.services_common.api_security_group_id
-  function_tools_secret_key = module.services_common.function_tools_secret_key
-  custom_tags               = var.custom_tags
+  kms_key_arn                         = local.kms_key_arn
+  permissions_boundary_arn            = var.permissions_boundary_arn
+  api_handler_role_arn                = module.services_common.api_handler_role_arn
+  api_security_group_id               = module.services_common.api_security_group_id
+  function_tools_secret_key           = module.services_common.function_tools_secret_key
+  quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
+  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
+  quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
+  custom_tags                         = var.custom_tags
 
   # Observability
   internal_observability_api_key  = var.internal_observability_api_key
@@ -261,6 +264,8 @@ module "services_common" {
   custom_tags                               = var.custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
+  enable_quarantine_vpc                     = var.enable_quarantine_vpc
+  quarantine_vpc_id                         = local.quarantine_vpc_id
 }
 
 module "brainstore" {

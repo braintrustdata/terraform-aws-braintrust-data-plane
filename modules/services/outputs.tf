@@ -24,7 +24,7 @@ output "catchup_etl_arn" {
 }
 
 output "quarantine_warmup_arn" {
-  description = "The ARN of the quarantine warmup lambda function"
+  description = "The ARN of the quarantine warmup lambda function. Only created when use_deployment_mode_external_eks is false."
   value       = var.use_quarantine_vpc ? aws_lambda_function.quarantine_warmup[0].arn : null
 }
 
@@ -35,7 +35,7 @@ output "lambda_security_group_id" {
 
 output "quarantine_lambda_security_group_id" {
   description = "The ID of the security group for the quarantine Lambda functions"
-  value       = var.use_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : null
+  value       = var.quarantine_lambda_security_group_id
 }
 
 output "ai_proxy_url_ssm_arn" {
