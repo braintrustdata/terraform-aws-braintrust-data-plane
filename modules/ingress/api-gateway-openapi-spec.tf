@@ -166,6 +166,9 @@ locals {
       "/flush-org-object-cache" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/project_secret" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/function-env/{object_type}/{object_id}" = {
         for method in ["delete", "get", "options", "patch", "post", "put"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
