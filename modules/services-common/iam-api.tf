@@ -23,8 +23,10 @@ resource "aws_iam_role" "api_handler_role" {
           }
           Action = "sts:AssumeRoleWithWebIdentity"
           Condition = {
-            StringEquals = {
+            StringLike = {
               "${replace(local.eks_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:${var.eks_namespace != null ? var.eks_namespace : "*"}:*"
+            }
+            StringEquals = {
               "${replace(local.eks_oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
             }
           }
