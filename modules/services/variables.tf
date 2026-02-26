@@ -56,11 +56,6 @@ variable "use_quarantine_vpc" {
   default     = true
 }
 
-variable "use_deployment_mode_external_eks" {
-  type        = bool
-  description = "Whether services are deployed externally in EKS. When true, quarantine warmup is handled by the EKS-deployed API handler instead of Lambda."
-  default     = false
-}
 
 variable "quarantine_vpc_id" {
   type        = string
