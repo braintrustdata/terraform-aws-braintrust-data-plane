@@ -38,6 +38,11 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
         Resource = aws_lambda_function.catchup_etl.arn
       },
       {
+        Action   = "iam:PassRole"
+        Effect   = "Allow"
+        Resource = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : "*"
+      },
+      {
         Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
         Effect   = "Allow"
         Resource = "*"

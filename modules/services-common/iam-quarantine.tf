@@ -135,16 +135,6 @@ resource "aws_iam_policy" "api_handler_quarantine" {
           }
         }
       },
-      {
-        Action   = "iam:PassRole"
-        Effect   = "Allow"
-        Resource = aws_iam_role.quarantine_function_role[0].arn
-      },
-      {
-        Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
-        Effect   = "Allow"
-        Resource = "*"
-      }
     ]
   })
 
