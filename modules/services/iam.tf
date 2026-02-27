@@ -36,11 +36,6 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
         Action   = ["lambda:InvokeFunction"]
         Effect   = "Allow"
         Resource = aws_lambda_function.catchup_etl.arn
-      },
-      {
-        Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
-        Effect   = "Allow"
-        Resource = "*"
       }
     ]
     Version = "2012-10-17"
