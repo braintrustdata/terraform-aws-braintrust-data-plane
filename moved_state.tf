@@ -206,37 +206,37 @@ moved {
 # Quarantine IAM resources moved from services -> services-common
 # These IAM roles are no longer in 'services' they are in 'services-common'
 moved {
-  from = module.services.aws_iam_role.quarantine_invoke_role[0]
+  from = module.services[0].aws_iam_role.quarantine_invoke_role
   to   = module.services_common.aws_iam_role.quarantine_invoke_role[0]
 }
 
 moved {
-  from = module.services.aws_iam_role_policy.quarantine_invoke_policy[0]
+  from = module.services[0].aws_iam_role_policy.quarantine_invoke_policy
   to   = module.services_common.aws_iam_role_policy.quarantine_invoke_policy[0]
 }
 
 moved {
-  from = module.services.aws_iam_role_policies_exclusive.quarantine_invoke_role[0]
+  from = module.services[0].aws_iam_role_policies_exclusive.quarantine_invoke_role
   to   = module.services_common.aws_iam_role_policies_exclusive.quarantine_invoke_role[0]
 }
 
 moved {
-  from = module.services.aws_iam_role.quarantine_function_role[0]
+  from = module.services[0].aws_iam_role.quarantine_function_role
   to   = module.services_common.aws_iam_role.quarantine_function_role[0]
 }
 
 moved {
-  from = module.services.aws_iam_role_policy_attachment.quarantine_function_role[0]
+  from = module.services[0].aws_iam_role_policy_attachment.quarantine_function_role
   to   = module.services_common.aws_iam_role_policy_attachment.quarantine_function_role[0]
 }
 
 moved {
-  from = module.services.aws_iam_policy.api_handler_quarantine[0]
+  from = module.services[0].aws_iam_policy.api_handler_quarantine[0]
   to   = module.services_common.aws_iam_policy.api_handler_quarantine[0]
 }
 
 moved {
-  from = module.services.aws_iam_role_policy_attachment.api_handler_quarantine[0]
+  from = module.services[0].aws_iam_role_policy_attachment.api_handler_quarantine[0]
   to   = module.services_common.aws_iam_role_policy_attachment.api_handler_quarantine[0]
 }
 
