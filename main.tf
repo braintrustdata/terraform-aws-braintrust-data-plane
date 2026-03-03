@@ -228,6 +228,49 @@ module "services" {
   internal_observability_region   = var.internal_observability_region
 }
 
+module "ecs" {
+  source = "./modules/ecs"
+  count  = var.enable_gateway ? 1 : 0
+
+  deployment_name = var.deployment_name
+  custom_tags     = var.custom_tags
+}
+
+module "gateway_ecs" {
+  source = "./modules/gateway-ecs"
+  count  = var.enable_gateway ? 1 : 0
+
+  deployment_name                     = var.deployment_name
+  vpc_id                              = local.main_vpc_id
+  private_subnet_ids                  = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  ecs_cluster_arn                     = module.ecs[0].cluster_arn
+  ecs_cluster_name                    = module.ecs[0].cluster_name
+  container_image                     = var.gateway_container_image
+  cpu                                 = var.gateway_cpu
+  memory                              = var.gateway_memory
+  cpu_architecture                    = var.gateway_cpu_architecture
+  min_capacity                        = var.gateway_min_capacity
+  max_capacity                        = var.gateway_max_capacity
+  target_cpu_utilization              = var.gateway_target_cpu_utilization
+  target_memory_utilization           = var.gateway_target_memory_utilization
+  scale_in_cooldown                   = var.gateway_scale_in_cooldown
+  scale_out_cooldown                  = var.gateway_scale_out_cooldown
+  log_retention_days                  = var.gateway_log_retention_days
+  redis_host                          = module.redis.redis_endpoint
+  redis_port                          = module.redis.redis_port
+  cache_security_group_id             = module.redis.redis_security_group_id
+  allowed_source_security_group_ids   = var.gateway_allowed_source_security_group_ids
+  extra_env_vars                      = var.gateway_extra_env_vars
+  custom_tags                         = var.custom_tags
+  brainstore_license_key              = var.brainstore_license_key
+  enable_execute_command              = var.gateway_enable_execute_command
+  health_check_grace_period_seconds   = var.gateway_health_check_grace_period_seconds
+  enable_deployment_circuit_breaker   = var.gateway_enable_deployment_circuit_breaker
+  deployment_circuit_breaker_rollback = var.gateway_deployment_circuit_breaker_rollback
+  braintrust_app_url                  = var.gateway_braintrust_app_url
+  braintrust_api_url                  = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+}
+
 module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0

@@ -325,6 +325,184 @@ variable "redis_authorized_security_groups" {
 
 ## Services
 
+variable "enable_gateway" {
+  description = "Enable ECS gateway service deployment (Fargate with private ALB)"
+  type        = bool
+  default     = false
+}
+
+variable "gateway_container_image" {
+  description = "Container image to deploy for the gateway ECS service"
+  type        = string
+  default     = "public.ecr.aws/braintrust/gateway:latest"
+
+  validation {
+    condition     = trimspace(var.gateway_container_image) != ""
+    error_message = "gateway_container_image must not be empty."
+  }
+}
+
+variable "gateway_cpu" {
+  description = "CPU units for the gateway ECS task definition"
+  type        = number
+  default     = 2048
+}
+
+variable "gateway_memory" {
+  description = "Memory in MiB for the gateway ECS task definition"
+  type        = number
+  default     = 4096
+}
+
+variable "gateway_min_capacity" {
+  description = "Minimum task count for the gateway ECS service"
+  type        = number
+  default     = 2
+}
+
+variable "gateway_max_capacity" {
+  description = "Maximum task count for the gateway ECS service"
+  type        = number
+  default     = 6
+
+  validation {
+    condition     = var.gateway_max_capacity >= var.gateway_min_capacity
+    error_message = "gateway_max_capacity must be greater than or equal to gateway_min_capacity."
+  }
+}
+
+variable "gateway_target_cpu_utilization" {
+  description = "Target average CPU utilization percentage for gateway ECS autoscaling"
+  type        = number
+  default     = 70
+
+  validation {
+    condition     = var.gateway_target_cpu_utilization > 0 && var.gateway_target_cpu_utilization <= 100
+    error_message = "gateway_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "gateway_target_memory_utilization" {
+  description = "Target average memory utilization percentage for gateway ECS autoscaling"
+  type        = number
+  default     = 75
+
+  validation {
+    condition     = var.gateway_target_memory_utilization > 0 && var.gateway_target_memory_utilization <= 100
+    error_message = "gateway_target_memory_utilization must be between 1 and 100."
+  }
+}
+
+variable "gateway_log_retention_days" {
+  description = "CloudWatch log retention period (days) for gateway ECS logs"
+  type        = number
+  default     = 14
+
+  validation {
+    condition = contains([
+      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.gateway_log_retention_days)
+    error_message = "gateway_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
+}
+
+variable "gateway_extra_env_vars" {
+  description = "Extra environment variables for the gateway ECS container"
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = !contains(keys(var.gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in gateway_extra_env_vars; use brainstore_license_key."
+  }
+}
+
+variable "gateway_cpu_architecture" {
+  description = "CPU architecture for the gateway ECS task definition."
+  type        = string
+  default     = "ARM64"
+
+  validation {
+    condition     = contains(["ARM64", "X86_64"], var.gateway_cpu_architecture)
+    error_message = "gateway_cpu_architecture must be either ARM64 or X86_64."
+  }
+}
+
+variable "gateway_allowed_source_security_group_ids" {
+  description = "Optional list of security group IDs allowed to access the internal gateway ALB. If empty, VPC CIDR is allowed."
+  type        = list(string)
+  default     = []
+}
+
+variable "gateway_enable_execute_command" {
+  description = "Enable ECS Exec for gateway tasks."
+  type        = bool
+  default     = false
+}
+
+variable "gateway_health_check_grace_period_seconds" {
+  description = "ECS service health check grace period for gateway tasks."
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = var.gateway_health_check_grace_period_seconds >= 0
+    error_message = "gateway_health_check_grace_period_seconds must be >= 0."
+  }
+}
+
+variable "gateway_enable_deployment_circuit_breaker" {
+  description = "Enable ECS deployment circuit breaker for gateway service."
+  type        = bool
+  default     = true
+}
+
+variable "gateway_deployment_circuit_breaker_rollback" {
+  description = "Automatically roll back failed gateway deployments when circuit breaker is enabled."
+  type        = bool
+  default     = true
+}
+
+variable "gateway_scale_in_cooldown" {
+  description = "Scale-in cooldown in seconds for gateway ECS autoscaling."
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.gateway_scale_in_cooldown >= 0
+    error_message = "gateway_scale_in_cooldown must be >= 0."
+  }
+}
+
+variable "gateway_scale_out_cooldown" {
+  description = "Scale-out cooldown in seconds for gateway ECS autoscaling."
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = var.gateway_scale_out_cooldown >= 0
+    error_message = "gateway_scale_out_cooldown must be >= 0."
+  }
+}
+
+variable "gateway_braintrust_app_url" {
+  description = "Braintrust app URL used by the gateway service."
+  type        = string
+  default     = "https://www.braintrust.dev"
+}
+
+variable "braintrust_api_url" {
+  description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !(var.use_deployment_mode_external_eks && var.enable_gateway) || var.braintrust_api_url != null
+    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_gateway are both true."
+  }
+}
+
 variable "api_handler_provisioned_concurrency" {
   description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
   type        = number
