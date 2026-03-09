@@ -66,6 +66,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "attach_additional_security_groups" {
+  type        = list(string)
+  description = "Advanced: Optional list of additional security group IDs to directly attach to the RDS instance security groups. This is not usually required and should only be used for specialized networking configurations."
+  default     = []
+}
+
 variable "kms_key_arn" {
   description = "KMS key ARN to use for encrypting resources. If not provided, the default AWS managed key is used. DO NOT change this after deployment. If you do, it will attempt to destroy your DB."
   type        = string

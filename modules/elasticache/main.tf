@@ -12,14 +12,17 @@ resource "aws_elasticache_subnet_group" "main" {
 }
 
 resource "aws_elasticache_cluster" "main" {
-  cluster_id         = "${var.deployment_name}-redis"
-  engine             = "redis"
-  node_type          = var.redis_instance_type
-  num_cache_nodes    = 1
-  engine_version     = var.redis_version
-  subnet_group_name  = aws_elasticache_subnet_group.main.name
-  security_group_ids = [aws_security_group.elasticache.id]
-  tags               = local.common_tags
+  cluster_id        = "${var.deployment_name}-redis"
+  engine            = "redis"
+  node_type         = var.redis_instance_type
+  num_cache_nodes   = 1
+  engine_version    = var.redis_version
+  subnet_group_name = aws_elasticache_subnet_group.main.name
+  security_group_ids = concat(
+    [aws_security_group.elasticache.id],
+    var.attach_additional_security_groups,
+  )
+  tags = local.common_tags
 }
 
 #------------------------------------------------------------------------------
