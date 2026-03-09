@@ -286,12 +286,6 @@ variable "database_authorized_security_groups" {
   default     = {}
 }
 
-variable "database_attach_additional_security_groups" {
-  type        = list(string)
-  description = "Advanced: Optional list of additional security group IDs to directly attach to the RDS instance. This is not usually required and should only be used for specialized networking configurations."
-  default     = []
-}
-
 variable "existing_database_subnet_group_name" {
   type        = string
   description = "Optionally re-use an existing database subnet group. If not provided, a new subnet group will be created which is the default and preferred behavior."
@@ -327,12 +321,6 @@ variable "redis_authorized_security_groups" {
   type        = map(string)
   description = "Map of security group names to their IDs that are authorized to access the Redis instance. Format: { name = <security_group_id> }"
   default     = {}
-}
-
-variable "elasticache_attach_additional_security_groups" {
-  type        = list(string)
-  description = "Advanced: Optional list of additional security group IDs to directly attach to the ElastiCache cluster. This is not usually required and should only be used for specialized networking configurations."
-  default     = []
 }
 
 ## Services

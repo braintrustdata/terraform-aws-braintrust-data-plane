@@ -66,10 +66,10 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
-variable "attach_additional_security_groups" {
-  type        = list(string)
-  description = "Advanced: Optional list of additional security group IDs to directly attach to the RDS instance security groups. This is not usually required and should only be used for specialized networking configurations."
-  default     = []
+variable "custom_security_group_id" {
+  type        = string
+  description = "Advanced: Use an existing security group ID instead of the one created by this module. When set, this module will not create or manage the RDS security group or its ingress/egress rules."
+  default     = null
 }
 
 variable "kms_key_arn" {
