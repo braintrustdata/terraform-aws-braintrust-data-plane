@@ -89,6 +89,7 @@ module "database" {
   database_subnet_ids                 = local.database_subnet_ids
   existing_database_subnet_group_name = var.existing_database_subnet_group_name
   vpc_id                              = local.main_vpc_id
+  attach_additional_security_groups   = var.database_attach_additional_security_groups
   authorized_security_groups = merge(
     merge(
       {
@@ -121,7 +122,8 @@ module "redis" {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
-  vpc_id = local.main_vpc_id
+  vpc_id                            = local.main_vpc_id
+  attach_additional_security_groups = var.elasticache_attach_additional_security_groups
   authorized_security_groups = merge(
     merge(
       {

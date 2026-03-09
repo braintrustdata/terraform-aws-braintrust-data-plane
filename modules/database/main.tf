@@ -26,9 +26,12 @@ resource "aws_db_instance" "main" {
   username = local.postgres_username
   password = local.postgres_password
 
-  db_subnet_group_name   = local.database_subnet_group_name
-  parameter_group_name   = aws_db_parameter_group.main.name
-  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name = local.database_subnet_group_name
+  parameter_group_name = aws_db_parameter_group.main.name
+  vpc_security_group_ids = concat(
+    [aws_security_group.rds.id],
+    var.attach_additional_security_groups,
+  )
 
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn

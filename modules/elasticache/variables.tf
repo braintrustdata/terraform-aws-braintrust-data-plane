@@ -19,6 +19,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "attach_additional_security_groups" {
+  type        = list(string)
+  description = "Advanced: Optional list of additional security group IDs to directly attach to the ElastiCache cluster security groups. This is not usually required and should only be used for specialized networking configurations."
+  default     = []
+}
+
 variable "redis_instance_type" {
   type        = string
   description = "Instance type for the Redis cluster"
