@@ -66,10 +66,10 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
-variable "custom_security_group_id" {
-  type        = string
-  description = "Advanced: Use an existing security group ID instead of the one created by this module. When set, this module will not create or manage the RDS security group or its ingress/egress rules."
-  default     = null
+variable "custom_security_group_ids" {
+  type        = list(string)
+  description = "Advanced: Use existing security group IDs instead of the one created by this module. When non-empty, this module will not create or manage the RDS security group or its ingress/egress rules."
+  default     = []
 }
 
 variable "kms_key_arn" {
