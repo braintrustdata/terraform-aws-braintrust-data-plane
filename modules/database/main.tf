@@ -5,7 +5,7 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
-  rds_security_group_id      = var.custom_security_group_id != null ? var.custom_security_group_id : aws_security_group.rds[0].id
+  rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
 }
 
 resource "aws_db_instance" "main" {
@@ -29,7 +29,7 @@ resource "aws_db_instance" "main" {
 
   db_subnet_group_name   = local.database_subnet_group_name
   parameter_group_name   = aws_db_parameter_group.main.name
-  vpc_security_group_ids = [local.rds_security_group_id]
+  vpc_security_group_ids = local.rds_security_group_ids
 
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
@@ -172,14 +172,14 @@ resource "aws_secretsmanager_secret" "database_secret" {
 # Security groups
 #------------------------------------------------------------------------------
 resource "aws_security_group" "rds" {
-  count  = var.custom_security_group_id == null ? 1 : 0
+  count  = length(var.custom_security_group_ids) == 0 ? 1 : 0
   name   = "${var.deployment_name}-rds"
   vpc_id = var.vpc_id
   tags   = merge({ "Name" = "${var.deployment_name}-rds" }, local.common_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorized_security_groups" {
-  for_each = var.custom_security_group_id == null ? var.authorized_security_groups : {}
+  for_each = length(var.custom_security_group_ids) == 0 ? var.authorized_security_groups : {}
 
   from_port                    = 5432
   to_port                      = 5432
@@ -192,7 +192,7 @@ resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorize
 }
 
 resource "aws_vpc_security_group_egress_rule" "rds_allow_egress_all" {
-  count             = var.custom_security_group_id == null ? 1 : 0
+  count             = length(var.custom_security_group_ids) == 0 ? 1 : 0
   from_port         = -1
   to_port           = -1
   ip_protocol       = "-1"
