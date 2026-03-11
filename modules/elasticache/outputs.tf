@@ -14,6 +14,6 @@ output "redis_arn" {
 }
 
 output "redis_security_group_id" {
-  value       = aws_security_group.elasticache.id
-  description = "The ID of the security group for the Elasticache instance"
+  value       = local.elasticache_security_group_ids[0]
+  description = "The ID of the first security group for the Elasticache instance"
 }

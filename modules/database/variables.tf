@@ -66,6 +66,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "custom_security_group_ids" {
+  type        = list(string)
+  description = "Advanced: Use existing security group IDs instead of the one created by this module. When non-empty, this module will not create or manage the RDS security group or its ingress/egress rules."
+  default     = []
+}
+
 variable "kms_key_arn" {
   description = "KMS key ARN to use for encrypting resources. If not provided, the default AWS managed key is used. DO NOT change this after deployment. If you do, it will attempt to destroy your DB."
   type        = string

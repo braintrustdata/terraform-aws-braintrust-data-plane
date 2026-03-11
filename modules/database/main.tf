@@ -5,6 +5,7 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
+  rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
 }
 
 resource "aws_db_instance" "main" {
@@ -28,7 +29,7 @@ resource "aws_db_instance" "main" {
 
   db_subnet_group_name   = local.database_subnet_group_name
   parameter_group_name   = aws_db_parameter_group.main.name
-  vpc_security_group_ids = [aws_security_group.rds.id]
+  vpc_security_group_ids = local.rds_security_group_ids
 
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
@@ -171,13 +172,14 @@ resource "aws_secretsmanager_secret" "database_secret" {
 # Security groups
 #------------------------------------------------------------------------------
 resource "aws_security_group" "rds" {
+  count  = length(var.custom_security_group_ids) == 0 ? 1 : 0
   name   = "${var.deployment_name}-rds"
   vpc_id = var.vpc_id
   tags   = merge({ "Name" = "${var.deployment_name}-rds" }, local.common_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorized_security_groups" {
-  for_each = var.authorized_security_groups
+  for_each = length(var.custom_security_group_ids) == 0 ? var.authorized_security_groups : {}
 
   from_port                    = 5432
   to_port                      = 5432
@@ -185,6 +187,6 @@ resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorize
   referenced_security_group_id = each.value
   description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from ${each.key}."
 
-  security_group_id = aws_security_group.rds.id
+  security_group_id = aws_security_group.rds[0].id
   tags              = local.common_tags
 }
