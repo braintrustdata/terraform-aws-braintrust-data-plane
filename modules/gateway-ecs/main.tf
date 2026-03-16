@@ -148,7 +148,7 @@ resource "aws_lb_target_group" "gateway" {
     healthy_threshold   = 3
     unhealthy_threshold = 3
     timeout             = 5
-    interval            = 30
+    interval            = 10
   }
 
   tags = merge({
@@ -256,6 +256,7 @@ resource "aws_ecs_service" "gateway" {
   enable_execute_command            = var.enable_execute_command
   health_check_grace_period_seconds = var.health_check_grace_period_seconds
   wait_for_steady_state             = true
+  sigint_rollback                   = true
 
   deployment_circuit_breaker {
     enable   = var.enable_deployment_circuit_breaker
