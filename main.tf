@@ -233,6 +233,7 @@ module "ecs" {
   count  = var.enable_ai_gateway ? 1 : 0
 
   deployment_name    = var.deployment_name
+  kms_key_arn        = local.kms_key_arn
   container_insights = var.container_insights
   custom_tags        = var.custom_tags
 }
@@ -242,6 +243,7 @@ module "gateway_ecs" {
   count  = var.enable_ai_gateway ? 1 : 0
 
   deployment_name    = var.deployment_name
+  kms_key_arn        = local.kms_key_arn
   vpc_id             = local.main_vpc_id
   private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
   ecs_cluster_arn    = module.ecs[0].cluster_arn

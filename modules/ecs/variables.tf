@@ -3,6 +3,11 @@ variable "deployment_name" {
   description = "Name of this deployment. Used in ECS cluster naming."
 }
 
+variable "kms_key_arn" {
+  type        = string
+  description = "KMS key ARN used for ECS Exec and Fargate managed storage encryption."
+}
+
 variable "container_insights" {
   type        = string
   description = "CloudWatch Container Insights setting for the ECS cluster. Valid values: enabled, disabled, enhanced."

@@ -3,6 +3,11 @@ variable "deployment_name" {
   description = "Name of this deployment. Will be included in resource names."
 }
 
+variable "kms_key_arn" {
+  type        = string
+  description = "KMS key ARN used to encrypt gateway resources that support customer-managed KMS keys."
+}
+
 variable "vpc_id" {
   type        = string
   description = "VPC ID where ECS resources are deployed."
