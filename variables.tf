@@ -331,14 +331,14 @@ variable "enable_ai_gateway" {
   default     = false
 }
 
-variable "gateway_container_image" {
-  description = "Container image to deploy for the gateway ECS service"
+variable "gateway_version_override" {
   type        = string
-  default     = "public.ecr.aws/braintrust/gateway:latest"
+  description = "Lock Gateway on a specific version. Don't set this unless instructed by Braintrust."
+  default     = null
 
   validation {
-    condition     = trimspace(var.gateway_container_image) != ""
-    error_message = "gateway_container_image must not be empty."
+    condition     = var.gateway_version_override == null || trimspace(var.gateway_version_override) != ""
+    error_message = "gateway_version_override must be null or a non-empty string."
   }
 }
 

@@ -240,12 +240,15 @@ module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = var.enable_ai_gateway ? 1 : 0
 
-  deployment_name           = var.deployment_name
-  vpc_id                    = local.main_vpc_id
-  private_subnet_ids        = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
-  ecs_cluster_arn           = module.ecs[0].cluster_arn
-  ecs_cluster_name          = module.ecs[0].cluster_name
-  container_image           = var.gateway_container_image
+  deployment_name    = var.deployment_name
+  vpc_id             = local.main_vpc_id
+  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  ecs_cluster_arn    = module.ecs[0].cluster_arn
+  ecs_cluster_name   = module.ecs[0].cluster_name
+  container_image = format(
+    "public.ecr.aws/braintrust/gateway:%s",
+    var.gateway_version_override == null ? "prerelease" : var.gateway_version_override
+  )
   cpu                       = var.gateway_cpu
   memory                    = var.gateway_memory
   cpu_architecture          = var.gateway_cpu_architecture
