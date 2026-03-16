@@ -65,6 +65,50 @@ resource "aws_kms_key" "braintrust" {
               "kms:GrantIsForAWSResource" : true
             }
           }
+        },
+        {
+          Sid    = "Allow CloudWatch Logs to use the key"
+          Effect = "Allow"
+          Principal = {
+            Service = "logs.${data.aws_region.current.region}.amazonaws.com"
+          }
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey",
+          ]
+          Resource = "*"
+          Condition = {
+            ArnLike = {
+              "kms:EncryptionContext:aws:logs:arn" : "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:*"
+            }
+          }
+        },
+        {
+          Sid    = "Allow Fargate to use the key for ephemeral storage"
+          Effect = "Allow"
+          Principal = {
+            Service = "fargate.amazonaws.com"
+          }
+          Action = [
+            "kms:GenerateDataKeyWithoutPlaintext",
+            "kms:DescribeKey",
+            "kms:CreateGrant",
+          ]
+          Resource = "*"
+          Condition = {
+            StringEquals = {
+              "aws:SourceAccount" : data.aws_caller_identity.current.account_id
+            }
+            ArnLike = {
+              "aws:SourceArn" : "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:*"
+            }
+            Bool = {
+              "kms:GrantIsForAWSResource" : true
+            }
+          }
         }
       ],
       var.additional_key_policies
@@ -83,3 +127,4 @@ resource "aws_kms_alias" "braintrust" {
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
