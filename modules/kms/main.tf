@@ -87,28 +87,54 @@ resource "aws_kms_key" "braintrust" {
           }
         },
         {
-          Sid    = "Allow Fargate to use the key for ephemeral storage"
+          Sid    = "Allow generate data key access for Fargate tasks"
           Effect = "Allow"
           Principal = {
             Service = "fargate.amazonaws.com"
           }
           Action = [
             "kms:GenerateDataKeyWithoutPlaintext",
-            "kms:DescribeKey",
+          ]
+          Resource = "*"
+          Condition = {
+            StringEquals = {
+              "kms:EncryptionContext:aws:ecs:clusterAccount" : data.aws_caller_identity.current.account_id
+              "kms:EncryptionContext:aws:ecs:clusterName" : var.deployment_name
+            }
+          }
+        },
+        {
+          Sid    = "Allow grant creation permission for Fargate tasks"
+          Effect = "Allow"
+          Principal = {
+            Service = "fargate.amazonaws.com"
+          }
+          Action = [
             "kms:CreateGrant",
           ]
           Resource = "*"
           Condition = {
             StringEquals = {
-              "aws:SourceAccount" : data.aws_caller_identity.current.account_id
+              "kms:EncryptionContext:aws:ecs:clusterAccount" : data.aws_caller_identity.current.account_id
+              "kms:EncryptionContext:aws:ecs:clusterName" : var.deployment_name
             }
-            ArnLike = {
-              "aws:SourceArn" : "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:*"
-            }
-            Bool = {
-              "kms:GrantIsForAWSResource" : true
+            "ForAllValues:StringEquals" = {
+              "kms:GrantOperations" : [
+                "Decrypt",
+              ]
             }
           }
+        },
+        {
+          Sid    = "Allow Fargate to describe key"
+          Effect = "Allow"
+          Principal = {
+            Service = "fargate.amazonaws.com"
+          }
+          Action = [
+            "kms:DescribeKey",
+          ]
+          Resource = "*"
         }
       ],
       var.additional_key_policies
