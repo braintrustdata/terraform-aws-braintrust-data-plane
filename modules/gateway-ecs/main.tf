@@ -118,7 +118,7 @@ resource "aws_vpc_security_group_ingress_rule" "cache_allow_ingress_from_gateway
   to_port                      = var.redis_port
   ip_protocol                  = "tcp"
   referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow Redis inbound to gateway cache from gateway tasks."
+  description                  = "Allow inbound traffic from gateway tasks."
 
   security_group_id = var.cache_security_group_id
   tags              = local.common_tags
