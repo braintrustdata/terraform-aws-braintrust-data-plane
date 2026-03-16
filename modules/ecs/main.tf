@@ -8,7 +8,7 @@ resource "aws_ecs_cluster" "this" {
   name = var.deployment_name
   setting {
     name  = "containerInsights"
-    value = var.enable_container_insights ? "enabled" : "disabled"
+    value = var.container_insights
   }
 
   tags = merge({

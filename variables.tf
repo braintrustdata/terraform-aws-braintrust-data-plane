@@ -331,6 +331,17 @@ variable "enable_ai_gateway" {
   default     = false
 }
 
+variable "container_insights" {
+  description = "CloudWatch Container Insights setting for the ECS cluster. Valid values: enabled, disabled, enhanced."
+  type        = string
+  default     = "enabled"
+
+  validation {
+    condition     = contains(["enabled", "disabled", "enhanced"], var.container_insights)
+    error_message = "container_insights must be one of: enabled, disabled, enhanced."
+  }
+}
+
 variable "gateway_version_override" {
   type        = string
   description = "Lock Gateway on a specific version. Don't set this unless instructed by Braintrust."

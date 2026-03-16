@@ -232,8 +232,9 @@ module "ecs" {
   source = "./modules/ecs"
   count  = var.enable_ai_gateway ? 1 : 0
 
-  deployment_name = var.deployment_name
-  custom_tags     = var.custom_tags
+  deployment_name    = var.deployment_name
+  container_insights = var.container_insights
+  custom_tags        = var.custom_tags
 }
 
 module "gateway_ecs" {
