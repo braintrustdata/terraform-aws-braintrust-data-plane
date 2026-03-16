@@ -33,10 +33,6 @@ locals {
 
 data "aws_region" "current" {}
 
-data "aws_vpc" "selected" {
-  id = var.vpc_id
-}
-
 data "aws_iam_policy_document" "ecs_task_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -66,27 +62,15 @@ resource "aws_security_group" "alb" {
   }, local.common_tags)
 }
 
-resource "aws_security_group_rule" "alb_ingress_vpc" {
-  count = length(var.allowed_source_security_group_ids) == 0 ? 1 : 0
-
-  type              = "ingress"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = [data.aws_vpc.selected.cidr_block]
-  description       = "Allow HTTP traffic from within the VPC"
-  security_group_id = aws_security_group.alb.id
-}
-
-resource "aws_security_group_rule" "alb_ingress_from_source_sg" {
-  for_each = toset(var.allowed_source_security_group_ids)
+resource "aws_security_group_rule" "alb_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
 
   type                     = "ingress"
   from_port                = 80
   to_port                  = 80
   protocol                 = "tcp"
   source_security_group_id = each.value
-  description              = "Allow HTTP traffic from allowed source security groups"
+  description              = "Allow HTTP traffic from ${each.key}."
   security_group_id        = aws_security_group.alb.id
 }
 

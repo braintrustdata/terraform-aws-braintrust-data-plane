@@ -146,10 +146,10 @@ variable "cache_security_group_id" {
   description = "Security group ID of the dedicated gateway ElastiCache instance."
 }
 
-variable "allowed_source_security_group_ids" {
-  type        = list(string)
-  description = "Optional list of security group IDs allowed to access the gateway ALB on port 80. If empty, the full VPC CIDR is allowed."
-  default     = []
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to their IDs that are authorized to access the gateway ALB on port 80. Format: { name = <security_group_id> }"
+  default     = {}
 }
 
 variable "custom_tags" {

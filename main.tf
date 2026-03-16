@@ -240,26 +240,32 @@ module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = var.enable_gateway ? 1 : 0
 
-  deployment_name                     = var.deployment_name
-  vpc_id                              = local.main_vpc_id
-  private_subnet_ids                  = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
-  ecs_cluster_arn                     = module.ecs[0].cluster_arn
-  ecs_cluster_name                    = module.ecs[0].cluster_name
-  container_image                     = var.gateway_container_image
-  cpu                                 = var.gateway_cpu
-  memory                              = var.gateway_memory
-  cpu_architecture                    = var.gateway_cpu_architecture
-  min_capacity                        = var.gateway_min_capacity
-  max_capacity                        = var.gateway_max_capacity
-  target_cpu_utilization              = var.gateway_target_cpu_utilization
-  target_memory_utilization           = var.gateway_target_memory_utilization
-  scale_in_cooldown                   = var.gateway_scale_in_cooldown
-  scale_out_cooldown                  = var.gateway_scale_out_cooldown
-  log_retention_days                  = var.gateway_log_retention_days
-  redis_host                          = module.redis.redis_endpoint
-  redis_port                          = module.redis.redis_port
-  cache_security_group_id             = module.redis.redis_security_group_id
-  allowed_source_security_group_ids   = var.gateway_allowed_source_security_group_ids
+  deployment_name           = var.deployment_name
+  vpc_id                    = local.main_vpc_id
+  private_subnet_ids        = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  ecs_cluster_arn           = module.ecs[0].cluster_arn
+  ecs_cluster_name          = module.ecs[0].cluster_name
+  container_image           = var.gateway_container_image
+  cpu                       = var.gateway_cpu
+  memory                    = var.gateway_memory
+  cpu_architecture          = var.gateway_cpu_architecture
+  min_capacity              = var.gateway_min_capacity
+  max_capacity              = var.gateway_max_capacity
+  target_cpu_utilization    = var.gateway_target_cpu_utilization
+  target_memory_utilization = var.gateway_target_memory_utilization
+  scale_in_cooldown         = var.gateway_scale_in_cooldown
+  scale_out_cooldown        = var.gateway_scale_out_cooldown
+  log_retention_days        = var.gateway_log_retention_days
+  redis_host                = module.redis.redis_endpoint
+  redis_port                = module.redis.redis_port
+  cache_security_group_id   = module.redis.redis_security_group_id
+  authorized_security_groups = merge(
+    {
+      "API"        = module.services_common.api_security_group_id
+      "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    },
+    var.gateway_authorized_security_groups,
+  )
   extra_env_vars                      = var.gateway_extra_env_vars
   custom_tags                         = var.custom_tags
   brainstore_license_key              = var.brainstore_license_key

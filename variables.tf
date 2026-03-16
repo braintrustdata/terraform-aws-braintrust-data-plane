@@ -427,10 +427,10 @@ variable "gateway_cpu_architecture" {
   }
 }
 
-variable "gateway_allowed_source_security_group_ids" {
-  description = "Optional list of security group IDs allowed to access the internal gateway ALB. If empty, VPC CIDR is allowed."
-  type        = list(string)
-  default     = []
+variable "gateway_authorized_security_groups" {
+  description = "Map of security group names to their IDs that are authorized to access the internal gateway ALB. Format: { name = <security_group_id> }"
+  type        = map(string)
+  default     = {}
 }
 
 variable "gateway_enable_execute_command" {
