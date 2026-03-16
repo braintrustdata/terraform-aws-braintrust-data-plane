@@ -348,7 +348,7 @@ variable "gateway_version_override" {
   default     = null
 
   validation {
-    condition     = var.gateway_version_override == null || trimspace(var.gateway_version_override) != ""
+    condition     = var.gateway_version_override == null || var.gateway_version_override != ""
     error_message = "gateway_version_override must be null or a non-empty string."
   }
 }
