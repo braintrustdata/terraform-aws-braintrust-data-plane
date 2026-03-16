@@ -74,32 +74,32 @@ output "api_security_group_id" {
 }
 
 output "ecs_cluster_arn" {
-  value       = var.enable_gateway ? module.ecs[0].cluster_arn : null
+  value       = var.enable_ai_gateway ? module.ecs[0].cluster_arn : null
   description = "ARN of the ECS cluster used for ECS services"
 }
 
 output "gateway_service_name" {
-  value       = var.enable_gateway ? module.gateway_ecs[0].service_name : null
+  value       = var.enable_ai_gateway ? module.gateway_ecs[0].service_name : null
   description = "Name of the ECS gateway service"
 }
 
 output "gateway_alb_dns_name" {
-  value       = var.enable_gateway ? module.gateway_ecs[0].alb_dns_name : null
+  value       = var.enable_ai_gateway ? module.gateway_ecs[0].alb_dns_name : null
   description = "Internal DNS name of the private gateway ALB"
 }
 
 output "gateway_alb_arn" {
-  value       = var.enable_gateway ? module.gateway_ecs[0].alb_arn : null
+  value       = var.enable_ai_gateway ? module.gateway_ecs[0].alb_arn : null
   description = "ARN of the private gateway ALB"
 }
 
 output "gateway_target_group_arn" {
-  value       = var.enable_gateway ? module.gateway_ecs[0].target_group_arn : null
+  value       = var.enable_ai_gateway ? module.gateway_ecs[0].target_group_arn : null
   description = "ARN of the gateway ALB target group"
 }
 
 output "gateway_task_security_group_id" {
-  value       = var.enable_gateway ? module.gateway_ecs[0].task_security_group_id : null
+  value       = var.enable_ai_gateway ? module.gateway_ecs[0].task_security_group_id : null
   description = "ID of the security group for ECS gateway tasks"
 }
 

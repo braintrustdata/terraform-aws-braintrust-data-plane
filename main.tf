@@ -230,7 +230,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_gateway ? 1 : 0
+  count  = var.enable_ai_gateway ? 1 : 0
 
   deployment_name = var.deployment_name
   custom_tags     = var.custom_tags
@@ -238,7 +238,7 @@ module "ecs" {
 
 module "gateway_ecs" {
   source = "./modules/gateway-ecs"
-  count  = var.enable_gateway ? 1 : 0
+  count  = var.enable_ai_gateway ? 1 : 0
 
   deployment_name           = var.deployment_name
   vpc_id                    = local.main_vpc_id

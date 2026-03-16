@@ -325,7 +325,7 @@ variable "redis_authorized_security_groups" {
 
 ## Services
 
-variable "enable_gateway" {
+variable "enable_ai_gateway" {
   description = "Enable ECS gateway service deployment (Fargate with private ALB)"
   type        = bool
   default     = false
@@ -496,8 +496,8 @@ variable "braintrust_api_url" {
   default     = null
 
   validation {
-    condition     = !(var.use_deployment_mode_external_eks && var.enable_gateway) || var.braintrust_api_url != null
-    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_gateway are both true."
+    condition     = !(var.use_deployment_mode_external_eks && var.enable_ai_gateway) || var.braintrust_api_url != null
+    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_ai_gateway are both true."
   }
 }
 
