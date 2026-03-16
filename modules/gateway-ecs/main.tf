@@ -255,13 +255,13 @@ resource "aws_ecs_service" "gateway" {
   desired_count                     = var.min_capacity
   launch_type                       = "FARGATE"
   enable_execute_command            = var.enable_execute_command
-  health_check_grace_period_seconds = var.health_check_grace_period_seconds
+  health_check_grace_period_seconds = 60
   wait_for_steady_state             = true
   sigint_rollback                   = true
 
   deployment_circuit_breaker {
-    enable   = var.enable_deployment_circuit_breaker
-    rollback = var.deployment_circuit_breaker_rollback
+    enable   = true
+    rollback = true
   }
 
   network_configuration {

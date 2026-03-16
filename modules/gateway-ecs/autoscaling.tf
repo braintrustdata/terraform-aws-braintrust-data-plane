@@ -19,8 +19,8 @@ resource "aws_appautoscaling_policy" "gateway_cpu_target" {
     }
 
     target_value       = var.target_cpu_utilization
-    scale_in_cooldown  = var.scale_in_cooldown
-    scale_out_cooldown = var.scale_out_cooldown
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
   }
 }
 
@@ -37,7 +37,7 @@ resource "aws_appautoscaling_policy" "gateway_memory_target" {
     }
 
     target_value       = var.target_memory_utilization
-    scale_in_cooldown  = var.scale_in_cooldown
-    scale_out_cooldown = var.scale_out_cooldown
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
   }
 }
