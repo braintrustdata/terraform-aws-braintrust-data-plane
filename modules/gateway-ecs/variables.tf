@@ -146,7 +146,7 @@ variable "redis_port" {
   }
 }
 
-variable "cache_security_group_id" {
+variable "redis_security_group_id" {
   type        = string
   description = "Security group ID of the dedicated gateway ElastiCache instance."
 }
@@ -168,6 +168,7 @@ variable "brainstore_license_key" {
   description = "License key for the Brainstore instance. Used for telemetry authorization."
   default     = null
 }
+
 variable "cpu_architecture" {
   type        = string
   description = "CPU architecture for the gateway task definition."

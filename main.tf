@@ -262,7 +262,7 @@ module "gateway_ecs" {
   log_retention_days        = var.gateway_log_retention_days
   redis_host                = module.redis.redis_endpoint
   redis_port                = module.redis.redis_port
-  cache_security_group_id   = module.redis.redis_security_group_id
+  redis_security_group_id   = module.redis.redis_security_group_id
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
