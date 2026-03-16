@@ -14,6 +14,7 @@ resource "aws_ecs_cluster" "dataplane" {
     }
 
     managed_storage_configuration {
+      kms_key_id                           = var.kms_key_arn
       fargate_ephemeral_storage_kms_key_id = var.kms_key_arn
     }
   }
