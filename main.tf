@@ -257,8 +257,8 @@ module "gateway_ecs" {
   max_capacity              = var.gateway_max_capacity
   target_cpu_utilization    = var.gateway_target_cpu_utilization
   target_memory_utilization = var.gateway_target_memory_utilization
-  scale_in_cooldown         = var.gateway_scale_in_cooldown
-  scale_out_cooldown        = var.gateway_scale_out_cooldown
+  scale_in_cooldown         = 300
+  scale_out_cooldown        = 60
   log_retention_days        = var.gateway_log_retention_days
   redis_host                = module.redis.redis_endpoint
   redis_port                = module.redis.redis_port
@@ -274,9 +274,9 @@ module "gateway_ecs" {
   custom_tags                         = var.custom_tags
   brainstore_license_key              = var.brainstore_license_key
   enable_execute_command              = var.gateway_enable_execute_command
-  health_check_grace_period_seconds   = var.gateway_health_check_grace_period_seconds
-  enable_deployment_circuit_breaker   = var.gateway_enable_deployment_circuit_breaker
-  deployment_circuit_breaker_rollback = var.gateway_deployment_circuit_breaker_rollback
+  health_check_grace_period_seconds   = 60
+  enable_deployment_circuit_breaker   = true
+  deployment_circuit_breaker_rollback = true
   braintrust_app_url                  = var.gateway_braintrust_app_url
   braintrust_api_url                  = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
 }

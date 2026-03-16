@@ -450,51 +450,6 @@ variable "gateway_enable_execute_command" {
   default     = false
 }
 
-variable "gateway_health_check_grace_period_seconds" {
-  description = "ECS service health check grace period for gateway tasks."
-  type        = number
-  default     = 60
-
-  validation {
-    condition     = var.gateway_health_check_grace_period_seconds >= 0
-    error_message = "gateway_health_check_grace_period_seconds must be >= 0."
-  }
-}
-
-variable "gateway_enable_deployment_circuit_breaker" {
-  description = "Enable ECS deployment circuit breaker for gateway service."
-  type        = bool
-  default     = true
-}
-
-variable "gateway_deployment_circuit_breaker_rollback" {
-  description = "Automatically roll back failed gateway deployments when circuit breaker is enabled."
-  type        = bool
-  default     = true
-}
-
-variable "gateway_scale_in_cooldown" {
-  description = "Scale-in cooldown in seconds for gateway ECS autoscaling."
-  type        = number
-  default     = 300
-
-  validation {
-    condition     = var.gateway_scale_in_cooldown >= 0
-    error_message = "gateway_scale_in_cooldown must be >= 0."
-  }
-}
-
-variable "gateway_scale_out_cooldown" {
-  description = "Scale-out cooldown in seconds for gateway ECS autoscaling."
-  type        = number
-  default     = 60
-
-  validation {
-    condition     = var.gateway_scale_out_cooldown >= 0
-    error_message = "gateway_scale_out_cooldown must be >= 0."
-  }
-}
-
 variable "gateway_braintrust_app_url" {
   description = "Braintrust app URL used by the gateway service."
   type        = string
