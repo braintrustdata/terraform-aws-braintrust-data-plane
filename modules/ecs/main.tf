@@ -5,7 +5,7 @@ locals {
 }
 
 resource "aws_ecs_cluster" "dataplane" {
-  name = var.deployment_name
+  name = "${var.deployment_name}-dataplane"
 
   configuration {
     execute_command_configuration {
