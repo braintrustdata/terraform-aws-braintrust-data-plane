@@ -4,7 +4,7 @@ locals {
   }, var.custom_tags)
 }
 
-resource "aws_ecs_cluster" "this" {
+resource "aws_ecs_cluster" "dataplane" {
   name = var.deployment_name
   setting {
     name  = "containerInsights"
