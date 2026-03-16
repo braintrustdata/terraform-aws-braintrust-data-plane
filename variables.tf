@@ -399,9 +399,7 @@ variable "gateway_log_retention_days" {
   default     = 14
 
   validation {
-    condition = contains([
-      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
-      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    condition = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
     ], var.gateway_log_retention_days)
     error_message = "gateway_log_retention_days must be a valid CloudWatch Logs retention value."
   }

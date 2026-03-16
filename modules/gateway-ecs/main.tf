@@ -6,20 +6,14 @@ locals {
   container_name = "gateway"
   container_port = 8080
   base_env_vars = {
-    GATEWAY_ENV                = "production"
-    BRAINTRUST_APP_URL         = var.braintrust_app_url
-    BRAINTRUST_API_URL         = var.braintrust_api_url
-    BRAINTRUST_AUTH_TIMEOUT_MS = "5000"
+    GATEWAY_ENV        = "production"
+    BRAINTRUST_APP_URL = var.braintrust_app_url
+    BRAINTRUST_API_URL = var.braintrust_api_url
 
-    COMPLETIONS_CACHE_REDIS_URL  = "redis://${var.redis_host}:${var.redis_port}"
-    AUTH_CACHE_REDIS_URL         = "redis://${var.redis_host}:${var.redis_port}"
-    AUTH_CACHE_MAX_TTL_SECONDS   = "86400"
-    AUTH_CACHE_REFRESH_SECONDS   = "60"
-    AUTH_SECRETS_MAX_TTL_SECONDS = "86400"
-    AUTH_SECRETS_REFRESH_SECONDS = "300"
-    RUST_LOG                     = "info"
-    GATEWAY_JSON_LOGS            = "true"
-    OTLP_HTTP_ENDPOINT           = "https://www.braintrust.dev/api/pulse/otel"
+    COMPLETIONS_CACHE_REDIS_URL = "redis://${var.redis_host}:${var.redis_port}"
+    AUTH_CACHE_REDIS_URL        = "redis://${var.redis_host}:${var.redis_port}"
+    GATEWAY_JSON_LOGS           = "true"
+    OTLP_HTTP_ENDPOINT          = "https://www.braintrust.dev/api/pulse/otel"
   }
   plain_license_env_var = var.brainstore_license_key == null ? {} : {
     BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
