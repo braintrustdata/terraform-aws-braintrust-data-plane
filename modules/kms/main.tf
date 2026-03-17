@@ -65,6 +65,76 @@ resource "aws_kms_key" "braintrust" {
               "kms:GrantIsForAWSResource" : true
             }
           }
+        },
+        {
+          Sid    = "Allow CloudWatch Logs to use the key"
+          Effect = "Allow"
+          Principal = {
+            Service = "logs.${data.aws_region.current.region}.amazonaws.com"
+          }
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey",
+          ]
+          Resource = "*"
+          Condition = {
+            ArnLike = {
+              "kms:EncryptionContext:aws:logs:arn" : "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:*"
+            }
+          }
+        },
+        {
+          Sid    = "Allow generate data key access for Fargate tasks"
+          Effect = "Allow"
+          Principal = {
+            Service = "fargate.amazonaws.com"
+          }
+          Action = [
+            "kms:GenerateDataKeyWithoutPlaintext",
+          ]
+          Resource = "*"
+          Condition = {
+            StringEquals = {
+              "kms:EncryptionContext:aws:ecs:clusterAccount" : data.aws_caller_identity.current.account_id
+              "kms:EncryptionContext:aws:ecs:clusterName" : var.deployment_name
+            }
+          }
+        },
+        {
+          Sid    = "Allow grant creation permission for Fargate tasks"
+          Effect = "Allow"
+          Principal = {
+            Service = "fargate.amazonaws.com"
+          }
+          Action = [
+            "kms:CreateGrant",
+          ]
+          Resource = "*"
+          Condition = {
+            StringEquals = {
+              "kms:EncryptionContext:aws:ecs:clusterAccount" : data.aws_caller_identity.current.account_id
+              "kms:EncryptionContext:aws:ecs:clusterName" : var.deployment_name
+            }
+            "ForAllValues:StringEquals" = {
+              "kms:GrantOperations" : [
+                "Decrypt",
+              ]
+            }
+          }
+        },
+        {
+          Sid    = "Allow Fargate to describe key"
+          Effect = "Allow"
+          Principal = {
+            Service = "fargate.amazonaws.com"
+          }
+          Action = [
+            "kms:DescribeKey",
+          ]
+          Resource = "*"
         }
       ],
       var.additional_key_policies
@@ -83,3 +153,4 @@ resource "aws_kms_alias" "braintrust" {
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
