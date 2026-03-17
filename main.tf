@@ -230,7 +230,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_ai_gateway ? 1 : 0
+  count  = var.enable_llm_gateway ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -240,7 +240,7 @@ module "ecs" {
 
 module "gateway_ecs" {
   source = "./modules/gateway-ecs"
-  count  = var.enable_ai_gateway ? 1 : 0
+  count  = var.enable_llm_gateway ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
