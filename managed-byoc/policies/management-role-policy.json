@@ -1,0 +1,89 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowCommonServices",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*",
+        "autoscaling:*",
+        "elasticloadbalancing:*",
+        "ecs:*",
+        "eks:*",
+        "ecr:*",
+        "ecr-public:*",
+        "elasticfilesystem:*",
+        "route53:*",
+        "route53resolver:*",
+        "route53domains:*",
+        "rds:*",
+        "elasticache:*",
+        "dynamodb:*",
+        "acm:*",
+        "wafv2:*",
+        "sns:*",
+        "sqs:*",
+        "s3:*",
+        "secretsmanager:*",
+        "kms:*",
+        "lambda:*",
+        "apigateway:*",
+        "cloudfront:*",
+        "logs:*",
+        "events:*",
+        "cloudwatch:*",
+        "ssm:*",
+        "ec2-instance-connect:*",
+        "servicequotas:*",
+        "support:*",
+        "health:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowLimitedIam",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:UpdateRole",
+        "iam:TagRole",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicyVersion",
+        "iam:SetDefaultPolicyVersion",
+        "iam:Get*",
+        "iam:List*",
+        "iam:PassRole"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowReadOnlyAccountContext",
+      "Effect": "Allow",
+      "Action": [
+        "organizations:Describe*",
+        "organizations:List*",
+        "account:Get*",
+        "account:List*",
+        "aws-portal:ViewAccount",
+        "aws-portal:ViewUsage",
+        "cloudtrail:Get*",
+        "cloudtrail:Describe*",
+        "cloudtrail:List*",
+        "cloudtrail:LookupEvents",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
