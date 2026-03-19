@@ -16,6 +16,7 @@ resource "aws_lambda_function" "automation_cron" {
   timeout       = 300
   memory_size   = 2048
   architectures = ["arm64"]
+  kms_key_arn   = var.kms_key_arn
 
   # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(

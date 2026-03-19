@@ -17,6 +17,7 @@ resource "aws_lambda_function" "billing_cron" {
   timeout       = 300
   memory_size   = 1024
   architectures = ["arm64"]
+  kms_key_arn   = var.kms_key_arn
 
   layers = local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
 
