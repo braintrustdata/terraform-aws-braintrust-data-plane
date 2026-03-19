@@ -1,0 +1,56 @@
+# Managed BYOC
+
+Managed BYOC (Bring Your Own Cloud) is an optional Braintrust offering where a customer provides an AWS account and Braintrust deploys and operates the Braintrust Data Plane in that account.
+
+## 1) Create the Braintrust management role
+
+In the customer AWS account:
+
+1. Create an IAM role named `BraintrustManagementRole`.
+2. Attach the policy from `managed-byoc/policies/management-role-policy.json` to that role.
+3. Configure trust policy / assume-role settings so Braintrust can assume `BraintrustManagementRole`.
+
+This policy is the required baseline permission set for managed BYOC.
+
+## 2) Optional: Organization Service Control Policy (SCP) guardrail
+
+Customers can further restrict access by applying the sample Service Control Policy in:
+
+- `managed-byoc/policies/byoc-service-control-policy.json`
+
+Apply it at the AWS Organizations OU or account level that contains the managed BYOC account. This SCP is optional but recommended when you want additional organizational guardrails.
+
+Notes:
+
+- SCPs apply to all principals in attached accounts.
+- Explicit deny statements in the SCP override identity-based allows.
+- Prefer attaching to a dedicated OU/account used for Braintrust-managed infrastructure.
+
+## 3) Service quota requirements for new accounts
+
+New AWS accounts often need quota increases before deployment can succeed.
+
+This directory includes:
+
+- `managed-byoc/quota-config.json`: default required quotas
+- `managed-byoc/manage-quotas.sh`: script to inspect/request quota increases
+
+### View current quotas vs required values
+
+```bash
+./managed-byoc/manage-quotas.sh list
+```
+
+This prints each quota with current value, desired value, and action (`ok` / `needs-raise`).
+
+### Apply quota increase requests
+
+```bash
+./managed-byoc/manage-quotas.sh request
+```
+
+For quotas below target values, the script submits increase requests to AWS and prints request IDs.
+
+### Follow up on support tickets and request outcomes
+
+Some quota requests may open AWS Support cases or require clarification. Customers should monitor quota request status and any support communications in the AWS console and respond as needed. AWS may approve, ask follow-up questions, or deny requests.
