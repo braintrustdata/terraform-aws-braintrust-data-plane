@@ -2,7 +2,15 @@
 
 Managed BYOC (Bring Your Own Cloud) is an optional Braintrust offering where a customer provides an AWS account and Braintrust deploys and operates the Braintrust Data Plane in that account.
 
-## 1) Create the Braintrust management role
+## 1) Prepare a dedicated AWS account
+
+Use an AWS account dedicated to Braintrust-managed resources only. Do not use an account that is shared with any other production or non-Braintrust infrastructure.
+
+If you do not already have a dedicated account, work with your infrastructure/platform team to provision one before continuing.
+
+You must have full administrative permissions in that dedicated account to complete the remaining steps in this guide.
+
+## 2) Create the Braintrust management role
 
 Run the following script to create the Braintrust management role. This should be run in the customer AWS account dedicated to Braintrust-managed infrastructure. You can optionally provide an AWS profile to use with the `--profile` flag.
 
@@ -16,7 +24,7 @@ This role and policy set is the required baseline for managed BYOC. You can revi
 - Trust Policy: `managed-byoc/policies/management-role-trust-policy.json`
 - Inline Policy: `managed-byoc/policies/management-role-policy.json`
 
-## 2) Optional: Organization Service Control Policy (SCP) guardrail
+## 3) Optional: Organization Service Control Policy (SCP) guardrail
 
 Customers can further restrict access by applying the sample Service Control Policy in:
 
@@ -30,7 +38,7 @@ Notes:
 - Explicit deny statements in the SCP override identity-based allows.
 - Prefer attaching to a dedicated OU/account used for Braintrust-managed infrastructure.
 
-## 3) Service quota requirements for new accounts
+## 4) Service quota requirements for accounts
 
 New AWS accounts often need quota increases before deployment can succeed.
 
