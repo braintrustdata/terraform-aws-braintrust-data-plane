@@ -15,7 +15,7 @@ You must have full administrative permissions in that dedicated account to compl
 Run the following script to create the Braintrust management role. This should be run in the customer AWS account dedicated to Braintrust-managed infrastructure. You can optionally provide an AWS profile to use with the `--profile` flag.
 
 ```bash
-# Run using the default AWS profile
+# Run using the specified profile. Leave off to use the default profile.
 ./managed-byoc/create-management-role.sh --profile <aws-profile>
 ```
 
