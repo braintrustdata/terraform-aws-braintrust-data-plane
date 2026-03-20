@@ -50,7 +50,7 @@ This directory includes:
 ### View current quotas vs required values
 
 ```bash
-./managed-byoc/manage-quotas.sh list
+./managed-byoc/manage-quotas.sh --profile <aws-profile> list
 ```
 
 This prints each quota with current value, desired value, and action (`ok` / `needs-raise`).
@@ -58,7 +58,7 @@ This prints each quota with current value, desired value, and action (`ok` / `ne
 ### Apply quota increase requests
 
 ```bash
-./managed-byoc/manage-quotas.sh request
+./managed-byoc/manage-quotas.sh --profile <aws-profile> request
 ```
 
 For quotas below target values, the script submits increase requests to AWS and prints request IDs.
