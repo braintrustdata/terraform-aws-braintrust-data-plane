@@ -4,13 +4,17 @@ Managed BYOC (Bring Your Own Cloud) is an optional Braintrust offering where a c
 
 ## 1) Create the Braintrust management role
 
-In the customer AWS account:
+Run the following script to create the Braintrust management role. This should be run in the customer AWS account dedicated to Braintrust-managed infrastructure. You can optionally provide an AWS profile to use with the `--profile` flag.
 
-1. Create an IAM role named `BraintrustManagementRole`.
-2. Attach the policy from `managed-byoc/policies/management-role-policy.json` to that role.
-3. Configure trust policy / assume-role settings so Braintrust can assume `BraintrustManagementRole`.
+```bash
+# Run using the default AWS profile
+./managed-byoc/create-management-role.sh --profile <aws-profile>
+```
 
-This policy is the required baseline permission set for managed BYOC.
+This role and policy set is the required baseline for managed BYOC. You can review the Trust Policy and Inline Policy in the following files:
+
+- Trust Policy: `managed-byoc/policies/management-role-trust-policy.json`
+- Inline Policy: `managed-byoc/policies/management-role-policy.json`
 
 ## 2) Optional: Organization Service Control Policy (SCP) guardrail
 
@@ -22,7 +26,7 @@ Apply it at the AWS Organizations OU or account level that contains the managed 
 
 Notes:
 
-- SCPs apply to all principals in attached accounts.
+- SCPs apply to all principals in attached accounts. Including any Administrative role you may have created for yourself.
 - Explicit deny statements in the SCP override identity-based allows.
 - Prefer attaching to a dedicated OU/account used for Braintrust-managed infrastructure.
 
