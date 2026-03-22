@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Running On-Demand Standard (C, M, R, T, etc) instances (vCPUs)",
+    "service_code": "ec2",
+    "quota_code": "L-1216C47A",
+    "desired_value": 512
+  },
+  {
+    "name": "Elastic IP addresses",
+    "service_code": "ec2",
+    "quota_code": "L-0263D0A3",
+    "desired_value": 12
+  },
+  {
+    "name": "VPCs per Region",
+    "service_code": "vpc",
+    "quota_code": "L-F678F1CE",
+    "desired_value": 10
+  },
+  {
+    "name": "Internet gateways per Region",
+    "service_code": "vpc",
+    "quota_code": "L-A4707A72",
+    "desired_value": 10
+  },
+  {
+    "name": "NAT gateways per Availability Zone",
+    "service_code": "vpc",
+    "quota_code": "L-FE5A380F",
+    "desired_value": 15
+  },
+  {
+    "name": "Lambda Concurrent executions",
+    "service_code": "lambda",
+    "quota_code": "L-B99A9384",
+    "desired_value": 1000
+  },
+  {
+    "name": "Auto Scaling groups per Region",
+    "service_code": "autoscaling",
+    "quota_code": "L-CDE20ADC",
+    "desired_value": 20
+  },
+  {
+    "name": "Application Load Balancers per Region",
+    "service_code": "elasticloadbalancing",
+    "quota_code": "L-53DA6B97",
+    "desired_value": 20
+  },
+  {
+    "name": "Network Load Balancers per Region",
+    "service_code": "elasticloadbalancing",
+    "quota_code": "L-69A177A2",
+    "desired_value": 20
+  },
+  {
+    "name": "Regional APIs per Region",
+    "service_code": "apigateway",
+    "quota_code": "L-AA0FF27B",
+    "desired_value": 10
+  }
+]

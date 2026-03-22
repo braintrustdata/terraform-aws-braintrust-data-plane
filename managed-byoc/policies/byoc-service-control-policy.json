@@ -1,0 +1,97 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyBillingRelatedServices",
+      "Effect": "Deny",
+      "Action": [
+        "billing:*",
+        "tax:*",
+        "savingsplans:*",
+        "invoicing:*",
+        "payments:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyOrgAndLandingZone",
+      "Effect": "Deny",
+      "Action": [
+        "organizations:AcceptHandshake",
+        "organizations:AttachPolicy",
+        "organizations:CancelHandshake",
+        "organizations:CloseAccount",
+        "organizations:Create*",
+        "organizations:Delete*",
+        "organizations:DeregisterDelegatedAdministrator",
+        "organizations:DetachPolicy",
+        "organizations:Disable*",
+        "organizations:Enable*",
+        "organizations:Invite*",
+        "organizations:LeaveOrganization",
+        "organizations:MoveAccount",
+        "organizations:PutResourcePolicy",
+        "organizations:RemoveAccountFromOrganization",
+        "organizations:RegisterDelegatedAdministrator",
+        "organizations:TagResource",
+        "organizations:UntagResource",
+        "organizations:TerminateResponsibilityTransfer",
+        "organizations:Update*",
+        "controltower:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenySsoAndIdentityCenter",
+      "Effect": "Deny",
+      "Action": [
+        "sso:*",
+        "sso-directory:*",
+        "sso-oauth:*",
+        "identitystore:*",
+        "identitystore-auth:*",
+        "identity-sync:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyMarketplaceAndVariousServices",
+      "Effect": "Deny",
+      "Action": [
+        "aws-marketplace:*",
+        "aws-marketplace-management:*",
+        "workspaces:*",
+        "workspaces-instances:*",
+        "workspaces-web:*",
+        "thinclient:*",
+        "partnercentral:*",
+        "outposts:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyIamUserAndGroupManagement",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateAccountAlias",
+        "iam:DeleteAccountAlias",
+        "iam:UpdateAccountPasswordPolicy",
+        "iam:CreateUser",
+        "iam:DeleteUser",
+        "iam:UpdateUser",
+        "iam:CreateGroup",
+        "iam:DeleteGroup",
+        "iam:UpdateGroup",
+        "iam:AddUserToGroup",
+        "iam:RemoveUserFromGroup",
+        "iam:PutUserPolicy",
+        "iam:DeleteUserPolicy",
+        "iam:AttachUserPolicy",
+        "iam:DetachUserPolicy",
+        "iam:AttachGroupPolicy",
+        "iam:DetachGroupPolicy"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
