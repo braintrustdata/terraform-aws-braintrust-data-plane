@@ -555,6 +555,9 @@ locals {
       "/billing/refresh" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/billing/telemetry/ingest" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/brainstore/time_based_retention/status" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
