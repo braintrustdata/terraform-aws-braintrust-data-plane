@@ -24,6 +24,11 @@ variable "service_subnet_ids" {
   description = "The subnet ids for the lambda functions that are the main braintrust service"
 }
 
+variable "postgres_database_secret_arn" {
+  type        = string
+  description = "The ARN of the secrets manager secret containing the postgres database credentials"
+}
+
 variable "postgres_username" {
   type        = string
   description = "The username of the postgres database"

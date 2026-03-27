@@ -18,18 +18,25 @@ resource "aws_lambda_function" "billing_cron" {
   memory_size   = 1024
   architectures = ["arm64"]
 
-  layers = local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
+  layers = concat(
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : [],
+    [data.aws_lambda_layer_version.aws_params_secrets_arm64.arn],
+    [aws_lambda_layer_version.secrets_wrapper.arn],
+  )
 
   environment {
     variables = merge({
       ORG_NAME                      = var.braintrust_org_name
-      PG_URL                        = local.postgres_url
       REDIS_HOST                    = var.redis_host
       REDIS_PORT                    = var.redis_port
+      PG_HOST                       = var.postgres_host
+      PG_PORT                       = var.postgres_port
+      DATABASE_SECRETS_ARN          = var.postgres_database_secret_arn
       CONTROL_PLANE_TELEMETRY       = var.monitoring_telemetry
       TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
       TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
       SERVICE_TOKEN_SECRET_KEY      = var.function_tools_secret_key
+      AWS_LAMBDA_EXEC_WRAPPER       = "/opt/bin/aws-sm-wrapper.sh"
       },
       var.extra_env_vars.BillingCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {

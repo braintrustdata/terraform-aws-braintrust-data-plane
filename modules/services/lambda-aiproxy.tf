@@ -21,7 +21,9 @@ resource "aws_lambda_function" "ai_proxy" {
   # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
     [local.duckdb_nodejs_arm64_layer_arn],
-    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : [],
+    [data.aws_lambda_layer_version.aws_params_secrets_arm64.arn],
+    [aws_lambda_layer_version.secrets_wrapper.arn],
   )
 
   logging_config {
