@@ -161,8 +161,6 @@ module "services" {
 
   # Data stores
   postgres_database_secret_arn = module.database.postgres_database_secret_arn
-  postgres_username            = module.database.postgres_database_username
-  postgres_password            = module.database.postgres_database_password
   postgres_host                = module.database.postgres_database_address
   postgres_port                = module.database.postgres_database_port
   redis_host                   = module.redis.redis_endpoint
