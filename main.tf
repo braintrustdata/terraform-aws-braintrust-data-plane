@@ -160,12 +160,11 @@ module "services" {
   monitoring_telemetry = var.monitoring_telemetry
 
   # Data stores
-  postgres_username = module.database.postgres_database_username
-  postgres_password = module.database.postgres_database_password
-  postgres_host     = module.database.postgres_database_address
-  postgres_port     = module.database.postgres_database_port
-  redis_host        = module.redis.redis_endpoint
-  redis_port        = module.redis.redis_port
+  postgres_database_secret_arn = module.database.postgres_database_secret_arn
+  postgres_host                = module.database.postgres_database_address
+  postgres_port                = module.database.postgres_database_port
+  redis_host                   = module.redis.redis_endpoint
+  redis_port                   = module.redis.redis_port
 
   brainstore_enabled              = var.enable_brainstore
   brainstore_default              = var.brainstore_default
@@ -379,5 +378,3 @@ module "brainstore" {
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
   locks_s3_path              = var.brainstore_locks_s3_path
 }
-
-
