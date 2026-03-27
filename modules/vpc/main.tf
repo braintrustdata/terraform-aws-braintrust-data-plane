@@ -81,7 +81,7 @@ resource "aws_subnet" "public_subnet_1" {
   vpc_id                  = aws_vpc.vpc.id
   cidr_block              = var.public_subnet_1_cidr
   availability_zone       = var.public_subnet_1_az
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"

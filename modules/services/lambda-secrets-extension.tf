@@ -66,6 +66,10 @@ data "aws_lambda_layer_version" "aws_params_secrets_x86_64" {
   version    = local.secrets_ext_arns_x86_64[data.aws_region.current.id].version
 }
 
+#-----------------------------------------------------
+# TODO: relocate layer to `dist` and add to postbuild
+#-----------------------------------------------------
+
 data "archive_file" "secrets_wrapper_layer" {
   type        = "zip"
   source_dir  = "${path.module}/secrets-wrapper"

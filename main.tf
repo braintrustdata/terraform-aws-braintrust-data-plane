@@ -229,6 +229,56 @@ module "services" {
   internal_observability_region   = var.internal_observability_region
 }
 
+module "ecs" {
+  source = "./modules/ecs"
+  count  = var.enable_llm_gateway ? 1 : 0
+
+  deployment_name    = var.deployment_name
+  kms_key_arn        = local.kms_key_arn
+  container_insights = var.container_insights
+  custom_tags        = var.custom_tags
+}
+
+module "gateway_ecs" {
+  source = "./modules/gateway-ecs"
+  count  = var.enable_llm_gateway ? 1 : 0
+
+  deployment_name    = var.deployment_name
+  kms_key_arn        = local.kms_key_arn
+  vpc_id             = local.main_vpc_id
+  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  ecs_cluster_arn    = module.ecs[0].cluster_arn
+  ecs_cluster_name   = module.ecs[0].cluster_name
+  container_image = format(
+    "public.ecr.aws/braintrust/gateway:%s",
+    var.gateway_version_override == null ? "prerelease" : var.gateway_version_override
+  )
+  cpu                       = var.gateway_cpu
+  memory                    = var.gateway_memory
+  cpu_architecture          = var.gateway_cpu_architecture
+  min_capacity              = var.gateway_min_capacity
+  max_capacity              = var.gateway_max_capacity
+  target_cpu_utilization    = var.gateway_target_cpu_utilization
+  target_memory_utilization = var.gateway_target_memory_utilization
+  log_retention_days        = var.gateway_log_retention_days
+  redis_host                = module.redis.redis_endpoint
+  redis_port                = module.redis.redis_port
+  redis_security_group_id   = module.redis.redis_security_group_id
+  authorized_security_groups = merge(
+    {
+      "API"        = module.services_common.api_security_group_id
+      "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    },
+    var.gateway_authorized_security_groups,
+  )
+  extra_env_vars         = var.gateway_extra_env_vars
+  custom_tags            = var.custom_tags
+  brainstore_license_key = var.brainstore_license_key
+  enable_execute_command = var.gateway_enable_execute_command
+  braintrust_app_url     = var.gateway_braintrust_app_url
+  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+}
+
 module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0

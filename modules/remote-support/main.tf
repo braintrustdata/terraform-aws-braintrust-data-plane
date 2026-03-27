@@ -17,7 +17,10 @@ resource "aws_iam_role" "braintrust_support" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::872608195481:root" # Braintrust's AWS account
+          AWS = [
+            "arn:aws:iam::872608195481:root", # Braintrust's AWS account
+            "arn:aws:iam::611723957092:root"  # BYOC Management Account
+          ]
         }
         Action = "sts:AssumeRole"
       }
