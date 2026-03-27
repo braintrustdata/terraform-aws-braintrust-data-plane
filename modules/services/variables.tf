@@ -29,17 +29,6 @@ variable "postgres_database_secret_arn" {
   description = "The ARN of the secrets manager secret containing the postgres database credentials"
 }
 
-variable "postgres_username" {
-  type        = string
-  description = "The username of the postgres database"
-}
-
-variable "postgres_password" {
-  type        = string
-  description = "The password of the postgres database"
-  sensitive   = true
-}
-
 variable "postgres_host" {
   type        = string
   description = "The host of the postgres database, optionally including the port. Format: host[:port]"
