@@ -190,6 +190,15 @@ locals {
       "/insert-functions" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/function/code" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/function/sandbox-list" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/function/invoke" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/logs" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
@@ -198,6 +207,9 @@ locals {
       }
       "/logs3" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/logs3/overflow" = {
+        for method in ["options", "post", "put"] : method => local.snippet_api_json_text_method
       }
       "/logs-migration/status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
