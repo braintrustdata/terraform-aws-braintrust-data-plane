@@ -405,6 +405,42 @@ locals {
           ]
         })
       }
+      "/v1/{object_type}/{id}/restore" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/v1/{object_type}/{id}/restore/preview" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/v1/{object_type}/{id}/summarize" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_method, {
           parameters = [
