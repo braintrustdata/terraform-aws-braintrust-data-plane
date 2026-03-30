@@ -659,11 +659,11 @@ variable "brainstore_etl_batch_size" {
 
 variable "brainstore_wal_footer_version" {
   type        = string
-  description = "This controls the WAL footer version that should be written. Only adjust this to 'v2'after you have successfully deployed v2.x of the data plane."
+  description = "This controls the WAL footer version that should be written. Only adjust this to 'v3' after you have successfully deployed v2.x of the data plane."
   default     = null
   validation {
-    condition     = var.brainstore_wal_footer_version == null || contains(["v1", "v2"], var.brainstore_wal_footer_version)
-    error_message = "brainstore_wal_footer_version must be v1, v2, or null (unset)."
+    condition     = var.brainstore_wal_footer_version == null || contains(["v1", "v2", "v3"], var.brainstore_wal_footer_version)
+    error_message = "brainstore_wal_footer_version must be v1, v2, v3, or null (unset)."
   }
 }
 
