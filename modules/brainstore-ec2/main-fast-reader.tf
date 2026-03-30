@@ -45,6 +45,8 @@ resource "aws_launch_template" "brainstore_fast_reader" {
     redis_port                      = var.redis_port
     brainstore_port                 = var.port
     brainstore_s3_bucket            = local.brainstore_s3_bucket_id
+    lambda_responses_bucket_id      = local.lambda_responses_bucket_id
+    code_bundle_bucket_id           = local.code_bundle_bucket_id
     brainstore_locks_s3_path        = trimprefix(var.locks_s3_path, "/")
     brainstore_license_key          = var.license_key
     brainstore_version_override     = var.version_override == null ? "" : var.version_override
