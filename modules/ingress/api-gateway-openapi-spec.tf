@@ -109,6 +109,18 @@ locals {
           ]
         })
       }
+      "/brainstore/backfill/status/object/{object_id}/segment-counts" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/brainstore/backfill/status/project/{project_id}" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
@@ -124,7 +136,19 @@ locals {
       "/brainstore/backfill/track" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/brainstore/automation/get" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/get-cursors" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/reset-cursors" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/brainstore/object-data-exists" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/object-metadata-exists" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/brainstore/segment/{segment_id}" = {
@@ -169,6 +193,9 @@ locals {
       "/project_secret" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/topic-map-report-url" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/function-env/{object_type}/{object_id}" = {
         for method in ["delete", "get", "options", "patch", "post", "put"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
@@ -199,8 +226,44 @@ locals {
       "/logs3" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/logs3/overflow" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/logs-migration/status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/logs-migration/run-batch" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/logs-migration/update-state" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/logs-migration/update-cursor-sequence-id" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/logs-acl/{object_type}/{object_id}/{sub_object_id}" = {
+        for method in ["get", "options", "put"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "sub_object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
       }
       "/migration-status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
@@ -553,6 +616,9 @@ locals {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/billing/refresh" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/billing/telemetry/ingest" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/brainstore/time_based_retention/status" = {
