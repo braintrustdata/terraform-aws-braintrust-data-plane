@@ -178,7 +178,7 @@ resource "aws_autoscaling_group" "brainstore" {
     create_before_destroy = true
     precondition {
       condition     = data.aws_ec2_instance_type.brainstore.total_instance_storage != null
-      error_message = "Instance type ${var.instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage (e.g., c5d.xlarge, m5d.xlarge, c8gd.4xlarge)."
+      error_message = "Instance type ${var.instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
     }
   }
 
