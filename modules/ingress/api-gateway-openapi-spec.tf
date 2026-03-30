@@ -232,6 +232,39 @@ locals {
       "/logs-migration/status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
+      "/logs-migration/run-batch" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/logs-migration/update-state" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/logs-migration/update-cursor-sequence-id" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/logs-acl/{object_type}/{object_id}/{sub_object_id}" = {
+        for method in ["get", "options", "put"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "sub_object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/migration-status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
