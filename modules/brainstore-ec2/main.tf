@@ -9,13 +9,12 @@ locals {
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id = split(":::", var.brainstore_s3_bucket_arn)[1]
   # Calculate cache file size from ephemeral storage (total_instance_storage is in GB)
-  # If total_instance_storage is 0 or null, instances won't have ephemeral storage
-  # The user_data script already validates ephemeral device exists, so this should always be > 0 for valid instance types
+  # Postconditions on the data sources guarantee total_instance_storage is non-null
   # Reduce by 10% to leave buffer space on the disk
   # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
-  brainstore_cache_file_size             = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(coalesce(data.aws_ec2_instance_type.brainstore.total_instance_storage, 0) * 0.9)}gb"
-  brainstore_writer_cache_file_size      = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(coalesce(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage, 0) * 0.9)}gb"
-  brainstore_fast_reader_cache_file_size = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(coalesce(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage, 0) * 0.9)}gb"
+  brainstore_cache_file_size             = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
+  brainstore_writer_cache_file_size      = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
+  brainstore_fast_reader_cache_file_size = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage * 0.9)}gb"
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -176,10 +175,6 @@ resource "aws_autoscaling_group" "brainstore" {
   lifecycle {
     # If this ever has to be replaced, we want a new ASG to be created before the old one is terminated.
     create_before_destroy = true
-    precondition {
-      condition     = data.aws_ec2_instance_type.brainstore.total_instance_storage != null
-      error_message = "Instance type ${var.instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
-    }
   }
 
   instance_refresh {
@@ -229,14 +224,35 @@ data "aws_ami" "ubuntu_24_04" {
 
 data "aws_ec2_instance_type" "brainstore" {
   instance_type = var.instance_type
+
+  lifecycle {
+    postcondition {
+      condition     = self.total_instance_storage != null
+      error_message = "Instance type ${var.instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
+    }
+  }
 }
 
 data "aws_ec2_instance_type" "brainstore_writer" {
   instance_type = var.writer_instance_type
+
+  lifecycle {
+    postcondition {
+      condition     = self.total_instance_storage != null
+      error_message = "Writer instance type ${var.writer_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
+    }
+  }
 }
 
 data "aws_ec2_instance_type" "brainstore_fast_reader" {
   instance_type = var.fast_reader_instance_type
+
+  lifecycle {
+    postcondition {
+      condition     = self.total_instance_storage != null
+      error_message = "Fast reader instance type ${var.fast_reader_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
+    }
+  }
 }
 
 data "aws_region" "current" {}
