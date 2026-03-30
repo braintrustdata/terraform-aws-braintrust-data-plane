@@ -175,6 +175,7 @@ module "services" {
   brainstore_s3_bucket_name       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
   brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn

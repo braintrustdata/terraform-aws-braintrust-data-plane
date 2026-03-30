@@ -194,6 +194,16 @@ variable "brainstore_default" {
   }
 }
 
+variable "brainstore_wal_footer_version" {
+  type        = string
+  description = "If set, sets BRAINSTORE_WAL_FOOTER_VERSION on the API Handler Lambda only. Omit to leave the variable unset."
+  default     = null
+  validation {
+    condition     = var.brainstore_wal_footer_version == null || contains(["v1", "v2"], var.brainstore_wal_footer_version)
+    error_message = "brainstore_wal_footer_version must be v1, v2, or null (unset)."
+  }
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
