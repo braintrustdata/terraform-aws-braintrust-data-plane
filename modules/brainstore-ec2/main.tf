@@ -9,6 +9,8 @@ locals {
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id = split(":::", var.brainstore_s3_bucket_arn)[1]
   # Calculate cache file size from ephemeral storage (total_instance_storage is in GB)
+  # If total_instance_storage is 0 or null, instances won't have ephemeral storage
+  # The user_data script already validates ephemeral device exists, so this should always be > 0 for valid instance types
   # Postconditions on the data sources guarantee total_instance_storage is non-null
   # Reduce by 10% to leave buffer space on the disk
   # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
