@@ -157,6 +157,10 @@ resource "aws_autoscaling_group" "brainstore_writer" {
 
   lifecycle {
     create_before_destroy = true
+    precondition {
+      condition     = data.aws_ec2_instance_type.brainstore_writer.total_instance_storage != null
+      error_message = "Writer instance type ${var.writer_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
+    }
   }
 
   instance_refresh {

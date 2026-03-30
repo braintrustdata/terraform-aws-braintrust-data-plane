@@ -157,6 +157,10 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
 
   lifecycle {
     create_before_destroy = true
+    precondition {
+      condition     = data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage != null
+      error_message = "Fast reader instance type ${var.fast_reader_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
+    }
   }
 
   instance_refresh {
