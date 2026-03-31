@@ -66,10 +66,10 @@ Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
 # Dry run — lists quarantine Lambdas without deleting
-../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
+/scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
 
 # Delete them
-../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
+/scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
 ```
 
 The `<deployment_name>-quarantine` argument is the Name tag of the quarantine VPC (e.g., `braintrust-quarantine`).
@@ -82,10 +82,10 @@ Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
 # Dry run — lists buckets and object counts
-../../scripts/empty-s3-buckets.py <deployment_name>
+/scripts/empty-s3-buckets.py <deployment_name>
 
 # Empty them
-../../scripts/empty-s3-buckets.py <deployment_name> --delete
+/scripts/empty-s3-buckets.py <deployment_name> --delete
 ```
 
 ### Step 4: Wait for ENIs to release, then destroy
