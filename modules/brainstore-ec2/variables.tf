@@ -172,6 +172,16 @@ variable "brainstore_s3_bucket_arn" {
   description = "The ARN of the S3 bucket used by Brainstore"
 }
 
+variable "lambda_responses_s3_bucket_arn" {
+  type        = string
+  description = "The ARN of the Lambda responses S3 bucket"
+}
+
+variable "code_bundle_s3_bucket_arn" {
+  type        = string
+  description = "The ARN of the code bundle S3 bucket"
+}
+
 variable "brainstore_iam_role_name" {
   type        = string
   description = "The name of the IAM role for Brainstore EC2 instances"

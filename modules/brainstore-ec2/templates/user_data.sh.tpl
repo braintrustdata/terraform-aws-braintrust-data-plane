@@ -137,6 +137,8 @@ BRAINSTORE_LOCKS_URI=s3://${brainstore_s3_bucket}/${brainstore_locks_s3_path}
 BRAINSTORE_METADATA_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${database_port}/postgres
 BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${database_port}/postgres
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
+BRAINSTORE_RESPONSE_CACHE_URI=s3://${lambda_responses_bucket_id}/brainstore-cache
+BRAINSTORE_CODE_BUNDLE_URI=s3://${code_bundle_bucket_id}
 BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
@@ -145,6 +147,7 @@ NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
 BRAINSTORE_REDIS_URI=redis://${redis_host}:${redis_port}
+BRAINSTORE_XACT_MANAGER_URI=redis://${redis_host}:${redis_port}
 BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}

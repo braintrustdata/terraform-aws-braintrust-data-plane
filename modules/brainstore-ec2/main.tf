@@ -7,7 +7,9 @@ locals {
   has_writer_nodes      = var.writer_instance_count > 0
   has_fast_reader_nodes = var.fast_reader_instance_count > 0
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
-  brainstore_s3_bucket_id = split(":::", var.brainstore_s3_bucket_arn)[1]
+  brainstore_s3_bucket_id    = split(":::", var.brainstore_s3_bucket_arn)[1]
+  lambda_responses_bucket_id = split(":::", var.lambda_responses_s3_bucket_arn)[1]
+  code_bundle_bucket_id      = split(":::", var.code_bundle_s3_bucket_arn)[1]
   # Calculate cache file size from ephemeral storage (total_instance_storage is in GB)
   # If total_instance_storage is 0 or null, instances won't have ephemeral storage
   # The user_data script already validates ephemeral device exists, so this should always be > 0 for valid instance types
@@ -64,6 +66,8 @@ resource "aws_launch_template" "brainstore" {
     redis_port                  = var.redis_port
     brainstore_port             = var.port
     brainstore_s3_bucket        = local.brainstore_s3_bucket_id
+    lambda_responses_bucket_id  = local.lambda_responses_bucket_id
+    code_bundle_bucket_id       = local.code_bundle_bucket_id
     brainstore_locks_s3_path    = trimprefix(var.locks_s3_path, "/")
     brainstore_license_key      = var.license_key
     brainstore_version_override = var.version_override == null ? "" : var.version_override

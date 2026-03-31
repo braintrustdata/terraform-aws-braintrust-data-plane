@@ -89,7 +89,20 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
         ]
         Resource = [
           var.brainstore_s3_bucket_arn,
-          "${var.brainstore_s3_bucket_arn}/*"
+          "${var.brainstore_s3_bucket_arn}/*",
+          var.lambda_responses_s3_bucket_arn,
+          "${var.lambda_responses_s3_bucket_arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          var.code_bundle_s3_bucket_arn,
+          "${var.code_bundle_s3_bucket_arn}/*"
         ]
       }
     ]

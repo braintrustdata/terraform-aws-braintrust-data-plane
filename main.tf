@@ -175,6 +175,7 @@ module "services" {
   brainstore_s3_bucket_name       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
   brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -345,6 +346,8 @@ module "brainstore" {
   redis_port                            = module.redis.redis_port
   service_token_secret_key              = module.services_common.function_tools_secret_key
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
+  lambda_responses_s3_bucket_arn        = module.storage.lambda_responses_bucket_arn
+  code_bundle_s3_bucket_arn             = module.storage.code_bundle_bucket_arn
   internal_observability_api_key        = var.internal_observability_api_key
   internal_observability_env_name       = var.internal_observability_env_name
   internal_observability_region         = var.internal_observability_region
