@@ -76,16 +76,21 @@ The `<deployment_name>-quarantine` argument is the Name tag of the quarantine VP
 
 ### Step 3: Empty S3 buckets
 
-The Braintrust platform writes data to S3 buckets after deployment. S3 buckets must be empty before they can be deleted, so `terraform destroy` will fail if any objects exist.
+The Braintrust platform writes data to S3 buckets after deployment. S3 buckets with versioning enabled must have all object versions and delete markers removed before Terraform can delete them.
 
-Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
+> [!CAUTION]
+> Double-check that you are emptying the correct buckets for your deployment. The buckets follow the naming pattern `<deployment_name>-brainstore-*`, `<deployment_name>-code-bundles-*`, and `<deployment_name>-lambda-responses-*`. Emptying the wrong buckets can result in **permanent data loss**.
+
+You can empty buckets via the AWS Console (S3 > select bucket > Empty) or the AWS CLI:
 
 ```bash
-# Dry run — lists buckets and object counts
-/scripts/empty-s3-buckets.py <deployment_name>
+# List buckets for your deployment
+aws s3api list-buckets --query "Buckets[?starts_with(Name, '<deployment_name>-')].Name" --output table
 
-# Empty them
-/scripts/empty-s3-buckets.py <deployment_name> --delete
+# Empty a bucket (including all versions and delete markers)
+aws s3api delete-objects --bucket <bucket_name> \
+  --delete "$(aws s3api list-object-versions --bucket <bucket_name> \
+  --query '{Objects: [].{Key:Key,VersionId:VersionId}}' --output json)"
 ```
 
 ### Step 4: Wait for ENIs to release, then destroy
@@ -97,4 +102,4 @@ terraform destroy
 ```
 
 > [!NOTE]
-> If `terraform destroy` fails on S3 bucket deletion, re-run `empty-s3-buckets.py <deployment_name> --delete` and then `terraform destroy` again. The platform may continue writing objects while Terraform is destroying other resources.
+> If `terraform destroy` fails on S3 bucket deletion, you may need to empty the buckets again — the platform can write objects while Terraform is destroying other resources.
