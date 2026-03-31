@@ -55,7 +55,7 @@ locals {
       CATCHUP_ETL_ARN      = aws_lambda_function.catchup_etl.arn
       INSERT_LOGS2         = "true"
     },
-    var.brainstore_wal_footer_version != null ? {
+    var.brainstore_wal_footer_version != "" ? {
       BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
     } : {}
   )
