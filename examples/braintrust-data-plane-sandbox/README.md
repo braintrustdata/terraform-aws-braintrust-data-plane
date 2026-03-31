@@ -95,9 +95,7 @@ To enable Datadog monitoring, uncomment the `internal_observability_*` lines in 
 export TF_VAR_internal_observability_api_key=your-dd-api-key
 ```
 
-This installs the Datadog agent on Brainstore EC2 instances and adds Datadog Lambda layers to all Lambda functions. Filter in Datadog by `env:bt-yourname`.
-
-Adding observability to an existing deployment triggers an ASG instance refresh (~5-15 min of brief Brainstore disruption) and Lambda config updates (no downtime).
+This installs the Datadog agent on Brainstore EC2 instances and adds Datadog Lambda layers to all Lambda functions. Filter in Datadog by the `env` tag (set via `internal_observability_env_name`) or by `braintrustdeploymentname:<deployment_name>` (automatically added to Lambda metrics).
 
 ## Tearing down
 
