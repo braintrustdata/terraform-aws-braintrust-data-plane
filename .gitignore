@@ -51,4 +51,5 @@ braintrust-sandbox/*
 .idea
 
 scripts/logs*
+scripts/.venv/
 .vscode/*

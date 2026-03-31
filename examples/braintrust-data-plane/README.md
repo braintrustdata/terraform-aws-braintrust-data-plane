@@ -1,5 +1,8 @@
 This is an example of a standard **production-sized** Braintrust data plane deployment. Copy this directory to a new directory in your own repository and modify the files to match your environment.
 
+> [!TIP]
+> For a smaller deployment suitable for testing and evaluation, see [`examples/braintrust-data-plane-sandbox/`](../braintrust-data-plane-sandbox/).
+
 ## Configure Terraform
 * `provider.tf` should be modified to use your AWS account and region.
 * `terraform.tf` should be modified to use the remote backend that your company uses. Typically this is an S3 bucket and DynamoDB table.
@@ -39,3 +42,56 @@ Paste the API URL into the text field, and click Save. Leave the Proxy and Realt
 
 Verify in the UI that the ping to each endpoint is successful.
 ![Verify Successful Ping](../../assets/Braintrust-API-URL-verify.png)
+
+## Tearing down
+
+### Step 1: Disable RDS deletion protection
+
+Deletion protection is enabled by default (recommended for production). You must disable it before `terraform destroy` will succeed:
+
+```bash
+aws rds modify-db-instance \
+  --db-instance-identifier <deployment_name>-main \
+  --no-deletion-protection \
+  --apply-immediately
+```
+
+Alternatively, set `DANGER_disable_database_deletion_protection = true` in `main.tf` and run `terraform apply` before destroying.
+
+### Step 2: Delete quarantine Lambda functions
+
+The quarantine VPC is enabled by default (`enable_quarantine_vpc = true`). The quarantine warmup Lambda creates ~30 functions outside Terraform state. These hold ENIs in the quarantine VPC subnets that block `terraform destroy`. You must delete them before destroying.
+
+Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
+
+```bash
+# Dry run — lists quarantine Lambdas without deleting
+../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
+
+# Delete them
+../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
+```
+
+The `<deployment_name>-quarantine` argument is the Name tag of the quarantine VPC (e.g., `braintrust-quarantine`).
+
+### Step 3: Empty S3 buckets
+
+The Braintrust platform writes data to S3 buckets after deployment. S3 buckets must be empty before they can be deleted, so `terraform destroy` will fail if any objects exist.
+
+Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
+
+```bash
+# Dry run — lists buckets and object counts
+../../scripts/empty-s3-buckets.py <deployment_name>
+
+# Empty them
+../../scripts/empty-s3-buckets.py <deployment_name> --delete
+```
+
+### Step 4: Wait for ENIs to release, then destroy
+
+After deleting the quarantine Lambda functions, wait ~5 minutes for AWS to release the ENIs, then run:
+
+```bash
+terraform destroy
+```

@@ -35,15 +35,12 @@ def find_quarantine_lambdas_in_vpc(lambda_client, vpc_id):
         for function in page["Functions"]:
             name = function["FunctionName"]
             total_checked += 1
-            print(f"[{total_checked}] Checking: {name}", flush=True)
             if not name.startswith("Quarantine-"):
                 continue
-            try:
-                config = lambda_client.get_function_configuration(FunctionName=name)
-            except Exception as e:
-                print(f"  Error fetching config for {name}: {e}")
-                continue
-            if config.get("VpcConfig", {}).get("VpcId") == vpc_id:
+            print(f"[{total_checked}] Checking: {name}", flush=True)
+            # VpcConfig is included in the list_functions response, so no
+            # separate get_function_configuration call is needed.
+            if function.get("VpcConfig", {}).get("VpcId") == vpc_id:
                 print(f"  -> Match found: {name}")
                 matching_functions.append(name)
             else:
