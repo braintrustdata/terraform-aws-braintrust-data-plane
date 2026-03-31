@@ -95,3 +95,6 @@ After deleting the quarantine Lambda functions, wait ~5 minutes for AWS to relea
 ```bash
 terraform destroy
 ```
+
+> [!NOTE]
+> If `terraform destroy` fails on S3 bucket deletion, re-run `empty-s3-buckets.py <deployment_name> --delete` and then `terraform destroy` again. The platform may continue writing objects while Terraform is destroying other resources.

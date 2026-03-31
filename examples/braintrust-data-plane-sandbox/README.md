@@ -116,6 +116,9 @@ Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
 terraform destroy
 ```
 
+> [!NOTE]
+> If `terraform destroy` fails on S3 bucket deletion, re-run `empty-s3-buckets.py <deployment_name> --delete` and then `terraform destroy` again. The platform may continue writing objects while Terraform is destroying other resources.
+
 ### If quarantine VPC is enabled
 
 If you set `enable_quarantine_vpc = true`, the quarantine warmup Lambda creates ~30 functions outside Terraform state. These hold ENIs in the quarantine VPC subnets that block `terraform destroy`. You must delete them before destroying.
