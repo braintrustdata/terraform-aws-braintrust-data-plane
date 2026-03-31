@@ -76,9 +76,6 @@ Paste the API URL into the text field, and click Save. Leave the Proxy and Realt
 Verify in the UI that the ping to each endpoint is successful.
 ![Verify Successful Ping](../../assets/Braintrust-API-URL-verify.png)
 
-> [!NOTE]
-> After configuring the API URL, the Settings > Data Plane page may show warnings about missing environment variables (`BRAINSTORE_XACT_MANAGER_URI`, `BRAINSTORE_RESPONSE_CACHE_URI`, `BRAINSTORE_CODE_BUNDLE_URI`). These are prerequisites for the **Topics** feature which requires data plane v2.0 (not yet released). These warnings are expected and do not affect core functionality.
-
 ## Instance type requirements
 
 Brainstore nodes require **local NVMe/ephemeral storage** for caching. The instance user_data script will fail if no NVMe device is found, and the module validates this at plan time.
