@@ -66,10 +66,10 @@ Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
 # Dry run — lists quarantine Lambdas without deleting
-/scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
+../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
 
 # Delete them
-/scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
+../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
 ```
 
 The `<deployment_name>-quarantine` argument is the Name tag of the quarantine VPC (e.g., `braintrust-quarantine`).

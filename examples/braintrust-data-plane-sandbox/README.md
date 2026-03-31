@@ -132,10 +132,10 @@ Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
 # Dry run — lists quarantine Lambdas without deleting
-/scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
+../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
 
 # Delete them
-/scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
+../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
 
 # Wait ~5 minutes for ENIs to release, then destroy
 terraform destroy
