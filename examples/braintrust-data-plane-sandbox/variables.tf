@@ -6,9 +6,3 @@ variable "brainstore_license_key" {
     error_message = "The brainstore_license_key must be set."
   }
 }
-
-variable "internal_observability_api_key" {
-  description = "Datadog API key for optional observability. Leave empty to disable."
-  type        = string
-  default     = ""
-}
