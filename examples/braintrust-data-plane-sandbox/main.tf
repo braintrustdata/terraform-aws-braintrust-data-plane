@@ -17,14 +17,12 @@ module "braintrust-data-plane" {
   braintrust_org_name = ""
 
   ### Postgres configuration
-  # Downsized for sandbox. Production recommendation: db.r8g.2xlarge
   postgres_instance_type = "db.r8g.large"
 
-  # Smaller storage for sandbox. Production recommendation: 1000 / 10000
+  # Smaller storage for sandbox
   postgres_storage_size     = 100
   postgres_max_storage_size = 500
 
-  # Storage type for the RDS instance. Recommended gp3 for large production deployments.
   postgres_storage_type = "gp3"
 
   # gp3 volumes under 400GB receive baseline performance (3000 IOPS, 125 MiB/s). These match the baseline.
@@ -43,8 +41,6 @@ module "braintrust-data-plane" {
   brainstore_license_key = var.brainstore_license_key
 
   # Single reader and writer, downsized for sandbox.
-  # Production recommendation: 2x c8gd.4xlarge readers, 1x c8gd.8xlarge writer
-
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
   # Compatible families include: c8gd, c5d, m5d, i3, i4i.
   # Generic families (t3, m5, c5) will fail — the instance has no local disk.
@@ -61,7 +57,6 @@ module "braintrust-data-plane" {
   enable_quarantine_vpc = false
 
   ### Redis configuration
-  # Downsized for sandbox. Production recommendation: cache.t4g.medium
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
