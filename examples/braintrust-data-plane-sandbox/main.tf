@@ -11,7 +11,7 @@ module "braintrust-data-plane" {
   # IMPORTANT: Each deployment in the same AWS account must have a unique name.
   # Use a short prefix + your name or identifier (max 18 characters).
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "bt-yourname"
+  deployment_name = "bt-sandbox"
 
   # Add your organization name from the Braintrust UI here
   braintrust_org_name = ""
@@ -24,8 +24,15 @@ module "braintrust-data-plane" {
   postgres_storage_size     = 100
   postgres_max_storage_size = 500
 
-  postgres_storage_type       = "gp3"
-  postgres_storage_iops       = 3000
+  # Storage type for the RDS instance. Recommended gp3 for large production deployments.
+  postgres_storage_type = "gp3"
+
+  # Storage IOPS for the RDS instance. Only applicable if storage_type is io1, io2, or gp3.
+  # Recommended 15000 for production.
+  postgres_storage_iops = 3000
+
+  # Throughput for the RDS instance. Only applicable if storage_type is gp3.
+  # Recommended 500 for production if you are using gp3. Leave blank for io1 or io2
   postgres_storage_throughput = 125
 
   postgres_version                    = "15"
@@ -68,16 +75,6 @@ module "braintrust-data-plane" {
   #   Owner = "Your Name"
   #   Team  = "Your Team"
   # }
-
-  ### Datadog Observability (optional, Braintrust staff only)
-  # These variables are for internal Braintrust engineering use — do not set unless
-  # instructed by Braintrust support. They enable Datadog monitoring on Brainstore
-  # EC2 instances and Lambda functions using Braintrust's Datadog account.
-  # Adding these to an existing deployment triggers an ASG instance refresh (~5-15 min)
-  # and Lambda config updates (no downtime).
-  # internal_observability_api_key  = var.internal_observability_api_key
-  # internal_observability_env_name = "bt-yourname"  # used as DD_ENV tag for filtering
-  # internal_observability_region   = "us5"           # your Datadog site subdomain (e.g., us5.datadoghq.com -> "us5")
 
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to

@@ -62,11 +62,14 @@ def main():
     parser = argparse.ArgumentParser(
         description="This script is used to list and optionally delete quarantine functions in a VPC. "
         "It should only be used when deleting an entire braintrust deployment.",
-        usage="%(prog)s <vpc_name> [--delete]",
+        usage="%(prog)s <vpc_name> [--delete] [--profile <name>]",
     )
     parser.add_argument("vpc_name", nargs="?", help="Name of the VPC")
     parser.add_argument(
         "--delete", action="store_true", help="Delete the matching Lambda functions"
+    )
+    parser.add_argument(
+        "--profile", help="AWS CLI profile name to use"
     )
 
     args = parser.parse_args()
@@ -75,8 +78,9 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    ec2_client = boto3.client("ec2")
-    lambda_client = boto3.client("lambda")
+    session = boto3.Session(profile_name=args.profile) if args.profile else boto3.Session()
+    ec2_client = session.client("ec2")
+    lambda_client = session.client("lambda")
 
     print(f"Resolving VPC ID for VPC name: {args.vpc_name}")
     vpc_id = get_vpc_id_by_name(ec2_client, args.vpc_name)

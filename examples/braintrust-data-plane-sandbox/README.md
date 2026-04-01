@@ -3,23 +3,12 @@ This is an example of a **sandbox** Braintrust data plane deployment for testing
 > [!WARNING]
 > This configuration is **not suitable for workload testing or performance evaluation**. The downsized instances (single reader/writer, smallest instance types) will not reflect production performance. For a deployment you can run workloads against, use the [production example](../braintrust-data-plane/) with appropriately sized instances.
 
-## What's different from production?
-
-| Setting | Sandbox | Production |
-|---|---|---|
-| Postgres | db.r8g.large | db.r8g.2xlarge |
-| Postgres storage | 100 GB (max 500 GB) | 1000 GB (max 10000 GB) |
-| Brainstore reader | 1x c8gd.xlarge | 2x c8gd.4xlarge |
-| Brainstore writer | 1x c8gd.xlarge | 1x c8gd.8xlarge |
-| Redis | cache.t4g.small | cache.t4g.medium |
-| Quarantine VPC | Disabled | Enabled |
-| RDS deletion protection | Disabled | Enabled |
-
 ## Prerequisites
 
 * AWS CLI configured with access to your target account
 * Terraform >= 1.10
-* Brainstore license key (from Braintrust UI > Settings > Data Plane)
+* A **separate Braintrust Organization** for sandbox testing — [create one here](https://www.braintrust.dev/app/setup). Do not reuse your production Organization's license key, as it will affect production metrics and alerting.
+* Brainstore license key from the sandbox Organization (Braintrust UI > Settings > Data Plane)
 
 ## Configure Terraform
 
@@ -30,7 +19,14 @@ This is an example of a **sandbox** Braintrust data plane deployment for testing
   * **`braintrust_org_name`** — your organization name from the Braintrust UI.
 * Brainstore requires a license key which you can find in the Braintrust UI under Settings > Data Plane
   ![Brainstore License Key](../../assets/Brainstore-License-Key.png)
-* It isn't recommended that you commit this license key to your git repo. You can safely pass this key into terraform multiple ways:
+* The recommended approach is to store the license key in AWS Secrets Manager and reference it using a Terraform data source:
+  ```hcl
+  data "aws_secretsmanager_secret_version" "brainstore_license" {
+    secret_id = "braintrust/brainstore-license-key"
+  }
+  ```
+  Then pass `data.aws_secretsmanager_secret_version.brainstore_license.secret_string` as the `brainstore_license_key` value in the module.
+* Alternatively, you can pass the key without storing it in Secrets Manager:
   * Set `TF_VAR_brainstore_license_key=your-key` in your terraform environment
   * Pass it into terraform as a flag `terraform apply -var 'brainstore_license_key=your-key'`
   * Add it to an uncommitted `terraform.tfvars` or `.auto.tfvars` file.
@@ -84,45 +80,16 @@ Compatible instance families include: `c8gd`, `c5d`, `m5d`, `i3`, `i4i`.
 
 Generic families without local storage (`t3`, `m5`, `c5`) will **not** work.
 
-## Datadog observability (optional, Braintrust staff only)
-
-> [!NOTE]
-> The `internal_observability_*` variables are for internal Braintrust engineering use. Do not set these unless instructed by Braintrust support.
-
-To enable Datadog monitoring, uncomment the `internal_observability_*` lines in `main.tf` and provide the Datadog API key:
-
-```bash
-export TF_VAR_internal_observability_api_key=your-dd-api-key
-```
-
-This installs the Datadog agent on Brainstore EC2 instances and adds Datadog Lambda layers to all Lambda functions. Filter in Datadog by the `env` tag (set via `internal_observability_env_name`) or by `braintrustdeploymentname:<deployment_name>` (automatically added to Lambda metrics).
-
 ## Tearing down
 
 Since this sandbox has `DANGER_disable_database_deletion_protection = true`, you can destroy after emptying S3 buckets.
 
-The Braintrust platform writes data to S3 buckets after deployment. S3 buckets with versioning enabled must have all object versions and delete markers removed before Terraform can delete them.
+The Braintrust platform writes data to S3 buckets after deployment. S3 buckets with versioning enabled must have all object versions and delete markers removed before Terraform can delete them. The buckets follow the naming pattern `<deployment_name>-brainstore-*`, `<deployment_name>-code-bundles-*`, and `<deployment_name>-lambda-responses-*`.
 
 > [!CAUTION]
-> Double-check that you are emptying the correct buckets for your deployment. The buckets follow the naming pattern `<deployment_name>-brainstore-*`, `<deployment_name>-code-bundles-*`, and `<deployment_name>-lambda-responses-*`. Emptying the wrong buckets can result in **permanent data loss**.
+> Verify you are emptying the correct buckets before proceeding. Emptying the wrong buckets can result in **permanent data loss**. Use the AWS Console (S3 > select bucket > Empty) to manually empty each bucket.
 
-You can empty buckets via the AWS Console (S3 > select bucket > Empty) or the AWS CLI:
-
-```bash
-# List buckets for your deployment
-aws s3api list-buckets --query "Buckets[?starts_with(Name, '<deployment_name>-')].Name" --output table
-
-# Empty a bucket (including all versions and delete markers)
-aws s3api delete-objects --bucket <bucket_name> \
-  --delete "$(aws s3api list-object-versions --bucket <bucket_name> \
-  --query '{Objects: [].{Key:Key,VersionId:VersionId}}' --output json)"
-
-# Then destroy
-terraform destroy
-```
-
-> [!NOTE]
-> If `terraform destroy` fails on S3 bucket deletion, you may need to empty the buckets again — the platform can write objects while Terraform is destroying other resources.
+After emptying the buckets, run `terraform destroy`.
 
 ### If quarantine VPC is enabled
 

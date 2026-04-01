@@ -8,8 +8,15 @@ This is an example of a standard **production-sized** Braintrust data plane depl
 * `terraform.tf` should be modified to use the remote backend that your company uses. Typically this is an S3 bucket and DynamoDB table.
 * `main.tf` should be modified to meet your needs for the Braintrust deployment. The defaults are sensible only for a small development deployment.
 * Brainstore requires a license key which you can find in the Braintrust UI under Settings > Data Plane
-![Brainstore License Key](../../assets/Brainstore-License-Key.png)
-* It isn't recommended that you commit this license key to your git repo. You can safely pass this key into terraform multiple ways:
+  ![Brainstore License Key](../../assets/Brainstore-License-Key.png)
+* The recommended approach is to store the license key in AWS Secrets Manager and reference it using a Terraform data source:
+  ```hcl
+  data "aws_secretsmanager_secret_version" "brainstore_license" {
+    secret_id = "braintrust/brainstore-license-key"
+  }
+  ```
+  Then pass `data.aws_secretsmanager_secret_version.brainstore_license.secret_string` as the `brainstore_license_key` value in the module.
+* Alternatively, you can pass the key without storing it in Secrets Manager:
   * Set `TF_VAR_brainstore_license_key=your-key` in your terraform environment
   * Pass it into terraform as a flag `terraform apply -var 'brainstore_license_key=your-key'`
   * Add it to an uncommitted `terraform.tfvars` or `.auto.tfvars` file.
@@ -43,63 +50,3 @@ Paste the API URL into the text field, and click Save. Leave the Proxy and Realt
 Verify in the UI that the ping to each endpoint is successful.
 ![Verify Successful Ping](../../assets/Braintrust-API-URL-verify.png)
 
-## Tearing down
-
-### Step 1: Disable RDS deletion protection
-
-Deletion protection is enabled by default (recommended for production). You must disable it before `terraform destroy` will succeed:
-
-```bash
-aws rds modify-db-instance \
-  --db-instance-identifier <deployment_name>-main \
-  --no-deletion-protection \
-  --apply-immediately
-```
-
-Alternatively, set `DANGER_disable_database_deletion_protection = true` in `main.tf` and run `terraform apply` before destroying.
-
-### Step 2: Delete quarantine Lambda functions
-
-The quarantine VPC is enabled by default (`enable_quarantine_vpc = true`). The quarantine warmup Lambda creates ~30 functions outside Terraform state. These hold ENIs in the quarantine VPC subnets that block `terraform destroy`. You must delete them before destroying.
-
-Use the included cleanup script (requires [uv](https://docs.astral.sh/uv/)):
-
-```bash
-# Dry run — lists quarantine Lambdas without deleting
-../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine
-
-# Delete them
-../../scripts/delete-quarantine-lambdas.py <deployment_name>-quarantine --delete
-```
-
-The `<deployment_name>-quarantine` argument is the Name tag of the quarantine VPC (e.g., `braintrust-quarantine`).
-
-### Step 3: Empty S3 buckets
-
-The Braintrust platform writes data to S3 buckets after deployment. S3 buckets with versioning enabled must have all object versions and delete markers removed before Terraform can delete them.
-
-> [!CAUTION]
-> Double-check that you are emptying the correct buckets for your deployment. The buckets follow the naming pattern `<deployment_name>-brainstore-*`, `<deployment_name>-code-bundles-*`, and `<deployment_name>-lambda-responses-*`. Emptying the wrong buckets can result in **permanent data loss**.
-
-You can empty buckets via the AWS Console (S3 > select bucket > Empty) or the AWS CLI:
-
-```bash
-# List buckets for your deployment
-aws s3api list-buckets --query "Buckets[?starts_with(Name, '<deployment_name>-')].Name" --output table
-
-# Empty a bucket (including all versions and delete markers)
-aws s3api delete-objects --bucket <bucket_name> \
-  --delete "$(aws s3api list-object-versions --bucket <bucket_name> \
-  --query '{Objects: [].{Key:Key,VersionId:VersionId}}' --output json)"
-```
-
-### Step 4: Wait for ENIs to release, then destroy
-
-After deleting the quarantine Lambda functions, wait ~5 minutes for AWS to release the ENIs, then run:
-
-```bash
-terraform destroy
-```
-
-> [!NOTE]
-> If `terraform destroy` fails on S3 bucket deletion, you may need to empty the buckets again — the platform can write objects while Terraform is destroying other resources.

@@ -11,14 +11,13 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 │   ├── database/            # RDS Postgres
 │   ├── ecs/                 # ECS cluster
 │   ├── elasticache/         # Redis (ElastiCache)
-│   ├── gateway-ecs/         # API gateway service
+│   ├── gateway-ecs/         # LLM Gateway
 │   ├── ingress/             # CloudFront + ALB
 │   ├── kms/                 # Encryption keys
-│   ├── services/            # Application ECS services
+│   ├── services/            # Lambda and ECS services
 │   ├── services-common/     # Shared service config
 │   ├── storage/             # S3 buckets
 │   ├── vpc/                 # VPC + subnets
-│   ├── vpc-peering-*/       # Cross-VPC peering (quarantine)
 │   └── remote-support/      # Optional remote support access
 ├── examples/
 │   ├── braintrust-data-plane/          # Production example
@@ -32,7 +31,7 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 ### Key architecture concepts
 
 - **Brainstore** has a reader/writer split — separate ASGs, instance types, and scaling. Both require EC2 instances with **local NVMe storage** (e.g., `c8gd`, `c5d`, `m5d`, `i3`, `i4i`). This is a hard requirement enforced by `postcondition` blocks on the `aws_ec2_instance_type` data sources. Generic families (`t3`, `m5`, `c5`) will fail at plan time.
-- **Quarantine VPC** is a separate VPC for running user-defined functions (scorers, tools) in network isolation. When enabled, a warmup Lambda creates ~30 functions across 9 runtimes **outside Terraform state**. These hold ENIs that block `terraform destroy` and require manual cleanup.
+**Quarantine VPC** is a separate VPC for running user-defined functions (scorers, tools) in network isolation. When enabled, a warmup Lambda creates ~30 functions across 9 runtimes **outside Terraform state**.
 - **`deployment_name`** prefixes all resource names. Must be unique per deployment in the same AWS account (max 18 characters).
 
 ## Rules
@@ -47,7 +46,7 @@ Variables prefixed with `DANGER_` (e.g., `DANGER_disable_database_deletion_prote
 
 ### `internal_observability_*` variables are Braintrust staff only
 
-The `internal_observability_*` variables (Datadog API key, env name, region) are for internal Braintrust engineering use. Do not add them to customer-facing documentation or production examples. In the sandbox example, they should be commented out with a note that they are staff-only.
+The `internal_observability_*` variables (Datadog API key, env name, region) are for internal Braintrust engineering use. Do not add them to customer-facing documentation, production examples, or sandbox examples.
 
 ### Scripts use `uv` shebangs
 
