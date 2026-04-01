@@ -27,12 +27,8 @@ module "braintrust-data-plane" {
   # Storage type for the RDS instance. Recommended gp3 for large production deployments.
   postgres_storage_type = "gp3"
 
-  # Storage IOPS for the RDS instance. Only applicable if storage_type is io1, io2, or gp3.
-  # Recommended 15000 for production.
-  postgres_storage_iops = 3000
-
-  # Throughput for the RDS instance. Only applicable if storage_type is gp3.
-  # Recommended 500 for production if you are using gp3. Leave blank for io1 or io2
+  # gp3 volumes under 400GB receive baseline performance (3000 IOPS, 125 MiB/s). These match the baseline.
+  postgres_storage_iops       = 3000
   postgres_storage_throughput = 125
 
   postgres_version                    = "15"
@@ -48,7 +44,7 @@ module "braintrust-data-plane" {
 
   # Single reader and writer, downsized for sandbox.
   # Production recommendation: 2x c8gd.4xlarge readers, 1x c8gd.8xlarge writer
-  #
+
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
   # Compatible families include: c8gd, c5d, m5d, i3, i4i.
   # Generic families (t3, m5, c5) will fail — the instance has no local disk.
