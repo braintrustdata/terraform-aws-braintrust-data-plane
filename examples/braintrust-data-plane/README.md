@@ -1,12 +1,22 @@
 This is an example of a standard **production-sized** Braintrust data plane deployment. Copy this directory to a new directory in your own repository and modify the files to match your environment.
 
+> [!TIP]
+> For a smaller deployment suitable for testing and evaluation, see [`examples/braintrust-data-plane-sandbox/`](../braintrust-data-plane-sandbox/).
+
 ## Configure Terraform
 * `provider.tf` should be modified to use your AWS account and region.
 * `terraform.tf` should be modified to use the remote backend that your company uses. Typically this is an S3 bucket and DynamoDB table.
 * `main.tf` should be modified to meet your needs for the Braintrust deployment. The defaults are sensible only for a small development deployment.
 * Brainstore requires a license key which you can find in the Braintrust UI under Settings > Data Plane
-![Brainstore License Key](../../assets/Brainstore-License-Key.png)
-* It isn't recommended that you commit this license key to your git repo. You can safely pass this key into terraform multiple ways:
+  ![Brainstore License Key](../../assets/Brainstore-License-Key.png)
+* The recommended approach is to store the license key in AWS Secrets Manager and reference it using a Terraform data source:
+  ```hcl
+  data "aws_secretsmanager_secret_version" "brainstore_license" {
+    secret_id = "braintrust/brainstore-license-key"
+  }
+  ```
+  Then pass `data.aws_secretsmanager_secret_version.brainstore_license.secret_string` as the `brainstore_license_key` value in the module.
+* Alternatively, you can pass the key without storing it in Secrets Manager:
   * Set `TF_VAR_brainstore_license_key=your-key` in your terraform environment
   * Pass it into terraform as a flag `terraform apply -var 'brainstore_license_key=your-key'`
   * Add it to an uncommitted `terraform.tfvars` or `.auto.tfvars` file.
@@ -39,3 +49,4 @@ Paste the API URL into the text field, and click Save. Leave the Proxy and Realt
 
 Verify in the UI that the ping to each endpoint is successful.
 ![Verify Successful Ping](../../assets/Braintrust-API-URL-verify.png)
+
