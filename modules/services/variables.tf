@@ -165,7 +165,7 @@ variable "api_handler_memory_limit" {
   default     = 10240
 
   validation {
-    condition     = var.api_handler_memory_limit <= 10240
+    condition     = var.api_handler_memory_limit > 0 && var.api_handler_memory_limit <= 10240
     error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
   }
 }
@@ -182,7 +182,7 @@ variable "ai_proxy_memory_limit" {
   default     = 10240
 
   validation {
-    condition     = var.ai_proxy_memory_limit <= 10240
+    condition     = var.ai_proxy_memory_limit > 0 && var.ai_proxy_memory_limit <= 10240
     error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
   }
 }
