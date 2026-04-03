@@ -186,7 +186,9 @@ module "services" {
   primary_org_name                           = var.primary_org_name
   api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
+  api_handler_memory_limit                   = var.api_handler_memory_limit
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
+  ai_proxy_memory_limit                      = var.ai_proxy_memory_limit
   whitelisted_origins                        = var.whitelisted_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
@@ -382,5 +384,3 @@ module "brainstore" {
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
   locks_s3_path              = var.brainstore_locks_s3_path
 }
-
-
