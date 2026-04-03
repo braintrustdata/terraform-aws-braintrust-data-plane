@@ -10,10 +10,10 @@ locals {
   observability_enabled           = nonsensitive(var.internal_observability_api_key != null && var.internal_observability_api_key != "")
   datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:131"
   datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:90"
-  datadog_python_layer_arn        = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Python313:118"
-  datadog_extension_layer_arn     = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension:70"
-  nodejs_datadog_handler          = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
-  python_datadog_handler          = "datadog_lambda.handler.handler"
+  # datadog_python_layer_arn        = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Python313:118"
+  # datadog_extension_layer_arn     = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension:70"
+  nodejs_datadog_handler = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
+  python_datadog_handler = "datadog_lambda.handler.handler"
   datadog_env_vars = {
     DD_SITE            = "${var.internal_observability_region}.datadoghq.com"
     DD_API_KEY         = var.internal_observability_api_key != null ? var.internal_observability_api_key : ""
@@ -36,7 +36,7 @@ locals {
     lambda => trimspace(data.http.lambda_versions[lambda].response_body)
   }
 
-  postgres_url                 = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
+  # postgres_url                 = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
   brainstore_url               = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
