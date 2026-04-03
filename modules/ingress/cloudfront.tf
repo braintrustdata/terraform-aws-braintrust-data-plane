@@ -6,6 +6,51 @@ locals {
   cloudfront_AIProxyOrigin             = "AIProxyOrigin"
   cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
+  cloudfront_APIECSOrigin              = "APIECSOrigin"
+  cloudfront_base_proxy_origin         = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
+  cloudfront_has_api_ecs_origin        = var.api_ecs_origin_domain_name != null && var.api_ecs_origin_arn != null
+
+  cloudfront_proxy_path_patterns_non_eval = [
+    "/v1/proxy", "/v1/proxy/*",
+    "/v1/function/*/?*",
+    "/function/*"
+  ]
+  cloudfront_eval_path_patterns = [
+    "/v1/eval", "/v1/eval/*"
+  ]
+
+  cloudfront_use_api_ecs_for_eval  = local.cloudfront_has_api_ecs_origin && (var.use_api_ecs_for_eval_routes || var.use_api_ecs_for_all_proxy_routes)
+  cloudfront_use_api_ecs_for_proxy = local.cloudfront_has_api_ecs_origin && var.use_api_ecs_for_all_proxy_routes
+
+  cloudfront_ordered_cache_behaviors = merge(
+    {
+      for p in local.cloudfront_proxy_path_patterns_non_eval :
+      p => (local.cloudfront_use_api_ecs_for_proxy ? local.cloudfront_APIECSOrigin : local.cloudfront_base_proxy_origin)
+    },
+    {
+      for p in local.cloudfront_eval_path_patterns :
+      p => (local.cloudfront_use_api_ecs_for_eval ? local.cloudfront_APIECSOrigin : local.cloudfront_base_proxy_origin)
+    }
+  )
+}
+
+resource "aws_cloudfront_vpc_origin" "api_ecs" {
+  count = local.cloudfront_has_api_ecs_origin ? 1 : 0
+
+  vpc_origin_endpoint_config {
+    name                   = "${var.deployment_name}-api-ecs-origin"
+    arn                    = var.api_ecs_origin_arn
+    http_port              = 80
+    https_port             = 443
+    origin_protocol_policy = coalesce(var.api_ecs_origin_protocol_policy, "http-only")
+
+    origin_ssl_protocols {
+      items    = ["TLSv1.2"]
+      quantity = 1
+    }
+  }
+
+  tags = local.common_tags
 }
 
 resource "aws_cloudfront_distribution" "dataplane" {
@@ -69,6 +114,18 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
   }
 
+  dynamic "origin" {
+    for_each = local.cloudfront_has_api_ecs_origin ? [1] : []
+    content {
+      domain_name = var.api_ecs_origin_domain_name
+      origin_id   = local.cloudfront_APIECSOrigin
+
+      vpc_origin_config {
+        vpc_origin_id = aws_cloudfront_vpc_origin.api_ecs[0].id
+      }
+    }
+  }
+
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
@@ -80,17 +137,12 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   dynamic "ordered_cache_behavior" {
-    for_each = toset([
-      "/v1/proxy", "/v1/proxy/*",
-      "/v1/eval", "/v1/eval/*",
-      "/v1/function/*/?*",
-      "/function/*"
-    ])
+    for_each = local.cloudfront_ordered_cache_behaviors
     content {
-      path_pattern           = ordered_cache_behavior.value
+      path_pattern           = ordered_cache_behavior.key
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
+      target_origin_id       = ordered_cache_behavior.value
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
@@ -114,4 +166,11 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   tags = local.common_tags
+
+  lifecycle {
+    precondition {
+      condition     = (var.api_ecs_origin_domain_name == null) == (var.api_ecs_origin_arn == null)
+      error_message = "api_ecs_origin_domain_name and api_ecs_origin_arn must both be set or both be null."
+    }
+  }
 }

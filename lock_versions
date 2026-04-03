@@ -45,6 +45,13 @@ def main():
     with open(brainstore_versions_path, "w") as f:
         json.dump({"brainstore": version_tag}, f, indent=4)
 
+    # Write API-ECS standalone API version to api-ecs/VERSIONS.json
+    print("Writing API version to modules/api-ecs/VERSIONS.json...")
+    api_versions_path = f"{script_dir}/modules/api-ecs/VERSIONS.json"
+    os.makedirs(os.path.dirname(api_versions_path), exist_ok=True)
+    with open(api_versions_path, "w") as f:
+        json.dump({"api": version_tag}, f, indent=4)
+
 
 if __name__ == "__main__":
     main()

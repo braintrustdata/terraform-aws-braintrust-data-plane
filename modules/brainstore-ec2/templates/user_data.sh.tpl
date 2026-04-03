@@ -154,17 +154,21 @@ ${env_key}=${env_value}
 %{ endfor ~}
 EOF
 
-BRAINSTORE_AI_PROXY_URL=$(aws ssm get-parameter \
-  --name /braintrust/${deployment_name}/ai-proxy-url \
-  --query 'Parameter.Value' \
-  --output text \
-  --region ${aws_region})
-
-if [ -n "$BRAINSTORE_AI_PROXY_URL" ]; then
-  echo "BRAINSTORE_AI_PROXY_URL=$BRAINSTORE_AI_PROXY_URL" >> /etc/brainstore.env
+if [ "${use_api_ecs_for_brainstore_ai_proxy_url}" = "true" ] && [ -n "${api_ecs_url}" ]; then
+  echo "BRAINSTORE_AI_PROXY_URL=${api_ecs_url}" >> /etc/brainstore.env
 else
-  echo "ERROR: Failed to resolve BRAINSTORE_AI_PROXY_URL, aborting" >&2
-  exit 1
+  BRAINSTORE_AI_PROXY_URL=$(aws ssm get-parameter \
+    --name /braintrust/${deployment_name}/ai-proxy-url \
+    --query 'Parameter.Value' \
+    --output text \
+    --region ${aws_region})
+
+  if [ -n "$BRAINSTORE_AI_PROXY_URL" ]; then
+    echo "BRAINSTORE_AI_PROXY_URL=$BRAINSTORE_AI_PROXY_URL" >> /etc/brainstore.env
+  else
+    echo "ERROR: Failed to resolve BRAINSTORE_AI_PROXY_URL, aborting" >&2
+    exit 1
+  fi
 fi
 
 if [ "${is_dedicated_writer_node}" = "true" ]; then

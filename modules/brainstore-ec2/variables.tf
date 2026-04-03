@@ -234,6 +234,18 @@ variable "extra_env_vars_fast_reader" {
   default     = {}
 }
 
+variable "use_api_ecs_for_brainstore_ai_proxy_url" {
+  type        = bool
+  description = "If true, use api_ecs_url for BRAINSTORE_AI_PROXY_URL instead of resolving ai-proxy-url from SSM."
+  default     = false
+}
+
+variable "api_ecs_url" {
+  type        = string
+  description = "Internal API-ECS URL to use for BRAINSTORE_AI_PROXY_URL when use_api_ecs_for_brainstore_ai_proxy_url is true."
+  default     = null
+}
+
 variable "cache_file_size_fast_reader" {
   type        = string
   description = "Optional. Override the cache file size for fast reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."

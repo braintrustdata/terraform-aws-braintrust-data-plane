@@ -32,6 +32,55 @@ variable "ai_proxy_function_url" {
   type        = string
 }
 
+variable "api_ecs_origin_domain_name" {
+  description = "Optional domain name for the API-ECS ALB origin"
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_origin_arn" {
+  description = "Optional ARN for the API-ECS ALB origin"
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_origin_protocol_policy" {
+  description = "CloudFront origin protocol policy for API-ECS origin."
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.api_ecs_origin_protocol_policy == null || contains([
+      "http-only",
+      "https-only",
+      "match-viewer",
+    ], var.api_ecs_origin_protocol_policy)
+    error_message = "api_ecs_origin_protocol_policy must be null, http-only, https-only, or match-viewer."
+  }
+}
+
+variable "use_api_ecs_for_eval_routes" {
+  description = "Route /v1/eval* paths to API-ECS origin"
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_api_ecs_for_eval_routes || var.api_ecs_origin_domain_name != null
+    error_message = "use_api_ecs_for_eval_routes requires api_ecs_origin_domain_name/api_ecs_origin_arn to be set."
+  }
+}
+
+variable "use_api_ecs_for_all_proxy_routes" {
+  description = "Route all proxy-related paths to API-ECS origin"
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_api_ecs_for_all_proxy_routes || var.api_ecs_origin_domain_name != null
+    error_message = "use_api_ecs_for_all_proxy_routes requires api_ecs_origin_domain_name/api_ecs_origin_arn to be set."
+  }
+}
+
 variable "api_handler_function_arn" {
   description = "The ARN of the API handler lambda function"
   type        = string

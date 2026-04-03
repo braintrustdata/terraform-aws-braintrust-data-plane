@@ -13,6 +13,23 @@ If you're using a brand new AWS account for your Braintrust data plane you will 
 ## Module Configuration
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
 
+### API-ECS CloudFront Routing and TLS Defaults
+
+When `enable_api_ecs = true`, this module can route selected CloudFront path patterns to the private API-ECS ALB while keeping API Gateway as the default origin.
+
+- Route control variables:
+  - `use_api_ecs_for_eval_routes`
+  - `use_api_ecs_for_all_proxy_routes`
+  - `use_api_ecs_for_brainstore_ai_proxy_url`
+- Precedence:
+  - `use_api_ecs_for_all_proxy_routes = true` routes all proxy/eval path patterns to API-ECS.
+  - `use_api_ecs_for_eval_routes = true` routes only `/v1/eval*` to API-ECS.
+- TLS default behavior for API-ECS ALB origin:
+  - CloudFront -> ALB defaults to `http-only`.
+  - It automatically upgrades to `https-only` only when HTTPS is fully configured on API-ECS ALB with either:
+    - `api_ecs_acm_certificate_arn`, or
+    - managed ACM (`api_ecs_create_acm_certificate = true`) with DNS validation records enabled and Route53 inputs configured.
+
 ## Useful scripts
 
 ### dump-logs.sh

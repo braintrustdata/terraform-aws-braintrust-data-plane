@@ -456,6 +456,200 @@ variable "gateway_braintrust_app_url" {
   default     = "https://www.braintrust.dev"
 }
 
+variable "enable_api_ecs" {
+  description = "Enable API-ECS service deployment (Fargate with private ALB)."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_version_override" {
+  type        = string
+  description = "Optional API-ECS image tag override. If unset, uses modules/api-ecs/VERSIONS.json."
+  default     = null
+
+  validation {
+    condition     = var.api_ecs_version_override == null || var.api_ecs_version_override != ""
+    error_message = "api_ecs_version_override must be null or a non-empty string."
+  }
+}
+
+variable "api_ecs_container_image" {
+  type        = string
+  description = "Optional full container image override for API-ECS. If set, this takes precedence over api_ecs_version_override and VERSIONS.json."
+  default     = null
+}
+
+variable "api_ecs_container_port" {
+  description = "Container port for API-ECS."
+  type        = number
+  default     = 8000
+}
+
+variable "api_ecs_cpu" {
+  description = "CPU units for the API-ECS task definition."
+  type        = number
+  default     = 2048
+}
+
+variable "api_ecs_memory" {
+  description = "Memory in MiB for the API-ECS task definition."
+  type        = number
+  default     = 16384
+}
+
+variable "api_ecs_min_capacity" {
+  description = "Minimum task count for the API-ECS service."
+  type        = number
+  default     = 1
+}
+
+variable "api_ecs_max_capacity" {
+  description = "Maximum task count for the API-ECS service."
+  type        = number
+  default     = 4
+
+  validation {
+    condition     = var.api_ecs_max_capacity >= var.api_ecs_min_capacity
+    error_message = "api_ecs_max_capacity must be greater than or equal to api_ecs_min_capacity."
+  }
+}
+
+variable "api_ecs_target_cpu_utilization" {
+  description = "Target average CPU utilization percentage for API-ECS autoscaling."
+  type        = number
+  default     = 40
+
+  validation {
+    condition     = var.api_ecs_target_cpu_utilization > 0 && var.api_ecs_target_cpu_utilization <= 100
+    error_message = "api_ecs_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_target_memory_utilization" {
+  description = "Target average memory utilization percentage for API-ECS autoscaling."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_target_memory_utilization > 0 && var.api_ecs_target_memory_utilization <= 100
+    error_message = "api_ecs_target_memory_utilization must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_log_retention_days" {
+  description = "CloudWatch log retention period (days) for API-ECS logs."
+  type        = number
+  default     = 14
+
+  validation {
+    condition = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
+    ], var.api_ecs_log_retention_days)
+    error_message = "api_ecs_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
+}
+
+variable "api_ecs_extra_env_vars" {
+  description = "Extra environment variables for the API-ECS container."
+  type        = map(string)
+  default     = {}
+}
+
+variable "api_ecs_cpu_architecture" {
+  description = "CPU architecture for the API-ECS task definition."
+  type        = string
+  default     = "ARM64"
+
+  validation {
+    condition     = contains(["ARM64", "X86_64"], var.api_ecs_cpu_architecture)
+    error_message = "api_ecs_cpu_architecture must be either ARM64 or X86_64."
+  }
+}
+
+variable "api_ecs_authorized_security_groups" {
+  description = "Map of security group names to their IDs that are authorized to access the internal API-ECS ALB. Format: { name = <security_group_id> }"
+  type        = map(string)
+  default     = {}
+}
+
+variable "api_ecs_enable_execute_command" {
+  description = "Enable ECS Exec for API-ECS tasks."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_health_check_path" {
+  description = "ALB health check path for API-ECS."
+  type        = string
+  default     = "/"
+}
+
+variable "api_ecs_alb_idle_timeout_seconds" {
+  description = "ALB idle timeout for API-ECS in seconds."
+  type        = number
+  default     = 300
+}
+
+variable "api_ecs_alb_client_keep_alive_seconds" {
+  description = "ALB client keep-alive for API-ECS in seconds."
+  type        = number
+  default     = 3600
+}
+
+variable "api_ecs_alb_deregistration_delay_seconds" {
+  description = "ALB target group deregistration delay for API-ECS in seconds."
+  type        = number
+  default     = 300
+}
+
+
+variable "api_ecs_alb_enable_https" {
+  description = "Enable HTTPS listener on API-ECS ALB."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_acm_certificate_arn" {
+  description = "Optional existing ACM certificate ARN for API-ECS ALB."
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_create_acm_certificate" {
+  description = "Create an ACM certificate for API-ECS ALB."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_create_validation_records" {
+  description = "When creating API-ECS ACM certificate, create Route53 DNS validation records."
+  type        = bool
+  default     = true
+
+  validation {
+    condition     = !(var.api_ecs_alb_enable_https && var.api_ecs_create_acm_certificate) || var.api_ecs_create_validation_records
+    error_message = "api_ecs_create_validation_records must be true when api_ecs_alb_enable_https and api_ecs_create_acm_certificate are both enabled."
+  }
+}
+
+variable "api_ecs_create_dns_record" {
+  description = "Create a Route53 alias DNS record for API-ECS ALB using api_ecs_alb_hostname + api_ecs_route53_zone_name."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_route53_zone_name" {
+  description = "Route53 hosted zone name for managed API-ECS ACM DNS validation records."
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_alb_hostname" {
+  description = "Hostname label to use for managed API-ECS ACM certificate (for example: api)."
+  type        = string
+  default     = null
+}
+
+
 variable "braintrust_api_url" {
   description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
   type        = string
@@ -781,6 +975,24 @@ variable "permissions_boundary_arn" {
 
 variable "use_global_ai_proxy" {
   description = "Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust."
+  type        = bool
+  default     = false
+}
+
+variable "use_api_ecs_for_eval_routes" {
+  description = "Route eval API traffic to API-ECS."
+  type        = bool
+  default     = false
+}
+
+variable "use_api_ecs_for_all_proxy_routes" {
+  description = "Route all proxy-related CloudFront endpoints to API-ECS."
+  type        = bool
+  default     = false
+}
+
+variable "use_api_ecs_for_brainstore_ai_proxy_url" {
+  description = "Use API-ECS URL for BRAINSTORE_AI_PROXY_URL in Brainstore user-data."
   type        = bool
   default     = false
 }
