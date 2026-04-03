@@ -479,10 +479,32 @@ variable "api_handler_reserved_concurrent_executions" {
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
 }
 
+variable "api_handler_memory_limit" {
+  type        = number
+  description = "The maximum memory in MB for the API Handler."
+  default     = 10240
+
+  validation {
+    condition     = var.api_handler_memory_limit > 0 && var.api_handler_memory_limit <= 10240
+    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
+  }
+}
+
 variable "ai_proxy_reserved_concurrent_executions" {
   description = "The number of concurrent executions to reserve for the AI Proxy. Setting this will prevent the AI Proxy from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
   type        = number
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
+}
+
+variable "ai_proxy_memory_limit" {
+  type        = number
+  description = "The maximum memory in MB for the AI Proxy."
+  default     = 10240
+
+  validation {
+    condition     = var.ai_proxy_memory_limit > 0 && var.ai_proxy_memory_limit <= 10240
+    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
+  }
 }
 
 variable "disable_billing_telemetry_aggregation" {
