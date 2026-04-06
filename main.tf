@@ -292,19 +292,19 @@ module "api_ecs" {
   ecs_cluster_arn    = module.ecs[0].cluster_arn
   ecs_cluster_name   = module.ecs[0].cluster_name
 
-  container_image                 = var.api_ecs_container_image
-  api_version_override            = var.api_ecs_version_override
-  container_port                  = var.api_ecs_container_port
-  cpu                             = var.api_ecs_cpu
-  memory                          = var.api_ecs_memory
-  cpu_architecture                = var.api_ecs_cpu_architecture
-  min_capacity                    = var.api_ecs_min_capacity
-  max_capacity                    = var.api_ecs_max_capacity
-  target_cpu_utilization          = var.api_ecs_target_cpu_utilization
-  target_memory_utilization       = var.api_ecs_target_memory_utilization
-  log_retention_days              = var.api_ecs_log_retention_days
-  health_check_path               = var.api_ecs_health_check_path
-  alb_idle_timeout_seconds          = var.api_ecs_alb_idle_timeout_seconds
+  container_image                  = var.api_ecs_container_image
+  api_version_override             = var.api_ecs_version_override
+  container_port                   = var.api_ecs_container_port
+  cpu                              = var.api_ecs_cpu
+  memory                           = var.api_ecs_memory
+  cpu_architecture                 = var.api_ecs_cpu_architecture
+  min_capacity                     = var.api_ecs_min_capacity
+  max_capacity                     = var.api_ecs_max_capacity
+  target_cpu_utilization           = var.api_ecs_target_cpu_utilization
+  target_memory_utilization        = var.api_ecs_target_memory_utilization
+  log_retention_days               = var.api_ecs_log_retention_days
+  health_check_path                = var.api_ecs_health_check_path
+  alb_idle_timeout_seconds         = var.api_ecs_alb_idle_timeout_seconds
   alb_client_keep_alive_seconds    = var.api_ecs_alb_client_keep_alive_seconds
   alb_deregistration_delay_seconds = var.api_ecs_alb_deregistration_delay_seconds
 

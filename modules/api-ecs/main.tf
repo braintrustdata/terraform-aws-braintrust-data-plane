@@ -53,10 +53,10 @@ locals {
   selected_certificate_arn                = var.acm_certificate_arn != null ? var.acm_certificate_arn : local.managed_certificate_arn
   enable_https                            = var.alb_enable_https && (var.acm_certificate_arn != null || local.managed_certificate_configuration_ready)
   cloudfront_origin_protocol_policy       = local.enable_https ? "https-only" : "http-only"
-  use_route53              = (var.create_acm_certificate && var.create_validation_records) || var.create_dns_record
-  alb_subnet_ids           = var.private_subnet_ids
-  route53_zone_fqdn        = var.route53_zone_name == null ? null : trimsuffix(var.route53_zone_name, ".")
-  certificate_domain_name  = var.alb_hostname != null && var.route53_zone_name != null ? "${var.alb_hostname}.${local.route53_zone_fqdn}" : null
+  use_route53                             = (var.create_acm_certificate && var.create_validation_records) || var.create_dns_record
+  alb_subnet_ids                          = var.private_subnet_ids
+  route53_zone_fqdn                       = var.route53_zone_name == null ? null : trimsuffix(var.route53_zone_name, ".")
+  certificate_domain_name                 = var.alb_hostname != null && var.route53_zone_name != null ? "${var.alb_hostname}.${local.route53_zone_fqdn}" : null
 }
 
 data "aws_region" "current" {}
