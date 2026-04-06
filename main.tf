@@ -227,8 +227,10 @@ module "redis" {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
-  vpc_id      = local.main_vpc_id
-  kms_key_arn = local.kms_key_arn
+  vpc_id                                 = local.main_vpc_id
+  kms_key_arn                            = local.kms_key_arn
+  existing_elasticache_subnet_group_name = var.existing_elasticache_subnet_group_name
+
   authorized_security_groups = merge(
     merge(
       {

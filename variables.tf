@@ -1631,3 +1631,9 @@ variable "override_brainstore_iam_role_trust_policy" {
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
   default     = null
 }
+
+variable "existing_elasticache_subnet_group_name" {
+  description = "Existing ElastiCache subnet group name to use. If null, one will be created."
+  type        = string
+  default     = null
+}
