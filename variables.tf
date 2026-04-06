@@ -473,12 +473,6 @@ variable "api_ecs_version_override" {
   }
 }
 
-variable "api_ecs_container_image" {
-  type        = string
-  description = "Optional full container image override for API-ECS. If set, this takes precedence over api_ecs_version_override and VERSIONS.json."
-  default     = null
-}
-
 variable "api_ecs_container_port" {
   description = "Container port for API-ECS."
   type        = number
@@ -571,6 +565,12 @@ variable "api_ecs_authorized_security_groups" {
   default     = {}
 }
 
+variable "api_ecs_authorized_cidr_blocks" {
+  description = "CIDR blocks authorized to access the internal API-ECS ALB."
+  type        = list(string)
+  default     = []
+}
+
 variable "api_ecs_enable_execute_command" {
   description = "Enable ECS Exec for API-ECS tasks."
   type        = bool
@@ -602,12 +602,6 @@ variable "api_ecs_alb_deregistration_delay_seconds" {
 }
 
 
-variable "api_ecs_alb_enable_https" {
-  description = "Enable HTTPS listener on API-ECS ALB."
-  type        = bool
-  default     = false
-}
-
 variable "api_ecs_acm_certificate_arn" {
   description = "Optional existing ACM certificate ARN for API-ECS ALB."
   type        = string
@@ -618,17 +612,6 @@ variable "api_ecs_create_acm_certificate" {
   description = "Create an ACM certificate for API-ECS ALB."
   type        = bool
   default     = false
-}
-
-variable "api_ecs_create_validation_records" {
-  description = "When creating API-ECS ACM certificate, create Route53 DNS validation records."
-  type        = bool
-  default     = true
-
-  validation {
-    condition     = !(var.api_ecs_alb_enable_https && var.api_ecs_create_acm_certificate) || var.api_ecs_create_validation_records
-    error_message = "api_ecs_create_validation_records must be true when api_ecs_alb_enable_https and api_ecs_create_acm_certificate are both enabled."
-  }
 }
 
 variable "api_ecs_create_dns_record" {

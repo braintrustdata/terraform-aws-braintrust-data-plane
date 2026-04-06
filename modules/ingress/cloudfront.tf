@@ -8,7 +8,7 @@ locals {
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
   cloudfront_APIECSOrigin              = "APIECSOrigin"
   cloudfront_base_proxy_origin         = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
-  cloudfront_has_api_ecs_origin        = var.api_ecs_origin_domain_name != null && var.api_ecs_origin_arn != null
+  cloudfront_has_api_ecs_origin        = var.has_api_ecs_origin
 
   cloudfront_proxy_path_patterns_non_eval = [
     "/v1/proxy", "/v1/proxy/*",
@@ -171,6 +171,10 @@ resource "aws_cloudfront_distribution" "dataplane" {
     precondition {
       condition     = (var.api_ecs_origin_domain_name == null) == (var.api_ecs_origin_arn == null)
       error_message = "api_ecs_origin_domain_name and api_ecs_origin_arn must both be set or both be null."
+    }
+    precondition {
+      condition     = !var.has_api_ecs_origin || (var.api_ecs_origin_domain_name != null && var.api_ecs_origin_arn != null)
+      error_message = "has_api_ecs_origin=true requires api_ecs_origin_domain_name and api_ecs_origin_arn to be set."
     }
   }
 }

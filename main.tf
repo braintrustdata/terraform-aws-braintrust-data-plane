@@ -287,7 +287,6 @@ module "api_ecs" {
 
   deployment_name      = var.deployment_name
   api_version_override = var.api_ecs_version_override
-  container_image      = var.api_ecs_container_image
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry
@@ -345,11 +344,10 @@ module "api_ecs" {
     },
     var.api_ecs_authorized_security_groups,
   )
+  authorized_cidr_blocks                 = var.api_ecs_authorized_cidr_blocks
   allow_cloudfront_origin_facing_traffic = !var.use_deployment_mode_external_eks
-  alb_enable_https                       = var.api_ecs_alb_enable_https
   acm_certificate_arn                    = var.api_ecs_acm_certificate_arn
   create_acm_certificate                 = var.api_ecs_create_acm_certificate
-  create_validation_records              = var.api_ecs_create_validation_records
   create_dns_record                      = var.api_ecs_create_dns_record
   route53_zone_name                      = var.api_ecs_route53_zone_name
   alb_hostname                           = var.api_ecs_alb_hostname
@@ -357,10 +355,9 @@ module "api_ecs" {
   alb_client_keep_alive_seconds          = var.api_ecs_alb_client_keep_alive_seconds
   alb_deregistration_delay_seconds       = var.api_ecs_alb_deregistration_delay_seconds
 
-  kms_key_arn      = local.kms_key_arn
-  ecs_cluster_arn  = module.ecs[0].cluster_arn
-  ecs_cluster_name = module.ecs[0].cluster_name
-  custom_tags      = var.custom_tags
+  kms_key_arn     = local.kms_key_arn
+  ecs_cluster_arn = module.ecs[0].cluster_arn
+  custom_tags     = var.custom_tags
 }
 
 module "ingress" {
@@ -374,6 +371,7 @@ module "ingress" {
   cloudfront_price_class           = var.cloudfront_price_class
   use_global_ai_proxy              = var.use_global_ai_proxy
   ai_proxy_function_url            = module.services[0].ai_proxy_url
+  has_api_ecs_origin               = var.enable_api_ecs
   api_ecs_origin_domain_name       = var.enable_api_ecs ? module.api_ecs[0].alb_dns_name : null
   api_ecs_origin_arn               = var.enable_api_ecs ? module.api_ecs[0].alb_arn : null
   api_ecs_origin_protocol_policy   = var.enable_api_ecs ? module.api_ecs[0].cloudfront_origin_protocol_policy : null

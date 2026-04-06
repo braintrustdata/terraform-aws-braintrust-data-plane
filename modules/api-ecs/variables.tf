@@ -23,19 +23,14 @@ variable "ecs_cluster_arn" {
   description = "ARN of the ECS cluster where the API-ECS service will run."
 }
 
-variable "ecs_cluster_name" {
+variable "container_image_repository" {
   type        = string
-  description = "Name of the ECS cluster where the API-ECS service will run."
-}
-
-variable "container_image" {
-  type        = string
-  description = "Optional full container image override for the API-ECS service."
-  default     = null
+  description = "Container image repository for the API-ECS service."
+  default     = "public.ecr.aws/braintrust/standalone-api"
 
   validation {
-    condition     = var.container_image == null ? true : trimspace(var.container_image) != ""
-    error_message = "container_image must be null or a non-empty string."
+    condition     = trimspace(var.container_image_repository) != ""
+    error_message = "container_image_repository must be a non-empty string."
   }
 }
 
@@ -289,6 +284,17 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "authorized_cidr_blocks" {
+  type        = list(string)
+  description = "CIDR blocks authorized to access the API-ECS ALB."
+  default     = []
+
+  validation {
+    condition     = alltrue([for cidr in var.authorized_cidr_blocks : can(cidrnetmask(cidr))])
+    error_message = "authorized_cidr_blocks must contain valid CIDR blocks."
+  }
+}
+
 variable "allow_cloudfront_origin_facing_traffic" {
   type        = bool
   description = "Allow inbound traffic from CloudFront origin-facing managed prefix list to API-ECS ALB."
@@ -342,12 +348,6 @@ variable "alb_deregistration_delay_seconds" {
   default     = 300
 }
 
-variable "alb_enable_https" {
-  type        = bool
-  description = "Enable HTTPS listener on API-ECS ALB."
-  default     = false
-}
-
 variable "acm_certificate_arn" {
   type        = string
   description = "Existing ACM certificate ARN for API-ECS ALB HTTPS listener."
@@ -363,17 +363,6 @@ variable "create_acm_certificate" {
   type        = bool
   description = "Create and manage ACM certificate for API-ECS ALB."
   default     = false
-}
-
-variable "create_validation_records" {
-  type        = bool
-  description = "When creating ACM cert, also create Route53 DNS validation records."
-  default     = true
-
-  validation {
-    condition     = !(var.alb_enable_https && var.create_acm_certificate) || var.create_validation_records
-    error_message = "create_validation_records must be true when alb_enable_https and create_acm_certificate are both enabled."
-  }
 }
 
 variable "create_dns_record" {

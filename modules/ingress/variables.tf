@@ -59,14 +59,20 @@ variable "api_ecs_origin_protocol_policy" {
   }
 }
 
+variable "has_api_ecs_origin" {
+  description = "Whether API-ECS origin resources should be created in CloudFront."
+  type        = bool
+  default     = false
+}
+
 variable "use_api_ecs_for_eval_routes" {
   description = "Route /v1/eval* paths to API-ECS origin"
   type        = bool
   default     = false
 
   validation {
-    condition     = !var.use_api_ecs_for_eval_routes || var.api_ecs_origin_domain_name != null
-    error_message = "use_api_ecs_for_eval_routes requires api_ecs_origin_domain_name/api_ecs_origin_arn to be set."
+    condition     = !var.use_api_ecs_for_eval_routes || var.has_api_ecs_origin
+    error_message = "use_api_ecs_for_eval_routes requires API-ECS origin to be enabled."
   }
 }
 
@@ -76,8 +82,8 @@ variable "use_api_ecs_for_all_proxy_routes" {
   default     = false
 
   validation {
-    condition     = !var.use_api_ecs_for_all_proxy_routes || var.api_ecs_origin_domain_name != null
-    error_message = "use_api_ecs_for_all_proxy_routes requires api_ecs_origin_domain_name/api_ecs_origin_arn to be set."
+    condition     = !var.use_api_ecs_for_all_proxy_routes || var.has_api_ecs_origin
+    error_message = "use_api_ecs_for_all_proxy_routes requires API-ECS origin to be enabled."
   }
 }
 
