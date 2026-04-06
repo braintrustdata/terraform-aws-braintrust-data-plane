@@ -285,29 +285,59 @@ module "api_ecs" {
   source = "./modules/api-ecs"
   count  = var.enable_api_ecs ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
+  deployment_name      = var.deployment_name
+  api_version_override = var.api_ecs_version_override
+  container_image      = var.api_ecs_container_image
+
+  # Telemetry
+  monitoring_telemetry = var.monitoring_telemetry
+
+  # Data stores
+  postgres_password = module.database.postgres_database_password
+  postgres_host     = module.database.postgres_database_address
+  postgres_port     = module.database.postgres_database_port
+  postgres_username = module.database.postgres_database_username
+  redis_host        = module.redis.redis_endpoint
+  redis_port        = module.redis.redis_port
+
+  # Brainstore
+  brainstore_hostname             = var.enable_brainstore ? module.brainstore[0].dns_name : null
+  brainstore_writer_hostname      = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname = var.enable_brainstore && var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+  brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
+  brainstore_license_key          = var.brainstore_license_key
+
+  # Storage
+  code_bundle_bucket = module.storage.code_bundle_bucket_id
+  response_bucket    = module.storage.lambda_responses_bucket_id
+
+  # Service configuration
+  braintrust_org_name                = var.braintrust_org_name
+  primary_org_name                   = var.primary_org_name
+  container_port                     = var.api_ecs_container_port
+  cpu                                = var.api_ecs_cpu
+  memory                             = var.api_ecs_memory
+  cpu_architecture                   = var.api_ecs_cpu_architecture
+  min_capacity                       = var.api_ecs_min_capacity
+  max_capacity                       = var.api_ecs_max_capacity
+  target_cpu_utilization             = var.api_ecs_target_cpu_utilization
+  target_memory_utilization          = var.api_ecs_target_memory_utilization
+  log_retention_days                 = var.api_ecs_log_retention_days
+  health_check_path                  = var.api_ecs_health_check_path
+  enable_execute_command             = var.api_ecs_enable_execute_command
+  whitelisted_origins                = var.whitelisted_origins
+  outbound_rate_limit_window_minutes = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests   = var.outbound_rate_limit_max_requests
+  function_secret_key                = module.services_common.function_tools_secret_key
+  service_token_secret_key           = module.services_common.function_tools_secret_key
+  extra_env_vars                     = var.api_ecs_extra_env_vars
+
+  # Networking
   vpc_id             = local.main_vpc_id
   private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
-  ecs_cluster_arn    = module.ecs[0].cluster_arn
-  ecs_cluster_name   = module.ecs[0].cluster_name
-
-  container_image                  = var.api_ecs_container_image
-  api_version_override             = var.api_ecs_version_override
-  container_port                   = var.api_ecs_container_port
-  cpu                              = var.api_ecs_cpu
-  memory                           = var.api_ecs_memory
-  cpu_architecture                 = var.api_ecs_cpu_architecture
-  min_capacity                     = var.api_ecs_min_capacity
-  max_capacity                     = var.api_ecs_max_capacity
-  target_cpu_utilization           = var.api_ecs_target_cpu_utilization
-  target_memory_utilization        = var.api_ecs_target_memory_utilization
-  log_retention_days               = var.api_ecs_log_retention_days
-  health_check_path                = var.api_ecs_health_check_path
-  alb_idle_timeout_seconds         = var.api_ecs_alb_idle_timeout_seconds
-  alb_client_keep_alive_seconds    = var.api_ecs_alb_client_keep_alive_seconds
-  alb_deregistration_delay_seconds = var.api_ecs_alb_deregistration_delay_seconds
-
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
@@ -316,36 +346,21 @@ module "api_ecs" {
     var.api_ecs_authorized_security_groups,
   )
   allow_cloudfront_origin_facing_traffic = !var.use_deployment_mode_external_eks
+  alb_enable_https                       = var.api_ecs_alb_enable_https
+  acm_certificate_arn                    = var.api_ecs_acm_certificate_arn
+  create_acm_certificate                 = var.api_ecs_create_acm_certificate
+  create_validation_records              = var.api_ecs_create_validation_records
+  create_dns_record                      = var.api_ecs_create_dns_record
+  route53_zone_name                      = var.api_ecs_route53_zone_name
+  alb_hostname                           = var.api_ecs_alb_hostname
+  alb_idle_timeout_seconds               = var.api_ecs_alb_idle_timeout_seconds
+  alb_client_keep_alive_seconds          = var.api_ecs_alb_client_keep_alive_seconds
+  alb_deregistration_delay_seconds       = var.api_ecs_alb_deregistration_delay_seconds
 
-  braintrust_org_name                = var.braintrust_org_name
-  primary_org_name                   = var.primary_org_name
-  postgres_username                  = module.database.postgres_database_username
-  postgres_password                  = module.database.postgres_database_password
-  postgres_host                      = module.database.postgres_database_address
-  postgres_port                      = module.database.postgres_database_port
-  redis_host                         = module.redis.redis_endpoint
-  redis_port                         = module.redis.redis_port
-  response_bucket                    = module.storage.lambda_responses_bucket_id
-  code_bundle_bucket                 = module.storage.code_bundle_bucket_id
-  function_secret_key                = module.services_common.function_tools_secret_key
-  service_token_secret_key           = module.services_common.function_tools_secret_key
-  brainstore_realtime_wal_bucket     = module.storage.brainstore_bucket_id
-  whitelisted_origins                = var.whitelisted_origins
-  outbound_rate_limit_window_minutes = var.outbound_rate_limit_window_minutes
-  outbound_rate_limit_max_requests   = var.outbound_rate_limit_max_requests
-  monitoring_telemetry               = var.monitoring_telemetry
-
-  extra_env_vars         = var.api_ecs_extra_env_vars
-  enable_execute_command = var.api_ecs_enable_execute_command
-  custom_tags            = var.custom_tags
-
-  alb_enable_https          = var.api_ecs_alb_enable_https
-  acm_certificate_arn       = var.api_ecs_acm_certificate_arn
-  create_acm_certificate    = var.api_ecs_create_acm_certificate
-  create_validation_records = var.api_ecs_create_validation_records
-  create_dns_record         = var.api_ecs_create_dns_record
-  route53_zone_name         = var.api_ecs_route53_zone_name
-  alb_hostname              = var.api_ecs_alb_hostname
+  kms_key_arn      = local.kms_key_arn
+  ecs_cluster_arn  = module.ecs[0].cluster_arn
+  ecs_cluster_name = module.ecs[0].cluster_name
+  custom_tags      = var.custom_tags
 }
 
 module "ingress" {

@@ -10,31 +10,52 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name = "api"
+  container_name               = "api"
+  brainstore_enabled           = var.brainstore_hostname != null && var.brainstore_hostname != "" && var.brainstore_port != null
+  using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
+  using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
+  brainstore_url               = local.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
+  brainstore_writer_url        = local.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+  brainstore_fast_reader_url = local.brainstore_enabled && local.using_brainstore_fast_reader ? "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}" : ""
+  brainstore_s3_bucket       = local.brainstore_enabled && var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
   base_env_vars = {
-    ORG_NAME                           = var.braintrust_org_name
-    PRIMARY_ORG_NAME                   = var.primary_org_name
-    BRAINTRUST_DEPLOYMENT_NAME         = var.deployment_name
-    PG_URL                             = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
-    REDIS_URL                          = "redis://${var.redis_host}:${var.redis_port}"
-    REDIS_HOST                         = var.redis_host
-    REDIS_PORT                         = tostring(var.redis_port)
-    RESPONSE_BUCKET                    = var.response_bucket
-    CODE_BUNDLE_BUCKET                 = var.code_bundle_bucket
-    FUNCTION_SECRET_KEY                = var.function_secret_key
-    SERVICE_TOKEN_SECRET_KEY           = var.service_token_secret_key
-    BRAINSTORE_ENABLED                 = "true"
-    BRAINSTORE_DEFAULT                 = "force"
-    BRAINSTORE_REALTIME_WAL_BUCKET     = var.brainstore_realtime_wal_bucket
-    WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
-    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = tostring(var.outbound_rate_limit_window_minutes)
-    OUTBOUND_RATE_LIMIT_MAX_REQUESTS   = tostring(var.outbound_rate_limit_max_requests)
-    CONTROL_PLANE_TELEMETRY            = var.monitoring_telemetry
-    INSERT_LOGS2                       = "true"
-    BRAINSTORE_INSERT_ROW_REFS         = "true"
+    ORG_NAME                                  = var.braintrust_org_name
+    PRIMARY_ORG_NAME                          = var.primary_org_name
+    BRAINTRUST_DEPLOYMENT_NAME                = var.deployment_name
+    PG_URL                                    = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
+    REDIS_URL                                 = "redis://${var.redis_host}:${var.redis_port}"
+    REDIS_HOST                                = var.redis_host
+    REDIS_PORT                                = tostring(var.redis_port)
+    RESPONSE_BUCKET                           = var.response_bucket
+    CODE_BUNDLE_BUCKET                        = var.code_bundle_bucket
+    FUNCTION_SECRET_KEY                       = var.function_secret_key
+    SERVICE_TOKEN_SECRET_KEY                  = var.service_token_secret_key
+    BRAINSTORE_ENABLED                        = tostring(local.brainstore_enabled)
+    BRAINSTORE_DEFAULT                        = "force"
+    BRAINSTORE_URL                            = local.brainstore_url
+    BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
+    BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
+    BRAINSTORE_LICENSE_KEY                    = var.brainstore_license_key
+    BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
+    WHITELISTED_ORIGINS                       = join(",", var.whitelisted_origins)
+    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES        = tostring(var.outbound_rate_limit_window_minutes)
+    OUTBOUND_RATE_LIMIT_MAX_REQUESTS          = tostring(var.outbound_rate_limit_max_requests)
+    CONTROL_PLANE_TELEMETRY                   = var.monitoring_telemetry
+    INSERT_LOGS2                              = "true"
+    BRAINSTORE_INSERT_ROW_REFS                = "true"
+    NODE_MEMORY_PERCENT                       = "80"
+    ALLOW_CODE_FUNCTION_EXECUTION             = "false"
   }
+  brainstore_wal_footer_env_vars = var.brainstore_wal_footer_version != "" ? {
+    BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
+  } : {}
   merged_env_vars = merge(
     local.base_env_vars,
+    local.using_brainstore_fast_reader ? {
+      BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
+      BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"
+    } : {},
+    local.brainstore_wal_footer_env_vars,
     var.extra_env_vars
   )
 

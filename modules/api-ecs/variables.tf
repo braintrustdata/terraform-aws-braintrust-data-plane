@@ -181,9 +181,61 @@ variable "service_token_secret_key" {
   description = "Service token secret key."
 }
 
-variable "brainstore_realtime_wal_bucket" {
+variable "brainstore_hostname" {
   type        = string
-  description = "Brainstore realtime WAL bucket."
+  description = "Brainstore hostname."
+  default     = null
+}
+
+variable "brainstore_writer_hostname" {
+  type        = string
+  description = "Optional Brainstore writer hostname."
+  default     = null
+}
+
+variable "brainstore_fast_reader_hostname" {
+  type        = string
+  description = "Optional Brainstore fast reader hostname."
+  default     = null
+}
+
+variable "brainstore_s3_bucket_name" {
+  type        = string
+  description = "Brainstore realtime WAL S3 bucket name."
+  default     = null
+}
+
+variable "brainstore_port" {
+  type        = number
+  description = "Brainstore port."
+  default     = null
+}
+
+variable "brainstore_license_key" {
+  type        = string
+  description = "Brainstore license key."
+
+  validation {
+    condition     = var.brainstore_license_key != null && length(var.brainstore_license_key) > 0
+    error_message = "The license key cannot be empty."
+  }
+}
+
+variable "brainstore_etl_batch_size" {
+  type        = number
+  description = "Batch size for Brainstore backfill operations."
+  default     = 10000
+}
+
+variable "brainstore_wal_footer_version" {
+  type        = string
+  description = "Optional WAL footer version for Brainstore. Set to v1, v2, v3, or empty string to leave unset."
+  default     = ""
+
+  validation {
+    condition     = var.brainstore_wal_footer_version == "" || contains(["v1", "v2", "v3"], var.brainstore_wal_footer_version)
+    error_message = "brainstore_wal_footer_version must be v1, v2, v3, or empty string (unset)."
+  }
 }
 
 variable "whitelisted_origins" {
