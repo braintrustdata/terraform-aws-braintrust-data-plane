@@ -50,11 +50,11 @@ variable "api_ecs_origin_protocol_policy" {
   default     = null
 
   validation {
-    condition = var.api_ecs_origin_protocol_policy == null || contains([
+    condition = contains([
       "http-only",
       "https-only",
       "match-viewer",
-    ], var.api_ecs_origin_protocol_policy)
+    ], coalesce(var.api_ecs_origin_protocol_policy, "http-only"))
     error_message = "api_ecs_origin_protocol_policy must be null, http-only, https-only, or match-viewer."
   }
 }
