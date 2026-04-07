@@ -57,7 +57,7 @@ module "braintrust-data-plane" {
   # no existing Brainstore nodes that need to read the old format.
   # For upgrades of existing deployments, this must be set in a separate apply
   # after all Brainstore nodes are confirmed running 1.1.32.
-  brainstore_wal_footer_version = "v1"
+  brainstore_wal_footer_version = "v3"
 
   # Disable the quarantine VPC to simplify the sandbox deployment.
   # This disables user-defined function execution (scorers, tools) but avoids
