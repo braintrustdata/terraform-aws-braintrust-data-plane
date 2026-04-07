@@ -689,6 +689,16 @@ variable "brainstore_wal_footer_version" {
   }
 }
 
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "Controls which object types bypass PostgreSQL and write directly to Brainstore. WARNING: This is a one-way operation. Once migrated off Postgres, objects cannot be un-migrated without downtime. When set, also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT on the API handler and BRAINSTORE_ASYNC_SCORING_OBJECTS / BRAINSTORE_LOG_AUTOMATIONS_OBJECTS on Brainstore nodes."
+  default     = ""
+  validation {
+    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
+    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
+  }
+}
+
 variable "brainstore_s3_bucket_retention_days" {
   type        = number
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"

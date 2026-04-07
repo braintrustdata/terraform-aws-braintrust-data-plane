@@ -57,6 +57,10 @@ locals {
     },
     var.brainstore_wal_footer_version != "" ? {
       BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
+    } : {},
+    var.skip_pg_for_brainstore_objects != "" ? {
+      SKIP_PG_FOR_BRAINSTORE_OBJECTS      = var.skip_pg_for_brainstore_objects
+      BRAINSTORE_WAL_USE_EFFICIENT_FORMAT = "true"
     } : {}
   )
 }

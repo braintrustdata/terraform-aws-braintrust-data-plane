@@ -50,6 +50,15 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
+  # No-PG mode: bypass PostgreSQL and write directly to Brainstore.
+  skip_pg_for_brainstore_objects = "all"
+
+  # Efficient WAL footer format. Safe to set on fresh deployments since there are
+  # no existing Brainstore nodes that need to read the old format.
+  # For upgrades of existing deployments, this must be set in a separate apply
+  # after all Brainstore nodes are confirmed running 1.1.32.
+  brainstore_wal_footer_version = "v1"
+
   # Disable the quarantine VPC to simplify the sandbox deployment.
   # This disables user-defined function execution (scorers, tools) but avoids
   # ~30 dynamically-created Lambda functions that complicate teardown.

@@ -226,6 +226,16 @@ variable "brainstore_wal_footer_version" {
   }
 }
 
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "If set, adds SKIP_PG_FOR_BRAINSTORE_OBJECTS and BRAINSTORE_WAL_USE_EFFICIENT_FORMAT to the API Handler Lambda environment."
+  default     = ""
+  validation {
+    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
+    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
+  }
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
