@@ -43,6 +43,12 @@ variable "cloudfront_price_class" {
   default     = "PriceClass_100"
 }
 
+variable "cloudfront_additional_cors_origins" {
+  description = "Additional origins to allow in the CloudFront CORS policy. Braintrust control plane origins (braintrust.dev) are always included."
+  type        = list(string)
+  default     = []
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

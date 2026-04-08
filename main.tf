@@ -293,8 +293,9 @@ module "ingress" {
   cloudfront_price_class   = var.cloudfront_price_class
   use_global_ai_proxy      = var.use_global_ai_proxy
   ai_proxy_function_url    = module.services[0].ai_proxy_url
-  api_handler_function_arn = module.services[0].api_handler_arn
-  custom_tags              = var.custom_tags
+  api_handler_function_arn           = module.services[0].api_handler_arn
+  cloudfront_additional_cors_origins = var.cloudfront_additional_cors_origins
+  custom_tags                        = var.custom_tags
 }
 
 module "services_common" {
