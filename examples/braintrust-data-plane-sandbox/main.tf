@@ -16,6 +16,13 @@ module "braintrust-data-plane" {
   # Add your organization name from the Braintrust UI here
   braintrust_org_name = ""
 
+  ### Tagging
+  # Recommended: tag resources with your name/team for identification in shared accounts.
+  # custom_tags = {
+  #   Owner = "Your Name"
+  #   Team  = "Your Team"
+  # }
+
   ### Postgres configuration
   postgres_instance_type = "db.r8g.large"
 
@@ -50,13 +57,21 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
-  # No-PG mode: bypass PostgreSQL and write directly to Brainstore.
-  skip_pg_for_brainstore_objects = "all"
+  ### WARNING: The following two settings are safe for fresh sandbox/environment deployments
+  ### but can cause data loss or downtime if applied incorrectly to existing
+  ### production environments. Do NOT copy these values into a production
+  ### configuration without following the upgrade guide.
+  ###
+  ### - skip_pg_for_brainstore_objects is a ONE-WAY operation that cannot be
+  ###   rolled back without downtime. Production deployments should test
+  ###   incrementally (include:<project_uuid>) before setting to "all".
+  ###
+  ### - brainstore_wal_footer_version must be set in a SEPARATE apply after
+  ###   all Brainstore nodes are confirmed running the target version. Setting
+  ###   it during a version bump will cause read failures on nodes still rolling
+  ###   out. Fresh deployments have no existing nodes, so this is safe here.
 
-  # Efficient WAL footer format. Safe to set on fresh deployments since there are
-  # no existing Brainstore nodes that need to read the old format.
-  # For upgrades of existing deployments, this must be set in a separate apply
-  # after all Brainstore nodes are confirmed running 1.1.32.
+  skip_pg_for_brainstore_objects = "all"
   brainstore_wal_footer_version = "v3"
 
   # Disable the quarantine VPC to simplify the sandbox deployment.
@@ -68,13 +83,6 @@ module "braintrust-data-plane" {
   ### Redis configuration
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
-
-  ### Tagging
-  # Recommended: tag resources with your name/team for identification in shared accounts.
-  # custom_tags = {
-  #   Owner = "Your Name"
-  #   Team  = "Your Team"
-  # }
 
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to
