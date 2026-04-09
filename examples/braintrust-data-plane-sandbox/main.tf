@@ -71,7 +71,7 @@ module "braintrust-data-plane" {
   ###   it during a version bump will cause read failures on nodes still rolling
   ###   out. Fresh deployments have no existing nodes, so this is safe here.
 
-  skip_pg_for_brainstore_objects = "all"
+  skip_pg_for_brainstore_objects = ""
   brainstore_wal_footer_version  = "v1"
 
   # Disable the quarantine VPC to simplify the sandbox deployment.
