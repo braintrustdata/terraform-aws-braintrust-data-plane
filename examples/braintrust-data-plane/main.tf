@@ -73,7 +73,7 @@ module "braintrust-data-plane" {
   #   - "include:<type>:<uuid>,...": skip for specific objects only (for testing)
   #   - "exclude:<type>:<uuid>,...": skip for all objects except specific ones
   # Recommended: test with "include:" on a single project first, then move to "all".
-  # skip_pg_for_brainstore_objects = ""
+  skip_pg_for_brainstore_objects = ""
 
   ### Redis configuration
 

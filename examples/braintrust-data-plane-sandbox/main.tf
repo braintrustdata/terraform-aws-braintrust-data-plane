@@ -72,7 +72,7 @@ module "braintrust-data-plane" {
   ###   out. Fresh deployments have no existing nodes, so this is safe here.
 
   skip_pg_for_brainstore_objects = "all"
-  brainstore_wal_footer_version = "v3"
+  brainstore_wal_footer_version  = "v1"
 
   # Disable the quarantine VPC to simplify the sandbox deployment.
   # This disables user-defined function execution (scorers, tools) but avoids
