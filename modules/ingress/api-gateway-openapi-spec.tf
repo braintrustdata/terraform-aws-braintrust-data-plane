@@ -145,6 +145,15 @@ locals {
       "/brainstore/automation/reset-cursors" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/brainstore/automation/get-object-cursors" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/execute" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/upsert-object-cursor" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/brainstore/object-data-exists" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
@@ -165,6 +174,42 @@ locals {
       }
       "/brainstore/recently-updated-objects-processing-lag" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/storage-settings/object/{object_id}" = {
+        for method in ["get", "options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/brainstore/storage-settings/object/{object_id}/status" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/brainstore/storage-settings/object/{object_id}/backfill" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
       }
       "/broadcast-key" = {
         for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method

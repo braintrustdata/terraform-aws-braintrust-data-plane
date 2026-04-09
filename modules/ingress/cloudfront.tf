@@ -6,49 +6,6 @@ locals {
   cloudfront_AIProxyOrigin             = "AIProxyOrigin"
   cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
-
-  # CORS allowed origins: Braintrust control plane domains + any customer-provided origins.
-  # Matches the pattern used in S3 bucket CORS (modules/storage/main.tf).
-  cors_allowed_origins = concat(
-    [
-      "https://www.braintrust.dev",
-      "https://braintrust.dev",
-    ],
-    var.cloudfront_additional_cors_origins
-  )
-}
-
-# CORS response headers policy for the CloudFront distribution.
-# Required for hybrid deployments where the browser at www.braintrust.dev
-# makes cross-origin requests to the customer's data plane CloudFront.
-resource "aws_cloudfront_response_headers_policy" "cors" {
-  name = "${var.deployment_name}-cors-policy"
-
-  cors_config {
-    access_control_allow_credentials = true
-    origin_override                  = true
-
-    access_control_allow_headers {
-      items = [
-        "Authorization",
-        "Content-Type",
-        "X-Bt-Org-Name",
-        "X-Bt-Project-Id",
-        "X-Bt-Auth-Token",
-        "X-Bt-Stream-Fmt",
-      ]
-    }
-
-    access_control_allow_methods {
-      items = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
-    }
-
-    access_control_allow_origins {
-      items = local.cors_allowed_origins
-    }
-
-    access_control_max_age_sec = 3600
-  }
 }
 
 resource "aws_cloudfront_distribution" "dataplane" {
@@ -118,9 +75,8 @@ resource "aws_cloudfront_distribution" "dataplane" {
     target_origin_id       = local.cloudfront_APIGatewayOrigin
     viewer_protocol_policy = "redirect-to-https"
 
-    cache_policy_id            = local.cloudfront_CachingDisabled
-    origin_request_policy_id   = local.cloudfront_AllViewerExceptHostHeader
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors.id
+    cache_policy_id          = local.cloudfront_CachingDisabled
+    origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
   }
 
   dynamic "ordered_cache_behavior" {
@@ -137,9 +93,8 @@ resource "aws_cloudfront_distribution" "dataplane" {
       target_origin_id       = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
       viewer_protocol_policy = "redirect-to-https"
 
-      cache_policy_id            = local.cloudfront_CachingDisabled
-      origin_request_policy_id   = local.cloudfront_AllViewerExceptHostHeader
-      response_headers_policy_id = aws_cloudfront_response_headers_policy.cors.id
+      cache_policy_id          = local.cloudfront_CachingDisabled
+      origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
     }
   }
 

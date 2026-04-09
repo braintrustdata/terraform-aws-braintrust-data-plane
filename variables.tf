@@ -679,12 +679,6 @@ variable "brainstore_etl_batch_size" {
   default     = null
 }
 
-variable "cloudfront_additional_cors_origins" {
-  description = "Additional origins to allow in the CloudFront CORS response headers policy. Braintrust control plane origins (braintrust.dev, www.braintrust.dev) are always included. Use this if your organization accesses Braintrust from a custom domain."
-  type        = list(string)
-  default     = []
-}
-
 variable "brainstore_wal_footer_version" {
   type        = string
   description = "This controls the WAL footer version that should be written. When set, also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT on the API handler. Only adjust this to 'v3' after you have successfully deployed v2.x of the data plane."
