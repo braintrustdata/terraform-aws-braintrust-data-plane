@@ -176,6 +176,7 @@ module "services" {
   brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -332,6 +333,7 @@ module "brainstore" {
   port                                  = var.brainstore_port
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
+  skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count

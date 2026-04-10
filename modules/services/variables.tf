@@ -218,11 +218,21 @@ variable "brainstore_default" {
 
 variable "brainstore_wal_footer_version" {
   type        = string
-  description = "If set, sets BRAINSTORE_WAL_FOOTER_VERSION on the API Handler Lambda only. Omit to leave the variable unset."
+  description = "If set, sets BRAINSTORE_WAL_FOOTER_VERSION on the API Handler Lambda. Also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT. Omit to leave unset."
   default     = ""
   validation {
     condition     = var.brainstore_wal_footer_version == "" || contains(["v1", "v2", "v3"], var.brainstore_wal_footer_version)
     error_message = "brainstore_wal_footer_version must be v1, v2, v3, or empty string (unset)."
+  }
+}
+
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "If set, adds SKIP_PG_FOR_BRAINSTORE_OBJECTS to the API Handler Lambda environment."
+  default     = ""
+  validation {
+    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
+    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
   }
 }
 
