@@ -243,6 +243,7 @@ docker run -d \
   --name brainstore \
   --env-file /etc/brainstore.env \
   --restart always \
+  --ulimit nofile=65535:65535 \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
