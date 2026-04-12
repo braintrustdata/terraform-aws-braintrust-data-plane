@@ -21,7 +21,9 @@ resource "aws_lambda_function" "automation_cron" {
   # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
     [local.duckdb_nodejs_arm64_layer_arn],
-    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : [],
+    [data.aws_lambda_layer_version.aws_params_secrets_arm64.arn],
+    [aws_lambda_layer_version.secrets_wrapper.arn],
   )
 
   ephemeral_storage {
@@ -31,10 +33,12 @@ resource "aws_lambda_function" "automation_cron" {
   environment {
     variables = merge({
       ORG_NAME                                  = var.braintrust_org_name
-      PG_URL                                    = local.postgres_url
       REDIS_HOST                                = var.redis_host
       REDIS_PORT                                = var.redis_port
       REDIS_URL                                 = "redis://${var.redis_host}:${var.redis_port}"
+      PG_HOST                                   = var.postgres_host
+      PG_PORT                                   = var.postgres_port
+      DATABASE_SECRETS_ARN                      = var.postgres_database_secret_arn
       BRAINSTORE_ENABLED                        = var.brainstore_enabled
       BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = var.brainstore_etl_batch_size
       BRAINSTORE_BACKFILL_ENABLE_NONHISTORICAL  = var.brainstore_default
@@ -43,6 +47,8 @@ resource "aws_lambda_function" "automation_cron" {
       BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
       FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
       CRON_OVERRIDE_SECRET_KEY                  = random_password.service_token_secret_key.result
+      AWS_LAMBDA_EXEC_WRAPPER                   = "/opt/bin/aws-sm-wrapper.sh"
+
       },
       var.extra_env_vars.AutomationCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {

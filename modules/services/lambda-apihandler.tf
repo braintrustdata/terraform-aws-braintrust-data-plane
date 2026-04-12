@@ -8,7 +8,11 @@ locals {
     PRIMARY_ORG_NAME           = var.primary_org_name
     BRAINTRUST_DEPLOYMENT_NAME = var.deployment_name
 
-    PG_URL             = local.postgres_url
+    PG_HOST                 = var.postgres_host
+    PG_PORT                 = var.postgres_port
+    DATABASE_SECRETS_ARN    = var.postgres_database_secret_arn
+    AWS_LAMBDA_EXEC_WRAPPER = "/opt/bin/aws-sm-wrapper.sh"
+
     REDIS_HOST         = var.redis_host
     REDIS_PORT         = var.redis_port
     RESPONSE_BUCKET    = local.lambda_responses_bucket_id
@@ -86,7 +90,9 @@ resource "aws_lambda_function" "api_handler" {
   # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
     [local.duckdb_nodejs_arm64_layer_arn],
-    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : [],
+    [data.aws_lambda_layer_version.aws_params_secrets_arm64.arn],
+    [aws_lambda_layer_version.secrets_wrapper.arn],
   )
 
   ephemeral_storage {

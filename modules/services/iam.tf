@@ -36,6 +36,12 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
         Action   = ["lambda:InvokeFunction"]
         Effect   = "Allow"
         Resource = aws_lambda_function.catchup_etl.arn
+      },
+      {
+        Sid      = "ReadPostgresSecret"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Effect   = "Allow"
+        Resource = var.postgres_database_secret_arn
       }
     ]
     Version = "2012-10-17"
@@ -68,6 +74,13 @@ resource "aws_iam_role" "default_role" {
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   role       = aws_iam_role.default_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_kms_grant" "default_role_postgres_secret" {
+  name              = "${var.deployment_name}-default-role-postgres-secret"
+  key_id            = var.kms_key_arn
+  grantee_principal = aws_iam_role.default_role.arn
+  operations        = ["Decrypt"]
 }
 
 resource "aws_iam_role_policy" "default_role_policy" {
@@ -103,9 +116,20 @@ resource "aws_iam_role_policy" "default_role_policy" {
           "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/braintrust/${var.deployment_name}/*",
         ]
       },
+      {
+        Sid      = "ReadPostgresSecret"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Effect   = "Allow"
+        Resource = var.postgres_database_secret_arn
+      },
+      {
+        Sid = "UseKmsForPostgresSecret"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Effect   = "Allow"
+        Resource = var.kms_key_arn
+      },
     ]
   })
 }
-
-
-

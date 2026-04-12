@@ -16,7 +16,11 @@ resource "aws_lambda_function" "migrate_database" {
   publish       = true
   kms_key_arn   = var.kms_key_arn
 
-  layers = local.observability_enabled ? [local.datadog_python_layer_arn, local.datadog_extension_layer_arn] : []
+  layers = concat(
+    local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : [],
+    [data.aws_lambda_layer_version.aws_params_secrets_x86_64.arn],
+    [aws_lambda_layer_version.secrets_wrapper.arn],
+  )
 
   logging_config {
     log_format = local.observability_enabled ? "JSON" : "Text"
@@ -25,8 +29,11 @@ resource "aws_lambda_function" "migrate_database" {
   environment {
     variables = merge({
       BRAINTRUST_RUN_DRAFT_MIGRATIONS = var.run_draft_migrations
-      PG_URL                          = local.postgres_url
       INSERT_LOGS2                    = "true"
+      PG_HOST                         = var.postgres_host
+      PG_PORT                         = var.postgres_port
+      DATABASE_SECRETS_ARN            = var.postgres_database_secret_arn
+      AWS_LAMBDA_EXEC_WRAPPER         = "/opt/bin/aws-sm-wrapper.sh"
       },
       var.extra_env_vars.MigrateDatabaseFunction,
       local.observability_enabled ? merge(local.datadog_env_vars, {
