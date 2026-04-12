@@ -333,7 +333,7 @@ variable "health_check_path" {
 variable "alb_idle_timeout_seconds" {
   type        = number
   description = "ALB idle timeout in seconds."
-  default     = 300
+  default     = 900
 }
 
 variable "alb_client_keep_alive_seconds" {
@@ -345,7 +345,7 @@ variable "alb_client_keep_alive_seconds" {
 variable "alb_deregistration_delay_seconds" {
   type        = number
   description = "ALB target group deregistration delay in seconds."
-  default     = 300
+  default     = 900
 }
 
 variable "acm_certificate_arn" {

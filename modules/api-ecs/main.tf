@@ -122,8 +122,8 @@ resource "aws_lb_target_group" "api_ecs" {
 
   health_check {
     path                = var.health_check_path
-    matcher             = "200"
-    healthy_threshold   = 3
+    matcher             = "200-399"
+    healthy_threshold   = 2
     unhealthy_threshold = 3
     timeout             = 5
     interval            = 10
@@ -203,6 +203,9 @@ resource "aws_ecs_task_definition" "api_ecs" {
       name      = local.container_name
       image     = "${var.container_image_repository}:${local.api_version_tag}"
       essential = true
+      linuxParameters = {
+        initProcessEnabled = true
+      }
       portMappings = [
         {
           containerPort = var.container_port
@@ -250,6 +253,8 @@ resource "aws_ecs_service" "api_ecs" {
   desired_count                     = var.min_capacity
   launch_type                       = "FARGATE"
   force_new_deployment              = true
+  propagate_tags                    = "SERVICE"
+  enable_ecs_managed_tags           = true
   enable_execute_command            = var.enable_execute_command
   health_check_grace_period_seconds = 60 
   wait_for_steady_state             = true

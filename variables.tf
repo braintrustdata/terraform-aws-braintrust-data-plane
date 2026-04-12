@@ -586,7 +586,7 @@ variable "api_ecs_health_check_path" {
 variable "api_ecs_alb_idle_timeout_seconds" {
   description = "ALB idle timeout for API-ECS in seconds."
   type        = number
-  default     = 300
+  default     = 900
 }
 
 variable "api_ecs_alb_client_keep_alive_seconds" {
@@ -598,7 +598,7 @@ variable "api_ecs_alb_client_keep_alive_seconds" {
 variable "api_ecs_alb_deregistration_delay_seconds" {
   description = "ALB target group deregistration delay for API-ECS in seconds."
   type        = number
-  default     = 300
+  default     = 900
 }
 
 
