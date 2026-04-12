@@ -256,7 +256,7 @@ resource "aws_ecs_service" "api_ecs" {
   propagate_tags                    = "SERVICE"
   enable_ecs_managed_tags           = true
   enable_execute_command            = var.enable_execute_command
-  health_check_grace_period_seconds = 60 
+  health_check_grace_period_seconds = 60
   wait_for_steady_state             = true
   sigint_rollback                   = true
 
