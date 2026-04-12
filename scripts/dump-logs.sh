@@ -70,9 +70,12 @@ for svc in "${SELECTED_SERVICES[@]}"; do
   if [[ "$svc" == "brainstore" ]]; then
     LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/brainstore"
     LOG_FILE="logs-$DEPLOYMENT_NAME/brainstore.log"
-  elif [[ "$svc" == "api-ecs" || "$svc" == "gateway" ]]; then
-    LOG_GROUP="/ecs/$DEPLOYMENT_NAME/$svc"
-    LOG_FILE="logs-$DEPLOYMENT_NAME/$svc.log"
+  elif [[ "$svc" == "api-ecs" ]]; then
+    LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/api-ecs"
+    LOG_FILE="logs-$DEPLOYMENT_NAME/api-ecs.log"
+  elif [[ "$svc" == "gateway" ]]; then
+    LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/gateway"
+    LOG_FILE="logs-$DEPLOYMENT_NAME/gateway.log"
   else
     LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/${DEPLOYMENT_NAME}-$svc"
     LOG_FILE="logs-$DEPLOYMENT_NAME/$svc.log"

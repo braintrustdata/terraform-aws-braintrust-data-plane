@@ -45,7 +45,7 @@ data "aws_iam_policy_document" "ecs_task_assume_role" {
 }
 
 resource "aws_cloudwatch_log_group" "service" {
-  name              = "/ecs/${var.deployment_name}/gateway"
+  name              = "/braintrust/${var.deployment_name}/gateway"
   retention_in_days = var.log_retention_days
   kms_key_id        = var.kms_key_arn
 
