@@ -1,5 +1,5 @@
 data "aws_route53_zone" "validation" {
-  count = local.use_route53 ? 1 : 0
+  count = var.create_acm_certificate || var.create_dns_record ? 1 : 0
 
   name         = local.route53_zone_fqdn != null ? "${local.route53_zone_fqdn}." : "invalid.local."
   private_zone = false

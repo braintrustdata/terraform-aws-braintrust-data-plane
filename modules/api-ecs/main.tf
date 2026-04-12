@@ -1,57 +1,50 @@
 locals {
   api_version_tag  = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
-  ecs_cluster_name = element(reverse(split("/", var.ecs_cluster_arn)), 0)
 
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name               = "api"
   brainstore_enabled           = var.brainstore_hostname != null && var.brainstore_hostname != "" && var.brainstore_port != null
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
-  brainstore_url               = local.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
-  brainstore_writer_url        = local.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-  brainstore_fast_reader_url   = local.brainstore_enabled && local.using_brainstore_fast_reader ? "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}" : ""
-  brainstore_s3_bucket         = local.brainstore_enabled && var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
-  base_env_vars = {
-    ORG_NAME                                  = var.braintrust_org_name
-    PRIMARY_ORG_NAME                          = var.primary_org_name
-    BRAINTRUST_DEPLOYMENT_NAME                = var.deployment_name
-    PG_URL                                    = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
-    REDIS_URL                                 = "redis://${var.redis_host}:${var.redis_port}"
-    REDIS_HOST                                = var.redis_host
-    REDIS_PORT                                = tostring(var.redis_port)
-    RESPONSE_BUCKET                           = var.response_bucket
-    CODE_BUNDLE_BUCKET                        = var.code_bundle_bucket
-    FUNCTION_SECRET_KEY                       = var.function_secret_key
-    SERVICE_TOKEN_SECRET_KEY                  = var.service_token_secret_key
-    BRAINSTORE_ENABLED                        = tostring(local.brainstore_enabled)
-    BRAINSTORE_DEFAULT                        = "force"
-    BRAINSTORE_URL                            = local.brainstore_url
-    BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
-    BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
-    BRAINSTORE_LICENSE_KEY                    = var.brainstore_license_key
-    BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
-    WHITELISTED_ORIGINS                       = join(",", var.whitelisted_origins)
-    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES        = tostring(var.outbound_rate_limit_window_minutes)
-    OUTBOUND_RATE_LIMIT_MAX_REQUESTS          = tostring(var.outbound_rate_limit_max_requests)
-    CONTROL_PLANE_TELEMETRY                   = var.monitoring_telemetry
-    INSERT_LOGS2                              = "true"
-    BRAINSTORE_INSERT_ROW_REFS                = "true"
-    NODE_MEMORY_PERCENT                       = "80"
-    ALLOW_CODE_FUNCTION_EXECUTION             = "false"
-  }
-  brainstore_wal_footer_env_vars = var.brainstore_wal_footer_version != "" ? {
-    BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
-  } : {}
+
   merged_env_vars = merge(
-    local.base_env_vars,
+    {
+      ORG_NAME                                  = var.braintrust_org_name
+      PRIMARY_ORG_NAME                          = var.primary_org_name
+      BRAINTRUST_DEPLOYMENT_NAME                = var.deployment_name
+      PG_URL                                    = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
+      REDIS_URL                                 = "redis://${var.redis_host}:${var.redis_port}"
+      REDIS_HOST                                = var.redis_host
+      REDIS_PORT                                = tostring(var.redis_port)
+      RESPONSE_BUCKET                           = var.response_bucket
+      CODE_BUNDLE_BUCKET                        = var.code_bundle_bucket
+      FUNCTION_SECRET_KEY                       = var.function_secret_key
+      SERVICE_TOKEN_SECRET_KEY                  = var.service_token_secret_key
+      BRAINSTORE_ENABLED                        = tostring(local.brainstore_enabled)
+      BRAINSTORE_DEFAULT                        = "force"
+      BRAINSTORE_URL                            = local.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
+      BRAINSTORE_WRITER_URL                     = local.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+      BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_enabled && var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
+      BRAINSTORE_LICENSE_KEY                    = var.brainstore_license_key
+      BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
+      WHITELISTED_ORIGINS                       = join(",", var.whitelisted_origins)
+      OUTBOUND_RATE_LIMIT_WINDOW_MINUTES        = tostring(var.outbound_rate_limit_window_minutes)
+      OUTBOUND_RATE_LIMIT_MAX_REQUESTS          = tostring(var.outbound_rate_limit_max_requests)
+      CONTROL_PLANE_TELEMETRY                   = var.monitoring_telemetry
+      INSERT_LOGS2                              = "true"
+      BRAINSTORE_INSERT_ROW_REFS                = "true"
+      NODE_MEMORY_PERCENT                       = "80"
+      ALLOW_CODE_FUNCTION_EXECUTION             = "false"
+    },
     local.using_brainstore_fast_reader ? {
-      BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
+      BRAINSTORE_FAST_READER_URL           = local.brainstore_enabled ? "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}" : ""
       BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"
     } : {},
-    local.brainstore_wal_footer_env_vars,
+    var.brainstore_wal_footer_version != "" ? {
+      BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
+    } : {},
     var.extra_env_vars
   )
 
@@ -66,12 +59,8 @@ locals {
   }
 
   managed_certificate_configuration_ready = var.create_acm_certificate && var.route53_zone_name != null && var.alb_hostname != null
-  managed_certificate_arn                 = local.managed_certificate_configuration_ready ? aws_acm_certificate.alb[0].arn : null
-  selected_certificate_arn                = var.acm_certificate_arn != null ? var.acm_certificate_arn : local.managed_certificate_arn
+  selected_certificate_arn                = var.acm_certificate_arn != null ? var.acm_certificate_arn : (local.managed_certificate_configuration_ready ? aws_acm_certificate.alb[0].arn : null)
   enable_https                            = var.acm_certificate_arn != null || local.managed_certificate_configuration_ready
-  cloudfront_origin_protocol_policy       = local.enable_https ? "https-only" : "http-only"
-  use_route53                             = var.create_acm_certificate || var.create_dns_record
-  alb_subnet_ids                          = var.private_subnet_ids
   route53_zone_fqdn                       = var.route53_zone_name == null ? null : trimsuffix(var.route53_zone_name, ".")
   certificate_domain_name                 = var.alb_hostname != null && var.route53_zone_name != null ? "${var.alb_hostname}.${local.route53_zone_fqdn}" : null
 }
@@ -92,7 +81,7 @@ resource "aws_lb" "api_ecs" {
   name               = "${var.deployment_name}-api-ecs"
   internal           = true
   load_balancer_type = "application"
-  subnets            = local.alb_subnet_ids
+  subnets            = var.private_subnet_ids
   security_groups = compact([
     aws_security_group.alb.id,
     var.allow_cloudfront_origin_facing_traffic ? aws_security_group.alb_cloudfront[0].id : null
@@ -200,7 +189,7 @@ resource "aws_ecs_task_definition" "api_ecs" {
 
   container_definitions = jsonencode([
     {
-      name      = local.container_name
+      name      = "api"
       image     = "${var.container_image_repository}:${local.api_version_tag}"
       essential = true
       linuxParameters = {
@@ -273,7 +262,7 @@ resource "aws_ecs_service" "api_ecs" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.api_ecs.arn
-    container_name   = local.container_name
+    container_name   = "api"
     container_port   = var.container_port
   }
 

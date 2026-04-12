@@ -45,5 +45,5 @@ output "tls_ready" {
 
 output "cloudfront_origin_protocol_policy" {
   description = "Recommended CloudFront origin protocol policy for the API-ECS ALB."
-  value       = local.cloudfront_origin_protocol_policy
+  value       = local.enable_https ? "https-only" : "http-only"
 }
