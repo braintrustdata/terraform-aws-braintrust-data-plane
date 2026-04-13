@@ -187,8 +187,8 @@ locals {
           ]
         })
       }
-      "/brainstore/storage-settings/object/{object_id}/status" = {
-        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+      "/brainstore/storage-settings/object/{object_id}/backfill" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
             {
               name     = "object_id"
@@ -199,8 +199,8 @@ locals {
           ]
         })
       }
-      "/brainstore/storage-settings/object/{object_id}/backfill" = {
-        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+      "/brainstore/storage-settings/object/{object_id}/status" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
             {
               name     = "object_id"
