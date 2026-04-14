@@ -122,6 +122,12 @@ systemctl daemon-reload
 systemctl start amazon-cloudwatch-agent
 systemctl enable amazon-cloudwatch-agent
 
+# Allow more mmap regions (Tantivy segments); default kernel limit can OOM under many segments
+cat <<EOF > /etc/sysctl.d/99-brainstore.conf
+vm.max_map_count=1048576
+EOF
+sysctl -p /etc/sysctl.d/99-brainstore.conf
+
 # Get database credentials from Secrets Manager
 DB_CREDS=$(aws secretsmanager get-secret-value --secret-id ${database_secret_arn} --query SecretString --output text)
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
