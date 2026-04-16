@@ -57,11 +57,27 @@ module "braintrust-data-plane" {
   brainstore_instance_count = 2
   brainstore_instance_type  = "c8gd.4xlarge"
 
+  # The number of Brainstore fast reader instances to provision
+  # Recommended Graviton instance type with 16GB of memory
+  brainstore_fast_reader_instance_count = 2
+  brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
+
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
+  ### No-PG mode (Brainstore direct writes)
+  # Controls which object types bypass PostgreSQL and write directly to Brainstore.
+  # WARNING: This is a one-way operation. Once enabled, objects cannot be migrated back
+  # to PostgreSQL without downtime.
+  # Options:
+  #   - "" (default): disabled, PostgreSQL used as normal
+  #   - "all": skip PostgreSQL for all object types
+  #   - "include:<type>:<uuid>,...": skip for specific objects only (for testing)
+  #   - "exclude:<type>:<uuid>,...": skip for all objects except specific ones
+  # Recommended: test with "include:" on a single project first, then move to "all".
+  skip_pg_for_brainstore_objects = ""
 
   ### Redis configuration
 
