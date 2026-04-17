@@ -57,22 +57,12 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
-  ### WARNING: The following two settings are safe for fresh sandbox/environment deployments
+  ### WARNING: skip_pg_for_brainstore_objects is safe for fresh sandbox deployments
   ### but can cause data loss or downtime if applied incorrectly to existing
-  ### production environments. Do NOT copy these values into a production
-  ### configuration without following the upgrade guide.
-  ###
-  ### - skip_pg_for_brainstore_objects is a ONE-WAY operation that cannot be
-  ###   rolled back without downtime. Production deployments should test
-  ###   incrementally (include:<project_uuid>) before setting to "all".
-  ###
-  ### - brainstore_wal_footer_version must be set in a SEPARATE apply after
-  ###   all Brainstore nodes are confirmed running the target version. Setting
-  ###   it during a version bump will cause read failures on nodes still rolling
-  ###   out. Fresh deployments have no existing nodes, so this is safe here.
+  ### production environments. It is a ONE-WAY operation that cannot be rolled
+  ### back without downtime. See the upgrade guide before enabling in production.
 
-  skip_pg_for_brainstore_objects = ""
-  brainstore_wal_footer_version  = "v1"
+  skip_pg_for_brainstore_objects = "all"
 
   # Disable the quarantine VPC to simplify the sandbox deployment.
   # This disables user-defined function execution (scorers, tools) but avoids
