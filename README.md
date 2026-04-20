@@ -1,5 +1,9 @@
 # Braintrust Terraform Module
 
+For the latest guidance, always refer to the official Braintrust documentation:
+- [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
+- [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
+
 This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
 
 ## How to use this module

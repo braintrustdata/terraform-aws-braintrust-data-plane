@@ -16,6 +16,13 @@ module "braintrust-data-plane" {
   # Add your organization name from the Braintrust UI here
   braintrust_org_name = ""
 
+  ### Tagging
+  # Recommended: tag resources with your name/team for identification in shared accounts.
+  # custom_tags = {
+  #   Owner = "Your Name"
+  #   Team  = "Your Team"
+  # }
+
   ### Postgres configuration
   postgres_instance_type = "db.r8g.large"
 
@@ -50,6 +57,13 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
+  ### WARNING: skip_pg_for_brainstore_objects is safe for fresh sandbox deployments
+  ### but can cause data loss or downtime if applied incorrectly to existing
+  ### production environments. It is a ONE-WAY operation that cannot be rolled
+  ### back without downtime. See the upgrade guide before enabling in production.
+
+  skip_pg_for_brainstore_objects = "all"
+
   # Disable the quarantine VPC to simplify the sandbox deployment.
   # This disables user-defined function execution (scorers, tools) but avoids
   # ~30 dynamically-created Lambda functions that complicate teardown.
@@ -59,13 +73,6 @@ module "braintrust-data-plane" {
   ### Redis configuration
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
-
-  ### Tagging
-  # Recommended: tag resources with your name/team for identification in shared accounts.
-  # custom_tags = {
-  #   Owner = "Your Name"
-  #   Team  = "Your Team"
-  # }
 
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to

@@ -159,10 +159,32 @@ variable "api_handler_reserved_concurrent_executions" {
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
 }
 
+variable "api_handler_memory_limit" {
+  type        = number
+  description = "The maximum memory in MB for the API Handler."
+  default     = 10240
+
+  validation {
+    condition     = var.api_handler_memory_limit > 0 && var.api_handler_memory_limit <= 10240
+    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
+  }
+}
+
 variable "ai_proxy_reserved_concurrent_executions" {
   type        = number
   description = "The number of concurrent executions to reserve for the AI Proxy. Setting this will prevent the AI Proxy from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
+}
+
+variable "ai_proxy_memory_limit" {
+  type        = number
+  description = "The maximum memory in MB for the AI Proxy."
+  default     = 10240
+
+  validation {
+    condition     = var.ai_proxy_memory_limit > 0 && var.ai_proxy_memory_limit <= 10240
+    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
+  }
 }
 
 variable "run_draft_migrations" {
@@ -196,11 +218,21 @@ variable "brainstore_default" {
 
 variable "brainstore_wal_footer_version" {
   type        = string
-  description = "If set, sets BRAINSTORE_WAL_FOOTER_VERSION on the API Handler Lambda only. Omit to leave the variable unset."
+  description = "If set, sets BRAINSTORE_WAL_FOOTER_VERSION on the API Handler Lambda. Also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT. Omit to leave unset."
   default     = ""
   validation {
     condition     = var.brainstore_wal_footer_version == "" || contains(["v1", "v2", "v3"], var.brainstore_wal_footer_version)
     error_message = "brainstore_wal_footer_version must be v1, v2, v3, or empty string (unset)."
+  }
+}
+
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "If set, adds SKIP_PG_FOR_BRAINSTORE_OBJECTS to the API Handler Lambda environment."
+  default     = ""
+  validation {
+    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
+    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
   }
 }
 

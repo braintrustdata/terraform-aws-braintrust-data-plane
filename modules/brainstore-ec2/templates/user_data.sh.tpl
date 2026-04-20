@@ -149,6 +149,10 @@ AWS_REGION=${aws_region}
 BRAINSTORE_REDIS_URI=redis://${redis_host}:${redis_port}
 BRAINSTORE_XACT_MANAGER_URI=redis://${redis_host}:${redis_port}
 BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
+%{ if skip_pg_for_brainstore_objects != "" ~}
+BRAINSTORE_ASYNC_SCORING_OBJECTS=${skip_pg_for_brainstore_objects}
+BRAINSTORE_LOG_AUTOMATIONS_OBJECTS=${skip_pg_for_brainstore_objects}
+%{ endif ~}
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}
 %{ endfor ~}
@@ -247,6 +251,7 @@ docker run -d \
   --name brainstore \
   --env-file /etc/brainstore.env \
   --restart always \
+  --ulimit nofile=65535:65535 \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web

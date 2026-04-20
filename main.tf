@@ -178,6 +178,7 @@ module "services" {
   brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -188,7 +189,9 @@ module "services" {
   primary_org_name                           = var.primary_org_name
   api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
+  api_handler_memory_limit                   = var.api_handler_memory_limit
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
+  ai_proxy_memory_limit                      = var.ai_proxy_memory_limit
   whitelisted_origins                        = var.whitelisted_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
@@ -417,6 +420,7 @@ module "brainstore" {
   port                                  = var.brainstore_port
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
+  skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count

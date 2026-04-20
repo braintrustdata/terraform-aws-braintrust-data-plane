@@ -57,6 +57,12 @@ locals {
     },
     var.brainstore_wal_footer_version != "" ? {
       BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
+    } : {},
+    var.skip_pg_for_brainstore_objects != "" ? {
+      SKIP_PG_FOR_BRAINSTORE_OBJECTS = var.skip_pg_for_brainstore_objects
+    } : {},
+    (var.brainstore_wal_footer_version != "" || var.skip_pg_for_brainstore_objects != "") ? {
+      BRAINSTORE_WAL_USE_EFFICIENT_FORMAT = "true"
     } : {}
   )
 }
@@ -71,7 +77,7 @@ resource "aws_lambda_function" "api_handler" {
   role                           = var.api_handler_role_arn
   handler                        = local.observability_enabled ? local.nodejs_datadog_handler : local.api_handler_original_handler
   runtime                        = "nodejs22.x"
-  memory_size                    = 10240 # Max that lambda supports
+  memory_size                    = var.api_handler_memory_limit
   reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   timeout                        = 600
   publish                        = true

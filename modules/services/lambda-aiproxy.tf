@@ -13,7 +13,7 @@ resource "aws_lambda_function" "ai_proxy" {
   handler                        = local.observability_enabled ? local.nodejs_datadog_handler : local.ai_proxy_original_handler
   runtime                        = "nodejs22.x"
   architectures                  = ["arm64"]
-  memory_size                    = 10240 # Max that lambda supports
+  memory_size                    = var.ai_proxy_memory_limit
   reserved_concurrent_executions = var.ai_proxy_reserved_concurrent_executions
   timeout                        = 900
   publish                        = true
@@ -73,6 +73,7 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "x-bt-auth-token",
       "x-bt-stream-fmt",
       "x-bt-use-cache",
+      "x-bt-use-gateway",
       "x-bt-app-origin",
       "x-bt-parent",
       "x-stainless-os",

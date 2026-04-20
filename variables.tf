@@ -656,10 +656,32 @@ variable "api_handler_reserved_concurrent_executions" {
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
 }
 
+variable "api_handler_memory_limit" {
+  type        = number
+  description = "The maximum memory in MB for the API Handler."
+  default     = 10240
+
+  validation {
+    condition     = var.api_handler_memory_limit > 0 && var.api_handler_memory_limit <= 10240
+    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
+  }
+}
+
 variable "ai_proxy_reserved_concurrent_executions" {
   description = "The number of concurrent executions to reserve for the AI Proxy. Setting this will prevent the AI Proxy from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
   type        = number
   default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
+}
+
+variable "ai_proxy_memory_limit" {
+  type        = number
+  description = "The maximum memory in MB for the AI Proxy."
+  default     = 10240
+
+  validation {
+    condition     = var.ai_proxy_memory_limit > 0 && var.ai_proxy_memory_limit <= 10240
+    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
+  }
 }
 
 variable "disable_billing_telemetry_aggregation" {
@@ -836,11 +858,21 @@ variable "brainstore_etl_batch_size" {
 
 variable "brainstore_wal_footer_version" {
   type        = string
-  description = "This controls the WAL footer version that should be written. Only adjust this to 'v3' after you have successfully deployed v2.x of the data plane."
-  default     = ""
+  description = "This controls the WAL footer version that should be written. When set, also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT on the API handler. Only adjust this to 'v3' after you have successfully deployed v2.x of the data plane."
+  default     = "v3"
   validation {
     condition     = var.brainstore_wal_footer_version == "" || contains(["v1", "v2", "v3"], var.brainstore_wal_footer_version)
     error_message = "brainstore_wal_footer_version must be v1, v2, v3, or empty string (unset)."
+  }
+}
+
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "Controls which object types bypass PostgreSQL and write directly to Brainstore. WARNING: This is a one-way operation. Once migrated off Postgres, objects cannot be un-migrated without downtime. When set, also enables BRAINSTORE_ASYNC_SCORING_OBJECTS / BRAINSTORE_LOG_AUTOMATIONS_OBJECTS on Brainstore nodes."
+  default     = "all"
+  validation {
+    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
+    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
   }
 }
 
