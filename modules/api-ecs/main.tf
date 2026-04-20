@@ -203,16 +203,16 @@ resource "aws_ecs_task_definition" "api_ecs" {
         }
       ]
       environment = [
-        for key, value in local.merged_env_vars : {
+        for key in sort(keys(local.merged_env_vars)) : {
           name  = key
-          value = value
+          value = local.merged_env_vars[key]
         }
       ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
           awslogs-group         = aws_cloudwatch_log_group.service.name
-          awslogs-region        = data.aws_region.current.region
+          awslogs-region        = data.aws_region.current.name
           awslogs-stream-prefix = "api-ecs"
         }
       }
