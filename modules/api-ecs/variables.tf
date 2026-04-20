@@ -219,7 +219,7 @@ variable "brainstore_license_key" {
 variable "brainstore_etl_batch_size" {
   type        = number
   description = "Batch size for Brainstore backfill operations."
-  default     = 10000
+  default     = null
 }
 
 variable "brainstore_wal_footer_version" {

@@ -28,7 +28,6 @@ locals {
       BRAINSTORE_WRITER_URL                     = local.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
       BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_enabled && var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
       BRAINSTORE_LICENSE_KEY                    = var.brainstore_license_key
-      BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
       WHITELISTED_ORIGINS                       = join(",", var.whitelisted_origins)
       OUTBOUND_RATE_LIMIT_WINDOW_MINUTES        = tostring(var.outbound_rate_limit_window_minutes)
       OUTBOUND_RATE_LIMIT_MAX_REQUESTS          = tostring(var.outbound_rate_limit_max_requests)
@@ -37,6 +36,7 @@ locals {
       BRAINSTORE_INSERT_ROW_REFS                = "true"
       NODE_MEMORY_PERCENT                       = "80"
       ALLOW_CODE_FUNCTION_EXECUTION             = "false"
+      BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
     },
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = local.brainstore_enabled ? "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}" : ""
@@ -44,6 +44,9 @@ locals {
     } : {},
     var.brainstore_wal_footer_version != "" ? {
       BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
+    } : {},
+    var.brainstore_etl_batch_size != null ? {
+      BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
     } : {},
     var.extra_env_vars
   )
@@ -212,10 +215,13 @@ resource "aws_ecs_task_definition" "api_ecs" {
         logDriver = "awslogs"
         options = {
           awslogs-group         = aws_cloudwatch_log_group.service.name
-          awslogs-region        = data.aws_region.current.name
+          awslogs-region        = data.aws_region.current.region
           awslogs-stream-prefix = "api-ecs"
         }
       }
+      mountPoints    = []
+      systemControls = []
+      volumesFrom    = []
     }
   ])
 
