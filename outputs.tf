@@ -124,22 +124,30 @@ output "redis_arn" {
 }
 
 output "api_url" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : (
+    var.create_eks_cluster ? "https://${local.eks_cloudfront_domain_name}" : null
+  )
   description = "The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL."
 }
 
 output "cloudfront_distribution_domain_name" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : (
+    var.create_eks_cluster ? local.eks_cloudfront_domain_name : null
+  )
   description = "The domain name of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_arn" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : (
+    var.create_eks_cluster ? local.eks_cloudfront_arn : null
+  )
   description = "The ARN of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_hosted_zone_id" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : (
+    var.create_eks_cluster ? local.eks_cloudfront_hosted_zone_id : null
+  )
   description = "The hosted zone ID of the cloudfront distribution"
 }
 
@@ -176,4 +184,117 @@ output "quarantine_private_subnet_3_id" {
 output "quarantine_lambda_security_group_id" {
   value       = module.services_common.quarantine_lambda_security_group_id
   description = "ID of the security group for quarantine Lambda functions"
+}
+
+## IAM role ARNs (useful for EKS IRSA configuration)
+
+output "brainstore_iam_role_arn" {
+  value       = module.services_common.brainstore_iam_role_arn
+  description = "ARN of the IAM role for Brainstore (used for IRSA service account annotation)"
+}
+
+output "api_handler_role_arn" {
+  value       = module.services_common.api_handler_role_arn
+  description = "ARN of the IAM role for the API handler (used for IRSA service account annotation)"
+}
+
+output "function_tools_secret_key" {
+  value       = module.services_common.function_tools_secret_key
+  sensitive   = true
+  description = "The function tools encryption key used by Brainstore as SERVICE_TOKEN_SECRET_KEY"
+}
+
+## Storage bucket names
+
+output "code_bundle_bucket_id" {
+  value       = module.storage.code_bundle_bucket_id
+  description = "Name of the code bundle S3 bucket"
+}
+
+output "lambda_responses_bucket_id" {
+  value       = module.storage.lambda_responses_bucket_id
+  description = "Name of the lambda responses S3 bucket"
+}
+
+## Database connection details (for EKS Kubernetes secret construction)
+
+output "postgres_database_address" {
+  value       = module.database.postgres_database_address
+  description = "Hostname of the main Postgres database"
+}
+
+output "postgres_database_port" {
+  value       = module.database.postgres_database_port
+  description = "Port of the main Postgres database"
+}
+
+output "postgres_database_username" {
+  value       = module.database.postgres_database_username
+  description = "Username for the main Postgres database"
+}
+
+output "postgres_database_password" {
+  value       = module.database.postgres_database_password
+  sensitive   = true
+  description = "Password for the main Postgres database"
+}
+
+## Redis connection details
+
+output "redis_endpoint" {
+  value       = module.redis.redis_endpoint
+  description = "Hostname of the Redis instance"
+}
+
+output "redis_port" {
+  value       = module.redis.redis_port
+  description = "Port of the Redis instance"
+}
+
+## EKS cluster outputs (only populated when create_eks_cluster = true)
+
+output "eks_cluster_name" {
+  value       = local.eks_cluster_name_val
+  description = "Name of the EKS cluster (null when create_eks_cluster = false)"
+}
+
+output "eks_cluster_endpoint" {
+  value       = local.eks_cluster_endpoint_val
+  description = "API server endpoint of the EKS cluster (null when create_eks_cluster = false)"
+}
+
+output "eks_cluster_ca_certificate" {
+  value       = local.eks_cluster_ca_certificate_val
+  sensitive   = true
+  description = "Base64-encoded certificate authority data for the EKS cluster"
+}
+
+output "eks_oidc_provider_arn" {
+  value       = local.eks_oidc_provider_arn
+  description = "ARN of the IAM OIDC provider for the EKS cluster"
+}
+
+output "eks_node_security_group_id" {
+  value       = local.eks_node_security_group_id
+  description = "ID of the EKS node security group"
+}
+
+output "eks_lb_controller_role_arn" {
+  value       = local.eks_lb_controller_role_arn
+  description = "ARN of the IAM role for the AWS Load Balancer Controller"
+}
+
+output "eks_nlb_arn" {
+  value       = local.eks_nlb_arn_val
+  description = "ARN of the pre-created NLB for the EKS API service"
+}
+
+output "eks_nlb_name" {
+  value       = local.eks_nlb_name_val
+  description = "Name of the pre-created NLB (used for aws-load-balancer-name annotation)"
+}
+
+output "nlb_security_group_id" {
+  value       = local.eks_nlb_security_group_id
+  description = "ID of the NLB CloudFront security group"
 }

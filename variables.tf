@@ -876,3 +876,116 @@ variable "override_brainstore_iam_role_trust_policy" {
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
   default     = null
 }
+
+## EKS Cluster (Terraform-managed)
+
+variable "create_eks_cluster" {
+  type        = bool
+  description = "Create and manage an EKS cluster with Terraform. Requires use_deployment_mode_external_eks = true. When enabled, Terraform provisions the cluster, node group, addons, OIDC provider, NLB, and CloudFront distribution."
+  default     = false
+  validation {
+    condition     = !var.create_eks_cluster || var.use_deployment_mode_external_eks
+    error_message = "create_eks_cluster requires use_deployment_mode_external_eks = true."
+  }
+}
+
+variable "eks_node_instance_type" {
+  type        = string
+  description = "EC2 instance type for the EKS managed node group. Must support local NVMe SSD for Brainstore cache. Default (c8gd.12xlarge) is sized to fit the Helm chart's production resource defaults: Brainstore writer requests 32 CPU / 64 GiB, which needs more than c8gd.8xlarge's ~31.5 allocatable CPU after kubelet overhead. Smaller instances (e.g. c8gd.2xlarge) work for sandbox deployments if chart resources are scaled down via eks_helm_chart_extra_values in the example."
+  default     = "c8gd.12xlarge"
+}
+
+variable "eks_node_min_size" {
+  type        = number
+  description = "Minimum number of nodes in the EKS managed node group."
+  default     = 3
+}
+
+variable "eks_node_max_size" {
+  type        = number
+  description = "Maximum number of nodes in the EKS managed node group."
+  default     = 6
+}
+
+variable "eks_node_desired_size" {
+  type        = number
+  description = "Desired number of nodes in the EKS managed node group. Default (3) fits the chart's production defaults: 1 node for the writer, 1 for the 2 readers, 1 for the 2 fast readers + API pods."
+  default     = 3
+}
+
+variable "eks_kubernetes_version" {
+  type        = string
+  description = "Kubernetes version for the EKS cluster."
+  default     = "1.31"
+}
+
+## Braintrust Helm release (used when create_eks_cluster = true)
+
+variable "helm_chart_version" {
+  type        = string
+  description = "Version of the Braintrust Helm chart (oci://public.ecr.aws/braintrust/helm) to deploy. Required when create_eks_cluster = true."
+  default     = null
+  validation {
+    condition     = !var.create_eks_cluster || (var.helm_chart_version != null && var.helm_chart_version != "")
+    error_message = "helm_chart_version is required when create_eks_cluster = true."
+  }
+}
+
+variable "eks_api_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the Braintrust Helm chart's api component. Unset fields fall back to chart defaults."
+}
+
+variable "eks_brainstore_reader_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the brainstore reader component."
+}
+
+variable "eks_brainstore_fastreader_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the brainstore fast reader component."
+}
+
+variable "eks_brainstore_writer_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the brainstore writer component."
+}
+
+variable "eks_helm_chart_extra_values" {
+  type        = string
+  default     = ""
+  description = <<-EOT
+    Escape hatch for Helm overrides not covered by the structured variables.
+    Raw YAML appended to the `values` list; wins over both the rendered
+    template and the structured overrides. Use this for probe tweaks, image
+    pins, partial resource overrides, etc.
+  EOT
+}

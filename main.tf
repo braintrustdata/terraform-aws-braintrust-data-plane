@@ -97,7 +97,8 @@ module "database" {
       },
       var.database_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {},
+      var.create_eks_cluster ? { "EKS Nodes" = local.eks_node_security_group_id } : {},
     ),
     local.bastion_security_group,
   )
@@ -130,7 +131,8 @@ module "redis" {
       },
       var.redis_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {},
+      var.create_eks_cluster ? { "EKS Nodes" = local.eks_node_security_group_id } : {},
     ),
     local.bastion_security_group,
   )
@@ -310,14 +312,16 @@ module "services_common" {
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   permissions_boundary_arn                  = var.permissions_boundary_arn
-  eks_cluster_arn                           = var.existing_eks_cluster_arn
+  eks_cluster_arn                           = var.create_eks_cluster ? local.eks_cluster_arn_val : var.existing_eks_cluster_arn
   eks_namespace                             = var.eks_namespace
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = var.custom_tags
-  override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
-  override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
+  # When Terraform manages the EKS cluster, replace trust policies with OIDC-only
+  # (no lambda.amazonaws.com or ec2.amazonaws.com principals needed)
+  override_api_iam_role_trust_policy        = var.create_eks_cluster ? local.eks_api_iam_trust_policy : var.override_api_iam_role_trust_policy
+  override_brainstore_iam_role_trust_policy = var.create_eks_cluster ? local.eks_brainstore_iam_trust_policy : var.override_brainstore_iam_role_trust_policy
   enable_quarantine_vpc                     = var.enable_quarantine_vpc
   quarantine_vpc_id                         = local.quarantine_vpc_id
 }
