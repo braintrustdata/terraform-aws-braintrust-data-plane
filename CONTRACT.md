@@ -12,8 +12,8 @@ this document enumerates them.
 | Field | Value |
 |---|---|
 | Braintrust Helm chart | `oci://public.ecr.aws/braintrust/helm` |
-| Tested chart version | `5.0.1` |
-| Supported range | `5.x` |
+| Tested chart version | `6.1.0` |
+| Supported range | `6.x` |
 
 `helm_chart_version` in the module has no default when `create_eks_cluster = true` — consumers must pin.
 
