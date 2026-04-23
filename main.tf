@@ -106,8 +106,7 @@ module "database" {
   postgres_storage_throughput        = var.postgres_storage_throughput
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   backup_retention_period            = var.postgres_backup_retention_period
-  DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection || var.force_destroy_data
-  skip_final_snapshot                = var.force_destroy_data
+  DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
   kms_key_arn              = local.kms_key_arn
   permissions_boundary_arn = var.permissions_boundary_arn
@@ -149,7 +148,6 @@ module "storage" {
   kms_key_arn                         = local.kms_key_arn
   brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins       = var.s3_additional_allowed_origins
-  force_destroy                       = var.force_destroy_data
   custom_tags                         = var.custom_tags
 }
 

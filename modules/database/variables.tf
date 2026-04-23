@@ -102,12 +102,6 @@ variable "DANGER_disable_deletion_protection" {
   default     = false
 }
 
-variable "skip_final_snapshot" {
-  description = "Skip the final RDS snapshot on destroy. DANGER: data is unrecoverable after destroy with this set. Intended for sandbox/test deployments."
-  type        = bool
-  default     = false
-}
-
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"

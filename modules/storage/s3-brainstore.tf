@@ -1,6 +1,5 @@
 resource "aws_s3_bucket" "brainstore" {
   bucket_prefix = "${var.deployment_name}-brainstore-"
-  force_destroy = var.force_destroy
 
   lifecycle {
     ignore_changes = [

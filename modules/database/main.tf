@@ -34,7 +34,7 @@ resource "aws_db_instance" "main" {
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.db_monitoring.arn
 
-  skip_final_snapshot       = var.skip_final_snapshot
+  skip_final_snapshot       = false
   final_snapshot_identifier = "${var.deployment_name}-main-final-snapshot-${random_id.snapshot_suffix.hex}"
   copy_tags_to_snapshot     = true
   backup_retention_period   = var.backup_retention_period

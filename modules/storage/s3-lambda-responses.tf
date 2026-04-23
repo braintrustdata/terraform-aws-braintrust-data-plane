@@ -2,7 +2,6 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
 
   # generate a random suffix to ensure uniqueness
   bucket_prefix = "${var.deployment_name}-lambda-responses-"
-  force_destroy = var.force_destroy
 
   lifecycle {
     # S3 does not support renaming buckets
