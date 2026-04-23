@@ -29,6 +29,13 @@ api:
       service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
       service.beta.kubernetes.io/aws-load-balancer-security-groups: "${nlb_sg_id}"
       service.beta.kubernetes.io/aws-load-balancer-name: "${nlb_name}"
+      # Tag LB-Controller-created resources (TargetGroup, listener) with the
+      # deployment name. The TG name is controller-generated as
+      # `k8s-<ns-8>-<svc-8>-<hash>` and not configurable, so for multiple
+      # Braintrust deployments in one AWS account, tags are the only way
+      # to disambiguate their TGs. Matches `BraintrustDeploymentName` used
+      # on TF-owned resources.
+      service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: "BraintrustDeploymentName=${deployment_name}"
   serviceAccount:
     # Harmless under Pod Identity: the chart writes an IRSA-style
     # `eks.amazonaws.com/role-arn` annotation on the service account, but

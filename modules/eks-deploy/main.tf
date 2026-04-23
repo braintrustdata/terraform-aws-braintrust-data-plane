@@ -179,6 +179,7 @@ resource "helm_release" "braintrust" {
 
   values = compact([
     templatefile("${path.module}/assets/helm-values.yaml.tpl", {
+      deployment_name     = var.deployment_name
       org_name            = var.braintrust_org_name
       namespace           = var.namespace
       brainstore_bucket   = var.brainstore_bucket_name
