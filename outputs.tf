@@ -124,22 +124,30 @@ output "redis_arn" {
 }
 
 output "api_url" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : (
+    var.create_eks_cluster ? "https://${local.eks_cloudfront_domain_name}" : null
+  )
   description = "The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL."
 }
 
 output "cloudfront_distribution_domain_name" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : (
+    var.create_eks_cluster ? local.eks_cloudfront_domain_name : null
+  )
   description = "The domain name of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_arn" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : (
+    var.create_eks_cluster ? local.eks_cloudfront_arn : null
+  )
   description = "The ARN of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_hosted_zone_id" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
+  value = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : (
+    var.create_eks_cluster ? local.eks_cloudfront_hosted_zone_id : null
+  )
   description = "The hosted zone ID of the cloudfront distribution"
 }
 

@@ -876,3 +876,91 @@ variable "override_brainstore_iam_role_trust_policy" {
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
   default     = null
 }
+
+## EKS Auto Mode (Terraform-managed cluster and Braintrust deployment)
+
+variable "create_eks_cluster" {
+  type        = bool
+  default     = false
+  description = "Provision an EKS Auto Mode cluster and deploy Braintrust on it. Requires use_deployment_mode_external_eks = true. Auto Mode lets AWS manage node provisioning (via Karpenter), addons, and the Load Balancer Controller — so this module only has to own the cluster IAM roles, VPC wiring, and the Braintrust-specific Helm release."
+  validation {
+    condition     = !var.create_eks_cluster || var.use_deployment_mode_external_eks
+    error_message = "create_eks_cluster requires use_deployment_mode_external_eks = true."
+  }
+}
+
+variable "eks_kubernetes_version" {
+  type        = string
+  default     = "1.31"
+  description = "Kubernetes version for the EKS cluster."
+}
+
+variable "eks_brainstore_nodepool_instance_families" {
+  type        = list(string)
+  default     = ["c8gd", "c7gd", "m7gd"]
+  description = "EC2 instance families Auto Mode's Karpenter may pick from for Brainstore nodes. Must be NVMe-backed families (*d.*) because Brainstore caches to local SSD. Graviton by default (matches the EC2 Brainstore defaults)."
+}
+
+variable "helm_chart_version" {
+  type        = string
+  default     = null
+  description = "Version of the Braintrust Helm chart (`oci://public.ecr.aws/braintrust/helm`) to deploy. Required when create_eks_cluster = true."
+  validation {
+    condition     = !var.create_eks_cluster || (var.helm_chart_version != null && var.helm_chart_version != "")
+    error_message = "helm_chart_version is required when create_eks_cluster = true."
+  }
+}
+
+variable "eks_api_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the chart's api component. Unset fields fall back to chart defaults."
+}
+
+variable "eks_brainstore_reader_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the brainstore reader."
+}
+
+variable "eks_brainstore_fastreader_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the brainstore fast reader."
+}
+
+variable "eks_brainstore_writer_helm" {
+  type = object({
+    replicas = optional(number)
+    resources = optional(object({
+      requests = object({ cpu = string, memory = string })
+      limits   = object({ cpu = string, memory = string })
+    }))
+  })
+  default     = {}
+  description = "Override replicas and/or resources for the brainstore writer."
+}
+
+variable "eks_helm_chart_extra_values" {
+  type        = string
+  default     = ""
+  description = "Escape hatch for Helm overrides not covered by the structured variables. Raw YAML appended last; wins over template and structured overrides."
+}
