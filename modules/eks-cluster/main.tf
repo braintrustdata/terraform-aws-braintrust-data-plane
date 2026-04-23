@@ -9,6 +9,14 @@ resource "aws_eks_cluster" "this" {
   version  = var.eks_kubernetes_version
   role_arn = aws_iam_role.cluster.arn
 
+  # Required when Auto Mode (compute_config / storage_config /
+  # kubernetes_network_config.elastic_load_balancing) is enabled. AWS
+  # rejects CreateCluster if this isn't explicitly false, because Auto
+  # Mode manages its own built-in addons (vpc-cni, coredns, kube-proxy,
+  # pod identity, EBS CSI, LB Controller) and the self-managed-addons
+  # bootstrap path would conflict.
+  bootstrap_self_managed_addons = false
+
   vpc_config {
     subnet_ids             = var.private_subnet_ids
     endpoint_public_access = true

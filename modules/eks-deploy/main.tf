@@ -70,7 +70,14 @@ resource "kubernetes_manifest" "brainstore_nodeclass" {
       role = var.node_iam_role_name
       subnetSelectorTerms = [{
         tags = {
+          # Scope to this deployment's VPC — `kubernetes.io/role/internal-elb`
+          # alone can match subnets in *other* VPCs (e.g. a default VPC or
+          # another EKS cluster in the same region/account), which makes
+          # Karpenter pick a subnet in a different VPC than our SG and fail
+          # RunInstances with `Client.InvalidParameter: Security group ...
+          # and subnet ... belong to different networks.`
           "kubernetes.io/role/internal-elb" = "1"
+          "BraintrustDeploymentName"        = var.deployment_name
         }
       }]
       securityGroupSelectorTerms = [{
@@ -78,10 +85,14 @@ resource "kubernetes_manifest" "brainstore_nodeclass" {
           "aws:eks:cluster-name" = var.cluster_name
         }
       }]
-      tags = merge(
-        { "braintrust.dev/node-pool" = "brainstore" },
-        var.custom_tags,
-      )
+      # No custom `tags` field: Auto Mode's `AmazonEKSComputePolicy` gates
+      # `ec2:CreateLaunchTemplate` on a `ForAllValues:StringLike` condition
+      # that only allows the tag keys `eks:eks-cluster-name`,
+      # `eks:kubernetes-node-class-name`, `eks:kubernetes-node-pool-name`,
+      # and `kubernetes.io/cluster/*`. Any additional key causes the
+      # controller's CreateLaunchTemplate call to fail the IAM pre-check.
+      # Auto-managed `eks:*` tags are set by the controller itself;
+      # we don't add anything here.
     }
   }
 }
@@ -107,8 +118,13 @@ resource "kubernetes_manifest" "brainstore_nodepool" {
             name  = "brainstore"
           }
           requirements = [
+            # Auto Mode restricts NodePool requirement keys to the domains
+            # `karpenter.sh/*`, `kubernetes.io/*`, `node.kubernetes.io/*`,
+            # `topology.kubernetes.io/*`, and `eks.amazonaws.com/*` — so we
+            # use the Auto-Mode-specific `eks.amazonaws.com/instance-family`
+            # instead of self-managed Karpenter's `karpenter.k8s.aws/instance-family`.
             {
-              key      = "karpenter.k8s.aws/instance-family"
+              key      = "eks.amazonaws.com/instance-family"
               operator = "In"
               values   = var.brainstore_nodepool_instance_families
             },
@@ -151,6 +167,15 @@ resource "helm_release" "braintrust" {
   version          = var.helm_chart_version
   namespace        = var.namespace
   create_namespace = false
+
+  # Default helm_release timeout is 300s (5 min). With Auto Mode, a cold
+  # deploy has to: provision a new Karpenter-backed Brainstore node (~2-3
+  # min), pull three large Brainstore container images (~3-5 min each,
+  # though pulled in parallel), then wait for all pods to pass readiness
+  # probes. 5 min is usually not enough. 1200s (20 min) covers the
+  # worst-case first-deploy; subsequent applies return as soon as pods
+  # are Ready, well before the timeout.
+  timeout = 1200
 
   values = compact([
     templatefile("${path.module}/assets/helm-values.yaml.tpl", {

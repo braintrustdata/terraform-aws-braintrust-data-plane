@@ -19,9 +19,29 @@ module "braintrust-data-plane" {
   ### deployment. All the Braintrust K8s workloads run in-cluster and are
   ### deployed via Helm.
   ###
-  ### IMPORTANT — two-step apply required on first deployment:
-  ###   terraform apply -target=module.braintrust-data-plane.module.eks_cluster[0]
+  ### IMPORTANT — two-step apply required on first deployment. The
+  ### kubernetes and helm providers need a `data.aws_eks_cluster` lookup
+  ### in `provider.tf` to succeed, which requires the EKS cluster to
+  ### already exist. Target the cluster submodule first, then do a plain
+  ### apply for everything else:
+  ###
+  ###   # Step 1: bring up the EKS cluster (pulls in VPC and subnet
+  ###   #         dependencies via -target).
+  ###   terraform apply '-target=module.braintrust-data-plane.module.eks_cluster[0]'
+  ###
+  ###   # Step 2: everything else — remaining AWS infra (RDS, Redis,
+  ###   #         S3, KMS, services_common IAM/SGs) and the K8s layer
+  ###   #         (namespace, Secret, Pod Identity associations,
+  ###   #         NodeClass/NodePool, Braintrust Helm release).
   ###   terraform apply
+  ###
+  ### (Single-quote the `-target` so zsh doesn't glob-expand the `[0]`.)
+  ###
+  ### The kubernetes and helm providers use `exec { aws eks get-token }`
+  ### auth in provider.tf, so step 2's runtime isn't bounded by any
+  ### token TTL — safe for long applies (e.g. slow first-time image
+  ### pulls) and for leaving the approval prompt open. Requires the AWS
+  ### CLI on the runner.
 
   deployment_name = local.deployment_name
 
@@ -61,12 +81,20 @@ module "braintrust-data-plane" {
   enable_quarantine_vpc = false
 
   ### Postgres
-  postgres_instance_type              = "db.r8g.2xlarge"
-  postgres_storage_size               = 1000
-  postgres_max_storage_size           = 10000
-  postgres_storage_type               = "gp3"
-  postgres_storage_iops               = 15000
-  postgres_storage_throughput         = 500
+  postgres_instance_type    = "db.r8g.2xlarge"
+  postgres_storage_size     = 1000
+  postgres_max_storage_size = 10000
+  postgres_storage_type     = "gp3"
+
+  # IOPS and throughput can only be specified for postgres gp3 when storage
+  # is >= 400 GB. Below that, RDS rejects CreateDBInstance with
+  # `InvalidParameterCombination`. Values below are the tuned defaults for a
+  # 1000 GB production deployment; if you downsize `postgres_storage_size`
+  # under 400 GB (e.g. for a sandbox), comment these two out — gp3 baseline
+  # of 3000 IOPS / 125 MiB/s applies automatically.
+  postgres_storage_iops       = 15000
+  postgres_storage_throughput = 500
+
   postgres_version                    = "15"
   postgres_auto_minor_version_upgrade = true
 
