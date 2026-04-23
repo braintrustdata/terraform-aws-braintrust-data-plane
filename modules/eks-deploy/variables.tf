@@ -5,12 +5,6 @@ variable "deployment_name" {
   description = "Name of this deployment. Used in tags and resource naming."
 }
 
-variable "custom_tags" {
-  type        = map(string)
-  description = "Custom tags applied to created AWS resources."
-  default     = {}
-}
-
 variable "braintrust_org_name" {
   type        = string
   description = "Braintrust org name (becomes global.orgName in the chart)."

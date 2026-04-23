@@ -61,7 +61,6 @@ module "eks_deploy" {
   count  = var.create_eks_cluster ? 1 : 0
 
   deployment_name     = var.deployment_name
-  custom_tags         = var.custom_tags
   braintrust_org_name = var.braintrust_org_name
   namespace           = local.eks_namespace_resolved
 

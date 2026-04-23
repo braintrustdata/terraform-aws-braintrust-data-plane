@@ -1,5 +1,3 @@
-data "aws_region" "current" {}
-
 ## Kubernetes namespace for Braintrust workloads.
 resource "kubernetes_namespace" "braintrust" {
   metadata {

@@ -302,16 +302,16 @@ module "ingress" {
 module "services_common" {
   source = "./modules/services-common"
 
-  deployment_name                           = var.deployment_name
-  vpc_id                                    = local.main_vpc_id
-  kms_key_arn                               = local.kms_key_arn
-  database_secret_arn                       = module.database.postgres_database_secret_arn
-  brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
-  code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
-  lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
-  service_additional_policy_arns            = var.service_additional_policy_arns
-  brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
-  permissions_boundary_arn                  = var.permissions_boundary_arn
+  deployment_name                   = var.deployment_name
+  vpc_id                            = local.main_vpc_id
+  kms_key_arn                       = local.kms_key_arn
+  database_secret_arn               = module.database.postgres_database_secret_arn
+  brainstore_s3_bucket_arn          = module.storage.brainstore_bucket_arn
+  code_bundle_s3_bucket_arn         = module.storage.code_bundle_bucket_arn
+  lambda_responses_s3_bucket_arn    = module.storage.lambda_responses_bucket_arn
+  service_additional_policy_arns    = var.service_additional_policy_arns
+  brainstore_additional_policy_arns = var.brainstore_additional_policy_arns
+  permissions_boundary_arn          = var.permissions_boundary_arn
   # When Terraform provisions the EKS cluster, tie services_common's IAM
   # role trust policies to that cluster and enable Pod Identity. The
   # cluster ARN scopes the trust policy via the eks-cluster-arn session
