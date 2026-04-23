@@ -74,6 +74,13 @@ resource "aws_cloudfront_distribution" "dataplane" {
     origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
   }
 
+  # LLM-proxy / function-execution paths. Default target is the
+  # in-cluster API pod (standalone-api handles these in Dataplane 2.0),
+  # which is the correct behavior for a self-hosted deployment — keeps
+  # request payloads inside the customer's AWS account instead of
+  # round-tripping through Braintrust's hosted proxy.
+  # `use_global_ai_proxy = true` flips the target to braintrustproxy.com;
+  # matches the toggle semantics of the Lambda ingress module.
   dynamic "ordered_cache_behavior" {
     for_each = toset([
       "/v1/proxy", "/v1/proxy/*",
@@ -85,7 +92,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = "CloudflareProxy"
+      target_origin_id       = var.use_global_ai_proxy ? "CloudflareProxy" : "EKSAPIOrigin"
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
