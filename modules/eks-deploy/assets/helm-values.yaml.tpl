@@ -36,6 +36,20 @@ api:
       # to disambiguate their TGs. Matches `BraintrustDeploymentName` used
       # on TF-owned resources.
       service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: "BraintrustDeploymentName=${deployment_name}"
+      # Zero out target-group drain delay. Default is 300s. Observed
+      # failure mode during destroy: helm uninstall → Service deletion →
+      # LB Controller holds the `service.eks.amazonaws.com/resources`
+      # finalizer until all TG targets are fully drained. In broken states
+      # (cluster never had nodes register, failed installs), the drain
+      # never actually completes because there are no registered targets
+      # to drain; LB Controller still respects the default 300s wait and
+      # the finalizer hangs for 5 minutes. `terraform destroy` appears
+      # frozen on the helm_release until a human `kubectl patch`es the
+      # finalizer away. `deregistration_delay.timeout_seconds=0` tells
+      # the NLB to immediately deregister targets with no wait, letting
+      # the LB Controller release the finalizer and the helm uninstall
+      # complete cleanly.
+      service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: "deregistration_delay.timeout_seconds=0"
   serviceAccount:
     # Harmless under Pod Identity: the chart writes an IRSA-style
     # `eks.amazonaws.com/role-arn` annotation on the service account, but
