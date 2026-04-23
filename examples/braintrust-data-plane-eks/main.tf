@@ -123,6 +123,20 @@ module "braintrust-data-plane" {
   #     limits   = { cpu = "1",    memory = "2Gi" }
   #   }
   # }
+  # eks_brainstore_reader_helm = {
+  #   replicas = 1
+  #   resources = {
+  #     requests = { cpu = "1", memory = "2Gi" }
+  #     limits   = { cpu = "2", memory = "4Gi" }
+  #   }
+  # }
+  # eks_brainstore_fastreader_helm = {
+  #   replicas = 1
+  #   resources = {
+  #     requests = { cpu = "1", memory = "2Gi" }
+  #     limits   = { cpu = "2", memory = "4Gi" }
+  #   }
+  # }
   # eks_brainstore_writer_helm = {
   #   replicas = 1
   #   resources = {
