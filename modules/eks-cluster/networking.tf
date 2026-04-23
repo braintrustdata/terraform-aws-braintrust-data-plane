@@ -51,13 +51,21 @@ resource "aws_lb" "api" {
   tags = merge({ Name = "${var.deployment_name}-api-nlb" }, local.common_tags)
 }
 
-# Allow the NLB to reach nodes on the Kubernetes NodePort range. The EKS
-# cluster's primary security group (attached to Auto Mode nodes by default)
-# is used as the destination.
+# Allow the NLB to reach Brainstore/API pods on the API container port.
+# Auto Mode's Load Balancer Controller uses `ip` target-type for NLBs, so
+# health checks and traffic hit the pod IP on the container port (8000) —
+# not a NodePort. The cluster's primary security group (attached to Auto
+# Mode nodes by default) is the destination for pod IP traffic.
+#
+# The LB Controller normally opens this ingress itself when it creates the
+# NLB SG, but when we pre-create the NLB SG in Terraform and attach it via
+# the `aws-load-balancer-security-groups` annotation, the controller adds
+# only a NodePort-range rule (correct for `instance` target-type, wrong
+# for `ip`). So we add the container-port rule explicitly.
 resource "aws_vpc_security_group_ingress_rule" "nodes_from_nlb" {
   security_group_id            = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
   referenced_security_group_id = aws_security_group.nlb_cloudfront.id
-  from_port                    = 30000
-  to_port                      = 32767
+  from_port                    = 8000
+  to_port                      = 8000
   ip_protocol                  = "tcp"
 }
