@@ -255,17 +255,6 @@ output "postgres_database_port" {
   description = "Port of the main Postgres database."
 }
 
-output "postgres_database_username" {
-  value       = module.database.postgres_database_username
-  description = "Username for the main Postgres database."
-}
-
-output "postgres_database_password" {
-  value       = module.database.postgres_database_password
-  sensitive   = true
-  description = "Password for the main Postgres database."
-}
-
 output "redis_endpoint" {
   value       = module.redis.redis_endpoint
   description = "Hostname of the Redis instance."
@@ -286,10 +275,4 @@ output "api_handler_role_arn" {
 output "brainstore_iam_role_arn" {
   value       = module.services_common.brainstore_iam_role_arn
   description = "ARN of the IAM role used by Brainstore (brainstore service account Pod Identity association; also the EC2 role on the EC2-Brainstore path)."
-}
-
-output "function_tools_secret_key" {
-  value       = module.services_common.function_tools_secret_key
-  sensitive   = true
-  description = "Encryption key for function tool credentials (used by Brainstore as SERVICE_TOKEN_SECRET_KEY)."
 }
