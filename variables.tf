@@ -304,6 +304,12 @@ variable "DANGER_disable_database_deletion_protection" {
   default     = false
 }
 
+variable "force_destroy_data" {
+  type        = bool
+  default     = false
+  description = "DANGER: When true, a `terraform destroy` will wipe customer data without any safety rails — S3 buckets are emptied of all versions before deletion (`force_destroy = true` on every bucket), RDS deletion protection is disabled, and RDS final-snapshot creation is skipped. Intended for sandbox/CI/test deployments where the data is known-disposable. Leave `false` (default) for any deployment that stores real data."
+}
+
 ## Redis
 variable "redis_instance_type" {
   description = "Instance type for the Redis cluster"

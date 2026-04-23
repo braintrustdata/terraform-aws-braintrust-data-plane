@@ -26,3 +26,9 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "force_destroy" {
+  type        = bool
+  default     = false
+  description = "Sets `force_destroy = true` on every bucket so `terraform destroy` empties all object versions before deleting. DANGER: a `destroy` with this flag set wipes data irrecoverably. Intended only for sandbox/test deployments."
+}
