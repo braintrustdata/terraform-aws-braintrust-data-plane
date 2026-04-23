@@ -17,9 +17,9 @@
 # NodePool CRDs become queryable, which kubernetes_manifest needs at plan
 # time.
 locals {
-  # Must match `${deployment_name}-eks`, where deployment_name is the value
-  # set in main.tf. Keep these in sync if you change deployment_name.
-  eks_cluster_name = "braintrust-eks"
+  # Derived from `local.deployment_name` in main.tf so there's only one
+  # place to edit the deployment name.
+  eks_cluster_name = "${local.deployment_name}-eks"
 }
 
 data "aws_eks_cluster" "braintrust" {

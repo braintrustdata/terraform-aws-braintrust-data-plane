@@ -1,5 +1,15 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
+locals {
+  # Each deployment in the same AWS account must have a unique name.
+  # Do not change this after deployment. RDS and S3 resources can not be
+  # renamed. Max 18 characters, lowercase letters, numbers, and hyphens only.
+  #
+  # Declared as a local so `provider.tf` can derive the EKS cluster name
+  # from it without a duplicate literal.
+  deployment_name = "braintrust"
+}
+
 module "braintrust-data-plane" {
   source = "../../"
   # For production use, pin to a released version:
@@ -13,10 +23,7 @@ module "braintrust-data-plane" {
   ###   terraform apply -target=module.braintrust-data-plane.module.eks_cluster[0]
   ###   terraform apply
 
-  # IMPORTANT: Each deployment in the same AWS account must have a unique name.
-  # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  # Max 18 characters, lowercase letters, numbers, and hyphens only.
-  deployment_name = "braintrust"
+  deployment_name = local.deployment_name
 
   # Add your organization name from the Braintrust UI here
   braintrust_org_name = ""
