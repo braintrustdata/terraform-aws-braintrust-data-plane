@@ -185,3 +185,28 @@ output "quarantine_lambda_security_group_id" {
   value       = module.services_common.quarantine_lambda_security_group_id
   description = "ID of the security group for quarantine Lambda functions"
 }
+
+## EKS Auto Mode cluster (create_eks_cluster = true)
+##
+## Exposed so consumers can configure the kubernetes/helm providers
+## directly from these outputs, skipping the `data.aws_eks_cluster`
+## round-trip. Referencing these (rather than a data source) lets
+## Terraform treat them as "known after apply" and defer provider
+## resolution until the cluster exists — enabling a single-apply
+## first deployment.
+
+output "eks_cluster_name" {
+  value       = var.create_eks_cluster ? module.eks_cluster[0].cluster_name : null
+  description = "Name of the EKS cluster (null unless create_eks_cluster = true)."
+}
+
+output "eks_cluster_endpoint" {
+  value       = var.create_eks_cluster ? module.eks_cluster[0].cluster_endpoint : null
+  description = "EKS API server endpoint (null unless create_eks_cluster = true)."
+}
+
+output "eks_cluster_ca_certificate_data" {
+  value       = var.create_eks_cluster ? module.eks_cluster[0].cluster_certificate_authority_data : null
+  sensitive   = true
+  description = "Base64-encoded cluster CA data (null unless create_eks_cluster = true)."
+}

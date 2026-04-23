@@ -19,29 +19,18 @@ module "braintrust-data-plane" {
   ### deployment. All the Braintrust K8s workloads run in-cluster and are
   ### deployed via Helm.
   ###
-  ### IMPORTANT — two-step apply required on first deployment. The
-  ### kubernetes and helm providers need a `data.aws_eks_cluster` lookup
-  ### in `provider.tf` to succeed, which requires the EKS cluster to
-  ### already exist. Target the cluster submodule first, then do a plain
-  ### apply for everything else:
+  ### Single-apply bootstrap: `terraform apply`. No targeting needed.
+  ### The kubernetes/helm provider config in provider.tf reads cluster
+  ### endpoint/CA/name directly from module outputs, which Terraform
+  ### defers until after the cluster is created. The NodeClass and
+  ### NodePool are delivered via helm_release (not kubernetes_manifest),
+  ### so no CRD-schema lookup is required at plan time either. Cold
+  ### first deploys take ~15 minutes end to end (cluster ~8-10 min,
+  ### then RDS + Redis + Helm release).
   ###
-  ###   # Step 1: bring up the EKS cluster (pulls in VPC and subnet
-  ###   #         dependencies via -target).
-  ###   terraform apply '-target=module.braintrust-data-plane.module.eks_cluster[0]'
-  ###
-  ###   # Step 2: everything else — remaining AWS infra (RDS, Redis,
-  ###   #         S3, KMS, services_common IAM/SGs) and the K8s layer
-  ###   #         (namespace, Secret, Pod Identity associations,
-  ###   #         NodeClass/NodePool, Braintrust Helm release).
-  ###   terraform apply
-  ###
-  ### (Single-quote the `-target` so zsh doesn't glob-expand the `[0]`.)
-  ###
-  ### The kubernetes and helm providers use `exec { aws eks get-token }`
-  ### auth in provider.tf, so step 2's runtime isn't bounded by any
-  ### token TTL — safe for long applies (e.g. slow first-time image
-  ### pulls) and for leaving the approval prompt open. Requires the AWS
-  ### CLI on the runner.
+  ### The kubernetes/helm providers use `exec { aws eks get-token }`
+  ### auth in provider.tf so long applies aren't bounded by any token
+  ### TTL. Requires the AWS CLI on the runner.
 
   deployment_name = local.deployment_name
 

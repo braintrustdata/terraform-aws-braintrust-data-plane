@@ -56,104 +56,32 @@ resource "aws_eks_pod_identity_association" "brainstore" {
 ## NodeClass+NodePool that does, and Brainstore pods target it via the
 ## `braintrust.dev/node-pool: brainstore` nodeSelector in helm values.
 ##
-## These manifests use CRDs that Auto Mode installs on the cluster, so
-## kubernetes_manifest can only plan them after the cluster exists. Use
-## the two-step apply described in the example README.
-resource "kubernetes_manifest" "brainstore_nodeclass" {
-  manifest = {
-    apiVersion = "eks.amazonaws.com/v1"
-    kind       = "NodeClass"
-    metadata = {
-      name = "brainstore"
-    }
-    spec = {
-      role = var.node_iam_role_name
-      subnetSelectorTerms = [{
-        tags = {
-          # Scope to this deployment's VPC — `kubernetes.io/role/internal-elb`
-          # alone can match subnets in *other* VPCs (e.g. a default VPC or
-          # another EKS cluster in the same region/account), which makes
-          # Karpenter pick a subnet in a different VPC than our SG and fail
-          # RunInstances with `Client.InvalidParameter: Security group ...
-          # and subnet ... belong to different networks.`
-          "kubernetes.io/role/internal-elb" = "1"
-          "BraintrustDeploymentName"        = var.deployment_name
-        }
-      }]
-      securityGroupSelectorTerms = [{
-        tags = {
-          "aws:eks:cluster-name" = var.cluster_name
-        }
-      }]
-      # No custom `tags` field: Auto Mode's `AmazonEKSComputePolicy` gates
-      # `ec2:CreateLaunchTemplate` on a `ForAllValues:StringLike` condition
-      # that only allows the tag keys `eks:eks-cluster-name`,
-      # `eks:kubernetes-node-class-name`, `eks:kubernetes-node-pool-name`,
-      # and `kubernetes.io/cluster/*`. Any additional key causes the
-      # controller's CreateLaunchTemplate call to fail the IAM pre-check.
-      # Auto-managed `eks:*` tags are set by the controller itself;
-      # we don't add anything here.
-    }
-  }
-}
+## Delivered via helm_release (not kubernetes_manifest) so Terraform
+## doesn't contact the cluster at plan time — kubernetes_manifest reads
+## the CRD schema from the live cluster to validate, which fails on a
+## fresh deploy because the cluster doesn't exist yet. Helm renders
+## templates locally and applies at apply time, so a single
+## `terraform apply` from an empty account works end to end.
+resource "helm_release" "brainstore_nodepool" {
+  name      = "brainstore-nodepool"
+  chart     = "${path.module}/charts/brainstore-nodepool"
+  namespace = var.namespace
+  wait      = true
 
-resource "kubernetes_manifest" "brainstore_nodepool" {
-  manifest = {
-    apiVersion = "karpenter.sh/v1"
-    kind       = "NodePool"
-    metadata = {
-      name = "brainstore"
-    }
-    spec = {
-      template = {
-        metadata = {
-          labels = {
-            "braintrust.dev/node-pool" = "brainstore"
-          }
-        }
-        spec = {
-          nodeClassRef = {
-            group = "eks.amazonaws.com"
-            kind  = "NodeClass"
-            name  = "brainstore"
-          }
-          requirements = [
-            # Auto Mode restricts NodePool requirement keys to the domains
-            # `karpenter.sh/*`, `kubernetes.io/*`, `node.kubernetes.io/*`,
-            # `topology.kubernetes.io/*`, and `eks.amazonaws.com/*` — so we
-            # use the Auto-Mode-specific `eks.amazonaws.com/instance-family`
-            # instead of self-managed Karpenter's `karpenter.k8s.aws/instance-family`.
-            {
-              key      = "eks.amazonaws.com/instance-family"
-              operator = "In"
-              values   = var.brainstore_nodepool_instance_families
-            },
-            {
-              key      = "kubernetes.io/arch"
-              operator = "In"
-              values   = ["arm64", "amd64"]
-            },
-            {
-              key      = "karpenter.sh/capacity-type"
-              operator = "In"
-              values   = ["on-demand"]
-            },
-          ]
-          # Brainstore pods are long-lived; avoid Karpenter consolidating
-          # them off in the middle of serving traffic.
-          terminationGracePeriod = "1h"
-        }
-      }
-      disruption = {
-        # Only replace nodes when they're empty (e.g. pod count drops to
-        # zero during scale-down). No opportunistic consolidation.
-        consolidationPolicy = "WhenEmpty"
-        consolidateAfter    = "5m"
-      }
-    }
-  }
+  # Cluster-scoped resources (NodeClass, NodePool) in a namespaced
+  # release are fine with Helm; the release secret lives in the
+  # namespace but the objects are cluster-wide.
+  values = [
+    yamlencode({
+      name             = "brainstore"
+      deploymentName   = var.deployment_name
+      clusterName      = var.cluster_name
+      nodeIamRoleName  = var.node_iam_role_name
+      instanceFamilies = var.brainstore_nodepool_instance_families
+    }),
+  ]
 
-  depends_on = [kubernetes_manifest.brainstore_nodeclass]
+  depends_on = [kubernetes_namespace.braintrust]
 }
 
 ## Braintrust Helm release.
@@ -198,7 +126,7 @@ resource "helm_release" "braintrust" {
 
   depends_on = [
     kubernetes_secret.braintrust,
-    kubernetes_manifest.brainstore_nodepool,
+    helm_release.brainstore_nodepool,
     aws_eks_pod_identity_association.api,
     aws_eks_pod_identity_association.brainstore,
   ]
