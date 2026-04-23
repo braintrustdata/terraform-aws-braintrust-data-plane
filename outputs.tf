@@ -210,3 +210,86 @@ output "eks_cluster_ca_certificate_data" {
   sensitive   = true
   description = "Base64-encoded cluster CA data (null unless create_eks_cluster = true)."
 }
+
+output "eks_cluster_security_group_id" {
+  value       = var.create_eks_cluster ? module.eks_cluster[0].cluster_security_group_id : null
+  description = "Primary security group the EKS control plane attaches to Auto Mode nodes (used to authorize RDS/Redis ingress)."
+}
+
+output "eks_nlb_arn" {
+  value       = var.create_eks_cluster ? module.eks_cluster[0].nlb_arn : null
+  description = "ARN of the pre-created internal NLB adopted by the AWS Load Balancer Controller."
+}
+
+output "eks_nlb_name" {
+  value       = var.create_eks_cluster ? module.eks_cluster[0].nlb_name : null
+  description = "Name of the pre-created NLB (referenced by the chart's aws-load-balancer-name annotation)."
+}
+
+output "nlb_security_group_id" {
+  value       = var.create_eks_cluster ? module.eks_cluster[0].nlb_security_group_id : null
+  description = "Security group ID attached to the NLB."
+}
+
+## Storage (S3 bucket names)
+
+output "code_bundle_bucket_id" {
+  value       = module.storage.code_bundle_bucket_id
+  description = "Name of the code-bundle S3 bucket."
+}
+
+output "lambda_responses_bucket_id" {
+  value       = module.storage.lambda_responses_bucket_id
+  description = "Name of the lambda-responses S3 bucket."
+}
+
+## Database + Redis connection details
+
+output "postgres_database_address" {
+  value       = module.database.postgres_database_address
+  description = "Hostname of the main Postgres database."
+}
+
+output "postgres_database_port" {
+  value       = module.database.postgres_database_port
+  description = "Port of the main Postgres database."
+}
+
+output "postgres_database_username" {
+  value       = module.database.postgres_database_username
+  description = "Username for the main Postgres database."
+}
+
+output "postgres_database_password" {
+  value       = module.database.postgres_database_password
+  sensitive   = true
+  description = "Password for the main Postgres database."
+}
+
+output "redis_endpoint" {
+  value       = module.redis.redis_endpoint
+  description = "Hostname of the Redis instance."
+}
+
+output "redis_port" {
+  value       = module.redis.redis_port
+  description = "Port of the Redis instance."
+}
+
+## IAM roles (for downstream IRSA/Pod Identity wiring in external consumers)
+
+output "api_handler_role_arn" {
+  value       = module.services_common.api_handler_role_arn
+  description = "ARN of the IAM role used by the API (braintrust-api service account Pod Identity association)."
+}
+
+output "brainstore_iam_role_arn" {
+  value       = module.services_common.brainstore_iam_role_arn
+  description = "ARN of the IAM role used by Brainstore (brainstore service account Pod Identity association; also the EC2 role on the EC2-Brainstore path)."
+}
+
+output "function_tools_secret_key" {
+  value       = module.services_common.function_tools_secret_key
+  sensitive   = true
+  description = "Encryption key for function tool credentials (used by Brainstore as SERVICE_TOKEN_SECRET_KEY)."
+}
