@@ -54,7 +54,6 @@ module "eks_cluster" {
   custom_domain          = var.custom_domain
   custom_certificate_arn = var.custom_certificate_arn
   waf_acl_id             = var.waf_acl_id
-  use_global_ai_proxy    = var.use_global_ai_proxy
 }
 
 module "eks_deploy" {

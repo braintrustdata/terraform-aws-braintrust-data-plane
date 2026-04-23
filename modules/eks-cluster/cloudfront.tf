@@ -50,20 +50,6 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
-  origin {
-    domain_name = "braintrustproxy.com"
-    origin_id   = "CloudflareProxy"
-
-    custom_origin_config {
-      origin_protocol_policy   = "https-only"
-      origin_read_timeout      = 60
-      origin_keepalive_timeout = 60
-      https_port               = 443
-      http_port                = 80
-      origin_ssl_protocols     = ["TLSv1.2"]
-    }
-  }
-
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
@@ -74,13 +60,11 @@ resource "aws_cloudfront_distribution" "dataplane" {
     origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
   }
 
-  # LLM-proxy / function-execution paths. Default target is the
-  # in-cluster API pod (standalone-api handles these in Dataplane 2.0),
-  # which is the correct behavior for a self-hosted deployment — keeps
-  # request payloads inside the customer's AWS account instead of
-  # round-tripping through Braintrust's hosted proxy.
-  # `use_global_ai_proxy = true` flips the target to braintrustproxy.com;
-  # matches the toggle semantics of the Lambda ingress module.
+  # LLM-proxy / function-execution paths are served by the in-cluster
+  # API pod (standalone-api handles these in Dataplane 2.0). All
+  # explicit path patterns just reinforce the default_cache_behavior
+  # target, but they're retained so cache/origin-request policies stay
+  # uniform across all Braintrust paths.
   dynamic "ordered_cache_behavior" {
     for_each = toset([
       "/v1/proxy", "/v1/proxy/*",
@@ -92,7 +76,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = var.use_global_ai_proxy ? "CloudflareProxy" : "EKSAPIOrigin"
+      target_origin_id       = "EKSAPIOrigin"
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled

@@ -59,9 +59,3 @@ variable "waf_acl_id" {
   default     = null
   description = "Optional WAF Web ACL ID to associate with the CloudFront distribution."
 }
-
-variable "use_global_ai_proxy" {
-  type        = bool
-  default     = false
-  description = "When true, LLM-proxy paths (/function/*, /v1/proxy*, /v1/eval*) route to Braintrust's hosted proxy at braintrustproxy.com. When false (default), they route to the in-cluster API pod — which is the right choice for self-hosted deployments. Mirrors the same variable in Lambda mode. Don't enable unless instructed by Braintrust."
-}
