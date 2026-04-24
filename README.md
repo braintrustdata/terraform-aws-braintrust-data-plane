@@ -12,6 +12,10 @@ To use this module, **copy the [`examples/braintrust-data-plane`](examples/brain
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
 
+### EKS Auto Mode deployment
+
+An alternative EKS-based deployment is available via `create_eks_cluster = true` (requires `use_deployment_mode_external_eks = true`). In that mode, the module provisions an EKS Auto Mode cluster and deploys Braintrust as pods via the [Braintrust Helm chart](https://github.com/braintrustdata/helm), replacing the Lambda-based ingress and EC2-based Brainstore paths. See [`examples/braintrust-data-plane-eks`](examples/braintrust-data-plane-eks) for the production example and [`examples/braintrust-data-plane-eks-sandbox`](examples/braintrust-data-plane-eks-sandbox) for a cheap disposable sandbox variant. See [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) for EKS-mode recovery procedures.
+
 If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
 
 ## Module Configuration
