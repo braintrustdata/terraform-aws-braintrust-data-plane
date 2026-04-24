@@ -85,7 +85,9 @@ resource "helm_release" "brainstore_nodepool" {
 ## Braintrust Helm release.
 ##
 ## Values precedence (later wins): chart defaults (values.yaml) <
-## rendered template < structured overrides < raw YAML escape hatch.
+## module's rendered template (names, ARNs, wiring the module owns) <
+## caller's helm_values_file (replicas, resources, annotations,
+## anything chart-exposed).
 resource "helm_release" "braintrust" {
   name             = "braintrust"
   repository       = "oci://public.ecr.aws/braintrust/helm"
@@ -118,8 +120,7 @@ resource "helm_release" "braintrust" {
       wal_footer_version  = var.brainstore_wal_footer_version
       skip_pg             = var.skip_pg_for_brainstore_objects
     }),
-    local.helm_structured_overrides_yaml,
-    var.helm_chart_extra_values,
+    var.helm_values_file != null ? file(var.helm_values_file) : "",
   ])
 
   depends_on = [

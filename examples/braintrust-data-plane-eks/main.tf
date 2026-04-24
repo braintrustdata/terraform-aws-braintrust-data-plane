@@ -95,48 +95,14 @@ module "braintrust-data-plane" {
   brainstore_wal_footer_version  = "v3"
   skip_pg_for_brainstore_objects = "all"
 
-  ### Optional: structured Helm overrides for sandbox-sized deployments.
-  ### Uncomment and adjust if the chart's production-default resources
-  ### are too large for your test cluster.
-  # eks_api_helm = {
-  #   replicas = 1
-  #   resources = {
-  #     requests = { cpu = "500m", memory = "1Gi" }
-  #     limits   = { cpu = "1",    memory = "2Gi" }
-  #   }
-  # }
-  # eks_brainstore_reader_helm = {
-  #   replicas = 1
-  #   resources = {
-  #     requests = { cpu = "1", memory = "2Gi" }
-  #     limits   = { cpu = "2", memory = "4Gi" }
-  #   }
-  # }
-  # eks_brainstore_fastreader_helm = {
-  #   replicas = 1
-  #   resources = {
-  #     requests = { cpu = "1", memory = "2Gi" }
-  #     limits   = { cpu = "2", memory = "4Gi" }
-  #   }
-  # }
-  # eks_brainstore_writer_helm = {
-  #   replicas = 1
-  #   resources = {
-  #     requests = { cpu = "1", memory = "2Gi" }
-  #     limits   = { cpu = "2", memory = "4Gi" }
-  #   }
-  # }
-
-  ### Optional: raw-YAML escape hatch for chart settings the structured
-  ### variables don't cover (annotations, labels, probes, tolerations,
-  ### image pins, etc.). Merged in last — wins over the rendered template
-  ### and any structured overrides above.
-  # eks_helm_chart_extra_values = <<-YAML
-  #   api:
-  #     annotations:
-  #       configmap:
-  #         myorg.example.com/owner: "platform-team"
-  # YAML
+  ### Optional: Helm values overrides.
+  ### Point at a YAML file alongside this Terraform config. Any field the
+  ### chart exposes is fair game — replicas, resources, annotations,
+  ### nodeSelector, probes, image pins, etc. Merged after the module's
+  ### rendered defaults (later-wins). Leave unset to accept chart defaults
+  ### (which are production-sized; see the `-sandbox` example for smaller
+  ### values).
+  # eks_helm_values_file = "${path.module}/values.yaml"
 
   ### Tagging
   # Optionally add any custom AWS tags you want to apply to all resources.

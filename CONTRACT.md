@@ -85,7 +85,7 @@ never consulted.
 
 ### Assumptions baked into the contract
 
-- **EKS mode assumes a fast reader is always deployed.** The chart defaults `brainstore.fastreader.replicas = 2` and unconditionally emits `BRAINSTORE_FAST_READER_URL` + `BRAINSTORE_FAST_READER_QUERY_SOURCES` from `api-configmap.yaml`, so the API always believes fast readers exist. Users who scale `eks_brainstore_fastreader_helm.replicas` to 0 opt out of this contract and own the resulting query failures.
+- **EKS mode assumes a fast reader is always deployed.** The chart defaults `brainstore.fastreader.replicas = 2` and unconditionally emits `BRAINSTORE_FAST_READER_URL` + `BRAINSTORE_FAST_READER_QUERY_SOURCES` from `api-configmap.yaml`, so the API always believes fast readers exist. Callers who override `brainstore.fastreader.replicas: 0` via `eks_helm_values_file` opt out of this contract and own the resulting query failures.
 - **Brainstore nodes are NVMe-backed.** The custom NodePool constrains Karpenter to the `c8gd` / `c7gd` / `m7gd` families by default (configurable via `eks_brainstore_nodepool_instance_families`). Brainstore caches data to an `emptyDir` volume on node-local storage; an EBS-backed fallback would be functional but much slower.
 
 ## Checklists

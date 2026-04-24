@@ -91,10 +91,6 @@ module "eks_deploy" {
 
   brainstore_nodepool_instance_families = var.eks_brainstore_nodepool_instance_families
 
-  helm_chart_version         = var.helm_chart_version
-  api_helm                   = var.eks_api_helm
-  brainstore_reader_helm     = var.eks_brainstore_reader_helm
-  brainstore_fastreader_helm = var.eks_brainstore_fastreader_helm
-  brainstore_writer_helm     = var.eks_brainstore_writer_helm
-  helm_chart_extra_values    = var.eks_helm_chart_extra_values
+  helm_chart_version = var.helm_chart_version
+  helm_values_file   = var.eks_helm_values_file
 }

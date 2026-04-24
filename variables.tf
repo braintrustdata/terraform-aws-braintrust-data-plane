@@ -911,56 +911,8 @@ variable "helm_chart_version" {
   }
 }
 
-variable "eks_api_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the chart's api component. Unset fields fall back to chart defaults."
-}
-
-variable "eks_brainstore_reader_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the brainstore reader."
-}
-
-variable "eks_brainstore_fastreader_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the brainstore fast reader."
-}
-
-variable "eks_brainstore_writer_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the brainstore writer."
-}
-
-variable "eks_helm_chart_extra_values" {
+variable "eks_helm_values_file" {
   type        = string
-  default     = ""
-  description = "Escape hatch for Helm overrides not covered by the structured variables. Raw YAML appended last; wins over template and structured overrides."
+  default     = null
+  description = "Path to a YAML file with Helm values overrides. Idiomatic usage: `eks_helm_values_file = \"$${path.module}/values.yaml\"` to point at a file alongside your main.tf. Merged in after the module's rendered defaults (later-wins per Helm's standard merge). Anything the chart exposes is fair game — replicas, resources, annotations, nodeSelector, probes, image pins. See the Braintrust Helm chart's `values.yaml` for the schema. Leave null (default) to accept chart defaults; see the `braintrust-data-plane-eks-sandbox` example for sandbox-sized values."
 }

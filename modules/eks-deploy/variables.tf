@@ -145,58 +145,8 @@ variable "helm_chart_version" {
   description = "Version of the Braintrust Helm chart (oci://public.ecr.aws/braintrust/helm)."
 }
 
-## Structured per-component Helm overrides
-
-variable "api_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the api component."
-}
-
-variable "brainstore_reader_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the brainstore reader."
-}
-
-variable "brainstore_fastreader_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the brainstore fast reader."
-}
-
-variable "brainstore_writer_helm" {
-  type = object({
-    replicas = optional(number)
-    resources = optional(object({
-      requests = object({ cpu = string, memory = string })
-      limits   = object({ cpu = string, memory = string })
-    }))
-  })
-  default     = {}
-  description = "Override replicas and/or resources for the brainstore writer."
-}
-
-variable "helm_chart_extra_values" {
+variable "helm_values_file" {
   type        = string
-  default     = ""
-  description = "Escape hatch for Helm overrides not covered by the structured variables. Raw YAML merged in last."
+  default     = null
+  description = "Path to a YAML file with Helm values overrides, merged in after the module's rendered defaults (later-wins per Helm's standard merge). Use an absolute path or a path anchored at the caller's module with `$${path.module}/values.yaml`. Anything the chart exposes is fair game — replicas, resources, annotations, nodeSelector, probes, image pins. See the Braintrust Helm chart's `values.yaml` for the schema. Leave null to accept chart defaults."
 }
