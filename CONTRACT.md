@@ -54,7 +54,7 @@ a dead key, chart uses its default).
 - `objectStorage.aws.responseBucket`
 - `objectStorage.aws.codeBundleBucket`
 - `api.service.type` (set to `LoadBalancer`)
-- `api.annotations.service.*` (the four NLB annotations)
+- `api.annotations.service.*` (six NLB-related annotations: `aws-load-balancer-scheme`, `-type`, `-security-groups`, `-name`, `-additional-resource-tags`, `-target-group-attributes`)
 - `api.serviceAccount.awsRoleArn`
 - `brainstore.serviceAccount.awsRoleArn`
 - `brainstore.{reader,fastreader,writer}.nodeSelector`
@@ -117,7 +117,7 @@ Several coupling surfaces assume exactly one dataplane per `(AWS account, region
 - IAM role names (`${deployment_name}-APIHandlerRole`, etc.) — same.
 - S3 bucket `bucket_prefix` values — Terraform-generated suffix makes these unique per-apply, but re-apply against a different state would fail on the existing resources.
 
-Two deployments with **distinct** `deployment_name` values in the same account+region **do** coexist successfully — we've validated three simultaneously in a test account. The one remaining cosmetic overlap is Kubernetes-owned resource names that the LB Controller auto-generates (`k8s-<ns-8>-<svc-8>-<hash>` TargetGroups) since namespace and service name are chart-fixed (`braintrust` / `braintrust-api`). The `service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags` annotation adds a `BraintrustDeploymentName=${deployment_name}` tag to controller-created resources, so operators can disambiguate via tag filter. See the "TG naming" follow-up in the PR description.
+Two deployments with **distinct** `deployment_name` values in the same account+region coexist successfully; three have been validated simultaneously in a test account. The one remaining cosmetic overlap is the Kubernetes-owned TargetGroup names that the LB Controller auto-generates (`k8s-<ns-8>-<svc-8>-<hash>`). Because the namespace (`braintrust`) and service name (`braintrust-api`) are chart-fixed, every deployment gets an identically-prefixed TG name in the ELB console. The controller does not expose a TG-name override annotation. The `service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags` annotation (set by this module to `BraintrustDeploymentName=${deployment_name}`) tags controller-created resources so operators can disambiguate via `tag:` filter instead of by name.
 
 ## Future: mechanical drift detection
 

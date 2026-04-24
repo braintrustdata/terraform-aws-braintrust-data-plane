@@ -1,44 +1,8 @@
 # Troubleshooting
 
-Operational runbooks for failure modes we've hit during development. Scoped to the EKS Auto Mode deployment mode (`create_eks_cluster = true`) unless otherwise noted.
+Operational runbooks for routine failures during `terraform apply` / `terraform destroy`. Scoped to the EKS Auto Mode deployment mode (`create_eks_cluster = true`) unless otherwise noted.
 
-## EKS mode: out-of-band cluster deletion
-
-### Symptom
-
-`terraform plan` or `terraform apply` fails at the refresh step with an error like:
-
-```
-Error: reading EKS Cluster (<deployment_name>-eks): couldn't find resource
-```
-
-The EKS cluster no longer exists in AWS, but Terraform state still references it (and many Kubernetes/Helm resources that depended on it).
-
-### Cause
-
-The EKS cluster was destroyed outside Terraform — AWS console, a stray `aws eks delete-cluster`, an account-cleanup script, etc. The module's kubernetes/helm provider configuration reads cluster endpoint + CA from module outputs that trace back to the `aws_eks_cluster` resource; with the cluster gone, those outputs become unreadable, so refresh fails before Terraform can plan or apply anything.
-
-### Recovery
-
-1. List the orphaned Kubernetes and Helm resources in state:
-
-   ```
-   terraform state list | grep -E "kubernetes_|helm_release"
-   ```
-
-2. Remove each of them from Terraform state. They already don't exist in AWS/Kubernetes (the cluster is gone), so this is a pure state-cleanup operation:
-
-   ```
-   terraform state rm '<address_1>' '<address_2>' ...
-   ```
-
-3. Re-run `terraform apply`. Terraform plans a fresh creation of the cluster, Pod Identity associations, namespace, secret, and Helm releases.
-
-Expected runtime to recreate is similar to a fresh deploy (~15 minutes).
-
-### When this happens in-band
-
-`terraform destroy` handles in-band cluster deletion correctly — the dependency graph drains Kubernetes resources before destroying the cluster. This runbook is only needed when the cluster is destroyed out-of-band while in-cluster state still exists in Terraform.
+Disaster-recovery scenarios (state mismatch between Terraform and AWS caused by out-of-band changes) belong in [`RECOVERY.md`](RECOVERY.md) instead.
 
 ## EKS mode: `helm_release` hangs on destroy because of a finalizer
 
@@ -122,4 +86,4 @@ If the NAT Gateway is missing, fix the EIP quota issue (prior section). If the r
 ./scripts/dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
 ```
 
-This path does NOT work in EKS mode — the chart doesn't ship logs to CloudWatch today. See the PR description's "Remaining challenges" section for the observability gap and the proposed opt-in `amazon-cloudwatch-observability` addon.
+This path does NOT work in EKS mode. The Braintrust Helm chart does not ship container logs to CloudWatch, and this module does not install a log-shipping sidecar or DaemonSet. In EKS mode, pod logs are reachable only via `kubectl logs`. Restoring CloudWatch-parity log shipment is a tracked follow-up (likely via an opt-in `amazon-cloudwatch-observability` addon); not yet implemented.
