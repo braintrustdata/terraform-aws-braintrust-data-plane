@@ -107,6 +107,18 @@ never consulted.
 - Diff `values.yaml` between the old and new chart versions; scan for any key in the "Helm values schema" list above.
 - `helm template` the new chart with this module's rendered values and grep for the hardcoded names: `braintrust-api`, `brainstore`, `braintrust-secrets`, the four secret keys, `containerPort: 8000`.
 
+## Deployment isolation: `deployment_name` must be unique per account+region
+
+Several coupling surfaces assume exactly one dataplane per `(AWS account, region, deployment_name)` tuple. Two deployments sharing a `deployment_name` will collide on:
+
+- EKS cluster name (`${deployment_name}-eks`) — AWS rejects the second create.
+- NLB name (`${deployment_name}-api-nlb`) — same.
+- RDS instance identifier (`${deployment_name}-main`) — same.
+- IAM role names (`${deployment_name}-APIHandlerRole`, etc.) — same.
+- S3 bucket `bucket_prefix` values — Terraform-generated suffix makes these unique per-apply, but re-apply against a different state would fail on the existing resources.
+
+Two deployments with **distinct** `deployment_name` values in the same account+region **do** coexist successfully — we've validated three simultaneously in a test account. The one remaining cosmetic overlap is Kubernetes-owned resource names that the LB Controller auto-generates (`k8s-<ns-8>-<svc-8>-<hash>` TargetGroups) since namespace and service name are chart-fixed (`braintrust` / `braintrust-api`). The `service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags` annotation adds a `BraintrustDeploymentName=${deployment_name}` tag to controller-created resources, so operators can disambiguate via tag filter. See the "TG naming" follow-up in the PR description.
+
 ## Future: mechanical drift detection
 
 Manual safety net today. Planned: CI smoke test that renders `helm
