@@ -150,3 +150,11 @@ variable "helm_values_file" {
   default     = null
   description = "Path to a YAML file with Helm values overrides, merged in after the module's rendered defaults (later-wins per Helm's standard merge). Use an absolute path or a path anchored at the caller's module with `$${path.module}/values.yaml`. Anything the chart exposes is fair game — replicas, resources, annotations, nodeSelector, probes, image pins. See the Braintrust Helm chart's `values.yaml` for the schema. Leave null to accept chart defaults."
 }
+
+## Destroy choreography
+
+variable "prepare_for_destroy" {
+  type        = bool
+  default     = false
+  description = "Pre-flight before terraform destroy: zero the deregistration_delay on the LBC-managed TargetGroup(s) for this deployment and patch the matching annotation on the api Service. Prevents the LB Controller's finalizer from hanging helm_release.braintrust's destroy and lets the controller finish its own TG cleanup. Apply with this true, then destroy."
+}

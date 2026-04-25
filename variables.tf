@@ -304,6 +304,18 @@ variable "DANGER_disable_database_deletion_protection" {
   default     = false
 }
 
+variable "prepare_for_destroy" {
+  type        = bool
+  description = <<-EOT
+    Pre-flight cleanup before `terraform destroy`. When true, the next `terraform apply` zeroes the deregistration_delay on the AWS LB Controller's TargetGroup(s) for this deployment and patches the matching annotation on the api Service. This prevents `helm_release.braintrust` from hanging on a finalizer during the subsequent destroy, and lets the LB Controller complete its own TG cleanup so destroys don't leave orphaned TargetGroups behind.
+
+    Apply with this set to true, then run `terraform destroy`. Idempotent and safe to leave true (no runtime effect outside of destroy choreography). EKS-mode only — no-op when `create_eks_cluster = false`.
+
+    Note: this toggle covers service infra only. Data-bearing resources (RDS, S3) have their own controls — `DANGER_disable_database_deletion_protection` for RDS; S3 buckets are deliberately not destroyable by this module and must be emptied manually before destroy.
+  EOT
+  default     = false
+}
+
 ## Redis
 variable "redis_instance_type" {
   description = "Instance type for the Redis cluster"

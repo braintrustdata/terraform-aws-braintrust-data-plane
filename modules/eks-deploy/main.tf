@@ -130,3 +130,92 @@ resource "helm_release" "braintrust" {
     aws_eks_pod_identity_association.brainstore,
   ]
 }
+
+## Destroy choreography (gated by var.prepare_for_destroy).
+##
+## Failure mode this avoids: when helm uninstall deletes the api Service
+## during `terraform destroy`, the AWS Load Balancer Controller holds a
+## `service.eks.amazonaws.com/resources` finalizer on it while it drains
+## TG targets. Default deregistration_delay is 300s, and on broken-state
+## clusters (no nodes ever registered, failed installs, etc.) the drain
+## never resolves — Terraform appears frozen on `helm_release.braintrust`
+## for many minutes until an operator manually `kubectl patch`es the
+## finalizer off. The patch unblocks the destroy but interrupts the
+## controller's own cleanup, leaving an orphan TargetGroup behind.
+##
+## Fix: force deregistration to instant *before* destroy starts.
+##
+##   1. `kubernetes_annotations.api_drain_zero` patches the api Service
+##      with `aws-load-balancer-target-group-attributes: deregistration_delay.timeout_seconds=0`.
+##      The chart's helm-values.yaml.tpl already sets this; this resource
+##      is redundant on a fresh deploy but covers older charts and any
+##      case where the live annotation drifted.
+##
+##   2. `terraform_data.api_tg_drain_zero` reaches into AWS directly and
+##      sets the same attribute on every TargetGroup tagged with
+##      `BraintrustDeploymentName=<deployment_name>`. Faster path than
+##      waiting for LBC to reconcile from the annotation, and works even
+##      if the chart's annotation never propagated.
+##
+## With drain wait at zero, the LB Controller releases its finalizer
+## instantly during destroy, deletes its own TG, and helm uninstall
+## completes cleanly — no kubectl patching, no orphan TGs.
+data "aws_region" "current" {}
+
+resource "kubernetes_annotations" "api_drain_zero" {
+  count = var.prepare_for_destroy ? 1 : 0
+
+  api_version = "v1"
+  kind        = "Service"
+  metadata {
+    name      = "braintrust-api"
+    namespace = var.namespace
+  }
+  annotations = {
+    "service.beta.kubernetes.io/aws-load-balancer-target-group-attributes" = "deregistration_delay.timeout_seconds=0"
+  }
+  force = true
+
+  depends_on = [helm_release.braintrust]
+}
+
+resource "terraform_data" "api_tg_drain_zero" {
+  count = var.prepare_for_destroy ? 1 : 0
+
+  triggers_replace = {
+    deployment_name = var.deployment_name
+    region          = data.aws_region.current.region
+    # timestamp() forces a re-run on every apply while the toggle is
+    # enabled, so flipping it true and applying always results in the
+    # AWS-side attribute change being reasserted.
+    apply_marker = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -u
+      DN='${var.deployment_name}'
+      REG='${data.aws_region.current.region}'
+
+      TG_ARNS=$(aws --region "$REG" resourcegroupstaggingapi get-resources \
+        --resource-type-filters elasticloadbalancing:targetgroup \
+        --tag-filters "Key=BraintrustDeploymentName,Values=$DN" \
+        --query 'ResourceTagMappingList[].ResourceARN' --output text)
+
+      if [ -z "$TG_ARNS" ]; then
+        echo "prepare_for_destroy: no TargetGroups tagged BraintrustDeploymentName=$DN (controller may not have created one yet — that's fine; helm uninstall will be a no-op for the Service either way)"
+        exit 0
+      fi
+
+      for TG_ARN in $TG_ARNS; do
+        echo "prepare_for_destroy: zeroing deregistration_delay on $TG_ARN"
+        aws --region "$REG" elbv2 modify-target-group-attributes \
+          --target-group-arn "$TG_ARN" \
+          --attributes Key=deregistration_delay.timeout_seconds,Value=0 \
+          >/dev/null
+      done
+    EOT
+  }
+
+  depends_on = [helm_release.braintrust]
+}

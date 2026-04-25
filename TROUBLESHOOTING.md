@@ -4,7 +4,22 @@ Operational runbooks for routine failures during `terraform apply` / `terraform 
 
 Disaster-recovery scenarios (state mismatch between Terraform and AWS caused by out-of-band changes) belong in [`RECOVERY.md`](RECOVERY.md) instead.
 
+## EKS mode: destroy preflight (`prepare_for_destroy`)
+
+Set `prepare_for_destroy = true` and run `terraform apply` immediately before `terraform destroy`. This is the supported way to tear down an EKS-mode deployment without hitting the LB Controller finalizer hang described below.
+
+What it does at apply time:
+
+1. Patches the api Service annotation `service.beta.kubernetes.io/aws-load-balancer-target-group-attributes` to `deregistration_delay.timeout_seconds=0`.
+2. Calls `aws elbv2 modify-target-group-attributes` directly on every TargetGroup tagged with this deployment, setting the same attribute. This bypasses the controller's reconcile loop so the change is in effect by the time `destroy` runs.
+
+With drain wait at zero, the LB Controller releases its finalizer instantly during destroy, completes its own TargetGroup cleanup, and `helm_release.braintrust` uninstalls cleanly. No kubectl patching needed, and no orphaned TargetGroups left behind in AWS.
+
+Idempotent and safe to leave on. EKS-mode only; no-op when `create_eks_cluster = false`.
+
 ## EKS mode: `helm_release` hangs on destroy because of a finalizer
+
+This is the failure mode `prepare_for_destroy` exists to prevent. Documented here for two cases: (a) you forgot to apply with the toggle and want to recover the in-flight destroy, or (b) you're destroying a deployment that predates the toggle.
 
 ### Symptom
 
@@ -14,9 +29,9 @@ Disaster-recovery scenarios (state mismatch between Terraform and AWS caused by 
 
 When helm tears down the api Service, the AWS Load Balancer Controller holds a `service.eks.amazonaws.com/resources` finalizer on it while it drains and deregisters target group targets. Default drain delay is 300 seconds, and in some broken-state scenarios (cluster never had healthy nodes, earlier install failed, etc.) the drain never completes cleanly and the finalizer hangs for the full timeout.
 
-Commit `fc11624` shipped `service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: deregistration_delay.timeout_seconds=0` on the api Service to prevent this on fresh destroys. If you're destroying a deployment that predates that commit, or hitting this on a broken-state cluster, the manual fix is below.
+Commit `fc11624` shipped `service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: deregistration_delay.timeout_seconds=0` on the api Service to prevent this on fresh destroys via the chart. `prepare_for_destroy` (above) is the more reliable mitigation — it sets the same attribute *and* patches it directly on the live TG via the AWS API, so it works even if the chart annotation never propagated to the live Service.
 
-### Recovery
+### Recovery (in-flight destroy, didn't use `prepare_for_destroy`)
 
 In another terminal, while `terraform destroy` is still running:
 
@@ -26,6 +41,18 @@ kubectl -n braintrust patch svc braintrust-api --type merge -p '{"metadata":{"fi
 ```
 
 The helm uninstall inside Terraform will converge within ~30 seconds.
+
+**Caveat:** patching the finalizer interrupts the LB Controller's own cleanup mid-flight, so it doesn't get a chance to delete its TargetGroup. After the destroy completes you'll have an orphan TG named `k8s-braintru-braintru-*` tagged with `BraintrustDeploymentName=<deployment_name>`. Clean it up with:
+
+```
+aws --profile <profile> --region <region> resourcegroupstaggingapi get-resources \
+  --resource-type-filters elasticloadbalancing:targetgroup \
+  --tag-filters "Key=BraintrustDeploymentName,Values=<deployment_name>" \
+  --query 'ResourceTagMappingList[].ResourceARN' --output text \
+  | xargs -n1 aws --profile <profile> --region <region> elbv2 delete-target-group --target-group-arn
+```
+
+Use `prepare_for_destroy` next time and avoid this entirely.
 
 ## EKS mode: EIP quota exhaustion on fresh apply
 

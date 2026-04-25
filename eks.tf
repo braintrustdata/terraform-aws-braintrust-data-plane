@@ -93,4 +93,6 @@ module "eks_deploy" {
 
   helm_chart_version = var.helm_chart_version
   helm_values_file   = var.eks_helm_values_file
+
+  prepare_for_destroy = var.prepare_for_destroy
 }
