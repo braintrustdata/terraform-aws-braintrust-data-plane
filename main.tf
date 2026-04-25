@@ -97,7 +97,8 @@ module "database" {
       },
       var.database_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {},
+      var.create_eks_cluster ? { "EKS Cluster" = local.eks_cluster_security_group_id } : {},
     ),
     local.bastion_security_group,
   )
@@ -130,7 +131,8 @@ module "redis" {
       },
       var.redis_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {},
+      var.create_eks_cluster ? { "EKS Cluster" = local.eks_cluster_security_group_id } : {},
     ),
     local.bastion_security_group,
   )
@@ -300,19 +302,24 @@ module "ingress" {
 module "services_common" {
   source = "./modules/services-common"
 
-  deployment_name                           = var.deployment_name
-  vpc_id                                    = local.main_vpc_id
-  kms_key_arn                               = local.kms_key_arn
-  database_secret_arn                       = module.database.postgres_database_secret_arn
-  brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
-  code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
-  lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
-  service_additional_policy_arns            = var.service_additional_policy_arns
-  brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
-  permissions_boundary_arn                  = var.permissions_boundary_arn
-  eks_cluster_arn                           = var.existing_eks_cluster_arn
-  eks_namespace                             = var.eks_namespace
-  enable_eks_pod_identity                   = var.enable_eks_pod_identity
+  deployment_name                   = var.deployment_name
+  vpc_id                            = local.main_vpc_id
+  kms_key_arn                       = local.kms_key_arn
+  database_secret_arn               = module.database.postgres_database_secret_arn
+  brainstore_s3_bucket_arn          = module.storage.brainstore_bucket_arn
+  code_bundle_s3_bucket_arn         = module.storage.code_bundle_bucket_arn
+  lambda_responses_s3_bucket_arn    = module.storage.lambda_responses_bucket_arn
+  service_additional_policy_arns    = var.service_additional_policy_arns
+  brainstore_additional_policy_arns = var.brainstore_additional_policy_arns
+  permissions_boundary_arn          = var.permissions_boundary_arn
+  # When Terraform provisions the EKS cluster, tie services_common's IAM
+  # role trust policies to that cluster and enable Pod Identity. The
+  # cluster ARN scopes the trust policy via the eks-cluster-arn session
+  # tag set by the Pod Identity Agent; the namespace var (resolved in
+  # eks.tf) scopes via the kubernetes-namespace session tag.
+  eks_cluster_arn                           = var.create_eks_cluster ? local.eks_cluster_arn_val : var.existing_eks_cluster_arn
+  eks_namespace                             = var.create_eks_cluster ? local.eks_namespace_resolved : var.eks_namespace
+  enable_eks_pod_identity                   = var.create_eks_cluster ? true : var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = var.custom_tags

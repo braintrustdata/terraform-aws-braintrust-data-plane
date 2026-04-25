@@ -304,6 +304,18 @@ variable "DANGER_disable_database_deletion_protection" {
   default     = false
 }
 
+variable "prepare_for_destroy" {
+  type        = bool
+  description = <<-EOT
+    Pre-flight cleanup before `terraform destroy`. When true, the next `terraform apply` zeroes the deregistration_delay on the AWS LB Controller's TargetGroup(s) for this deployment and patches the matching annotation on the api Service. This prevents `helm_release.braintrust` from hanging on a finalizer during the subsequent destroy, and lets the LB Controller complete its own TG cleanup so destroys don't leave orphaned TargetGroups behind.
+
+    Apply with this set to true, then run `terraform destroy`. Idempotent and safe to leave true (no runtime effect outside of destroy choreography). EKS-mode only — no-op when `create_eks_cluster = false`.
+
+    Note: this toggle covers service infra only. Data-bearing resources (RDS, S3) have their own controls — `DANGER_disable_database_deletion_protection` for RDS; S3 buckets are deliberately not destroyable by this module and must be emptied manually before destroy.
+  EOT
+  default     = false
+}
+
 ## Redis
 variable "redis_instance_type" {
   description = "Instance type for the Redis cluster"
@@ -875,4 +887,44 @@ variable "override_brainstore_iam_role_trust_policy" {
   type        = string
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
   default     = null
+}
+
+## EKS Auto Mode (Terraform-managed cluster and Braintrust deployment)
+
+variable "create_eks_cluster" {
+  type        = bool
+  default     = false
+  description = "Provision an EKS Auto Mode cluster and deploy Braintrust on it. Requires use_deployment_mode_external_eks = true. Auto Mode lets AWS manage node provisioning (via Karpenter), addons, and the Load Balancer Controller — so this module only has to own the cluster IAM roles, VPC wiring, and the Braintrust-specific Helm release."
+  validation {
+    condition     = !var.create_eks_cluster || var.use_deployment_mode_external_eks
+    error_message = "create_eks_cluster requires use_deployment_mode_external_eks = true."
+  }
+}
+
+variable "eks_kubernetes_version" {
+  type        = string
+  default     = "1.31"
+  description = "Kubernetes version for the EKS cluster."
+}
+
+variable "eks_brainstore_nodepool_instance_families" {
+  type        = list(string)
+  default     = ["c8gd", "c7gd", "m7gd"]
+  description = "EC2 instance families Auto Mode's Karpenter may pick from for Brainstore nodes. Must be NVMe-backed families (*d.*) because Brainstore caches to local SSD. Graviton by default (matches the EC2 Brainstore defaults)."
+}
+
+variable "helm_chart_version" {
+  type        = string
+  default     = null
+  description = "Version of the Braintrust Helm chart (`oci://public.ecr.aws/braintrust/helm`) to deploy. Required when create_eks_cluster = true."
+  validation {
+    condition     = !var.create_eks_cluster || (var.helm_chart_version != null && var.helm_chart_version != "")
+    error_message = "helm_chart_version is required when create_eks_cluster = true."
+  }
+}
+
+variable "eks_helm_values_file" {
+  type        = string
+  default     = null
+  description = "Path to a YAML file with Helm values overrides. Idiomatic usage: `eks_helm_values_file = \"$${path.module}/values.yaml\"` to point at a file alongside your main.tf. Merged in after the module's rendered defaults (later-wins per Helm's standard merge). Anything the chart exposes is fair game — replicas, resources, annotations, nodeSelector, probes, image pins. See the Braintrust Helm chart's `values.yaml` for the schema. Leave null (default) to accept chart defaults; see the `braintrust-data-plane-eks-sandbox` example for sandbox-sized values."
 }

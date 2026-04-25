@@ -102,7 +102,16 @@ resource "aws_subnet" "private_subnet_1" {
   }, local.common_tags)
 
   lifecycle {
-    ignore_changes = [cidr_block]
+    ignore_changes = [
+      cidr_block,
+      # Tags managed externally (by aws_ec2_tag in modules/eks-cluster for
+      # `kubernetes.io/role/internal-elb`, plus anything EKS / the LB
+      # Controller adds automatically like `kubernetes.io/cluster/*` and
+      # `elbv2.k8s.aws/*`). Without this, Terraform fights with those
+      # external tag managers on every apply.
+      tags["kubernetes.io/role/internal-elb"],
+      tags_all["kubernetes.io/role/internal-elb"],
+    ]
   }
 }
 
@@ -116,7 +125,11 @@ resource "aws_subnet" "private_subnet_2" {
   }, local.common_tags)
 
   lifecycle {
-    ignore_changes = [cidr_block]
+    ignore_changes = [
+      cidr_block,
+      tags["kubernetes.io/role/internal-elb"],
+      tags_all["kubernetes.io/role/internal-elb"],
+    ]
   }
 }
 
@@ -130,7 +143,11 @@ resource "aws_subnet" "private_subnet_3" {
   }, local.common_tags)
 
   lifecycle {
-    ignore_changes = [cidr_block]
+    ignore_changes = [
+      cidr_block,
+      tags["kubernetes.io/role/internal-elb"],
+      tags_all["kubernetes.io/role/internal-elb"],
+    ]
   }
 }
 

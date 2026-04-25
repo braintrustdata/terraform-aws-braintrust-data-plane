@@ -1,0 +1,27 @@
+apiVersion: eks.amazonaws.com/v1
+kind: NodeClass
+metadata:
+  name: {{ .Values.name }}
+spec:
+  role: {{ .Values.nodeIamRoleName }}
+  subnetSelectorTerms:
+    - tags:
+        # Scope to this deployment's VPC. `kubernetes.io/role/internal-elb`
+        # alone can match subnets in other VPCs (default VPC, other EKS
+        # clusters in the same region/account), which makes Karpenter pick
+        # a subnet in the wrong VPC and fail RunInstances with
+        # Client.InvalidParameter (Security group ... and subnet ...
+        # belong to different networks).
+        kubernetes.io/role/internal-elb: "1"
+        BraintrustDeploymentName: {{ .Values.deploymentName | quote }}
+  securityGroupSelectorTerms:
+    - tags:
+        aws:eks:cluster-name: {{ .Values.clusterName | quote }}
+  # No custom `tags` field: Auto Mode's AmazonEKSComputePolicy gates
+  # ec2:CreateLaunchTemplate on a ForAllValues:StringLike condition that
+  # only allows the tag keys eks:eks-cluster-name,
+  # eks:kubernetes-node-class-name, eks:kubernetes-node-pool-name, and
+  # kubernetes.io/cluster/*. Any additional key causes the controller's
+  # CreateLaunchTemplate call to fail the IAM pre-check. Auto-managed
+  # eks:* tags are set by the controller itself; we don't add anything
+  # here.
