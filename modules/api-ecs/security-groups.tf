@@ -1,7 +1,3 @@
-data "aws_vpc" "current" {
-  id = var.vpc_id
-}
-
 data "aws_security_group" "cloudfront_vpc_origins" {
   count = var.allow_cloudfront_origin_facing_traffic ? 1 : 0
 
