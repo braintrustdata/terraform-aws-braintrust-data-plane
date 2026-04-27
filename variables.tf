@@ -1012,6 +1012,12 @@ variable "use_api_ecs_for_brainstore_ai_proxy_url" {
   default     = false
 }
 
+variable "use_api_ecs_for_lambda_ai_proxy_url" {
+  description = "Route APIHandler Lambda's AI_PROXY_FN_URL to the internal API-ECS ALB instead of the Lambda function URL. Requires enable_api_ecs = true."
+  type        = bool
+  default     = false
+}
+
 variable "use_deployment_mode_external_eks" {
   description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
   type        = bool

@@ -50,7 +50,7 @@ locals {
   api_handler_specific_env_vars = merge(
     {
       AI_PROXY_FN_ARN      = aws_lambda_function.ai_proxy.arn
-      AI_PROXY_FN_URL      = aws_lambda_function_url.ai_proxy.function_url
+      AI_PROXY_FN_URL      = var.use_api_ecs_for_lambda_ai_proxy_url && var.api_ecs_url != null ? var.api_ecs_url : aws_lambda_function_url.ai_proxy.function_url
       AI_PROXY_INVOKE_ROLE = aws_iam_role.ai_proxy_invoke_role.arn
       CATCHUP_ETL_ARN      = aws_lambda_function.catchup_etl.arn
       INSERT_LOGS2         = "true"

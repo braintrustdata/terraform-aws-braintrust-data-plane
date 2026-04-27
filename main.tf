@@ -228,6 +228,10 @@ module "services" {
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
   custom_tags                         = var.custom_tags
 
+  # API-ECS
+  use_api_ecs_for_lambda_ai_proxy_url = var.enable_api_ecs && var.use_api_ecs_for_lambda_ai_proxy_url
+  api_ecs_url                         = var.enable_api_ecs ? module.api_ecs[0].effective_url : null
+
   # Observability
   internal_observability_api_key  = var.internal_observability_api_key
   internal_observability_env_name = var.internal_observability_env_name
@@ -361,6 +365,7 @@ module "api_ecs" {
   kms_key_arn     = local.kms_key_arn
   ecs_cluster_arn = module.ecs[0].cluster_arn
   custom_tags     = var.custom_tags
+  task_role_arn   = module.services_common.api_handler_role_arn
 }
 
 module "ingress" {
@@ -375,7 +380,7 @@ module "ingress" {
   use_global_ai_proxy              = var.use_global_ai_proxy
   ai_proxy_function_url            = module.services[0].ai_proxy_url
   has_api_ecs_origin               = var.enable_api_ecs
-  api_ecs_origin_domain_name       = var.enable_api_ecs ? module.api_ecs[0].alb_dns_name : null
+  api_ecs_origin_domain_name       = var.enable_api_ecs ? module.api_ecs[0].cloudfront_origin_domain_name : null
   api_ecs_origin_arn               = var.enable_api_ecs ? module.api_ecs[0].alb_arn : null
   api_ecs_origin_protocol_policy   = var.enable_api_ecs ? module.api_ecs[0].cloudfront_origin_protocol_policy : null
   use_api_ecs_for_eval_routes      = var.enable_api_ecs && var.use_api_ecs_for_eval_routes
@@ -401,6 +406,7 @@ module "services_common" {
   eks_namespace                             = var.eks_namespace
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
+  enable_ecs                                = var.enable_api_ecs
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = var.custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy

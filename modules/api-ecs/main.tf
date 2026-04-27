@@ -1,5 +1,5 @@
 locals {
-  api_version_tag  = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
+  api_version_tag = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
 
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
@@ -11,32 +11,32 @@ locals {
 
   merged_env_vars = merge(
     {
-      ORG_NAME                                  = var.braintrust_org_name
-      PRIMARY_ORG_NAME                          = var.primary_org_name
-      BRAINTRUST_DEPLOYMENT_NAME                = var.deployment_name
-      PG_URL                                    = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
-      REDIS_URL                                 = "redis://${var.redis_host}:${var.redis_port}"
-      REDIS_HOST                                = var.redis_host
-      REDIS_PORT                                = tostring(var.redis_port)
-      RESPONSE_BUCKET                           = var.response_bucket
-      CODE_BUNDLE_BUCKET                        = var.code_bundle_bucket
-      FUNCTION_SECRET_KEY                       = var.function_secret_key
-      SERVICE_TOKEN_SECRET_KEY                  = var.service_token_secret_key
-      BRAINSTORE_ENABLED                        = tostring(local.brainstore_enabled)
-      BRAINSTORE_DEFAULT                        = "force"
-      BRAINSTORE_URL                            = local.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
-      BRAINSTORE_WRITER_URL                     = local.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-      BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_enabled && var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
-      BRAINSTORE_LICENSE_KEY                    = var.brainstore_license_key
-      WHITELISTED_ORIGINS                       = join(",", var.whitelisted_origins)
-      OUTBOUND_RATE_LIMIT_WINDOW_MINUTES        = tostring(var.outbound_rate_limit_window_minutes)
-      OUTBOUND_RATE_LIMIT_MAX_REQUESTS          = tostring(var.outbound_rate_limit_max_requests)
-      CONTROL_PLANE_TELEMETRY                   = var.monitoring_telemetry
-      INSERT_LOGS2                              = "true"
-      BRAINSTORE_INSERT_ROW_REFS                = "true"
-      NODE_MEMORY_PERCENT                       = "80"
-      ALLOW_CODE_FUNCTION_EXECUTION             = "false"
-      BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
+      ORG_NAME                           = var.braintrust_org_name
+      PRIMARY_ORG_NAME                   = var.primary_org_name
+      BRAINTRUST_DEPLOYMENT_NAME         = var.deployment_name
+      PG_URL                             = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
+      REDIS_URL                          = "redis://${var.redis_host}:${var.redis_port}"
+      REDIS_HOST                         = var.redis_host
+      REDIS_PORT                         = tostring(var.redis_port)
+      RESPONSE_BUCKET                    = var.response_bucket
+      CODE_BUNDLE_BUCKET                 = var.code_bundle_bucket
+      FUNCTION_SECRET_KEY                = var.function_secret_key
+      SERVICE_TOKEN_SECRET_KEY           = var.service_token_secret_key
+      BRAINSTORE_ENABLED                 = tostring(local.brainstore_enabled)
+      BRAINSTORE_DEFAULT                 = "force"
+      BRAINSTORE_URL                     = local.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
+      BRAINSTORE_WRITER_URL              = local.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+      BRAINSTORE_REALTIME_WAL_BUCKET     = local.brainstore_enabled && var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
+      BRAINSTORE_LICENSE_KEY             = var.brainstore_license_key
+      WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
+      OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = tostring(var.outbound_rate_limit_window_minutes)
+      OUTBOUND_RATE_LIMIT_MAX_REQUESTS   = tostring(var.outbound_rate_limit_max_requests)
+      CONTROL_PLANE_TELEMETRY            = var.monitoring_telemetry
+      INSERT_LOGS2                       = "true"
+      BRAINSTORE_INSERT_ROW_REFS         = "true"
+      NODE_MEMORY_PERCENT                = "80"
+      ALLOW_CODE_FUNCTION_EXECUTION      = "false"
+      BRAINSTORE_WAL_FOOTER_VERSION      = var.brainstore_wal_footer_version
     },
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = local.brainstore_enabled ? "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}" : ""
@@ -183,7 +183,7 @@ resource "aws_ecs_task_definition" "api_ecs" {
   cpu                      = tostring(var.cpu)
   memory                   = tostring(var.memory)
   execution_role_arn       = aws_iam_role.task_execution.arn
-  task_role_arn            = aws_iam_role.task.arn
+  task_role_arn            = var.task_role_arn
 
   runtime_platform {
     operating_system_family = "LINUX"

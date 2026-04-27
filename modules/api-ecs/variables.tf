@@ -324,6 +324,11 @@ variable "enable_execute_command" {
   default     = false
 }
 
+variable "task_role_arn" {
+  type        = string
+  description = "IAM role ARN for the ECS task. Should be the APIHandlerRole ARN from the services-common module."
+}
+
 variable "health_check_path" {
   type        = string
   description = "ALB target group health check path."

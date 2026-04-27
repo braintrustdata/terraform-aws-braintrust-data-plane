@@ -362,6 +362,18 @@ variable "custom_tags" {
   default     = {}
 }
 
+variable "use_api_ecs_for_lambda_ai_proxy_url" {
+  description = "If true, use api_ecs_url for AI_PROXY_FN_URL instead of the Lambda function URL."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_url" {
+  description = "Internal API-ECS ALB URL to use for AI_PROXY_FN_URL when use_api_ecs_for_lambda_ai_proxy_url is true."
+  type        = string
+  default     = null
+}
+
 variable "internal_observability_api_key" {
   description = "Datadog API key for Lambda observability. When set, enables Datadog tracing on Lambda functions."
   type        = string

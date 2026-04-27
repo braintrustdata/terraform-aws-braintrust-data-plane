@@ -53,6 +53,12 @@ variable "enable_eks_irsa" {
   default     = false
 }
 
+variable "enable_ecs" {
+  type        = bool
+  description = "Whether ECS is a compute type for this deployment. Adds ecs-tasks.amazonaws.com trust to APIHandlerRole and SSM Exec permissions."
+  default     = false
+}
+
 variable "code_bundle_s3_bucket_arn" {
   type        = string
   description = "The ARN of the code bundle S3 bucket"

@@ -59,6 +59,16 @@ resource "aws_iam_role" "api_handler_role" {
             }
           } : {}
         )
+      ] : [],
+      # ECS trust relationship
+      var.enable_ecs ? [
+        {
+          Effect = "Allow"
+          Principal = {
+            Service = "ecs-tasks.amazonaws.com"
+          }
+          Action = "sts:AssumeRole"
+        }
       ] : []
     )
   })
@@ -82,56 +92,71 @@ resource "aws_iam_role_policy_attachment" "api_handler_additional_policy" {
 resource "aws_iam_policy" "api_handler_policy" {
   name = "${var.deployment_name}-APIHandlerRolePolicy"
   policy = jsonencode({ # nosemgrep
-    Statement = [
-      {
-        Sid      = "ElasticacheAccess"
-        Action   = ["elasticache:DescribeCacheClusters"]
-        Effect   = "Allow"
-        Resource = ["*"]
-        Condition = {
-          StringEquals = {
-            "aws:ResourceTag/BraintrustDeploymentName" = var.deployment_name
+    Statement = concat(
+      [
+        {
+          Sid      = "ElasticacheAccess"
+          Action   = ["elasticache:DescribeCacheClusters"]
+          Effect   = "Allow"
+          Resource = ["*"]
+          Condition = {
+            StringEquals = {
+              "aws:ResourceTag/BraintrustDeploymentName" = var.deployment_name
+            }
           }
-        }
-      },
-      {
-        Sid    = "S3Access"
-        Action = "s3:*"
-        Effect = "Allow"
-        Resource = concat([
-          var.lambda_responses_s3_bucket_arn,
-          "${var.lambda_responses_s3_bucket_arn}/*",
-          var.code_bundle_s3_bucket_arn,
-          "${var.code_bundle_s3_bucket_arn}/*",
-          ],
-          var.brainstore_s3_bucket_arn != null && var.brainstore_s3_bucket_arn != "" ? [
-            var.brainstore_s3_bucket_arn,
-            "${var.brainstore_s3_bucket_arn}/*"
-        ] : [])
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ]
-        Resource = var.kms_key_arn
-      },
-      {
-        Sid      = "AssumeRoleInCustomerAccountForS3Export"
-        Action   = "sts:AssumeRole"
-        Effect   = "Allow"
-        Resource = "*"
-        Condition = {
-          StringLike = {
-            "sts:ExternalId" = "bt:*"
+        },
+        {
+          Sid    = "S3Access"
+          Action = "s3:*"
+          Effect = "Allow"
+          Resource = concat([
+            var.lambda_responses_s3_bucket_arn,
+            "${var.lambda_responses_s3_bucket_arn}/*",
+            var.code_bundle_s3_bucket_arn,
+            "${var.code_bundle_s3_bucket_arn}/*",
+            ],
+            var.brainstore_s3_bucket_arn != null && var.brainstore_s3_bucket_arn != "" ? [
+              var.brainstore_s3_bucket_arn,
+              "${var.brainstore_s3_bucket_arn}/*"
+          ] : [])
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey"
+          ]
+          Resource = var.kms_key_arn
+        },
+        {
+          Sid      = "AssumeRoleInCustomerAccountForS3Export"
+          Action   = "sts:AssumeRole"
+          Effect   = "Allow"
+          Resource = "*"
+          Condition = {
+            StringLike = {
+              "sts:ExternalId" = "bt:*"
+            }
           }
+        },
+      ],
+      var.enable_ecs ? [
+        {
+          Sid    = "ECSExec"
+          Effect = "Allow"
+          Action = [
+            "ssmmessages:CreateControlChannel",
+            "ssmmessages:CreateDataChannel",
+            "ssmmessages:OpenControlChannel",
+            "ssmmessages:OpenDataChannel",
+          ]
+          Resource = "*"
         }
-      }
-    ]
+      ] : []
+    )
     Version = "2012-10-17"
   })
 

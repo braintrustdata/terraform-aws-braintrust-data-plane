@@ -2,6 +2,13 @@ data "aws_vpc" "current" {
   id = var.vpc_id
 }
 
+data "aws_security_group" "cloudfront_vpc_origins" {
+  count = var.allow_cloudfront_origin_facing_traffic ? 1 : 0
+
+  name   = "CloudFront-VPCOrigins-Service-SG"
+  vpc_id = var.vpc_id
+}
+
 resource "aws_security_group" "alb" {
   name        = "${var.deployment_name}-api-ecs-alb"
   description = "Security group for private API-ECS ALB"
@@ -73,25 +80,25 @@ resource "aws_security_group_rule" "alb_ingress_https_from_authorized_cidr_block
 resource "aws_security_group_rule" "alb_ingress_http_from_cloudfront_origin_facing" {
   count = var.allow_cloudfront_origin_facing_traffic ? 1 : 0
 
-  type              = "ingress"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = [data.aws_vpc.current.cidr_block]
-  description       = "Allow HTTP traffic from VPC CIDR for CloudFront VPC origin to private API-ECS ALB."
-  security_group_id = aws_security_group.alb_cloudfront[0].id
+  type                     = "ingress"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  source_security_group_id = data.aws_security_group.cloudfront_vpc_origins[0].id
+  description              = "Allow HTTP traffic from CloudFront VPC Origins service SG to private API-ECS ALB."
+  security_group_id        = aws_security_group.alb_cloudfront[0].id
 }
 
 resource "aws_security_group_rule" "alb_ingress_https_from_cloudfront_origin_facing" {
   count = var.allow_cloudfront_origin_facing_traffic && local.enable_https ? 1 : 0
 
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = [data.aws_vpc.current.cidr_block]
-  description       = "Allow HTTPS traffic from VPC CIDR for CloudFront VPC origin to private API-ECS ALB."
-  security_group_id = aws_security_group.alb_cloudfront[0].id
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = data.aws_security_group.cloudfront_vpc_origins[0].id
+  description              = "Allow HTTPS traffic from CloudFront VPC Origins service SG to private API-ECS ALB."
+  security_group_id        = aws_security_group.alb_cloudfront[0].id
 }
 
 resource "aws_security_group_rule" "alb_cloudfront_egress_all" {

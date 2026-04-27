@@ -47,3 +47,8 @@ output "cloudfront_origin_protocol_policy" {
   description = "Recommended CloudFront origin protocol policy for the API-ECS ALB."
   value       = local.enable_https ? "https-only" : "http-only"
 }
+
+output "cloudfront_origin_domain_name" {
+  description = "Domain name for CloudFront to use as the origin. When HTTPS is enabled, returns the certificate domain so SNI matches the ALB certificate."
+  value       = local.enable_https && local.certificate_domain_name != null ? local.certificate_domain_name : aws_lb.api_ecs.dns_name
+}
