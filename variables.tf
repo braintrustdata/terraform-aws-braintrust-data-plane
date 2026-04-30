@@ -456,6 +456,207 @@ variable "gateway_braintrust_app_url" {
   default     = "https://www.braintrust.dev"
 }
 
+variable "api_ecs_version_override" {
+  type        = string
+  description = "Optional API ECS image tag override. If unset, uses modules/api-ecs/VERSIONS.json."
+  default     = null
+
+  validation {
+    condition     = var.api_ecs_version_override == null || var.api_ecs_version_override != ""
+    error_message = "api_ecs_version_override must be null or a non-empty string."
+  }
+}
+
+variable "enable_api_ecs" {
+  type        = bool
+  description = "Create the dedicated API ECS service in standard mode and route the CloudFormation-compatible eval/sandbox paths to it. Private API ECS mode implies this."
+  default     = false
+
+  validation {
+    condition     = !(var.enable_api_ecs && var.use_deployment_mode_external_eks)
+    error_message = "enable_api_ecs cannot be true when use_deployment_mode_external_eks is true."
+  }
+}
+
+variable "use_api_ecs_for_brainstore_ai_proxy_url" {
+  type        = bool
+  description = "Use the API ECS URL for Brainstore's BRAINSTORE_AI_PROXY_URL instead of the AIProxy Lambda Function URL from SSM. Requires enable_api_ecs unless private API ECS mode is enabled."
+  default     = false
+
+  validation {
+    condition     = !var.use_api_ecs_for_brainstore_ai_proxy_url || var.enable_api_ecs || var.use_deployment_mode_private_api_ecs
+    error_message = "use_api_ecs_for_brainstore_ai_proxy_url requires enable_api_ecs or use_deployment_mode_private_api_ecs."
+  }
+
+  validation {
+    condition     = !(var.use_api_ecs_for_brainstore_ai_proxy_url && var.use_deployment_mode_external_eks)
+    error_message = "use_api_ecs_for_brainstore_ai_proxy_url cannot be true when use_deployment_mode_external_eks is true."
+  }
+}
+
+variable "api_ecs_container_port" {
+  description = "Container port for API ECS."
+  type        = number
+  default     = 8000
+}
+
+variable "api_ecs_cpu" {
+  description = "CPU units for the API ECS task definition."
+  type        = number
+  default     = 2048
+}
+
+variable "api_ecs_memory" {
+  description = "Memory in MiB for the API ECS task definition."
+  type        = number
+  default     = 16384
+}
+
+variable "api_ecs_min_capacity" {
+  description = "Minimum task count for the API ECS service."
+  type        = number
+  default     = 1
+}
+
+variable "api_ecs_max_capacity" {
+  description = "Maximum task count for the API ECS service."
+  type        = number
+  default     = 4
+
+  validation {
+    condition     = var.api_ecs_max_capacity >= var.api_ecs_min_capacity
+    error_message = "api_ecs_max_capacity must be greater than or equal to api_ecs_min_capacity."
+  }
+}
+
+variable "api_ecs_target_cpu_utilization" {
+  description = "Target average CPU utilization percentage for API ECS autoscaling."
+  type        = number
+  default     = 40
+
+  validation {
+    condition     = var.api_ecs_target_cpu_utilization > 0 && var.api_ecs_target_cpu_utilization <= 100
+    error_message = "api_ecs_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_target_memory_utilization" {
+  description = "Target average memory utilization percentage for API ECS autoscaling."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_target_memory_utilization > 0 && var.api_ecs_target_memory_utilization <= 100
+    error_message = "api_ecs_target_memory_utilization must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_log_retention_days" {
+  description = "CloudWatch log retention period (days) for API ECS logs."
+  type        = number
+  default     = 14
+
+  validation {
+    condition = contains([
+      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.api_ecs_log_retention_days)
+    error_message = "api_ecs_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
+}
+
+variable "api_ecs_extra_env_vars" {
+  description = "Extra environment variables for the API ECS container."
+  type        = map(string)
+  default     = {}
+}
+
+variable "api_ecs_authorized_security_groups" {
+  description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
+  type        = map(string)
+  default     = {}
+}
+
+variable "api_ecs_authorized_cidr_blocks" {
+  description = "CIDR blocks authorized to access the internal API ECS ALB."
+  type        = list(string)
+  default     = []
+}
+
+variable "api_ecs_enable_execute_command" {
+  description = "Enable ECS Exec for API ECS tasks."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_health_check_path" {
+  description = "ALB health check path for API ECS."
+  type        = string
+  default     = "/"
+}
+
+variable "api_ecs_alb_idle_timeout_seconds" {
+  description = "ALB idle timeout for API ECS in seconds."
+  type        = number
+  default     = 900
+}
+
+variable "api_ecs_alb_client_keep_alive_seconds" {
+  description = "ALB client keep-alive for API ECS in seconds."
+  type        = number
+  default     = 3600
+}
+
+variable "api_ecs_alb_deregistration_delay_seconds" {
+  description = "ALB target group deregistration delay for API ECS in seconds."
+  type        = number
+  default     = 900
+}
+
+variable "api_ecs_acm_certificate_arn" {
+  description = "Optional existing ACM certificate ARN for API ECS ALB."
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_create_acm_certificate" {
+  description = "Create an ACM certificate for API ECS ALB and manage its DNS validation records."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_dns_name" {
+  description = "Hostname label for the API ECS ALB certificate and optional private-mode Route53 alias record. Combined with api_ecs_route53_zone_name to produce the full DNS name."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !(var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate || var.api_ecs_create_dns_record) || var.api_ecs_dns_name != null
+    error_message = "api_ecs_dns_name is required when private API ECS mode, HTTPS, or DNS records are enabled."
+  }
+  validation {
+    condition     = var.api_ecs_dns_name == null || can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$", var.api_ecs_dns_name))
+    error_message = "api_ecs_dns_name must be a single DNS label containing only letters, numbers, and hyphens, and may not start or end with a hyphen."
+  }
+}
+
+variable "api_ecs_route53_zone_name" {
+  description = "Route53 hosted zone name for managed API ECS ACM DNS validation records and optional private-mode ALB alias records."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !(var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate || var.api_ecs_create_dns_record) || var.api_ecs_route53_zone_name != null
+    error_message = "api_ecs_route53_zone_name is required when private API ECS mode, HTTPS, or DNS records are enabled."
+  }
+}
+
+variable "api_ecs_create_dns_record" {
+  description = "Create a Route53 alias record for the API ECS ALB. This is only honored in private API ECS mode; standard CloudFront mode never creates an ALB DNS record."
+  type        = bool
+  default     = false
+}
+
 variable "braintrust_api_url" {
   description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
   type        = string
@@ -827,6 +1028,22 @@ variable "use_deployment_mode_external_eks" {
   description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !(var.use_deployment_mode_external_eks && var.use_deployment_mode_private_api_ecs)
+    error_message = "use_deployment_mode_external_eks and use_deployment_mode_private_api_ecs cannot both be true."
+  }
+}
+
+variable "use_deployment_mode_private_api_ecs" {
+  description = "Enable private API ECS deployment mode. When true, CloudFront, API Gateway, and Lambda services are not created; the internal API ECS ALB is the API ingress."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate
+    error_message = "use_deployment_mode_private_api_ecs requires api_ecs_acm_certificate_arn or api_ecs_create_acm_certificate."
+  }
 }
 
 variable "existing_eks_cluster_arn" {

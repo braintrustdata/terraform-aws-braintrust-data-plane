@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       services_version:
-        description: 'Lock onto Braintrust services version (e.g., v1.2.3). Optional.'
+        description: 'Lock onto Braintrust services/API ECS version (e.g., v1.2.3). Optional.'
         required: false
         type: string
 
@@ -43,7 +43,7 @@ jobs:
           role-to-assume: arn:aws:iam::872608195481:role/github_ecr_full_access
           aws-region: us-east-1
 
-      - name: Update versions of Braintrust Services
+      - name: Update versions of Braintrust Services and API ECS
         if: inputs.services_version != ''
         run: |
           git config --global user.name "Braintrust Bot"
@@ -59,7 +59,7 @@ jobs:
             cat > release_notes.md << EOF
 
           ## Braintrust Services
-          * Updated Braintrust Services to \`${{ inputs.services_version }}\`
+          * Updated Braintrust Services and API ECS to \`${{ inputs.services_version }}\`
           EOF
             gh release create ${{ inputs.module_version }} \
               --draft \

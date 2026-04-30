@@ -36,6 +36,15 @@ locals {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
+
+  create_lambda_services                  = !var.use_deployment_mode_external_eks && !var.use_deployment_mode_private_api_ecs
+  enable_api_ecs                          = !var.use_deployment_mode_external_eks && (var.enable_api_ecs || var.use_deployment_mode_private_api_ecs)
+  create_cloudfront                       = local.create_lambda_services
+  use_api_ecs_for_cloudfront_eval_routes  = local.create_cloudfront && var.enable_api_ecs
+  use_api_ecs_for_brainstore_ai_proxy_url = !var.use_deployment_mode_external_eks && (var.use_api_ecs_for_brainstore_ai_proxy_url || var.use_deployment_mode_private_api_ecs)
+  api_url = var.use_deployment_mode_external_eks ? null : (
+    var.use_deployment_mode_private_api_ecs ? module.api_ecs[0].effective_url : module.ingress[0].api_url
+  )
 }
 
 module "main_vpc" {
@@ -97,7 +106,7 @@ module "database" {
       },
       var.database_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      local.create_lambda_services ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
   )
@@ -130,7 +139,7 @@ module "redis" {
       },
       var.redis_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      local.create_lambda_services ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
   )
@@ -151,7 +160,7 @@ module "storage" {
 
 module "services" {
   source = "./modules/services"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = local.create_lambda_services ? 1 : 0
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
@@ -235,7 +244,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_llm_gateway ? 1 : 0
+  count  = var.enable_llm_gateway || local.enable_api_ecs ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -280,22 +289,121 @@ module "gateway_ecs" {
   brainstore_license_key = var.brainstore_license_key
   enable_execute_command = var.gateway_enable_execute_command
   braintrust_app_url     = var.gateway_braintrust_app_url
-  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : local.api_url
+}
+
+module "api_ecs" {
+  source = "./modules/api-ecs"
+  count  = local.enable_api_ecs ? 1 : 0
+
+  deployment_name      = var.deployment_name
+  api_version_override = var.api_ecs_version_override
+
+  # Telemetry
+  monitoring_telemetry = var.monitoring_telemetry
+
+  # Data stores
+  postgres_password = module.database.postgres_database_password
+  postgres_host     = module.database.postgres_database_address
+  postgres_port     = module.database.postgres_database_port
+  postgres_username = module.database.postgres_database_username
+  redis_host        = module.redis.redis_endpoint
+  redis_port        = module.redis.redis_port
+
+  # Brainstore
+  brainstore_hostname             = module.brainstore[0].dns_name
+  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
+  brainstore_port                 = module.brainstore[0].port
+  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
+
+  # Storage
+  code_bundle_bucket = module.storage.code_bundle_bucket_id
+  response_bucket    = module.storage.lambda_responses_bucket_id
+
+  # Service configuration
+  braintrust_org_name                   = var.braintrust_org_name
+  primary_org_name                      = var.primary_org_name
+  container_port                        = var.api_ecs_container_port
+  cpu                                   = var.api_ecs_cpu
+  memory                                = var.api_ecs_memory
+  min_capacity                          = var.api_ecs_min_capacity
+  max_capacity                          = var.api_ecs_max_capacity
+  target_cpu_utilization                = var.api_ecs_target_cpu_utilization
+  target_memory_utilization             = var.api_ecs_target_memory_utilization
+  log_retention_days                    = var.api_ecs_log_retention_days
+  health_check_path                     = var.api_ecs_health_check_path
+  enable_execute_command                = var.api_ecs_enable_execute_command
+  whitelisted_origins                   = var.whitelisted_origins
+  outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
+  disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
+  billing_telemetry_log_level           = var.billing_telemetry_log_level
+  function_secret_key                   = module.services_common.function_tools_secret_key
+  service_token_secret_key              = module.services_common.function_tools_secret_key
+  extra_env_vars                        = var.api_ecs_extra_env_vars
+
+  # Networking
+  vpc_id             = local.main_vpc_id
+  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  authorized_security_groups = merge(
+    {
+      "API"        = module.services_common.api_security_group_id
+      "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    },
+    var.api_ecs_authorized_security_groups,
+  )
+  authorized_cidr_blocks                 = var.api_ecs_authorized_cidr_blocks
+  allow_cloudfront_origin_facing_traffic = local.create_cloudfront
+  acm_certificate_arn                    = var.api_ecs_acm_certificate_arn
+  create_acm_certificate                 = var.api_ecs_create_acm_certificate
+  dns_name                               = var.api_ecs_dns_name
+  route53_zone_name                      = var.api_ecs_route53_zone_name
+  create_dns_record                      = var.use_deployment_mode_private_api_ecs && var.api_ecs_create_dns_record
+  require_https                          = var.use_deployment_mode_private_api_ecs
+  alb_idle_timeout_seconds               = var.api_ecs_alb_idle_timeout_seconds
+  alb_client_keep_alive_seconds          = var.api_ecs_alb_client_keep_alive_seconds
+  alb_deregistration_delay_seconds       = var.api_ecs_alb_deregistration_delay_seconds
+
+  # Quarantine VPC
+  use_quarantine_vpc = var.enable_quarantine_vpc
+  quarantine_vpc_id  = local.quarantine_vpc_id
+  quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
+    local.quarantine_vpc_private_subnet_1_id,
+    local.quarantine_vpc_private_subnet_2_id,
+    local.quarantine_vpc_private_subnet_3_id
+  ] : []
+  quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
+  quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
+  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
+
+  kms_key_arn            = local.kms_key_arn
+  ecs_cluster_arn        = module.ecs[0].cluster_arn
+  task_role_arn          = module.services_common.api_handler_role_arn
+  task_security_group_id = module.services_common.api_security_group_id
+  custom_tags            = var.custom_tags
 }
 
 module "ingress" {
   source = "./modules/ingress"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = local.create_cloudfront ? 1 : 0
 
-  deployment_name          = var.deployment_name
-  custom_domain            = var.custom_domain
-  custom_certificate_arn   = var.custom_certificate_arn
-  waf_acl_id               = var.waf_acl_id
-  cloudfront_price_class   = var.cloudfront_price_class
-  use_global_ai_proxy      = var.use_global_ai_proxy
-  ai_proxy_function_url    = module.services[0].ai_proxy_url
-  api_handler_function_arn = module.services[0].api_handler_arn
-  custom_tags              = var.custom_tags
+  deployment_name                = var.deployment_name
+  custom_domain                  = var.custom_domain
+  custom_certificate_arn         = var.custom_certificate_arn
+  waf_acl_id                     = var.waf_acl_id
+  cloudfront_price_class         = var.cloudfront_price_class
+  use_global_ai_proxy            = var.use_global_ai_proxy
+  ai_proxy_function_url          = module.services[0].ai_proxy_url
+  use_api_ecs_for_eval_routes    = local.use_api_ecs_for_cloudfront_eval_routes
+  api_ecs_origin_domain_name     = local.use_api_ecs_for_cloudfront_eval_routes ? module.api_ecs[0].cloudfront_origin_domain_name : null
+  api_ecs_origin_arn             = local.use_api_ecs_for_cloudfront_eval_routes ? module.api_ecs[0].alb_arn : null
+  api_ecs_origin_protocol_policy = local.use_api_ecs_for_cloudfront_eval_routes ? module.api_ecs[0].cloudfront_origin_protocol_policy : null
+  api_handler_function_arn       = module.services[0].api_handler_arn
+  custom_tags                    = var.custom_tags
 }
 
 module "services_common" {
@@ -315,6 +423,7 @@ module "services_common" {
   eks_namespace                             = var.eks_namespace
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
+  enable_ecs                                = local.enable_api_ecs
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = var.custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
@@ -365,7 +474,7 @@ module "brainstore" {
         "API" = module.services_common.api_security_group_id
       },
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      local.create_lambda_services ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group
   )
@@ -380,11 +489,13 @@ module "brainstore" {
     local.main_vpc_private_subnet_3_id
   ]
 
-  kms_key_arn                = local.kms_key_arn
-  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
-  custom_tags                = var.custom_tags
-  custom_post_install_script = var.brainstore_custom_post_install_script
-  cache_file_size_reader     = var.brainstore_cache_file_size_reader
-  cache_file_size_writer     = var.brainstore_cache_file_size_writer
-  locks_s3_path              = var.brainstore_locks_s3_path
+  kms_key_arn                             = local.kms_key_arn
+  brainstore_iam_role_name                = module.services_common.brainstore_iam_role_name
+  custom_tags                             = var.custom_tags
+  custom_post_install_script              = var.brainstore_custom_post_install_script
+  cache_file_size_reader                  = var.brainstore_cache_file_size_reader
+  cache_file_size_writer                  = var.brainstore_cache_file_size_writer
+  locks_s3_path                           = var.brainstore_locks_s3_path
+  use_api_ecs_for_brainstore_ai_proxy_url = local.use_api_ecs_for_brainstore_ai_proxy_url
+  api_ecs_url                             = local.use_api_ecs_for_brainstore_ai_proxy_url ? module.api_ecs[0].effective_url : null
 }

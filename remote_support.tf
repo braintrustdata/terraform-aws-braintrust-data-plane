@@ -17,11 +17,11 @@ module "remote_support" {
   redis_port          = module.redis.redis_port
   kms_key_arn         = local.kms_key_arn
   lambda_function_arns = [
-    !var.use_deployment_mode_external_eks ? module.services[0].api_handler_arn : null,
-    !var.use_deployment_mode_external_eks ? module.services[0].migrate_database_arn : null,
-    !var.use_deployment_mode_external_eks ? module.services[0].ai_proxy_arn : null,
-    !var.use_deployment_mode_external_eks ? module.services[0].catchup_etl_arn : null,
-    !var.use_deployment_mode_external_eks ? module.services[0].quarantine_warmup_arn : null,
+    local.create_lambda_services ? module.services[0].api_handler_arn : null,
+    local.create_lambda_services ? module.services[0].migrate_database_arn : null,
+    local.create_lambda_services ? module.services[0].ai_proxy_arn : null,
+    local.create_lambda_services ? module.services[0].catchup_etl_arn : null,
+    local.create_lambda_services ? module.services[0].quarantine_warmup_arn : null,
   ]
   enable_braintrust_support_logs_access  = var.enable_braintrust_support_logs_access
   enable_braintrust_support_shell_access = var.enable_braintrust_support_shell_access

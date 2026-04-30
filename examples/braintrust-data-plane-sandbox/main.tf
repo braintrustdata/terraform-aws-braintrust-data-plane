@@ -74,6 +74,31 @@ module "braintrust-data-plane" {
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
+
+  # use_deployment_mode_private_api_ecs = true
+  # api_ecs_dns_name                    = "jeff-aws-lambda-ecs-test"
+  # api_ecs_route53_zone_name           = "sandbox.braintrust.dev"
+  # api_ecs_create_dns_record           = true
+  # api_ecs_create_acm_certificate      = true
+
+
+  ### API ECS configuration
+  # API ECS is disabled by default. To opt into the CloudFormation-compatible
+  # API ECS path for eval/sandbox routes, uncomment:
+  #
+  # enable_api_ecs = true
+  #
+  # Brainstore can separately use API ECS for BRAINSTORE_AI_PROXY_URL:
+  #
+  # use_api_ecs_for_brainstore_ai_proxy_url = true
+  #
+  # For private-only sandbox testing, uncomment the private mode and provide
+  # either an existing certificate ARN or managed certificate validation inputs.
+  #
+  # use_deployment_mode_private_api_ecs = true
+  # api_ecs_acm_certificate_arn         = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
+  # api_ecs_dns_name                    = "api"
+
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to
   # peer with other VPCs and the default CIDRs conflict.

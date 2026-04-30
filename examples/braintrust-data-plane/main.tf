@@ -75,6 +75,35 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
+  ### API ECS configuration
+  # By default, the module keeps the classic CloudFront -> API Gateway/Lambda
+  # ingress path. To opt into the API ECS path
+  #
+  # enable_api_ecs = true
+  #
+  # Brainstore can separately use API ECS for BRAINSTORE_AI_PROXY_URL:
+  #
+  # use_api_ecs_for_brainstore_ai_proxy_url = true
+  #
+  # To run without CloudFront, API Gateway, or Lambda services, enable private
+  # API ECS mode. The ALB remains internal. Terraform can create the DNS
+  # validation records and Route53 alias record for the internal ALB.
+  #
+  # use_deployment_mode_private_api_ecs = true
+  # api_ecs_create_acm_certificate      = true
+  # api_ecs_dns_name                    = "api"
+  # api_ecs_create_dns_record           = true
+  # api_ecs_route53_zone_name           = "example.com"
+  #
+  # Alternatively, customers can manage DNS themselves and pass an existing ACM
+  # certificate ARN. No ALB alias record is created unless
+  # api_ecs_create_dns_record is true.
+  #
+  # use_deployment_mode_private_api_ecs = true
+  # api_ecs_acm_certificate_arn         = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
+  # api_ecs_dns_name                    = "api"
+  # api_ecs_route53_zone_name           = "example.com"
+
   ### Tagging
   # Optionally add any custom AWS tags you want to apply to all resources created by the module
   #  custom_tags = {
