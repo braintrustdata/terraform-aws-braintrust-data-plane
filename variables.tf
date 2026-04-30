@@ -681,12 +681,28 @@ variable "brainstore_etl_batch_size" {
 
 variable "brainstore_wal_footer_version" {
   type        = string
-  description = "This controls the WAL footer version that should be written. Only adjust this to 'v3' after you have successfully deployed v2.x of the data plane."
-  default     = ""
+  description = "This controls the WAL footer version that should be written. When set, also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT on the API handler. Only adjust this to 'v3' after you have successfully deployed v2.x of the data plane."
+  default     = "v3"
   validation {
     condition     = var.brainstore_wal_footer_version == "" || contains(["v1", "v2", "v3"], var.brainstore_wal_footer_version)
     error_message = "brainstore_wal_footer_version must be v1, v2, v3, or empty string (unset)."
   }
+}
+
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "Controls which object types bypass PostgreSQL and write directly to Brainstore. WARNING: This is a one-way operation. Once migrated off Postgres, objects cannot be un-migrated without downtime. When set, also enables BRAINSTORE_ASYNC_SCORING_OBJECTS / BRAINSTORE_LOG_AUTOMATIONS_OBJECTS on Brainstore nodes."
+  default     = "all"
+  validation {
+    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
+    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
+  }
+}
+
+variable "brainstore_enable_export" {
+  type        = bool
+  description = "Enable Brainstore-based export and migrate progress state of existing export automations. Sets BRAINSTORE_EXPORT_MIGRATION_ENABLED on the API handler Lambda and BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED on Brainstore writer nodes."
+  default     = false
 }
 
 variable "brainstore_s3_bucket_retention_days" {

@@ -145,6 +145,15 @@ locals {
       "/brainstore/automation/reset-cursors" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/brainstore/automation/get-object-cursors" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/execute" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/upsert-object-cursor" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/brainstore/object-data-exists" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }

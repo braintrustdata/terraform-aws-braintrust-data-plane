@@ -240,6 +240,22 @@ variable "cache_file_size_fast_reader" {
   default     = null
 }
 
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "If set, adds BRAINSTORE_ASYNC_SCORING_OBJECTS and BRAINSTORE_LOG_AUTOMATIONS_OBJECTS to the Brainstore EC2 node environment."
+  default     = ""
+  validation {
+    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
+    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
+  }
+}
+
+variable "brainstore_enable_export" {
+  type        = bool
+  description = "If true, sets BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED=true on Brainstore writer nodes."
+  default     = false
+}
+
 variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."

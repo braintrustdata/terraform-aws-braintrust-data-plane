@@ -61,6 +61,8 @@ resource "aws_launch_template" "brainstore_fast_reader" {
     service_token_secret_key        = var.service_token_secret_key
     custom_post_install_script      = var.custom_post_install_script
     brainstore_cache_file_size      = local.brainstore_fast_reader_cache_file_size
+    skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
+    brainstore_enable_export        = var.brainstore_enable_export
   }))
 
   tags = merge({

@@ -19,7 +19,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucke
       sse_algorithm     = var.kms_key_arn != null ? "aws:kms" : "AES256"
       kms_master_key_id = var.kms_key_arn
     }
-    bucket_key_enabled = var.kms_key_arn != null
+    bucket_key_enabled       = var.kms_key_arn != null
+    blocked_encryption_types = var.kms_key_arn != null ? ["NONE"] : []
   }
 }
 

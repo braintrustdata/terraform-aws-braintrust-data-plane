@@ -57,11 +57,15 @@ module "braintrust-data-plane" {
   brainstore_instance_count = 2
   brainstore_instance_type  = "c8gd.4xlarge"
 
+  # The number of Brainstore fast reader instances to provision
+  # Recommended Graviton instance type with 16GB of memory
+  brainstore_fast_reader_instance_count = 2
+  brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
+
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
-
 
   ### Redis configuration
 
