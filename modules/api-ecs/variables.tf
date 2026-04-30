@@ -179,26 +179,6 @@ variable "service_token_secret_key" {
   sensitive   = true
 }
 
-variable "brainstore_enabled" {
-  type        = bool
-  description = "Whether Brainstore should be enabled for the API container."
-
-  validation {
-    condition     = var.brainstore_enabled ? var.brainstore_hostname != null && var.brainstore_port != null : true
-    error_message = "brainstore_hostname and brainstore_port must be set when brainstore_enabled is true."
-  }
-}
-
-variable "brainstore_default" {
-  type        = string
-  description = "Whether Brainstore should be the default backing store."
-
-  validation {
-    condition     = contains(["true", "false", "force"], var.brainstore_default)
-    error_message = "brainstore_default must be true, false, or force."
-  }
-}
-
 variable "brainstore_hostname" {
   type        = string
   description = "Brainstore hostname."
