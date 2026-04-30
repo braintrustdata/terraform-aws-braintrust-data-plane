@@ -64,7 +64,7 @@ output "redis_security_group_id" {
 }
 
 output "lambda_security_group_id" {
-  value       = !var.use_deployment_mode_external_eks ? module.services[0].lambda_security_group_id : null
+  value       = local.create_lambda_services ? module.services[0].lambda_security_group_id : null
   description = "ID of the security group for the Lambda functions"
 }
 
@@ -74,7 +74,7 @@ output "api_security_group_id" {
 }
 
 output "ecs_cluster_arn" {
-  value       = var.enable_llm_gateway ? module.ecs[0].cluster_arn : null
+  value       = var.enable_llm_gateway || local.enable_api_ecs ? module.ecs[0].cluster_arn : null
   description = "ARN of the ECS cluster used for ECS services"
 }
 
@@ -103,6 +103,46 @@ output "gateway_task_security_group_id" {
   description = "ID of the security group for ECS gateway tasks"
 }
 
+output "api_ecs_service_name" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].service_name : null
+  description = "Name of the ECS API service"
+}
+
+output "api_ecs_alb_dns_name" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].alb_dns_name : null
+  description = "DNS name of the private API ECS ALB"
+}
+
+output "api_ecs_alb_arn" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].alb_arn : null
+  description = "ARN of the private API ECS ALB"
+}
+
+output "api_ecs_target_group_arn" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].target_group_arn : null
+  description = "ARN of the API ECS ALB target group"
+}
+
+output "api_ecs_task_security_group_id" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].task_security_group_id : null
+  description = "ID of the security group for API ECS tasks"
+}
+
+output "api_ecs_url" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].effective_url : null
+  description = "Effective URL for API ECS"
+}
+
+output "api_ecs_tls_ready" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].tls_ready : null
+  description = "Whether API ECS ALB HTTPS is enabled"
+}
+
+output "api_ecs_dns_record_fqdn" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].dns_record_fqdn : null
+  description = "FQDN of the optional Route53 alias record for the API ECS ALB"
+}
+
 output "postgres_database_identifier" {
   value       = module.database.postgres_database_identifier
   description = "Identifier of the main Braintrust Postgres database"
@@ -124,22 +164,22 @@ output "redis_arn" {
 }
 
 output "api_url" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : null
+  value       = local.api_url
   description = "The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL."
 }
 
 output "cloudfront_distribution_domain_name" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : null
+  value       = local.create_cloudfront ? module.ingress[0].cloudfront_distribution_domain_name : null
   description = "The domain name of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_arn" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : null
+  value       = local.create_cloudfront ? module.ingress[0].cloudfront_distribution_arn : null
   description = "The ARN of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_hosted_zone_id" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
+  value       = local.create_cloudfront ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
   description = "The hosted zone ID of the cloudfront distribution"
 }
 
