@@ -44,6 +44,9 @@ resource "aws_lambda_function" "automation_cron" {
       FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
       CRON_OVERRIDE_SECRET_KEY                  = random_password.service_token_secret_key.result
       },
+      var.brainstore_enable_export ? {
+        BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
+      } : {},
       var.extra_env_vars.AutomationCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.automation_cron_base_function_name
