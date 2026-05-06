@@ -17,3 +17,8 @@ output "redis_security_group_id" {
   value       = local.elasticache_security_group_ids[0]
   description = "The ID of the first security group for the Elasticache instance"
 }
+
+output "redis_url_secret_arn" {
+  value       = aws_secretsmanager_secret.redis_url.arn
+  description = "ARN of the secret containing the Redis URL"
+}

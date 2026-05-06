@@ -13,6 +13,11 @@ variable "vpc_id" {
   description = "ID of VPC where Elasticache will be deployed."
 }
 
+variable "kms_key_arn" {
+  type        = string
+  description = "KMS key ARN used to encrypt Redis URL secret."
+}
+
 variable "authorized_security_groups" {
   type        = map(string)
   description = "Map of security group names to their IDs that are authorized to access Elasticache. Format: { name = <security_group_id> }"

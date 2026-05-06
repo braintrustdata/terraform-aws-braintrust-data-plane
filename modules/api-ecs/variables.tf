@@ -126,15 +126,9 @@ variable "primary_org_name" {
   description = "Primary organization name."
 }
 
-variable "postgres_username" {
+variable "database_url_secret_arn" {
   type        = string
-  description = "Postgres username."
-}
-
-variable "postgres_password" {
-  type        = string
-  description = "Postgres password."
-  sensitive   = true
+  description = "ARN of the secret containing the Postgres URL."
 }
 
 variable "postgres_host" {
@@ -147,14 +141,9 @@ variable "postgres_port" {
   description = "Postgres port."
 }
 
-variable "redis_host" {
+variable "redis_url_secret_arn" {
   type        = string
-  description = "Redis host."
-}
-
-variable "redis_port" {
-  type        = number
-  description = "Redis port."
+  description = "ARN of the secret containing the Redis URL."
 }
 
 variable "response_bucket" {
@@ -167,16 +156,9 @@ variable "code_bundle_bucket" {
   description = "S3 bucket containing code bundles."
 }
 
-variable "function_secret_key" {
+variable "function_tools_secret_arn" {
   type        = string
-  description = "Function secret key."
-  sensitive   = true
-}
-
-variable "service_token_secret_key" {
-  type        = string
-  description = "Service token secret key."
-  sensitive   = true
+  description = "ARN of the function tools encryption key secret."
 }
 
 variable "brainstore_hostname" {

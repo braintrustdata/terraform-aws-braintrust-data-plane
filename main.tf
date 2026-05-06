@@ -130,7 +130,8 @@ module "redis" {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
-  vpc_id = local.main_vpc_id
+  vpc_id      = local.main_vpc_id
+  kms_key_arn = local.kms_key_arn
   authorized_security_groups = merge(
     merge(
       {
@@ -303,12 +304,11 @@ module "api_ecs" {
   monitoring_telemetry = var.monitoring_telemetry
 
   # Data stores
-  postgres_password = module.database.postgres_database_password
-  postgres_host     = module.database.postgres_database_address
-  postgres_port     = module.database.postgres_database_port
-  postgres_username = module.database.postgres_database_username
-  redis_host        = module.redis.redis_endpoint
-  redis_port        = module.redis.redis_port
+  database_url_secret_arn   = module.database.postgres_database_url_secret_arn
+  postgres_host             = module.database.postgres_database_address
+  postgres_port             = module.database.postgres_database_port
+  redis_url_secret_arn      = module.redis.redis_url_secret_arn
+  function_tools_secret_arn = module.services_common.function_tools_secret_arn
 
   # Brainstore
   brainstore_hostname             = module.brainstore[0].dns_name
@@ -342,8 +342,6 @@ module "api_ecs" {
   outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
-  function_secret_key                   = module.services_common.function_tools_secret_key
-  service_token_secret_key              = module.services_common.function_tools_secret_key
   extra_env_vars                        = var.api_ecs_extra_env_vars
   code_function_execution_mode          = var.api_ecs_code_function_execution_mode
 

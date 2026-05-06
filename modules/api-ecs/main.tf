@@ -12,17 +12,11 @@ locals {
     ORG_NAME                           = var.braintrust_org_name
     PRIMARY_ORG_NAME                   = var.primary_org_name
     BRAINTRUST_DEPLOYMENT_NAME         = var.deployment_name
-    PG_URL                             = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
-    REDIS_URL                          = "redis://${var.redis_host}:${var.redis_port}"
-    REDIS_HOST                         = var.redis_host
-    REDIS_PORT                         = tostring(var.redis_port)
     RESPONSE_BUCKET                    = var.response_bucket
     CODE_BUNDLE_BUCKET                 = var.code_bundle_bucket
     WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
     OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = tostring(var.outbound_rate_limit_window_minutes)
     OUTBOUND_RATE_LIMIT_MAX_REQUESTS   = tostring(var.outbound_rate_limit_max_requests)
-    FUNCTION_SECRET_KEY                = var.function_secret_key
-    SERVICE_TOKEN_SECRET_KEY           = var.service_token_secret_key
     BRAINSTORE_ENABLED                 = "true"
     BRAINSTORE_DEFAULT                 = "force"
     BRAINSTORE_URL                     = "http://${var.brainstore_hostname}:${var.brainstore_port}"
@@ -318,6 +312,24 @@ resource "aws_ecs_task_definition" "api_ecs" {
         for key in sort(keys(local.merged_env_vars)) : {
           name  = key
           value = local.merged_env_vars[key]
+        }
+      ]
+      secrets = [
+        {
+          name      = "FUNCTION_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
+        },
+        {
+          name      = "PG_URL"
+          valueFrom = var.database_url_secret_arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = var.redis_url_secret_arn
+        },
+        {
+          name      = "SERVICE_TOKEN_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
         }
       ]
       logConfiguration = {

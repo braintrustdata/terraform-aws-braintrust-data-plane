@@ -3,6 +3,7 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
   elasticache_security_group_ids = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.elasticache[0].id]
+  redis_url                      = "redis://${aws_elasticache_cluster.main.cache_nodes[0].address}:${aws_elasticache_cluster.main.cache_nodes[0].port}"
 }
 
 resource "aws_elasticache_subnet_group" "main" {
@@ -21,6 +22,18 @@ resource "aws_elasticache_cluster" "main" {
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = local.elasticache_security_group_ids
   tags               = local.common_tags
+}
+
+resource "aws_secretsmanager_secret" "redis_url" {
+  name_prefix = "${var.deployment_name}/RedisUrl-"
+  description = "Redis URL for the Braintrust Redis cluster"
+  kms_key_id  = var.kms_key_arn
+  tags        = local.common_tags
+}
+
+resource "aws_secretsmanager_secret_version" "redis_url" {
+  secret_id     = aws_secretsmanager_secret.redis_url.id
+  secret_string = local.redis_url
 }
 
 #------------------------------------------------------------------------------
@@ -45,4 +58,3 @@ resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_ingress_from_a
   security_group_id = aws_security_group.elasticache[0].id
   tags              = local.common_tags
 }
-
