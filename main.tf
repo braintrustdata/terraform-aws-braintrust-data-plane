@@ -305,8 +305,6 @@ module "api_ecs" {
 
   # Data stores
   database_url_secret_arn   = module.database.postgres_database_url_secret_arn
-  postgres_host             = module.database.postgres_database_address
-  postgres_port             = module.database.postgres_database_port
   redis_url_secret_arn      = module.redis.redis_url_secret_arn
   function_tools_secret_arn = module.services_common.function_tools_secret_arn
 
@@ -366,18 +364,6 @@ module "api_ecs" {
   alb_idle_timeout_seconds               = var.api_ecs_alb_idle_timeout_seconds
   alb_client_keep_alive_seconds          = var.api_ecs_alb_client_keep_alive_seconds
   alb_deregistration_delay_seconds       = var.api_ecs_alb_deregistration_delay_seconds
-
-  # Quarantine VPC
-  use_quarantine_vpc = var.enable_quarantine_vpc
-  quarantine_vpc_id  = local.quarantine_vpc_id
-  quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
-    local.quarantine_vpc_private_subnet_1_id,
-    local.quarantine_vpc_private_subnet_2_id,
-    local.quarantine_vpc_private_subnet_3_id
-  ] : []
-  quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
-  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
