@@ -1,7 +1,7 @@
 data "aws_route53_zone" "validation" {
-  count = var.create_acm_certificate || var.create_dns_record ? 1 : 0
+  count = local.lookup_route53_zone ? 1 : 0
 
-  name         = "${local.route53_zone_fqdn}."
+  name         = "${local.derived_zone_name}."
   private_zone = false
 }
 
@@ -18,7 +18,7 @@ resource "aws_acm_certificate" "alb" {
 }
 
 resource "aws_route53_record" "cert_validation" {
-  for_each = var.create_acm_certificate ? {
+  for_each = local.manage_acm_validation_records ? {
     for dvo in aws_acm_certificate.alb[0].domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
@@ -34,7 +34,7 @@ resource "aws_route53_record" "cert_validation" {
 }
 
 resource "aws_acm_certificate_validation" "alb" {
-  count = var.create_acm_certificate ? 1 : 0
+  count = local.manage_acm_validation_records ? 1 : 0
 
   certificate_arn         = aws_acm_certificate.alb[0].arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]

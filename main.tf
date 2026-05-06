@@ -345,6 +345,7 @@ module "api_ecs" {
   function_secret_key                   = module.services_common.function_tools_secret_key
   service_token_secret_key              = module.services_common.function_tools_secret_key
   extra_env_vars                        = var.api_ecs_extra_env_vars
+  code_function_execution_mode          = var.api_ecs_code_function_execution_mode
 
   # Networking
   vpc_id             = local.main_vpc_id
@@ -360,8 +361,8 @@ module "api_ecs" {
   allow_cloudfront_origin_facing_traffic = local.create_cloudfront
   acm_certificate_arn                    = var.api_ecs_acm_certificate_arn
   create_acm_certificate                 = var.api_ecs_create_acm_certificate
-  dns_name                               = var.api_ecs_dns_name
-  route53_zone_name                      = var.api_ecs_route53_zone_name
+  manage_certificate_validation          = var.api_ecs_manage_certificate_validation
+  fqdn                                   = var.api_ecs_fqdn
   create_dns_record                      = var.use_deployment_mode_private_api_ecs && var.api_ecs_create_dns_record
   require_https                          = var.use_deployment_mode_private_api_ecs
   alb_idle_timeout_seconds               = var.api_ecs_alb_idle_timeout_seconds

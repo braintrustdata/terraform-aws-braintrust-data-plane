@@ -9,39 +9,32 @@ locals {
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
 
   base_env_vars = merge({
-    ORG_NAME                                          = var.braintrust_org_name
-    PRIMARY_ORG_NAME                                  = var.primary_org_name
-    BRAINTRUST_DEPLOYMENT_NAME                        = var.deployment_name
-    PG_URL                                            = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
-    REDIS_URL                                         = "redis://${var.redis_host}:${var.redis_port}"
-    REDIS_HOST                                        = var.redis_host
-    REDIS_PORT                                        = tostring(var.redis_port)
-    RESPONSE_BUCKET                                   = var.response_bucket
-    CODE_BUNDLE_BUCKET                                = var.code_bundle_bucket
-    WHITELISTED_ORIGINS                               = join(",", var.whitelisted_origins)
-    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES                = tostring(var.outbound_rate_limit_window_minutes)
-    OUTBOUND_RATE_LIMIT_MAX_REQUESTS                  = tostring(var.outbound_rate_limit_max_requests)
-    QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc && var.quarantine_invoke_role_arn != null ? var.quarantine_invoke_role_arn : ""
-    QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : ""
-    QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
-    QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
-    QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
-    QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc && var.quarantine_lambda_security_group_id != null ? var.quarantine_lambda_security_group_id : ""
-    QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc && var.quarantine_vpc_id != null ? var.quarantine_vpc_id : ""
-    FUNCTION_SECRET_KEY                               = var.function_secret_key
-    SERVICE_TOKEN_SECRET_KEY                          = var.service_token_secret_key
-    BRAINSTORE_ENABLED                                = "true"
-    BRAINSTORE_DEFAULT                                = "force"
-    BRAINSTORE_URL                                    = "http://${var.brainstore_hostname}:${var.brainstore_port}"
-    BRAINSTORE_WRITER_URL                             = local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-    BRAINSTORE_REALTIME_WAL_BUCKET                    = var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
-    BRAINSTORE_INSERT_ROW_REFS                        = "true"
-    CONTROL_PLANE_TELEMETRY                           = var.monitoring_telemetry
-    TELEMETRY_DISABLE_AGGREGATION                     = tostring(var.disable_billing_telemetry_aggregation)
-    TELEMETRY_LOG_LEVEL                               = var.billing_telemetry_log_level
-    INSERT_LOGS2                                      = "true"
-    NODE_MEMORY_PERCENT                               = "80"
-    ALLOW_CODE_FUNCTION_EXECUTION                     = "false"
+    ORG_NAME                           = var.braintrust_org_name
+    PRIMARY_ORG_NAME                   = var.primary_org_name
+    BRAINTRUST_DEPLOYMENT_NAME         = var.deployment_name
+    PG_URL                             = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres?sslmode=require"
+    REDIS_URL                          = "redis://${var.redis_host}:${var.redis_port}"
+    REDIS_HOST                         = var.redis_host
+    REDIS_PORT                         = tostring(var.redis_port)
+    RESPONSE_BUCKET                    = var.response_bucket
+    CODE_BUNDLE_BUCKET                 = var.code_bundle_bucket
+    WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
+    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = tostring(var.outbound_rate_limit_window_minutes)
+    OUTBOUND_RATE_LIMIT_MAX_REQUESTS   = tostring(var.outbound_rate_limit_max_requests)
+    FUNCTION_SECRET_KEY                = var.function_secret_key
+    SERVICE_TOKEN_SECRET_KEY           = var.service_token_secret_key
+    BRAINSTORE_ENABLED                 = "true"
+    BRAINSTORE_DEFAULT                 = "force"
+    BRAINSTORE_URL                     = "http://${var.brainstore_hostname}:${var.brainstore_port}"
+    BRAINSTORE_WRITER_URL              = local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+    BRAINSTORE_REALTIME_WAL_BUCKET     = var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
+    BRAINSTORE_INSERT_ROW_REFS         = "true"
+    CONTROL_PLANE_TELEMETRY            = var.monitoring_telemetry
+    TELEMETRY_DISABLE_AGGREGATION      = tostring(var.disable_billing_telemetry_aggregation)
+    TELEMETRY_LOG_LEVEL                = var.billing_telemetry_log_level
+    INSERT_LOGS2                       = "true"
+    NODE_MEMORY_PERCENT                = "80"
+    ALLOW_CODE_FUNCTION_EXECUTION      = tostring(var.code_function_execution_mode == "api_ecs")
     },
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
@@ -73,11 +66,14 @@ locals {
     "16384" = [for value in range(32768, 122881, 8192) : value]
   }
 
-  route53_zone_fqdn        = var.route53_zone_name == null ? null : trimsuffix(var.route53_zone_name, ".")
-  api_fqdn                 = var.dns_name == null || local.route53_zone_fqdn == null ? null : "${var.dns_name}.${local.route53_zone_fqdn}"
+  api_fqdn                 = var.fqdn
+  derived_zone_name        = var.fqdn != null ? join(".", slice(split(".", var.fqdn), 1, length(split(".", var.fqdn)))) : null
   enable_https             = var.acm_certificate_arn != null || var.create_acm_certificate
   selected_certificate_arn = var.acm_certificate_arn != null ? var.acm_certificate_arn : (var.create_acm_certificate ? aws_acm_certificate.alb[0].arn : null)
   preferred_domain_name    = local.api_fqdn != null ? local.api_fqdn : aws_lb.api_ecs.dns_name
+
+  manage_acm_validation_records = var.create_acm_certificate && var.manage_certificate_validation
+  lookup_route53_zone           = local.manage_acm_validation_records || var.create_dns_record
 }
 
 data "aws_region" "current" {}

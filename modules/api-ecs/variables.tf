@@ -268,6 +268,16 @@ variable "extra_env_vars" {
   default     = {}
 }
 
+variable "code_function_execution_mode" {
+  type        = string
+  description = "Controls code function execution. Use disabled to turn it off or api_ecs to run code functions inside the API ECS container. Lambda quarantine execution will be added in a future release."
+
+  validation {
+    condition     = contains(["disabled", "api_ecs"], var.code_function_execution_mode)
+    error_message = "code_function_execution_mode must be one of: disabled, api_ecs."
+  }
+}
+
 variable "authorized_security_groups" {
   type        = map(string)
   description = "Map of security group names to IDs authorized to access the API ECS ALB."
@@ -350,47 +360,39 @@ variable "acm_certificate_arn" {
 
 variable "create_acm_certificate" {
   type        = bool
-  description = "Create and manage an ACM certificate for API ECS ALB."
+  description = "Create an ACM certificate for API ECS ALB. DNS validation records are managed by this module unless manage_certificate_validation is false."
   default     = false
 }
 
-variable "dns_name" {
-  type        = string
-  description = "Hostname label for the API ECS ALB certificate and optional Route53 alias record. Combined with route53_zone_name to produce the full DNS name."
-  default     = null
+variable "manage_certificate_validation" {
+  type        = bool
+  description = "When true (default), this module creates Route53 DNS validation records and waits for the ACM certificate to be validated. Set to false to manage validation records outside this module; the caller is responsible for creating the records and an aws_acm_certificate_validation resource."
+  default     = true
 
   validation {
-    condition     = !(var.create_acm_certificate || var.acm_certificate_arn != null || var.create_dns_record || var.require_https) || var.dns_name != null
-    error_message = "dns_name is required when HTTPS or DNS records are enabled."
-  }
-  validation {
-    condition     = var.dns_name == null || can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$", var.dns_name))
-    error_message = "dns_name must be a single DNS label containing only letters, numbers, and hyphens, and may not start or end with a hyphen."
+    condition     = var.manage_certificate_validation || var.create_acm_certificate
+    error_message = "manage_certificate_validation can only be false when create_acm_certificate is true."
   }
 }
 
-variable "route53_zone_name" {
+variable "fqdn" {
   type        = string
-  description = "Route53 hosted zone name used for ACM DNS validation records and optional API ECS ALB alias records."
+  description = "Full DNS name for the API ECS ALB certificate and preferred endpoint (e.g. 'api.sandbox.example.com'). Required when HTTPS or DNS records are enabled. When create_dns_record or manage_certificate_validation is true, the zone is derived by stripping the first label and must exist in the account."
   default     = null
 
   validation {
-    condition     = !var.create_acm_certificate || var.route53_zone_name != null
-    error_message = "route53_zone_name is required when create_acm_certificate is true."
+    condition     = var.fqdn == null || can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn))
+    error_message = "fqdn must be a valid fully-qualified domain name with at least two labels."
   }
   validation {
-    condition     = !var.create_dns_record || var.route53_zone_name != null
-    error_message = "route53_zone_name is required when create_dns_record is true."
-  }
-  validation {
-    condition     = !(var.create_acm_certificate || var.acm_certificate_arn != null || var.require_https) || var.route53_zone_name != null
-    error_message = "route53_zone_name is required when HTTPS is enabled."
+    condition     = !(var.create_acm_certificate || var.acm_certificate_arn != null || var.create_dns_record || var.require_https) || var.fqdn != null
+    error_message = "fqdn is required when HTTPS or DNS records are enabled."
   }
 }
 
 variable "create_dns_record" {
   type        = bool
-  description = "Create a Route53 alias record for the API ECS ALB using dns_name.route53_zone_name."
+  description = "Create a Route53 alias record for the API ECS ALB. The Route53 zone is derived from fqdn by stripping the first label and must exist in the account."
   default     = false
 }
 

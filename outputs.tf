@@ -113,6 +113,11 @@ output "api_ecs_alb_dns_name" {
   description = "DNS name of the private API ECS ALB"
 }
 
+output "api_ecs_alb_zone_id" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].alb_zone_id : null
+  description = "Hosted zone ID of the private API ECS ALB"
+}
+
 output "api_ecs_alb_arn" {
   value       = local.enable_api_ecs ? module.api_ecs[0].alb_arn : null
   description = "ARN of the private API ECS ALB"
@@ -136,6 +141,21 @@ output "api_ecs_url" {
 output "api_ecs_tls_ready" {
   value       = local.enable_api_ecs ? module.api_ecs[0].tls_ready : null
   description = "Whether API ECS ALB HTTPS is enabled"
+}
+
+output "api_ecs_fqdn" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].fqdn : null
+  description = "Full DNS name configured for the API ECS ALB"
+}
+
+output "api_ecs_acm_certificate_arn" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].acm_certificate_arn : null
+  description = "ARN of the ACM certificate selected for the API ECS ALB HTTPS listener"
+}
+
+output "api_ecs_acm_certificate_domain_validation_options" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].acm_certificate_domain_validation_options : {}
+  description = "DNS validation options for the managed API ECS ALB ACM certificate"
 }
 
 output "api_ecs_dns_record_fqdn" {

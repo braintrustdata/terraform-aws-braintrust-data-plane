@@ -571,6 +571,17 @@ variable "api_ecs_extra_env_vars" {
   default     = {}
 }
 
+variable "api_ecs_code_function_execution_mode" {
+  description = "Controls API ECS code function execution. Use disabled to turn it off or api_ecs to run code functions inside the API ECS container. Lambda quarantine execution will be added in a future release."
+  type        = string
+  default     = "disabled"
+
+  validation {
+    condition     = contains(["disabled", "api_ecs"], var.api_ecs_code_function_execution_mode)
+    error_message = "api_ecs_code_function_execution_mode must be one of: disabled, api_ecs."
+  }
+}
+
 variable "api_ecs_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)
@@ -620,34 +631,34 @@ variable "api_ecs_acm_certificate_arn" {
 }
 
 variable "api_ecs_create_acm_certificate" {
-  description = "Create an ACM certificate for API ECS ALB and manage its DNS validation records."
+  description = "Create an ACM certificate for API ECS ALB. DNS validation records are managed by this module unless api_ecs_manage_certificate_validation is false."
   type        = bool
   default     = false
 }
 
-variable "api_ecs_dns_name" {
-  description = "Hostname label for the API ECS ALB certificate and optional private-mode Route53 alias record. Combined with api_ecs_route53_zone_name to produce the full DNS name."
-  type        = string
-  default     = null
+variable "api_ecs_manage_certificate_validation" {
+  description = "When true (default), this module creates Route53 DNS validation records and waits for the ACM certificate to be validated. Set to false to manage validation records outside this module."
+  type        = bool
+  default     = true
 
   validation {
-    condition     = !(var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate || var.api_ecs_create_dns_record) || var.api_ecs_dns_name != null
-    error_message = "api_ecs_dns_name is required when private API ECS mode, HTTPS, or DNS records are enabled."
-  }
-  validation {
-    condition     = var.api_ecs_dns_name == null || can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$", var.api_ecs_dns_name))
-    error_message = "api_ecs_dns_name must be a single DNS label containing only letters, numbers, and hyphens, and may not start or end with a hyphen."
+    condition     = var.api_ecs_manage_certificate_validation || var.api_ecs_create_acm_certificate
+    error_message = "api_ecs_manage_certificate_validation can only be false when api_ecs_create_acm_certificate is true."
   }
 }
 
-variable "api_ecs_route53_zone_name" {
-  description = "Route53 hosted zone name for managed API ECS ACM DNS validation records and optional private-mode ALB alias records."
+variable "api_ecs_fqdn" {
+  description = "Full DNS name for the API ECS ALB certificate and preferred endpoint (e.g. 'api.sandbox.example.com'). Required when private API ECS mode, HTTPS, or DNS records are enabled. When the module manages DNS records, the Route53 zone is derived by stripping the first label and must exist in the account."
   type        = string
   default     = null
 
   validation {
-    condition     = !(var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate || var.api_ecs_create_dns_record) || var.api_ecs_route53_zone_name != null
-    error_message = "api_ecs_route53_zone_name is required when private API ECS mode, HTTPS, or DNS records are enabled."
+    condition     = var.api_ecs_fqdn == null || can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.api_ecs_fqdn))
+    error_message = "api_ecs_fqdn must be a valid fully-qualified domain name with at least two labels."
+  }
+  validation {
+    condition     = !(var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate || var.api_ecs_create_dns_record) || var.api_ecs_fqdn != null
+    error_message = "api_ecs_fqdn is required when private API ECS mode, HTTPS, or DNS records are enabled."
   }
 }
 
