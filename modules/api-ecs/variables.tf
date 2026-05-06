@@ -131,16 +131,6 @@ variable "database_url_secret_arn" {
   description = "ARN of the secret containing the Postgres URL."
 }
 
-variable "postgres_host" {
-  type        = string
-  description = "Postgres host."
-}
-
-variable "postgres_port" {
-  type        = number
-  description = "Postgres port."
-}
-
 variable "redis_url_secret_arn" {
   type        = string
   description = "ARN of the secret containing the Redis URL."
@@ -387,40 +377,4 @@ variable "require_https" {
     condition     = !var.require_https || var.acm_certificate_arn != null || var.create_acm_certificate
     error_message = "require_https requires acm_certificate_arn or create_acm_certificate."
   }
-}
-
-variable "use_quarantine_vpc" {
-  type        = bool
-  description = "Whether to pass quarantine VPC configuration to the API ECS container."
-  default     = false
-}
-
-variable "quarantine_vpc_id" {
-  type        = string
-  description = "Quarantine VPC ID."
-  default     = null
-}
-
-variable "quarantine_vpc_private_subnets" {
-  type        = list(string)
-  description = "Private subnets of the quarantine VPC."
-  default     = []
-}
-
-variable "quarantine_lambda_security_group_id" {
-  type        = string
-  description = "Security group ID used for quarantined functions."
-  default     = null
-}
-
-variable "quarantine_invoke_role_arn" {
-  type        = string
-  description = "IAM role used by the API to invoke quarantined functions."
-  default     = null
-}
-
-variable "quarantine_function_role_arn" {
-  type        = string
-  description = "IAM role used by quarantined functions."
-  default     = null
 }
