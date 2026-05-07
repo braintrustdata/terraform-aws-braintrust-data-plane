@@ -125,6 +125,27 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
   })
 }
 
+resource "aws_iam_role_policy" "brainstore_export_assume_role" {
+  name = "BrainstoreExportAssumeRole"
+  role = aws_iam_role.brainstore_role.id
+
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "sts:AssumeRole"
+        Effect   = "Allow"
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "sts:ExternalId" = "bt:*"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "brainstore_cloudwatch_metrics" {
   name = "cloudwatch-agent-metrics"
   role = aws_iam_role.brainstore_role.id
