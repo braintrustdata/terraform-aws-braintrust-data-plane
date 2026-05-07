@@ -126,6 +126,8 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
 }
 
 resource "aws_iam_role_policy" "brainstore_export_assume_role" {
+  count = var.brainstore_enable_export ? 1 : 0
+
   name = "BrainstoreExportAssumeRole"
   role = aws_iam_role.brainstore_role.id
 
