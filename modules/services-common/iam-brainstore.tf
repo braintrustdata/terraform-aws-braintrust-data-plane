@@ -69,6 +69,10 @@ resource "aws_iam_role" "brainstore_role" {
   tags = merge({
     Name = "${var.deployment_name}-brainstore-ec2-role"
   }, local.common_tags)
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy" "brainstore_s3_access" {
