@@ -58,7 +58,8 @@ resource "aws_db_instance" "main" {
       identifier,
       kms_key_id,
       storage_encrypted,
-      db_subnet_group_name
+      db_subnet_group_name,
+      db_name
     ]
   }
 }
@@ -98,6 +99,7 @@ resource "aws_db_parameter_group" "main" {
 
   lifecycle {
     create_before_destroy = true
+    ignore_changes        = [name_prefix, description]
   }
 
   tags = local.common_tags
@@ -111,6 +113,7 @@ resource "aws_db_subnet_group" "main" {
 
   lifecycle {
     create_before_destroy = true
+    ignore_changes        = [name_prefix]
   }
 
   tags = local.common_tags
@@ -133,6 +136,10 @@ resource "aws_iam_role" "db_monitoring" {
   })
 
   permissions_boundary = var.permissions_boundary_arn
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 
   tags = local.common_tags
 }
@@ -164,6 +171,10 @@ resource "aws_secretsmanager_secret" "database_secret" {
   name_prefix = "${var.deployment_name}/DatabaseSecret-"
   description = "Username/password for the main Braintrust RDS database"
   kms_key_id  = var.kms_key_arn
+
+  lifecycle {
+    ignore_changes = [name, name_prefix]
+  }
 
   tags = local.common_tags
 }
