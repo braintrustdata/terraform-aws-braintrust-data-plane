@@ -1,0 +1,46 @@
+# Sandbox-sized Helm values for the Braintrust chart.
+# Shrinks every component to 1 replica with tight CPU/memory so the whole
+# dataplane fits on a small Karpenter-provisioned node.
+#
+# Merged in after the module's rendered defaults — later-wins per Helm's
+# standard merge semantics. Keys here override anything the module
+# template sets that overlaps.
+
+api:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+
+brainstore:
+  reader:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+  fastreader:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+  writer:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"

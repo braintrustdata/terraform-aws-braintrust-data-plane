@@ -1,0 +1,40 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: {{ .Values.name }}
+spec:
+  template:
+    metadata:
+      labels:
+        braintrust.dev/node-pool: {{ .Values.name | quote }}
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: {{ .Values.name }}
+      requirements:
+        # Auto Mode restricts NodePool requirement keys to the domains
+        # karpenter.sh/*, kubernetes.io/*, node.kubernetes.io/*,
+        # topology.kubernetes.io/*, and eks.amazonaws.com/* — so we use
+        # Auto-Mode's eks.amazonaws.com/instance-family instead of
+        # self-managed Karpenter's karpenter.k8s.aws/instance-family.
+        - key: eks.amazonaws.com/instance-family
+          operator: In
+          values:
+            {{- range .Values.instanceFamilies }}
+            - {{ . | quote }}
+            {{- end }}
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64", "amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+      # Brainstore pods are long-lived; avoid Karpenter consolidating
+      # them off in the middle of serving traffic.
+      terminationGracePeriod: 1h
+  disruption:
+    # Only replace nodes when they're empty (pod count drops to zero
+    # during scale-down). No opportunistic consolidation.
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m

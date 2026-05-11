@@ -1,0 +1,10 @@
+# Defaults here are just placeholders; the Terraform module always
+# overrides every value via `helm_release.values`.
+name: brainstore
+deploymentName: ""
+clusterName: ""
+nodeIamRoleName: ""
+instanceFamilies:
+  - c8gd
+  - c7gd
+  - m7gd

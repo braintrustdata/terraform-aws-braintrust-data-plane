@@ -12,6 +12,10 @@ To use this module, **copy the [`examples/braintrust-data-plane`](examples/brain
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
 
+### EKS Auto Mode deployment
+
+An alternative EKS-based deployment is available via `create_eks_cluster = true` (requires `use_deployment_mode_external_eks = true`). In that mode, the module provisions an EKS Auto Mode cluster and deploys Braintrust as pods via the [Braintrust Helm chart](https://github.com/braintrustdata/helm), replacing the Lambda-based ingress and EC2-based Brainstore paths. See [`examples/braintrust-data-plane-eks`](examples/braintrust-data-plane-eks) for the production example and [`examples/braintrust-data-plane-eks-sandbox`](examples/braintrust-data-plane-eks-sandbox) for a cheap disposable sandbox variant. See [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) for apply/destroy failure runbooks and [`RECOVERY.md`](RECOVERY.md) for disaster-recovery scenarios (e.g. out-of-band cluster deletion).
+
 If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
 
 ## Module Configuration
@@ -21,6 +25,8 @@ All module input variables and outputs are documented inline in the module's Ter
 
 ### dump-logs.sh
 This script will dump the logs for the given deployment and services to the `logs-<deployment_name>` directory. This is useful for debugging issues with the data plane and sharing with the Braintrust team.
+
+**Note:** this script covers the Lambda + EC2 Brainstore deployment mode only. In EKS mode (`create_eks_cluster = true`) the chart doesn't ship logs to CloudWatch, and this script has nothing to fetch; use `kubectl logs` instead. See [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) and [`RECOVERY.md`](RECOVERY.md) for EKS-mode runbooks.
 
 ```
 # ./dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]

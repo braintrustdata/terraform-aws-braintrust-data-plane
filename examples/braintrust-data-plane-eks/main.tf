@@ -1,0 +1,112 @@
+# tflint-ignore-file: terraform_module_pinned_source
+
+module "braintrust-data-plane" {
+  source = "../../"
+  # For production use, pin to a released version:
+  # source = "github.com/braintrustdata/terraform-braintrust-data-plane?ref=vX.Y.Z"
+
+  ### This example is configured for a Terraform-managed EKS Auto Mode
+  ### deployment. All the Braintrust K8s workloads run in-cluster and are
+  ### deployed via Helm.
+  ###
+  ### Single-apply bootstrap: `terraform apply`. No targeting needed.
+  ### The kubernetes/helm provider config in provider.tf reads cluster
+  ### endpoint/CA/name directly from module outputs, which Terraform
+  ### defers until after the cluster is created. The NodeClass and
+  ### NodePool are delivered via helm_release (not kubernetes_manifest),
+  ### so no CRD-schema lookup is required at plan time either. Cold
+  ### first deploys take ~15 minutes end to end (cluster ~8-10 min,
+  ### then RDS + Redis + Helm release).
+  ###
+  ### The kubernetes/helm providers use `exec { aws eks get-token }`
+  ### auth in provider.tf so long applies aren't bounded by any token
+  ### TTL. Requires the AWS CLI on the runner.
+
+  # Each deployment in the same AWS account must have a unique name.
+  # Do not change this after deployment. RDS and S3 resources cannot be
+  # renamed. Max 18 characters, lowercase letters, numbers, and hyphens only.
+  deployment_name = "braintrust"
+
+  # Add your organization name from the Braintrust UI here
+  braintrust_org_name = ""
+
+  # Brainstore license key (from the Braintrust UI in Settings > Data Plane).
+  brainstore_license_key = var.brainstore_license_key
+
+  ### EKS deployment mode
+  # use_deployment_mode_external_eks = true disables the Lambda, EC2
+  # Brainstore, and Lambda-based ingress submodules. create_eks_cluster = true
+  # then provisions an EKS Auto Mode cluster and deploys the Helm chart on it.
+  use_deployment_mode_external_eks = true
+  create_eks_cluster               = true
+
+  # Version of the Braintrust Helm chart to deploy. Pin to an exact version
+  # so chart upgrades are deliberate rather than silent — the contract
+  # between this module and the chart (see CONTRACT.md) depends on
+  # chart-version-specific names, keys, and values schema.
+  helm_chart_version = "6.1.0"
+
+  # Kubernetes namespace for Braintrust workloads. Created by the module.
+  eks_namespace = "braintrust"
+
+  # Kubernetes version for the EKS cluster.
+  eks_kubernetes_version = "1.31"
+
+  # EC2 instance families Auto Mode's Karpenter picks from for the
+  # Brainstore NodePool. Must be NVMe-backed (*d.*) — Brainstore caches
+  # to local SSD. Graviton by default (matches EC2 Brainstore defaults).
+  # eks_brainstore_nodepool_instance_families = ["c8gd", "c7gd", "m7gd"]
+
+  ### Quarantine VPC
+  # Disabled in EKS mode — it's used by the Lambda-based user-function
+  # execution path, which is not part of the EKS deployment.
+  enable_quarantine_vpc = false
+
+  ### Postgres
+  postgres_instance_type    = "db.r8g.2xlarge"
+  postgres_storage_size     = 1000
+  postgres_max_storage_size = 10000
+  postgres_storage_type     = "gp3"
+
+  # IOPS and throughput can only be specified for postgres gp3 when storage
+  # is >= 400 GB. Below that, RDS rejects CreateDBInstance with
+  # `InvalidParameterCombination`. Values below are the tuned defaults for a
+  # 1000 GB production deployment; if you downsize `postgres_storage_size`
+  # under 400 GB (e.g. for a sandbox), comment these two out — gp3 baseline
+  # of 3000 IOPS / 125 MiB/s applies automatically.
+  postgres_storage_iops       = 15000
+  postgres_storage_throughput = 500
+
+  postgres_version                    = "15"
+  postgres_auto_minor_version_upgrade = true
+
+  ### Redis
+  redis_instance_type = "cache.t4g.medium"
+  redis_version       = "7.0"
+
+  ### Brainstore chart configuration
+  # WAL footer version and no-PG mode. These pass through to the chart as
+  # top-level values.
+  #
+  # WARNING: skip_pg_for_brainstore_objects = "all" is a one-way operation
+  # once applied. It is safe for fresh deployments but can cause data loss
+  # or downtime if applied to an existing deployment incorrectly. See the
+  # upgrade guide before enabling on an existing deployment.
+  brainstore_wal_footer_version  = "v3"
+  skip_pg_for_brainstore_objects = "all"
+
+  ### Optional: Helm values overrides.
+  ### Point at a YAML file alongside this Terraform config. Any field the
+  ### chart exposes is fair game — replicas, resources, annotations,
+  ### nodeSelector, probes, image pins, etc. Merged after the module's
+  ### rendered defaults (later-wins). Leave unset to accept chart defaults
+  ### (which are production-sized; see the `-sandbox` example for smaller
+  ### values).
+  # eks_helm_values_file = "${path.module}/values.yaml"
+
+  ### Tagging
+  # Optionally add any custom AWS tags you want to apply to all resources.
+  # custom_tags = {
+  #   CustomTagKey = "SomeValue"
+  # }
+}

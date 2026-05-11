@@ -1,0 +1,5 @@
+apiVersion: v2
+name: brainstore-nodepool
+description: Auto Mode NodeClass + NodePool that constrains Brainstore nodes to NVMe-backed instance families. Delivered via helm_release instead of kubernetes_manifest so Terraform doesn't need live-cluster CRD access at plan time — which is what lets the EKS module apply in a single `terraform apply` rather than the two-step dance.
+type: application
+version: 0.1.0
