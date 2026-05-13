@@ -52,7 +52,9 @@ module "braintrust-data-plane" {
   # Permit access from your private networks or from specific security groups.
   # For example: ["10.0.0.0/8", "172.16.0.0/12"].
   api_ecs_authorized_cidr_blocks = ["10.0.0.0/8"]
-  #api_ecs_authorized_security_groups = ["sg-0123456789abcdef"]
+  # api_ecs_authorized_security_groups = {
+  #   vpn = "sg-0123456789abcdef"
+  # }
 
   # Brainstore should use the same internal API endpoint for AI proxy traffic.
   use_api_ecs_for_brainstore_ai_proxy_url = true
