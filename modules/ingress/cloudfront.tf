@@ -47,7 +47,7 @@ locals {
     },
     {
       path_pattern     = "/function/*"
-      target_origin_id = local.cloudfront_AIProxyOrigin
+      target_origin_id = local.cloudfront_proxy_origin
     },
     {
       path_pattern     = "/v1/eval"
@@ -60,7 +60,7 @@ locals {
     {
       # Note that /v1/function and /v1/function/{id} still need to go to API Gateway.
       path_pattern     = "/v1/function/*/?*"
-      target_origin_id = local.cloudfront_AIProxyOrigin
+      target_origin_id = local.cloudfront_proxy_origin
     },
     {
       path_pattern     = "/v1/proxy"
