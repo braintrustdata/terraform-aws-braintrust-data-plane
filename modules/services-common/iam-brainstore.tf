@@ -69,6 +69,10 @@ resource "aws_iam_role" "brainstore_role" {
   tags = merge({
     Name = "${var.deployment_name}-brainstore-ec2-role"
   }, local.common_tags)
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy" "brainstore_s3_access" {
@@ -120,6 +124,29 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
         Resource = var.database_secret_arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "brainstore_export_assume_role" {
+  count = var.brainstore_enable_export ? 1 : 0
+
+  name = "export-assume-role"
+  role = aws_iam_role.brainstore_role.id
+
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "sts:AssumeRole"
+        Effect   = "Allow"
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "sts:ExternalId" = "bt:*"
+          }
+        }
       }
     ]
   })

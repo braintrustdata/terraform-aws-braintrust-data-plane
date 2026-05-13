@@ -76,6 +76,10 @@ resource "aws_iam_role" "api_handler_role" {
   permissions_boundary = var.permissions_boundary_arn
 
   tags = local.common_tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "api_handler_policy" {

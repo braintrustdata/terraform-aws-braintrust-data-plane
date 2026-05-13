@@ -400,6 +400,7 @@ module "services_common" {
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
+  brainstore_enable_export                  = var.brainstore_enable_export
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = var.existing_eks_cluster_arn
   eks_namespace                             = var.eks_namespace

@@ -81,6 +81,12 @@ variable "brainstore_additional_policy_arns" {
   default     = []
 }
 
+variable "brainstore_enable_export" {
+  type        = bool
+  description = "Enable Brainstore-based export IAM permissions."
+  default     = false
+}
+
 variable "enable_brainstore_ec2_ssm" {
   description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
   type        = bool
