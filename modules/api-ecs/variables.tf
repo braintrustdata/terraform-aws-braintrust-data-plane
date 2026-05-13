@@ -288,7 +288,7 @@ variable "alb_client_keep_alive_seconds" {
 variable "alb_deregistration_delay_seconds" {
   type        = number
   description = "ALB target group deregistration delay in seconds."
-  default     = 900
+  default     = 300
 }
 
 variable "acm_certificate_arn" {

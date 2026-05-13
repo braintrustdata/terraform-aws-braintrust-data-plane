@@ -593,7 +593,7 @@ variable "api_ecs_alb_client_keep_alive_seconds" {
 variable "api_ecs_alb_deregistration_delay_seconds" {
   description = "ALB target group deregistration delay for API ECS in seconds."
   type        = number
-  default     = 900
+  default     = 300
 }
 
 variable "api_ecs_acm_certificate_arn" {
