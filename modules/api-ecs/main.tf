@@ -180,8 +180,8 @@ resource "aws_security_group_rule" "alb_egress_all" {
 
 resource "aws_security_group_rule" "task_ingress_from_alb" {
   type                     = "ingress"
-  from_port                = var.container_port
-  to_port                  = var.container_port
+  from_port                = 8000
+  to_port                  = 8000
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.alb.id
   description              = "Allow inbound traffic from API ECS ALB to API ECS tasks."
@@ -195,8 +195,8 @@ resource "aws_lb" "api_ecs" {
   subnets            = var.private_subnet_ids
   security_groups    = [aws_security_group.alb.id]
 
-  idle_timeout                     = var.alb_idle_timeout_seconds
-  client_keep_alive                = var.alb_client_keep_alive_seconds
+  idle_timeout                     = 900
+  client_keep_alive                = 3600
   enable_deletion_protection       = false
   enable_http2                     = true
   desync_mitigation_mode           = "defensive"
@@ -209,15 +209,15 @@ resource "aws_lb" "api_ecs" {
 
 resource "aws_lb_target_group" "api_ecs" {
   name        = "${var.deployment_name}-api-ecs"
-  port        = var.container_port
+  port        = 8000
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = var.vpc_id
 
-  deregistration_delay = var.alb_deregistration_delay_seconds
+  deregistration_delay = 300
 
   health_check {
-    path                = var.health_check_path
+    path                = "/"
     matcher             = "200-399"
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -303,8 +303,8 @@ resource "aws_ecs_task_definition" "api_ecs" {
       }
       portMappings = [
         {
-          containerPort = var.container_port
-          hostPort      = var.container_port
+          containerPort = 8000
+          hostPort      = 8000
           protocol      = "tcp"
         }
       ]
@@ -390,7 +390,7 @@ resource "aws_ecs_service" "api_ecs" {
   load_balancer {
     target_group_arn = aws_lb_target_group.api_ecs.arn
     container_name   = "api"
-    container_port   = var.container_port
+    container_port   = 8000
   }
 
   depends_on = [

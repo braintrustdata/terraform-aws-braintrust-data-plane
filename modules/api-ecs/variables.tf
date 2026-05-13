@@ -45,12 +45,6 @@ variable "api_version_override" {
   }
 }
 
-variable "container_port" {
-  type        = number
-  description = "Port exposed by the API ECS container."
-  default     = 8000
-}
-
 variable "cpu" {
   type        = number
   description = "CPU units for the API ECS task definition."
@@ -267,30 +261,6 @@ variable "task_security_group_id" {
   description = "Security group ID to attach to API ECS tasks."
 }
 
-variable "health_check_path" {
-  type        = string
-  description = "ALB target group health check path."
-  default     = "/"
-}
-
-variable "alb_idle_timeout_seconds" {
-  type        = number
-  description = "ALB idle timeout in seconds."
-  default     = 900
-}
-
-variable "alb_client_keep_alive_seconds" {
-  type        = number
-  description = "ALB client keep-alive in seconds."
-  default     = 3600
-}
-
-variable "alb_deregistration_delay_seconds" {
-  type        = number
-  description = "ALB target group deregistration delay in seconds."
-  default     = 300
-}
-
 variable "acm_certificate_arn" {
   type        = string
   description = "Existing ACM certificate ARN for API ECS ALB HTTPS listener."
@@ -329,7 +299,7 @@ variable "fqdn" {
     error_message = "fqdn must be a valid fully-qualified domain name with at least two labels."
   }
   validation {
-    condition     = !(var.create_acm_certificate || var.acm_certificate_arn != null || var.create_dns_record || var.require_https) || var.fqdn != null
+    condition     = !(var.create_acm_certificate || var.acm_certificate_arn != null || var.create_dns_record) || var.fqdn != null
     error_message = "fqdn is required when HTTPS or DNS records are enabled."
   }
 }
@@ -338,15 +308,4 @@ variable "create_dns_record" {
   type        = bool
   description = "Create a Route53 alias record for the API ECS ALB. The Route53 zone is derived from fqdn by stripping the first label and must exist in the account."
   default     = false
-}
-
-variable "require_https" {
-  type        = bool
-  description = "Require HTTPS listener configuration for this API ECS ALB."
-  default     = false
-
-  validation {
-    condition     = !var.require_https || var.acm_certificate_arn != null || var.create_acm_certificate
-    error_message = "require_https requires acm_certificate_arn or create_acm_certificate."
-  }
 }

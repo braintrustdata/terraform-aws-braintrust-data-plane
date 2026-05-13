@@ -494,12 +494,6 @@ variable "use_api_ecs_for_brainstore_ai_proxy_url" {
   }
 }
 
-variable "api_ecs_container_port" {
-  description = "Container port for API ECS."
-  type        = number
-  default     = 8000
-}
-
 variable "api_ecs_cpu" {
   description = "CPU units for the API ECS task definition."
   type        = number
@@ -515,7 +509,7 @@ variable "api_ecs_memory" {
 variable "api_ecs_desired_count" {
   description = "Fixed task count for the API ECS service."
   type        = number
-  default     = 1
+  default     = 4
 
   validation {
     condition     = var.api_ecs_desired_count >= 1
@@ -570,30 +564,6 @@ variable "api_ecs_enable_execute_command" {
   description = "Enable ECS Exec for API ECS tasks."
   type        = bool
   default     = false
-}
-
-variable "api_ecs_health_check_path" {
-  description = "ALB health check path for API ECS."
-  type        = string
-  default     = "/"
-}
-
-variable "api_ecs_alb_idle_timeout_seconds" {
-  description = "ALB idle timeout for API ECS in seconds."
-  type        = number
-  default     = 900
-}
-
-variable "api_ecs_alb_client_keep_alive_seconds" {
-  description = "ALB client keep-alive for API ECS in seconds."
-  type        = number
-  default     = 3600
-}
-
-variable "api_ecs_alb_deregistration_delay_seconds" {
-  description = "ALB target group deregistration delay for API ECS in seconds."
-  type        = number
-  default     = 300
 }
 
 variable "api_ecs_acm_certificate_arn" {

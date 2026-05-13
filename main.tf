@@ -325,12 +325,10 @@ module "api_ecs" {
   # Service configuration
   braintrust_org_name                   = var.braintrust_org_name
   primary_org_name                      = var.primary_org_name
-  container_port                        = var.api_ecs_container_port
   cpu                                   = var.api_ecs_cpu
   memory                                = var.api_ecs_memory
   desired_count                         = var.api_ecs_desired_count
   log_retention_days                    = var.api_ecs_log_retention_days
-  health_check_path                     = var.api_ecs_health_check_path
   enable_execute_command                = var.api_ecs_enable_execute_command
   whitelisted_origins                   = var.whitelisted_origins
   outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
@@ -357,10 +355,6 @@ module "api_ecs" {
   manage_certificate_validation          = var.api_ecs_manage_certificate_validation
   fqdn                                   = var.api_ecs_fqdn
   create_dns_record                      = var.use_deployment_mode_private_api_ecs && var.api_ecs_create_dns_record
-  require_https                          = var.use_deployment_mode_private_api_ecs
-  alb_idle_timeout_seconds               = var.api_ecs_alb_idle_timeout_seconds
-  alb_client_keep_alive_seconds          = var.api_ecs_alb_client_keep_alive_seconds
-  alb_deregistration_delay_seconds       = var.api_ecs_alb_deregistration_delay_seconds
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
