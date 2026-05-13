@@ -250,6 +250,12 @@ variable "skip_pg_for_brainstore_objects" {
   }
 }
 
+variable "brainstore_enable_export" {
+  type        = bool
+  description = "If true, sets BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED=true on Brainstore writer nodes."
+  default     = false
+}
+
 variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."

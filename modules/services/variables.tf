@@ -236,6 +236,12 @@ variable "skip_pg_for_brainstore_objects" {
   }
 }
 
+variable "brainstore_enable_export" {
+  type        = bool
+  description = "If true, sets BRAINSTORE_EXPORT_MIGRATION_ENABLED=true on the API Handler Lambda."
+  default     = false
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string

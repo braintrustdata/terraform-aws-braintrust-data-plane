@@ -196,6 +196,7 @@ module "services" {
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
+  brainstore_enable_export        = var.brainstore_enable_export
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -328,6 +329,7 @@ module "services_common" {
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
+  brainstore_enable_export                  = var.brainstore_enable_export
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = local.eks_cluster_arn
   eks_cluster_oidc_issuer_url               = var.create_eks_cluster ? module.eks_cluster[0].cluster_oidc_issuer_url : null
@@ -354,6 +356,7 @@ module "brainstore" {
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
   skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
+  brainstore_enable_export              = var.brainstore_enable_export
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
