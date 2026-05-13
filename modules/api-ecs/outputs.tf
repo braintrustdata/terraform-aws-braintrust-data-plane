@@ -23,6 +23,11 @@ output "target_group_arn" {
   value       = aws_lb_target_group.api_ecs.arn
 }
 
+output "alb_security_group_id" {
+  description = "Security group ID attached to the private API ECS ALB."
+  value       = aws_security_group.alb.id
+}
+
 output "task_security_group_id" {
   description = "Security group ID attached to API ECS tasks."
   value       = var.task_security_group_id

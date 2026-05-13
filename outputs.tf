@@ -128,6 +128,11 @@ output "api_ecs_target_group_arn" {
   description = "ARN of the API ECS ALB target group"
 }
 
+output "api_ecs_alb_security_group_id" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].alb_security_group_id : null
+  description = "ID of the security group attached to the private API ECS ALB"
+}
+
 output "api_ecs_task_security_group_id" {
   value       = local.enable_api_ecs ? module.api_ecs[0].task_security_group_id : null
   description = "ID of the security group for API ECS tasks"
