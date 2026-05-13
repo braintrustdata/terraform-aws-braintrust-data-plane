@@ -328,10 +328,7 @@ module "api_ecs" {
   container_port                        = var.api_ecs_container_port
   cpu                                   = var.api_ecs_cpu
   memory                                = var.api_ecs_memory
-  min_capacity                          = var.api_ecs_min_capacity
-  max_capacity                          = var.api_ecs_max_capacity
-  target_cpu_utilization                = var.api_ecs_target_cpu_utilization
-  target_memory_utilization             = var.api_ecs_target_memory_utilization
+  desired_count                         = var.api_ecs_desired_count
   log_retention_days                    = var.api_ecs_log_retention_days
   health_check_path                     = var.api_ecs_health_check_path
   enable_execute_command                = var.api_ecs_enable_execute_command

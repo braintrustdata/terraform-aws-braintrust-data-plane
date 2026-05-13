@@ -512,42 +512,14 @@ variable "api_ecs_memory" {
   default     = 16384
 }
 
-variable "api_ecs_min_capacity" {
-  description = "Minimum task count for the API ECS service."
+variable "api_ecs_desired_count" {
+  description = "Fixed task count for the API ECS service."
   type        = number
   default     = 1
-}
-
-variable "api_ecs_max_capacity" {
-  description = "Maximum task count for the API ECS service."
-  type        = number
-  default     = 4
 
   validation {
-    condition     = var.api_ecs_max_capacity >= var.api_ecs_min_capacity
-    error_message = "api_ecs_max_capacity must be greater than or equal to api_ecs_min_capacity."
-  }
-}
-
-variable "api_ecs_target_cpu_utilization" {
-  description = "Target average CPU utilization percentage for API ECS autoscaling."
-  type        = number
-  default     = 40
-
-  validation {
-    condition     = var.api_ecs_target_cpu_utilization > 0 && var.api_ecs_target_cpu_utilization <= 100
-    error_message = "api_ecs_target_cpu_utilization must be between 1 and 100."
-  }
-}
-
-variable "api_ecs_target_memory_utilization" {
-  description = "Target average memory utilization percentage for API ECS autoscaling."
-  type        = number
-  default     = 50
-
-  validation {
-    condition     = var.api_ecs_target_memory_utilization > 0 && var.api_ecs_target_memory_utilization <= 100
-    error_message = "api_ecs_target_memory_utilization must be between 1 and 100."
+    condition     = var.api_ecs_desired_count >= 1
+    error_message = "api_ecs_desired_count must be at least 1."
   }
 }
 
