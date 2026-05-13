@@ -35,6 +35,12 @@ variable "eks_cluster_arn" {
   default     = null
 }
 
+variable "eks_cluster_oidc_issuer_url" {
+  type        = string
+  description = "Optional. OIDC issuer URL for the EKS cluster. Used when enable_eks_irsa is true."
+  default     = null
+}
+
 variable "eks_namespace" {
   type        = string
   description = "Optional. If you're using EKS with IRSA or EKS Pod Identity, this restricts the IAM roles to this namespace."

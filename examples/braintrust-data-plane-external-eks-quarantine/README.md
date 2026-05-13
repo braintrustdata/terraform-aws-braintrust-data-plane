@@ -2,13 +2,13 @@
 
 This is an example configuration for deploying a Braintrust data plane with the following characteristics:
 
-- **External EKS Deployment Mode**: Uses `use_deployment_mode_external_eks = true` to deploy services on an existing EKS cluster managed outside of Terraform
+- **External EKS Deployment Mode**: Uses `use_deployment_mode_eks = true` to deploy services on an existing EKS cluster managed outside of Terraform
 - **EKS Pod Identity**: Enables `enable_eks_pod_identity = true` for the Braintrust IAM roles
 - **Quarantine VPC**: Deploys the Quarantine VPC (`enable_quarantine_vpc = true`) for running user-defined functions in an isolated environment
 
 ## Quarantine VPC IAM Permissions
 
-The Quarantine VPC IAM permissions are automatically deployed when `enable_quarantine_vpc = true`, even when using `use_deployment_mode_external_eks = true`. These IAM resources are created in the `services-common` module:
+The Quarantine VPC IAM permissions are automatically deployed when `enable_quarantine_vpc = true`, even when using `use_deployment_mode_eks = true`. These IAM resources are created in the `services-common` module:
 
 - `QuarantineInvokeRole` - Role used by the API handler to invoke quarantined functions
 - `QuarantineFunctionRole` - Role used by the quarantined Lambda functions  
@@ -21,7 +21,7 @@ These resources are available for use by your EKS-deployed services via EKS Pod 
 ### Required Settings
 
 1. **EKS Configuration**:
-   - Set `use_deployment_mode_external_eks = true`
+   - Set `use_deployment_mode_eks = true`
    - Set `enable_eks_pod_identity = true`
 
 2. **Quarantine VPC**:
@@ -123,3 +123,4 @@ Ensure these don't conflict with:
 
 - See the main [README.md](../../README.md) for general information
 - See [examples/braintrust-data-plane/README.md](../braintrust-data-plane/README.md) for standard deployment examples
+- See [helm/braintrust/examples/aws-eks-quarantine/values.yaml](../../../helm/braintrust/examples/aws-eks-quarantine/values.yaml) for a matching Helm values example

@@ -53,6 +53,30 @@ variable "private_subnet_3_az" {
   type        = string
 }
 
+variable "public_subnet_2_cidr" {
+  description = "CIDR block for the second public subnet. If null, the subnet is not created."
+  type        = string
+  default     = null
+}
+
+variable "public_subnet_2_az" {
+  description = "Availability zone for the second public subnet."
+  type        = string
+  default     = null
+}
+
+variable "public_subnet_3_cidr" {
+  description = "CIDR block for the third public subnet. If null, the subnet is not created."
+  type        = string
+  default     = null
+}
+
+variable "public_subnet_3_az" {
+  description = "Availability zone for the third public subnet."
+  type        = string
+  default     = null
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

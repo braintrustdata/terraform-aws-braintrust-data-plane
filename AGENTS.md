@@ -22,6 +22,7 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 ├── examples/
 │   ├── braintrust-data-plane/          # Production example
 │   ├── braintrust-data-plane-sandbox/  # Sandbox/testing example
+│   ├── braintrust-data-plane-external-eks/
 │   ├── braintrust-data-plane-external-eks-quarantine/
 │   └── cloudfront-logging/
 ├── scripts/                 # Operational helper scripts

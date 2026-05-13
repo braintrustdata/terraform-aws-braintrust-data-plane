@@ -24,7 +24,7 @@ output "catchup_etl_arn" {
 }
 
 output "quarantine_warmup_arn" {
-  description = "The ARN of the quarantine warmup lambda function. Only created when use_deployment_mode_external_eks is false."
+  description = "The ARN of the quarantine warmup lambda function. Only created when EKS deployment mode is disabled."
   value       = var.use_quarantine_vpc ? aws_lambda_function.quarantine_warmup[0].arn : null
 }
 
@@ -42,4 +42,3 @@ output "ai_proxy_url_ssm_arn" {
   description = "The ARN of the SSM parameter containing the AI proxy URL"
   value       = aws_ssm_parameter.ai_proxy_url.arn
 }
-

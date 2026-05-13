@@ -16,12 +16,25 @@ locals {
     "EC2 Instance Connect Endpoint" = module.remote_support[0].instance_connect_endpoint_security_group_id
   } : {}
 
+  # EKS deployment mode — prefer the new flag name, but keep the deprecated alias working.
+  use_eks_deployment_mode = var.use_deployment_mode_eks || var.use_deployment_mode_external_eks
+
+  # EKS deployment mode — true when either the cluster is created here or managed externally
+  use_eks = var.create_eks_cluster || local.use_eks_deployment_mode
+
+  eks_namespace_resolved = coalesce(var.eks_namespace, "braintrust")
+
+  # EKS cluster ARN — prefer the cluster this module created, fall back to externally provided ARN
+  eks_cluster_arn = var.create_eks_cluster ? module.eks_cluster[0].cluster_arn : var.existing_eks_cluster_arn
+
   # VPC configuration - handle both created and existing VPCs
   main_vpc_id                  = var.create_vpc ? module.main_vpc[0].vpc_id : var.existing_vpc_id
   main_vpc_private_subnet_1_id = var.create_vpc ? module.main_vpc[0].private_subnet_1_id : var.existing_private_subnet_1_id
   main_vpc_private_subnet_2_id = var.create_vpc ? module.main_vpc[0].private_subnet_2_id : var.existing_private_subnet_2_id
   main_vpc_private_subnet_3_id = var.create_vpc ? module.main_vpc[0].private_subnet_3_id : var.existing_private_subnet_3_id
   main_vpc_public_subnet_1_id  = var.create_vpc ? module.main_vpc[0].public_subnet_1_id : var.existing_public_subnet_1_id
+  main_vpc_public_subnet_2_id  = var.create_vpc ? module.main_vpc[0].public_subnet_2_id : var.existing_public_subnet_2_id
+  main_vpc_public_subnet_3_id  = var.create_vpc ? module.main_vpc[0].public_subnet_3_id : null
 
   # Quarantine VPC configuration - handle both created and existing VPCs
   create_quarantine_vpc              = var.enable_quarantine_vpc && var.existing_quarantine_vpc_id == null
@@ -48,6 +61,10 @@ module "main_vpc" {
 
   public_subnet_1_cidr      = cidrsubnet(var.vpc_cidr, 3, 0)
   public_subnet_1_az        = local.public_subnet_1_az
+  public_subnet_2_cidr      = var.public_subnet_count >= 2 ? cidrsubnet(var.vpc_cidr, 3, 4) : null
+  public_subnet_2_az        = local.public_subnet_2_az
+  public_subnet_3_cidr      = var.public_subnet_count >= 3 ? cidrsubnet(var.vpc_cidr, 3, 5) : null
+  public_subnet_3_az        = local.public_subnet_3_az
   private_subnet_1_cidr     = cidrsubnet(var.vpc_cidr, 3, 1)
   private_subnet_1_az       = local.private_subnet_1_az
   private_subnet_2_cidr     = cidrsubnet(var.vpc_cidr, 3, 2)
@@ -96,8 +113,9 @@ module "database" {
         "Brainstore" = module.services_common.brainstore_instance_security_group_id
       },
       var.database_authorized_security_groups,
+      var.create_eks_cluster ? { "EKS Cluster" = module.eks_cluster[0].cluster_security_group_id } : {},
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      !local.use_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
   )
@@ -129,8 +147,9 @@ module "redis" {
         "Brainstore" = module.services_common.brainstore_instance_security_group_id
       },
       var.redis_authorized_security_groups,
+      var.create_eks_cluster ? { "EKS Cluster" = module.eks_cluster[0].cluster_security_group_id } : {},
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      !local.use_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
   )
@@ -151,7 +170,7 @@ module "storage" {
 
 module "services" {
   source = "./modules/services"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = !local.use_eks ? 1 : 0
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
@@ -279,12 +298,12 @@ module "gateway_ecs" {
   brainstore_license_key = var.brainstore_license_key
   enable_execute_command = var.gateway_enable_execute_command
   braintrust_app_url     = var.gateway_braintrust_app_url
-  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  braintrust_api_url     = var.create_eks_cluster ? coalesce(module.eks_cluster[0].api_url, var.braintrust_api_url) : (local.use_eks ? var.braintrust_api_url : module.ingress[0].api_url)
 }
 
 module "ingress" {
   source = "./modules/ingress"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = !local.use_eks ? 1 : 0
 
   deployment_name          = var.deployment_name
   custom_domain            = var.custom_domain
@@ -310,9 +329,10 @@ module "services_common" {
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   permissions_boundary_arn                  = var.permissions_boundary_arn
-  eks_cluster_arn                           = var.existing_eks_cluster_arn
-  eks_namespace                             = var.eks_namespace
-  enable_eks_pod_identity                   = var.enable_eks_pod_identity
+  eks_cluster_arn                           = local.eks_cluster_arn
+  eks_cluster_oidc_issuer_url               = var.create_eks_cluster ? module.eks_cluster[0].cluster_oidc_issuer_url : null
+  eks_namespace                             = local.eks_namespace_resolved
+  enable_eks_pod_identity                   = var.create_eks_cluster ? true : var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = var.custom_tags
@@ -324,7 +344,7 @@ module "services_common" {
 
 module "brainstore" {
   source = "./modules/brainstore-ec2"
-  count  = var.enable_brainstore && !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = var.enable_brainstore && !local.use_eks ? 1 : 0
 
   deployment_name                       = var.deployment_name
   instance_count                        = var.brainstore_instance_count
@@ -363,7 +383,7 @@ module "brainstore" {
         "API" = module.services_common.api_security_group_id
       },
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      !local.use_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group
   )
@@ -385,4 +405,91 @@ module "brainstore" {
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
   locks_s3_path              = var.brainstore_locks_s3_path
+}
+
+module "eks_cluster" {
+  source = "./modules/eks-cluster"
+  count  = var.create_eks_cluster ? 1 : 0
+
+  deployment_name          = var.deployment_name
+  kms_key_arn              = local.kms_key_arn
+  vpc_id                   = local.main_vpc_id
+  permissions_boundary_arn = var.permissions_boundary_arn
+  subnet_ids = [
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id
+  ]
+
+  use_eks_auto_mode     = var.eks_use_auto_mode
+  kubernetes_version    = var.kubernetes_version
+  enable_private_access = var.eks_enable_private_access
+  enable_public_access  = var.eks_enable_public_access
+  public_access_cidrs   = var.eks_public_access_cidrs
+
+  cluster_log_types          = var.eks_cluster_log_types
+  cluster_log_retention_days = var.eks_cluster_log_retention_days
+
+  enable_node_ssm                = var.eks_enable_node_ssm
+  node_group_ami_type            = var.eks_node_group_ami_type
+  brainstore_node_group_ami_type = var.eks_brainstore_node_group_ami_type
+
+  system_node_group_instance_type = var.eks_system_node_group_instance_type
+  system_node_group_desired_size  = var.eks_system_node_group_desired_size
+  system_node_group_min_size      = var.eks_system_node_group_min_size
+  system_node_group_max_size      = var.eks_system_node_group_max_size
+  system_node_group_disk_size     = var.eks_system_node_group_disk_size
+
+  services_node_group_instance_type = var.eks_services_node_group_instance_type
+  services_node_group_desired_size  = var.eks_services_node_group_desired_size
+  services_node_group_min_size      = var.eks_services_node_group_min_size
+  services_node_group_max_size      = var.eks_services_node_group_max_size
+  services_node_group_disk_size     = var.eks_services_node_group_disk_size
+
+  brainstore_reader_node_group_instance_type = var.eks_brainstore_reader_node_group_instance_type
+  brainstore_reader_node_group_desired_size  = var.eks_brainstore_reader_node_group_desired_size
+  brainstore_reader_node_group_min_size      = var.eks_brainstore_reader_node_group_min_size
+  brainstore_reader_node_group_max_size      = var.eks_brainstore_reader_node_group_max_size
+
+  brainstore_writer_node_group_instance_type = var.eks_brainstore_writer_node_group_instance_type
+  brainstore_writer_node_group_desired_size  = var.eks_brainstore_writer_node_group_desired_size
+  brainstore_writer_node_group_min_size      = var.eks_brainstore_writer_node_group_min_size
+  brainstore_writer_node_group_max_size      = var.eks_brainstore_writer_node_group_max_size
+
+  enable_services_spot_node_group         = var.eks_enable_services_spot_node_group
+  services_spot_node_group_instance_types = var.eks_services_spot_node_group_instance_types
+  services_spot_node_group_min_size       = var.eks_services_spot_node_group_min_size
+  services_spot_node_group_max_size       = var.eks_services_spot_node_group_max_size
+
+  enable_brainstore_spot_node_group         = var.eks_enable_brainstore_spot_node_group
+  brainstore_spot_node_group_instance_types = var.eks_brainstore_spot_node_group_instance_types
+  brainstore_spot_node_group_min_size       = var.eks_brainstore_spot_node_group_min_size
+  brainstore_spot_node_group_max_size       = var.eks_brainstore_spot_node_group_max_size
+
+  enable_brainstore_writer_spot_node_group         = var.eks_enable_brainstore_writer_spot_node_group
+  brainstore_writer_spot_node_group_instance_types = var.eks_brainstore_writer_spot_node_group_instance_types
+  brainstore_writer_spot_node_group_min_size       = var.eks_brainstore_writer_spot_node_group_min_size
+  brainstore_writer_spot_node_group_max_size       = var.eks_brainstore_writer_spot_node_group_max_size
+
+  vpc_cni_addon_version      = var.eks_vpc_cni_addon_version
+  kube_proxy_addon_version   = var.eks_kube_proxy_addon_version
+  coredns_addon_version      = var.eks_coredns_addon_version
+  pod_identity_addon_version = var.eks_pod_identity_addon_version
+
+  enable_cloudfront_nlb_ingress = var.eks_enable_cloudfront_nlb_ingress
+  cloudfront_price_class        = var.cloudfront_price_class
+  custom_domain                 = var.custom_domain
+  custom_certificate_arn        = var.custom_certificate_arn
+  waf_acl_id                    = var.waf_acl_id
+  use_global_ai_proxy           = var.use_global_ai_proxy
+
+  braintrust_namespace           = local.eks_namespace_resolved
+  braintrust_api_service_account = var.eks_api_service_account_name
+  brainstore_service_account     = var.eks_brainstore_service_account_name
+  braintrust_api_role_arn        = module.services_common.api_handler_role_arn
+  brainstore_role_arn            = module.services_common.brainstore_iam_role_arn
+
+  aws_load_balancer_controller_service_account = var.eks_aws_load_balancer_controller_service_account
+
+  custom_tags = var.custom_tags
 }

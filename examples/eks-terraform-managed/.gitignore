@@ -1,0 +1,6 @@
+helm-local/
+.terraform/
+.venv/
+terraform.tfstate
+terraform.tfstate.*
+terraform.tfvars

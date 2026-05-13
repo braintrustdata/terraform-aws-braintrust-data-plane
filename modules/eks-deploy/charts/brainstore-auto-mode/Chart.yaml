@@ -1,0 +1,6 @@
+apiVersion: v2
+name: brainstore-auto-mode
+description: Brainstore EKS Auto Mode NodeClass and NodePool resources.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
