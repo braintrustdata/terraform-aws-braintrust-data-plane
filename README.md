@@ -71,6 +71,16 @@ See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory f
 
 ## Advanced: Customized Deployments
 
+### API ECS Code Function Execution
+
+When using API ECS, code function execution is disabled by default. To run code functions inside the API ECS container, set `api_ecs_code_function_execution_mode = "api_ecs"`.
+
+Valid values are:
+- `disabled` - Do not run code functions through API ECS.
+- `api_ecs` - Run code functions inside the API ECS container.
+
+Lambda quarantine execution for API ECS will be added in a future release.
+
 ### Using an Existing VPC
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.

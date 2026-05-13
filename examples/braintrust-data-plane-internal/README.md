@@ -15,7 +15,7 @@ Use this example when the Braintrust data plane should not require public ingres
 
 ## DNS
 
-By default, this example lets the module create the ACM certificate, DNS validation records, and endpoint alias record. The module derives the Route53 hosted zone from `api_ecs_fqdn` by removing the first DNS label. For example, `braintrust-api.example.com` uses the `example.com` hosted zone.
+By default, this example lets the module create the ACM certificate, DNS validation records, and endpoint alias record. The module derives the Route53 hosted zone from `api_ecs_fqdn` by removing the first DNS label. For example, `braintrust-api.example.com` uses the `example.com` hosted zone that should be in this AWS account.
 
 If you need to use a pre-provisioned ACM certificate, ACM Private CA, DNS validation in another account, a private hosted zone, split-horizon DNS, or corporate DNS outside Route53, use one of the commented alternatives in `main.tf`.
 

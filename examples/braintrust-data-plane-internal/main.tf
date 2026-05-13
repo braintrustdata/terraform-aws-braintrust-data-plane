@@ -3,8 +3,7 @@
 module "braintrust-data-plane" {
   # Using local source for in-repo testing. Change to the GitHub source when
   # copying this example outside of this repository.
-  source = "../../"
-  # source = "github.com/braintrustdata/terraform-braintrust-data-plane"
+  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
   ### Internal deployment
@@ -29,7 +28,7 @@ module "braintrust-data-plane" {
 
   # By default, let the module create the ACM certificate, DNS validation
   # records, and the DNS alias for the internal load balancer. The hosted zone
-  # is derived from api_ecs_fqdn by removing the first DNS label.
+  # is derived from api_ecs_fqdn by removing the first DNS label, and must exist in this AWS account.
   api_ecs_create_acm_certificate        = true
   api_ecs_manage_certificate_validation = true
   api_ecs_create_dns_record             = true
@@ -53,9 +52,14 @@ module "braintrust-data-plane" {
   # Permit access from your private networks or from specific security groups.
   # For example: ["10.0.0.0/8", "172.16.0.0/12"].
   api_ecs_authorized_cidr_blocks = ["10.0.0.0/8"]
+  #api_ecs_authorized_security_groups = ["sg-0123456789abcdef"]
 
   # Brainstore should use the same internal API endpoint for AI proxy traffic.
   use_api_ecs_for_brainstore_ai_proxy_url = true
+
+  # When using API ECS, code function execution is disabled by default. To run code functions inside the API ECS container, set `api_ecs_code_function_execution_mode = "api_ecs"`.
+  api_ecs_code_function_execution_mode = "disabled"
+  # Lambda quarantine execution for API ECS will be added in a future release.
 
   # Fixed number of API tasks for the internal endpoint. This will need to be scaled up with load.
   api_ecs_desired_count = 4
