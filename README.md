@@ -23,12 +23,14 @@ All module input variables and outputs are documented inline in the module's Ter
 This script will dump the logs for the given deployment and services to the `logs-<deployment_name>` directory. This is useful for debugging issues with the data plane and sharing with the Braintrust team.
 
 ```
-# ./dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
+# ./scripts/dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
 
-./dump-logs.sh bt-sandbox
+./scripts/dump-logs.sh bt-sandbox
 Fetching logs for the last 60 minutes for APIHandler...
+Fetching logs for the last 60 minutes for api-ecs...
 Fetching logs for the last 60 minutes for brainstore...
 ✅ Saved logs for brainstore to logs-bt-sandbox/brainstore.log
+✅ Saved logs for api-ecs to logs-bt-sandbox/api-ecs.log
 ✅ Saved logs for APIHandler to logs-bt-sandbox/APIHandler.log
 ```
 
