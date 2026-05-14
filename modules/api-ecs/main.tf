@@ -29,6 +29,7 @@ locals {
     INSERT_LOGS2                       = "true"
     NODE_MEMORY_PERCENT                = "80"
     ALLOW_CODE_FUNCTION_EXECUTION      = tostring(var.code_function_execution_mode == "api_ecs")
+    AI_PROXY_FN_URL                    = "http://127.0.0.1:8000"
     },
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
