@@ -40,7 +40,6 @@ locals {
   create_lambda_services                  = !var.use_deployment_mode_external_eks && !var.use_deployment_mode_private_api_ecs
   enable_api_ecs                          = !var.use_deployment_mode_external_eks && (var.enable_api_ecs || var.use_deployment_mode_private_api_ecs)
   create_cloudfront                       = local.create_lambda_services
-  use_api_ecs_for_cloudfront_eval_routes  = local.create_cloudfront && var.enable_api_ecs
   use_api_ecs_for_brainstore_ai_proxy_url = !var.use_deployment_mode_external_eks && (var.use_api_ecs_for_brainstore_ai_proxy_url || var.use_deployment_mode_private_api_ecs)
   api_url = var.use_deployment_mode_external_eks ? null : (
     var.use_deployment_mode_private_api_ecs ? module.api_ecs[0].effective_url : module.ingress[0].api_url
@@ -348,13 +347,12 @@ module "api_ecs" {
     },
     var.api_ecs_authorized_security_groups,
   )
-  authorized_cidr_blocks                 = var.api_ecs_authorized_cidr_blocks
-  allow_cloudfront_origin_facing_traffic = local.create_cloudfront
-  acm_certificate_arn                    = var.api_ecs_acm_certificate_arn
-  create_acm_certificate                 = var.api_ecs_create_acm_certificate
-  manage_certificate_validation          = var.api_ecs_manage_certificate_validation
-  fqdn                                   = var.api_ecs_fqdn
-  create_dns_record                      = var.use_deployment_mode_private_api_ecs && var.api_ecs_create_dns_record
+  authorized_cidr_blocks        = var.api_ecs_authorized_cidr_blocks
+  acm_certificate_arn           = var.api_ecs_acm_certificate_arn
+  create_acm_certificate        = var.api_ecs_create_acm_certificate
+  manage_certificate_validation = var.api_ecs_manage_certificate_validation
+  fqdn                          = var.api_ecs_fqdn
+  create_dns_record             = var.use_deployment_mode_private_api_ecs && var.api_ecs_create_dns_record
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
@@ -367,19 +365,15 @@ module "ingress" {
   source = "./modules/ingress"
   count  = local.create_cloudfront ? 1 : 0
 
-  deployment_name                = var.deployment_name
-  custom_domain                  = var.custom_domain
-  custom_certificate_arn         = var.custom_certificate_arn
-  waf_acl_id                     = var.waf_acl_id
-  cloudfront_price_class         = var.cloudfront_price_class
-  use_global_ai_proxy            = var.use_global_ai_proxy
-  ai_proxy_function_url          = module.services[0].ai_proxy_url
-  use_api_ecs_for_eval_routes    = local.use_api_ecs_for_cloudfront_eval_routes
-  api_ecs_origin_domain_name     = local.use_api_ecs_for_cloudfront_eval_routes ? module.api_ecs[0].cloudfront_origin_domain_name : null
-  api_ecs_origin_arn             = local.use_api_ecs_for_cloudfront_eval_routes ? module.api_ecs[0].alb_arn : null
-  api_ecs_origin_protocol_policy = local.use_api_ecs_for_cloudfront_eval_routes ? module.api_ecs[0].cloudfront_origin_protocol_policy : null
-  api_handler_function_arn       = module.services[0].api_handler_arn
-  custom_tags                    = var.custom_tags
+  deployment_name          = var.deployment_name
+  custom_domain            = var.custom_domain
+  custom_certificate_arn   = var.custom_certificate_arn
+  waf_acl_id               = var.waf_acl_id
+  cloudfront_price_class   = var.cloudfront_price_class
+  use_global_ai_proxy      = var.use_global_ai_proxy
+  ai_proxy_function_url    = module.services[0].ai_proxy_url
+  api_handler_function_arn = module.services[0].api_handler_arn
+  custom_tags              = var.custom_tags
 }
 
 module "services_common" {

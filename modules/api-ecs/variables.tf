@@ -233,12 +233,6 @@ variable "authorized_cidr_blocks" {
   }
 }
 
-variable "allow_cloudfront_origin_facing_traffic" {
-  type        = bool
-  description = "Allow inbound traffic from CloudFront origin-facing managed prefix list to the API ECS ALB."
-  default     = true
-}
-
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources."
   type        = map(string)

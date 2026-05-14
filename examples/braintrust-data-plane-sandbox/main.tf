@@ -83,8 +83,8 @@ module "braintrust-data-plane" {
 
 
   ### API ECS configuration
-  # API ECS is disabled by default. To opt into the CloudFormation-compatible
-  # API ECS path for eval/sandbox routes, uncomment:
+  # API ECS is disabled by default. To deploy the dedicated API ECS service,
+  # uncomment:
   #
   # enable_api_ecs = true
   #

@@ -72,11 +72,6 @@ locals {
 
 data "aws_region" "current" {}
 
-data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
-  count = var.allow_cloudfront_origin_facing_traffic ? 1 : 0
-  name  = "com.amazonaws.global.cloudfront.origin-facing"
-}
-
 resource "aws_cloudwatch_log_group" "service" {
   name              = "/braintrust/${var.deployment_name}/api-ecs"
   retention_in_days = var.log_retention_days
@@ -141,30 +136,6 @@ resource "aws_security_group_rule" "alb_ingress_https_from_authorized_cidr_block
   protocol          = "tcp"
   cidr_blocks       = [each.value]
   description       = "Allow HTTPS traffic from authorized CIDR ${each.value}."
-  security_group_id = aws_security_group.alb.id
-}
-
-resource "aws_security_group_rule" "alb_ingress_http_from_cloudfront_origin_facing" {
-  count = var.allow_cloudfront_origin_facing_traffic ? 1 : 0
-
-  type              = "ingress"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  prefix_list_ids   = [data.aws_ec2_managed_prefix_list.cloudfront_origin_facing[0].id]
-  description       = "Allow HTTP traffic from CloudFront origin-facing servers."
-  security_group_id = aws_security_group.alb.id
-}
-
-resource "aws_security_group_rule" "alb_ingress_https_from_cloudfront_origin_facing" {
-  count = var.allow_cloudfront_origin_facing_traffic && local.enable_https ? 1 : 0
-
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  prefix_list_ids   = [data.aws_ec2_managed_prefix_list.cloudfront_origin_facing[0].id]
-  description       = "Allow HTTPS traffic from CloudFront origin-facing servers."
   security_group_id = aws_security_group.alb.id
 }
 

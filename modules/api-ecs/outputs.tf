@@ -79,13 +79,3 @@ output "dns_record_fqdn" {
   description = "FQDN of the optional Route53 alias record for the API ECS ALB."
   value       = var.create_dns_record ? aws_route53_record.alb_alias[0].fqdn : null
 }
-
-output "cloudfront_origin_protocol_policy" {
-  description = "CloudFront origin protocol policy for the API ECS ALB."
-  value       = local.enable_https ? "https-only" : "http-only"
-}
-
-output "cloudfront_origin_domain_name" {
-  description = "Domain name for CloudFront to use as the origin."
-  value       = local.enable_https && local.api_fqdn != null ? local.api_fqdn : aws_lb.api_ecs.dns_name
-}

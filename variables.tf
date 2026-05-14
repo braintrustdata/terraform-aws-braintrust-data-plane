@@ -469,7 +469,7 @@ variable "api_ecs_version_override" {
 
 variable "enable_api_ecs" {
   type        = bool
-  description = "Create the dedicated API ECS service in standard mode and route the CloudFormation-compatible eval/sandbox paths to it. Private API ECS mode implies this."
+  description = "Create the dedicated API ECS service. Private API ECS mode implies this."
   default     = false
 
   validation {
