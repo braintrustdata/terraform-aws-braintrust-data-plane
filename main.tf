@@ -323,20 +323,21 @@ module "api_ecs" {
   response_bucket    = module.storage.lambda_responses_bucket_id
 
   # Service configuration
-  braintrust_org_name                   = var.braintrust_org_name
-  primary_org_name                      = var.primary_org_name
-  cpu                                   = var.api_ecs_cpu
-  memory                                = var.api_ecs_memory
-  desired_count                         = var.api_ecs_desired_count
-  log_retention_days                    = var.api_ecs_log_retention_days
-  enable_execute_command                = var.api_ecs_enable_execute_command
-  whitelisted_origins                   = var.whitelisted_origins
-  outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
-  outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
-  disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
-  billing_telemetry_log_level           = var.billing_telemetry_log_level
-  extra_env_vars                        = var.api_ecs_extra_env_vars
-  code_function_execution_mode          = var.api_ecs_code_function_execution_mode
+  braintrust_org_name                       = var.braintrust_org_name
+  primary_org_name                          = var.primary_org_name
+  cpu                                       = var.api_ecs_cpu
+  memory                                    = var.api_ecs_memory
+  desired_count                             = var.api_ecs_desired_count
+  log_retention_days                        = var.api_ecs_log_retention_days
+  target_group_deregistration_delay_seconds = var.api_ecs_target_group_deregistration_delay_seconds
+  enable_execute_command                    = var.api_ecs_enable_execute_command
+  whitelisted_origins                       = var.whitelisted_origins
+  outbound_rate_limit_window_minutes        = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests          = var.outbound_rate_limit_max_requests
+  disable_billing_telemetry_aggregation     = var.disable_billing_telemetry_aggregation
+  billing_telemetry_log_level               = var.billing_telemetry_log_level
+  extra_env_vars                            = var.api_ecs_extra_env_vars
+  code_function_execution_mode              = var.api_ecs_code_function_execution_mode
 
   # Networking
   vpc_id             = local.main_vpc_id

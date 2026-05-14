@@ -137,6 +137,17 @@ variable "log_retention_days" {
   }
 }
 
+variable "target_group_deregistration_delay_seconds" {
+  type        = number
+  description = "Seconds for the API ECS target group to wait before deregistering draining targets."
+  default     = 300
+
+  validation {
+    condition     = var.target_group_deregistration_delay_seconds >= 0 && var.target_group_deregistration_delay_seconds <= 3600
+    error_message = "target_group_deregistration_delay_seconds must be between 0 and 3600."
+  }
+}
+
 variable "braintrust_org_name" {
   type        = string
   description = "Braintrust organization name."

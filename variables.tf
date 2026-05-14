@@ -581,6 +581,17 @@ variable "api_ecs_log_retention_days" {
   }
 }
 
+variable "api_ecs_target_group_deregistration_delay_seconds" {
+  description = "Seconds for the API ECS target group to wait before deregistering draining targets."
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.api_ecs_target_group_deregistration_delay_seconds >= 0 && var.api_ecs_target_group_deregistration_delay_seconds <= 3600
+    error_message = "api_ecs_target_group_deregistration_delay_seconds must be between 0 and 3600."
+  }
+}
+
 variable "api_ecs_extra_env_vars" {
   description = "Extra environment variables for the API ECS container."
   type        = map(string)
