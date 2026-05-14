@@ -63,8 +63,13 @@ module "braintrust-data-plane" {
   api_ecs_code_function_execution_mode = "disabled"
   # Lambda quarantine execution for API ECS will be added in a future release.
 
-  # Fixed number of API tasks for the internal endpoint. This will need to be scaled up with load.
-  api_ecs_desired_count = 4
+  # API ECS desired count is managed by Application Auto Scaling. In private
+  # mode, CPU and memory do not fully capture API load, so size api_ecs_min_count
+  # as the steady number of API tasks needed to keep up with expected traffic.
+  api_ecs_min_count           = 3
+  api_ecs_max_count           = 3
+  api_ecs_cpu_target_value    = 40
+  api_ecs_memory_target_value = 50
 
   ### Postgres configuration
   postgres_instance_type = "db.r8g.2xlarge"
