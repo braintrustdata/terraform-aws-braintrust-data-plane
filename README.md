@@ -91,14 +91,16 @@ Lambda quarantine execution for API ECS will be added in a future release.
 
 ### API ECS Autoscaling
 
-API ECS autoscaling is disabled by default. When disabled, `api_ecs_desired_count` controls the fixed number of API ECS tasks. Autoscaling is not enabled automatically in private API ECS mode. For private-only deployments, CPU and memory may not fully represent API load, so size `api_ecs_desired_count` deliberately.
+When API ECS is enabled, its desired task count is managed by Application Auto Scaling. The module always registers a scalable target and CPU and memory target-tracking policies. Terraform seeds the ECS service at `api_ecs_min_count` and then ignores desired count drift so Application Auto Scaling can adjust the service.
 
-To enable autoscaling, set `api_ecs_autoscaling_enabled = true`. The module then uses average ECS service CPU utilization and average ECS service memory utilization. The defaults are:
+The capacity defaults are:
 
-- `api_ecs_autoscaling_min_count = 4`
-- `api_ecs_autoscaling_max_count = 16`
-- `api_ecs_autoscaling_cpu_target_value = 40`
-- `api_ecs_autoscaling_memory_target_value = 50`
+- `api_ecs_min_count = 3`
+- `api_ecs_max_count = 16`
+- `api_ecs_cpu_target_value = 40`
+- `api_ecs_memory_target_value = 50`
+
+For fixed-size deployments, set `api_ecs_min_count` and `api_ecs_max_count` to the same value.
 
 ### Using an Existing VPC
 

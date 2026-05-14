@@ -32,3 +32,5 @@ After applying, use the `api_url` output as the API URL in the Braintrust dashbo
 ## Notes
 
 The endpoint is internal, but it is still protected by the load balancer access rules. Make sure `api_ecs_authorized_cidr_blocks` covers the private networks your users or clients will connect from.
+
+In private API ECS mode, CPU and memory target tracking does not fully capture API load. Size `api_ecs_min_count` as the steady number of API tasks needed to keep up with expected traffic.

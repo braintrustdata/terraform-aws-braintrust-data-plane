@@ -62,64 +62,47 @@ variable "memory" {
   default     = 16384
 }
 
-variable "desired_count" {
+variable "min_count" {
   type        = number
-  description = "Fixed number of API ECS tasks."
-  default     = 4
+  description = "Minimum number of API ECS tasks. Desired count is managed by Application Auto Scaling."
+  default     = 3
 
   validation {
-    condition     = var.desired_count >= 1
-    error_message = "desired_count must be at least 1."
+    condition     = var.min_count >= 1
+    error_message = "min_count must be at least 1."
   }
 }
 
-variable "autoscaling_enabled" {
-  type        = bool
-  description = "Enable target-tracking autoscaling for the API ECS service."
-  default     = false
-}
-
-variable "autoscaling_min_count" {
+variable "max_count" {
   type        = number
-  description = "Minimum number of API ECS tasks when autoscaling is enabled."
-  default     = 4
-
-  validation {
-    condition     = var.autoscaling_min_count >= 4
-    error_message = "autoscaling_min_count must be at least 4."
-  }
-}
-
-variable "autoscaling_max_count" {
-  type        = number
-  description = "Maximum number of API ECS tasks when autoscaling is enabled."
+  description = "Maximum number of API ECS tasks."
   default     = 16
 
   validation {
-    condition     = var.autoscaling_max_count >= var.autoscaling_min_count
-    error_message = "autoscaling_max_count must be greater than or equal to autoscaling_min_count."
+    condition     = var.max_count >= var.min_count
+    error_message = "max_count must be greater than or equal to min_count."
   }
 }
 
-variable "autoscaling_cpu_target_value" {
+variable "cpu_target_value" {
   type        = number
   description = "Target average CPU utilization percentage for API ECS autoscaling."
   default     = 40
 
   validation {
-    condition     = var.autoscaling_cpu_target_value > 0 && var.autoscaling_cpu_target_value <= 100
-    error_message = "autoscaling_cpu_target_value must be between 1 and 100."
+    condition     = var.cpu_target_value > 0 && var.cpu_target_value <= 100
+    error_message = "cpu_target_value must be between 1 and 100."
   }
 }
 
-variable "autoscaling_memory_target_value" {
+variable "memory_target_value" {
   type        = number
   description = "Target average memory utilization percentage for API ECS autoscaling."
   default     = 50
 
   validation {
-    condition     = var.autoscaling_memory_target_value > 0 && var.autoscaling_memory_target_value <= 100
-    error_message = "autoscaling_memory_target_value must be between 1 and 100."
+    condition     = var.memory_target_value > 0 && var.memory_target_value <= 100
+    error_message = "memory_target_value must be between 1 and 100."
   }
 }
 

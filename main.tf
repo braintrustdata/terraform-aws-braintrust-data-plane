@@ -327,7 +327,8 @@ module "api_ecs" {
   primary_org_name                          = var.primary_org_name
   cpu                                       = var.api_ecs_cpu
   memory                                    = var.api_ecs_memory
-  desired_count                             = var.api_ecs_desired_count
+  min_count                                 = var.api_ecs_min_count
+  max_count                                 = var.api_ecs_max_count
   log_retention_days                        = var.api_ecs_log_retention_days
   target_group_deregistration_delay_seconds = var.api_ecs_target_group_deregistration_delay_seconds
   enable_execute_command                    = var.api_ecs_enable_execute_command
@@ -363,11 +364,8 @@ module "api_ecs" {
   task_security_group_id = module.services_common.api_security_group_id
   custom_tags            = var.custom_tags
 
-  autoscaling_enabled             = var.api_ecs_autoscaling_enabled
-  autoscaling_min_count           = var.api_ecs_autoscaling_min_count
-  autoscaling_max_count           = var.api_ecs_autoscaling_max_count
-  autoscaling_cpu_target_value    = var.api_ecs_autoscaling_cpu_target_value
-  autoscaling_memory_target_value = var.api_ecs_autoscaling_memory_target_value
+  cpu_target_value    = var.api_ecs_cpu_target_value
+  memory_target_value = var.api_ecs_memory_target_value
 }
 
 module "ingress" {

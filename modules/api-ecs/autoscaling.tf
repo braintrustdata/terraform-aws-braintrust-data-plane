@@ -1,13 +1,12 @@
 resource "aws_appautoscaling_target" "api_ecs" {
-  max_capacity       = var.autoscaling_enabled ? var.autoscaling_max_count : var.desired_count
-  min_capacity       = var.autoscaling_enabled ? var.autoscaling_min_count : var.desired_count
+  max_capacity       = var.max_count
+  min_capacity       = var.min_count
   resource_id        = "service/${var.ecs_cluster_name}/${aws_ecs_service.api_ecs.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
 resource "aws_appautoscaling_policy" "api_ecs_cpu_target" {
-  count              = var.autoscaling_enabled ? 1 : 0
   name               = "${var.deployment_name}-api-ecs-cpu-target"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.api_ecs.resource_id
@@ -19,14 +18,13 @@ resource "aws_appautoscaling_policy" "api_ecs_cpu_target" {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
 
-    target_value       = var.autoscaling_cpu_target_value
+    target_value       = var.cpu_target_value
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
   }
 }
 
 resource "aws_appautoscaling_policy" "api_ecs_memory_target" {
-  count              = var.autoscaling_enabled ? 1 : 0
   name               = "${var.deployment_name}-api-ecs-memory-target"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.api_ecs.resource_id
@@ -38,7 +36,7 @@ resource "aws_appautoscaling_policy" "api_ecs_memory_target" {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
 
-    target_value       = var.autoscaling_memory_target_value
+    target_value       = var.memory_target_value
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
   }

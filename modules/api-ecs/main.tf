@@ -341,7 +341,7 @@ resource "aws_ecs_service" "api_ecs" {
   name                              = "${var.deployment_name}-api-ecs"
   cluster                           = var.ecs_cluster_arn
   task_definition                   = aws_ecs_task_definition.api_ecs.arn
-  desired_count                     = var.autoscaling_enabled ? var.autoscaling_min_count : var.desired_count
+  desired_count                     = var.min_count
   launch_type                       = "FARGATE"
   force_new_deployment              = true
   propagate_tags                    = "SERVICE"
