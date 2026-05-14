@@ -81,6 +81,17 @@ Valid values are:
 
 Lambda quarantine execution for API ECS will be added in a future release.
 
+### API ECS Autoscaling
+
+API ECS autoscaling is disabled by default. When disabled, `api_ecs_desired_count` controls the fixed number of API ECS tasks. Autoscaling is not enabled automatically in private API ECS mode. For private-only deployments, CPU and memory may not fully represent API load, so size `api_ecs_desired_count` deliberately.
+
+To enable autoscaling, set `api_ecs_autoscaling_enabled = true`. The module then uses average ECS service CPU utilization and average ECS service memory utilization. The defaults are:
+
+- `api_ecs_autoscaling_min_count = 4`
+- `api_ecs_autoscaling_max_count = 16`
+- `api_ecs_autoscaling_cpu_target_value = 40`
+- `api_ecs_autoscaling_memory_target_value = 50`
+
 ### Using an Existing VPC
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.

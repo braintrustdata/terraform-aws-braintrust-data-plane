@@ -517,6 +517,56 @@ variable "api_ecs_desired_count" {
   }
 }
 
+variable "api_ecs_autoscaling_enabled" {
+  description = "Enable CPU and memory target-tracking autoscaling for the API ECS service. Disabled by default, including in private API ECS mode."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_autoscaling_min_count" {
+  description = "Minimum number of API ECS tasks when autoscaling is enabled."
+  type        = number
+  default     = 4
+
+  validation {
+    condition     = var.api_ecs_autoscaling_min_count >= 1
+    error_message = "api_ecs_autoscaling_min_count must be at least 1."
+  }
+}
+
+variable "api_ecs_autoscaling_max_count" {
+  description = "Maximum number of API ECS tasks when autoscaling is enabled."
+  type        = number
+  default     = 16
+
+  validation {
+    condition     = var.api_ecs_autoscaling_max_count >= var.api_ecs_autoscaling_min_count
+    error_message = "api_ecs_autoscaling_max_count must be greater than or equal to api_ecs_autoscaling_min_count."
+  }
+}
+
+variable "api_ecs_autoscaling_cpu_target_value" {
+  description = "Target average CPU utilization percentage for API ECS autoscaling."
+  type        = number
+  default     = 40
+
+  validation {
+    condition     = var.api_ecs_autoscaling_cpu_target_value > 0 && var.api_ecs_autoscaling_cpu_target_value <= 100
+    error_message = "api_ecs_autoscaling_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_autoscaling_memory_target_value" {
+  description = "Target average memory utilization percentage for API ECS autoscaling."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_autoscaling_memory_target_value > 0 && var.api_ecs_autoscaling_memory_target_value <= 100
+    error_message = "api_ecs_autoscaling_memory_target_value must be between 1 and 100."
+  }
+}
+
 variable "api_ecs_log_retention_days" {
   description = "CloudWatch log retention period (days) for API ECS logs."
   type        = number

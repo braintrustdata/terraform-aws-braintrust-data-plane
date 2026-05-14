@@ -356,9 +356,16 @@ module "api_ecs" {
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
+  ecs_cluster_name       = module.ecs[0].cluster_name
   task_role_arn          = module.services_common.api_handler_role_arn
   task_security_group_id = module.services_common.api_security_group_id
   custom_tags            = var.custom_tags
+
+  autoscaling_enabled             = var.api_ecs_autoscaling_enabled
+  autoscaling_min_count           = var.api_ecs_autoscaling_min_count
+  autoscaling_max_count           = var.api_ecs_autoscaling_max_count
+  autoscaling_cpu_target_value    = var.api_ecs_autoscaling_cpu_target_value
+  autoscaling_memory_target_value = var.api_ecs_autoscaling_memory_target_value
 }
 
 module "ingress" {

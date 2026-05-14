@@ -23,6 +23,11 @@ variable "ecs_cluster_arn" {
   description = "ARN of the ECS cluster where the API ECS service will run."
 }
 
+variable "ecs_cluster_name" {
+  type        = string
+  description = "Name of the ECS cluster where the API ECS service will run."
+}
+
 variable "container_image_repository" {
   type        = string
   description = "Container image repository for the API ECS service."
@@ -65,6 +70,56 @@ variable "desired_count" {
   validation {
     condition     = var.desired_count >= 1
     error_message = "desired_count must be at least 1."
+  }
+}
+
+variable "autoscaling_enabled" {
+  type        = bool
+  description = "Enable target-tracking autoscaling for the API ECS service."
+  default     = false
+}
+
+variable "autoscaling_min_count" {
+  type        = number
+  description = "Minimum number of API ECS tasks when autoscaling is enabled."
+  default     = 4
+
+  validation {
+    condition     = var.autoscaling_min_count >= 4
+    error_message = "autoscaling_min_count must be at least 4."
+  }
+}
+
+variable "autoscaling_max_count" {
+  type        = number
+  description = "Maximum number of API ECS tasks when autoscaling is enabled."
+  default     = 16
+
+  validation {
+    condition     = var.autoscaling_max_count >= var.autoscaling_min_count
+    error_message = "autoscaling_max_count must be greater than or equal to autoscaling_min_count."
+  }
+}
+
+variable "autoscaling_cpu_target_value" {
+  type        = number
+  description = "Target average CPU utilization percentage for API ECS autoscaling."
+  default     = 40
+
+  validation {
+    condition     = var.autoscaling_cpu_target_value > 0 && var.autoscaling_cpu_target_value <= 100
+    error_message = "autoscaling_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "autoscaling_memory_target_value" {
+  type        = number
+  description = "Target average memory utilization percentage for API ECS autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.autoscaling_memory_target_value > 0 && var.autoscaling_memory_target_value <= 100
+    error_message = "autoscaling_memory_target_value must be between 1 and 100."
   }
 }
 
