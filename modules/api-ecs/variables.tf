@@ -225,6 +225,12 @@ variable "skip_pg_for_brainstore_objects" {
   default     = ""
 }
 
+variable "brainstore_enable_export" {
+  type        = bool
+  description = "If true, sets BRAINSTORE_EXPORT_MIGRATION_ENABLED=true on the API ECS container."
+  default     = false
+}
+
 variable "whitelisted_origins" {
   type        = list(string)
   description = "Allowed CORS origins."

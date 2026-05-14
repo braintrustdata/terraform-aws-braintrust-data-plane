@@ -44,6 +44,9 @@ locals {
     (var.brainstore_wal_footer_version != "" || var.skip_pg_for_brainstore_objects != "") ? {
       BRAINSTORE_WAL_USE_EFFICIENT_FORMAT = "true"
     } : {},
+    var.brainstore_enable_export ? {
+      BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
+    } : {},
     var.brainstore_etl_batch_size != null ? {
       BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
     } : {},
