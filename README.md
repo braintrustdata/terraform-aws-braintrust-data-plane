@@ -1,6 +1,7 @@
 # Braintrust Terraform Module
 
 For the latest guidance, always refer to the official Braintrust documentation:
+
 - [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
 - [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
 
@@ -15,14 +16,16 @@ The default configuration is a large production-sized deployment. Please conside
 If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
 
 ## Module Configuration
+
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
 
 ## Useful scripts
 
 ### dump-logs.sh
+
 This script will dump the logs for the given deployment and services to the `logs-<deployment_name>` directory. This is useful for debugging issues with the data plane and sharing with the Braintrust team.
 
-```
+```bash
 # ./scripts/dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
 
 ./scripts/dump-logs.sh bt-sandbox
@@ -35,14 +38,17 @@ Fetching logs for the last 60 minutes for brainstore...
 ```
 
 ### create-service-linked-roles.sh
+
 Required for new AWS accounts to ensure IAM service-linked roles are created.
-```
+
+```bash
 ./scripts/create-service-linked-roles.sh
 ```
 
 ### VPCs
 
 This module creates two VPCs by default:
+
 - `main` VPC: This is the main VPC that contains the Braintrust services.
 - `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
 
@@ -51,6 +57,7 @@ This module creates two VPCs by default:
 If you have requirements to add custom tags to resources created by the module, you can do so by setting the `default_tags` variable on the AWS provider. The example directory [`examples/braintrust-data-plane`](examples/braintrust-data-plane) shows how to do this.
 
 Example:
+
 ```hcl
 provider "aws" {
   default_tags {
@@ -76,6 +83,7 @@ See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory f
 When using API ECS, code function execution is disabled by default. To run code functions inside the API ECS container, set `api_ecs_code_function_execution_mode = "api_ecs"`.
 
 Valid values are:
+
 - `disabled` - Do not run code functions through API ECS.
 - `api_ecs` - Run code functions inside the API ECS container.
 
@@ -97,6 +105,7 @@ To enable autoscaling, set `api_ecs_autoscaling_enabled = true`. The module then
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
 
 The passed in VPC must have the following resources:
+
 - At least 3 private subnets in different availability zones
 - At least 1 public subnet
 - Internet gateway and NAT gateway with proper route tables configured for private subnets
@@ -127,11 +136,13 @@ This section is only relevant if you are a contributor who wants to make changes
 
 1. Clone the repository
 2. Install [mise](https://mise.jdx.dev/about.html):
-    ```
-    curl https://mise.run | sh
-    echo 'eval "$(mise activate zsh)"' >> "~/.zshrc"
-    echo 'eval "$(mise activate zsh --shims)"' >> ~/.zprofile
-    exec $SHELL
-    ```
+
+  ```bash
+  curl https://mise.run | sh
+  echo 'eval "$(mise activate zsh)"' >> "~/.zshrc"
+  echo 'eval "$(mise activate zsh --shims)"' >> ~/.zprofile
+  exec $SHELL
+  ```
+
 3. Run `mise install` to install required tools
 4. Run `mise run setup` to install pre-commit hooks

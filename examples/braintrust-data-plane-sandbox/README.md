@@ -20,11 +20,13 @@ This is an example of a **sandbox** Braintrust data plane deployment for testing
 * Brainstore requires a license key which you can find in the Braintrust UI under Settings > Data Plane
   ![Brainstore License Key](../../assets/Brainstore-License-Key.png)
 * The recommended approach is to store the license key in AWS Secrets Manager and reference it using a Terraform data source:
+
   ```hcl
   data "aws_secretsmanager_secret_version" "brainstore_license" {
     secret_id = "braintrust/brainstore-license-key"
   }
   ```
+
   Then pass `data.aws_secretsmanager_secret_version.brainstore_license.secret_string` as the `brainstore_license_key` value in the module.
 * Alternatively, you can pass the key without storing it in Secrets Manager:
   * Set `TF_VAR_brainstore_license_key=your-key` in your terraform environment
@@ -49,7 +51,8 @@ terraform apply
 ## Pointing your Organization to your data plane
 
 After applying, get the API URL:
-```
+
+```bash
 terraform output
 # api_url = "https://xxxxxxxxx.cloudfront.net"
 ```
