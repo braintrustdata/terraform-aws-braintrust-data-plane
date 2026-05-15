@@ -40,9 +40,10 @@ clusters. The cluster creator receives bootstrap admin access, but additional
 operators should be represented explicitly with EKS access entries and scoped
 access policies.
 
-If your EKS cluster is managed outside this module, use one of the external EKS examples instead:
+If your EKS cluster is managed outside this module and you need a module-managed
+quarantine VPC for user-defined functions, use the external EKS quarantine
+example:
 
-- [`examples/braintrust-data-plane-external-eks`](examples/braintrust-data-plane-external-eks) for EKS without a quarantine VPC
 - [`examples/braintrust-data-plane-external-eks-quarantine`](examples/braintrust-data-plane-external-eks-quarantine) for EKS with a quarantine VPC for user-defined functions
 
 By default, EKS deployments with `eks_enable_cloudfront_nlb_ingress = true` use the generated CloudFront `*.cloudfront.net` hostname and the default CloudFront TLS certificate. Leave `custom_domain = null` and `custom_certificate_arn = null` for this baseline.

@@ -6,7 +6,6 @@ Example configurations for deploying the Braintrust data plane on AWS. Copy the 
 |---|---|
 | [braintrust-data-plane](./braintrust-data-plane/) | Standard production-sized deployment. Start here for most use cases. |
 | [braintrust-data-plane-sandbox](./braintrust-data-plane-sandbox/) | Minimal deployment for infrastructure testing. Downsized instances, no quarantine VPC, deletion protection disabled. Not for workload testing. |
-| [braintrust-data-plane-external-eks](./braintrust-data-plane-external-eks/) | Deployment with an external EKS cluster and no quarantine VPC. User-defined functions execute in the API pod. |
 | [braintrust-data-plane-external-eks-quarantine](./braintrust-data-plane-external-eks-quarantine/) | Deployment with an external EKS cluster and quarantine VPC for user-defined functions. |
 | [eks-terraform-managed](./eks-terraform-managed/) | Terraform-managed node-group cluster example. Terraform creates the AWS data plane and EKS cluster, disables the bundled CloudFront/NLB ingress by default, and leaves the app install and ingress choice to the customer. |
 | [eks-auto-mode](./eks-auto-mode/) | Full one-click Auto Mode example. Terraform creates the AWS data plane, EKS cluster, bundled CloudFront/NLB ingress, Kubernetes bootstrap resources, and the Braintrust application deployment. |
