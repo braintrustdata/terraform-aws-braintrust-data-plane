@@ -1,12 +1,10 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
-# Opinionated EKS deployment:
+# Opinionated Terraform-managed EKS example:
 # - creates the Braintrust AWS data plane primitives
-# - creates an EKS cluster with Terraform-managed node groups by default
-# - pre-creates a private NLB and exposes it through CloudFront VPC Origin
-# - creates the Kubernetes namespace and braintrust-secrets secret
-# - installs the AWS Load Balancer Controller and the Braintrust Helm chart
-# - uses Terraform-managed services and Brainstore node groups unless you opt back into Auto Mode
+# - creates an EKS cluster with Terraform-managed node groups
+# - leaves Braintrust Helm installation to a follow-up manual step
+# - defaults to bring-your-own ingress, with an optional toggle for bundled CloudFront + private NLB
 
 module "braintrust" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
@@ -21,7 +19,11 @@ module "braintrust" {
   enable_quarantine_vpc   = false
 
   eks_use_auto_mode                 = false
-  eks_enable_cloudfront_nlb_ingress = false
+  eks_enable_cloudfront_nlb_ingress = var.eks_enable_cloudfront_nlb_ingress
+  eks_enable_private_access         = true
+  eks_enable_public_access          = var.eks_enable_public_access
+  eks_public_access_cidrs           = var.eks_public_access_cidrs
+  eks_access_entries                = var.eks_access_entries
 
   custom_domain          = var.custom_domain
   custom_certificate_arn = var.custom_certificate_arn

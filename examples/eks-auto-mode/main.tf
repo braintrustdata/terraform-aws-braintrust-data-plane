@@ -21,9 +21,12 @@ module "braintrust" {
   enable_quarantine_vpc   = false
 
   # EKS Auto Mode: EKS manages system and API services compute automatically.
-  # Set to false to revert to managed node groups for all workloads.
   eks_use_auto_mode                 = true
   eks_enable_cloudfront_nlb_ingress = true
+  eks_enable_private_access         = true
+  eks_enable_public_access          = var.eks_enable_public_access
+  eks_public_access_cidrs           = var.eks_public_access_cidrs
+  eks_access_entries                = var.eks_access_entries
 
   custom_domain          = var.custom_domain
   custom_certificate_arn = var.custom_certificate_arn
@@ -89,15 +92,17 @@ module "braintrust_deploy" {
   manage_braintrust_helm_release = true
   helm_chart_version             = var.eks_helm_chart_version
 
-  api_helm                     = var.eks_api_helm
-  brainstore_reader_helm       = var.eks_brainstore_reader_helm
-  brainstore_fastreader_helm   = var.eks_brainstore_fastreader_helm
-  brainstore_writer_helm       = var.eks_brainstore_writer_helm
-  helm_chart_extra_values      = var.eks_helm_chart_extra_values
-  prepare_for_destroy          = var.prepare_for_destroy
-  use_auto_mode                = true
-  node_role_name               = module.braintrust.eks_node_group_iam_role_name
-  brainstore_instance_families = var.eks_brainstore_instance_families
+  api_helm                         = var.eks_api_helm
+  brainstore_reader_helm           = var.eks_brainstore_reader_helm
+  brainstore_fastreader_helm       = var.eks_brainstore_fastreader_helm
+  brainstore_writer_helm           = var.eks_brainstore_writer_helm
+  helm_chart_extra_values          = var.eks_helm_chart_extra_values
+  prepare_for_destroy              = var.prepare_for_destroy
+  use_auto_mode                    = true
+  node_role_name                   = module.braintrust.eks_node_group_iam_role_name
+  brainstore_instance_families     = var.eks_brainstore_instance_families
+  brainstore_reader_instance_sizes = var.eks_brainstore_reader_instance_sizes
+  brainstore_writer_instance_sizes = var.eks_brainstore_writer_instance_sizes
 
   depends_on = [module.braintrust]
 }

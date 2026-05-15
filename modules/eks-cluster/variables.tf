@@ -86,6 +86,45 @@ variable "public_access_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "eks_access_entries" {
+  description = "Additional EKS access entries to create for human or CI access. The cluster creator still receives bootstrap admin permissions."
+  type = map(object({
+    principal_arn     = string
+    type              = optional(string, "STANDARD")
+    kubernetes_groups = optional(list(string))
+    user_name         = optional(string)
+    policy_associations = optional(map(object({
+      policy_arn = string
+      access_scope = object({
+        type       = string
+        namespaces = optional(list(string), [])
+      })
+    })), {})
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue(flatten([
+      for _, entry in var.eks_access_entries : [
+        for _, policy_association in entry.policy_associations : (
+          contains(["cluster", "namespace"], policy_association.access_scope.type) &&
+          (
+            (
+              policy_association.access_scope.type == "cluster" &&
+              length(policy_association.access_scope.namespaces) == 0
+            ) ||
+            (
+              policy_association.access_scope.type == "namespace" &&
+              length(policy_association.access_scope.namespaces) > 0
+            )
+          )
+        )
+      ]
+    ]))
+    error_message = "Each EKS access policy association must use access_scope.type of cluster with no namespaces, or namespace with at least one namespace."
+  }
+}
+
 variable "additional_security_group_ids" {
   type        = list(string)
   description = "Additional security group IDs to attach to the EKS cluster"

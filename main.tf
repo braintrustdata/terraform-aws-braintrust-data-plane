@@ -333,6 +333,7 @@ module "services_common" {
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = local.eks_cluster_arn
   eks_cluster_oidc_issuer_url               = var.create_eks_cluster ? module.eks_cluster[0].cluster_oidc_issuer_url : null
+  lookup_eks_cluster_oidc_issuer_url        = !var.create_eks_cluster && var.existing_eks_cluster_arn != null
   eks_namespace                             = local.eks_namespace_resolved
   enable_eks_pod_identity                   = var.create_eks_cluster ? true : var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
@@ -429,6 +430,7 @@ module "eks_cluster" {
   enable_private_access = var.eks_enable_private_access
   enable_public_access  = var.eks_enable_public_access
   public_access_cidrs   = var.eks_public_access_cidrs
+  eks_access_entries    = var.eks_access_entries
 
   cluster_log_types          = var.eks_cluster_log_types
   cluster_log_retention_days = var.eks_cluster_log_retention_days

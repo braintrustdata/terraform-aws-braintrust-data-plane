@@ -17,6 +17,6 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 data "aws_eks_cluster" "cluster" {
-  count = var.enable_eks_irsa && var.eks_cluster_arn != null && var.eks_cluster_oidc_issuer_url == null ? 1 : 0
+  count = var.enable_eks_irsa && var.lookup_eks_cluster_oidc_issuer_url ? 1 : 0
   name  = split("/", var.eks_cluster_arn)[1]
 }

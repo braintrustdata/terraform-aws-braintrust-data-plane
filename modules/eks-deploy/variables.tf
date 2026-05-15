@@ -226,6 +226,28 @@ variable "node_role_name" {
 
 variable "brainstore_instance_families" {
   type        = list(string)
-  description = "EC2 instance families for Brainstore NodePools. Must be NVMe-backed Graviton families (c7gd, c8gd). Sizes are fixed per pool: 4xlarge for reader, 8xlarge for writer."
+  description = "EC2 instance families for Brainstore NodePools. Must be NVMe-backed Graviton families (c7gd, c8gd)."
   default     = ["c7gd", "c8gd"]
+}
+
+variable "brainstore_reader_instance_sizes" {
+  type        = list(string)
+  description = "EC2 instance sizes allowed for the Brainstore reader and fast-reader Auto Mode NodePool."
+  default     = ["4xlarge"]
+
+  validation {
+    condition     = length(var.brainstore_reader_instance_sizes) > 0
+    error_message = "brainstore_reader_instance_sizes must contain at least one size."
+  }
+}
+
+variable "brainstore_writer_instance_sizes" {
+  type        = list(string)
+  description = "EC2 instance sizes allowed for the Brainstore writer Auto Mode NodePool."
+  default     = ["8xlarge"]
+
+  validation {
+    condition     = length(var.brainstore_writer_instance_sizes) > 0
+    error_message = "brainstore_writer_instance_sizes must contain at least one size."
+  }
 }

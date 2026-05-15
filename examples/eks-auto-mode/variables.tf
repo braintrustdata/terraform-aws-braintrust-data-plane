@@ -62,6 +62,57 @@ variable "kubernetes_version" {
   default     = "1.31"
 }
 
+variable "eks_enable_public_access" {
+  description = "Whether the EKS public API server endpoint is enabled. Set false only when Terraform runs from the VPC or a connected network."
+  type        = bool
+  default     = true
+}
+
+variable "eks_public_access_cidrs" {
+  description = "CIDR blocks allowed to reach the EKS public API server endpoint. Defaults to 0.0.0.0/0 for compatibility; restrict this to explicit operator or CI egress CIDRs for production."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "eks_access_entries" {
+  description = "Additional EKS access entries for human operators or CI roles."
+  type = map(object({
+    principal_arn     = string
+    type              = optional(string, "STANDARD")
+    kubernetes_groups = optional(list(string))
+    user_name         = optional(string)
+    policy_associations = optional(map(object({
+      policy_arn = string
+      access_scope = object({
+        type       = string
+        namespaces = optional(list(string), [])
+      })
+    })), {})
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue(flatten([
+      for _, entry in var.eks_access_entries : [
+        for _, policy_association in entry.policy_associations : (
+          contains(["cluster", "namespace"], policy_association.access_scope.type) &&
+          (
+            (
+              policy_association.access_scope.type == "cluster" &&
+              length(policy_association.access_scope.namespaces) == 0
+            ) ||
+            (
+              policy_association.access_scope.type == "namespace" &&
+              length(policy_association.access_scope.namespaces) > 0
+            )
+          )
+        )
+      ]
+    ]))
+    error_message = "Each EKS access policy association must use access_scope.type of cluster with no namespaces, or namespace with at least one namespace."
+  }
+}
+
 variable "postgres_instance_type" {
   description = "RDS instance type."
   type        = string
@@ -99,9 +150,21 @@ variable "redis_instance_type" {
 }
 
 variable "eks_brainstore_instance_families" {
-  description = "NVMe-backed Graviton instance families for Brainstore Karpenter NodePools. EKS Auto Mode selects 4xlarge for reader/fast-reader and 8xlarge for writer from these families. Must support local NVMe storage (c7gd, c8gd)."
+  description = "NVMe-backed Graviton instance families for Brainstore Karpenter NodePools. Must support local NVMe storage (c7gd, c8gd)."
   type        = list(string)
   default     = ["c7gd", "c8gd"]
+}
+
+variable "eks_brainstore_reader_instance_sizes" {
+  description = "EC2 instance sizes allowed for the Brainstore reader and fast-reader Auto Mode NodePool."
+  type        = list(string)
+  default     = ["4xlarge"]
+}
+
+variable "eks_brainstore_writer_instance_sizes" {
+  description = "EC2 instance sizes allowed for the Brainstore writer Auto Mode NodePool."
+  type        = list(string)
+  default     = ["8xlarge"]
 }
 
 variable "brainstore_wal_footer_version" {
@@ -136,8 +199,20 @@ variable "eks_brainstore_reader_helm" {
       limits   = object({ cpu = string, memory = string })
     }))
   })
-  default     = {}
-  description = "Optional Brainstore reader replica/resource overrides."
+  default = {
+    replicas = 1
+    resources = {
+      requests = {
+        cpu    = "14"
+        memory = "26Gi"
+      }
+      limits = {
+        cpu    = "14"
+        memory = "26Gi"
+      }
+    }
+  }
+  description = "Brainstore reader overrides for the Auto Mode example. Defaults leave allocatable headroom on the example's 4xlarge reader nodes; override if you need different sizing."
 }
 
 variable "eks_brainstore_fastreader_helm" {
@@ -148,8 +223,20 @@ variable "eks_brainstore_fastreader_helm" {
       limits   = object({ cpu = string, memory = string })
     }))
   })
-  default     = {}
-  description = "Optional Brainstore fast-reader replica/resource overrides."
+  default = {
+    replicas = 1
+    resources = {
+      requests = {
+        cpu    = "14"
+        memory = "26Gi"
+      }
+      limits = {
+        cpu    = "14"
+        memory = "26Gi"
+      }
+    }
+  }
+  description = "Brainstore fast-reader overrides for the Auto Mode example. Defaults leave allocatable headroom on the example's 4xlarge reader nodes; override if you need different sizing."
 }
 
 variable "eks_brainstore_writer_helm" {
@@ -160,8 +247,20 @@ variable "eks_brainstore_writer_helm" {
       limits   = object({ cpu = string, memory = string })
     }))
   })
-  default     = {}
-  description = "Optional Brainstore writer replica/resource overrides."
+  default = {
+    replicas = 1
+    resources = {
+      requests = {
+        cpu    = "30"
+        memory = "58Gi"
+      }
+      limits = {
+        cpu    = "30"
+        memory = "58Gi"
+      }
+    }
+  }
+  description = "Brainstore writer overrides for the Auto Mode example. Defaults leave allocatable headroom on the example's 8xlarge writer nodes; override if you need different sizing."
 }
 
 variable "eks_helm_chart_extra_values" {

@@ -28,6 +28,18 @@ The two EKS examples show the intended compositions on top of that base:
 
 The older `use_deployment_mode_external_eks` variable remains supported as a deprecated alias for backwards compatibility.
 
+The module enables the private EKS API endpoint by default. If you keep the
+public endpoint enabled, set `eks_public_access_cidrs` to explicit operator or
+CI egress CIDRs for production instead of leaving it open to `0.0.0.0/0`. The
+open default is allowed for compatibility and bootstrap convenience. If you
+disable public access, run Terraform, `kubectl`, and Helm steps that contact the
+cluster from the VPC or a connected network.
+
+Use `eks_access_entries` to grant long-lived human or CI access to module-managed
+clusters. The cluster creator receives bootstrap admin access, but additional
+operators should be represented explicitly with EKS access entries and scoped
+access policies.
+
 If your EKS cluster is managed outside this module, use one of the external EKS examples instead:
 
 - [`examples/braintrust-data-plane-external-eks`](examples/braintrust-data-plane-external-eks) for EKS without a quarantine VPC

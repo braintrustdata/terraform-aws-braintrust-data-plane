@@ -17,6 +17,7 @@ This module creates an Amazon EKS cluster with managed node groups for running B
   - Pod Identity agent for workload identity
 - **Security**: KMS encryption for secrets, IAM roles with least privilege, security groups
 - **Pod Identity Associations**: Associates the Braintrust API, Brainstore, and AWS Load Balancer Controller service accounts with IAM roles
+- **Access Entries**: Optionally creates EKS access entries and access policy associations for human or CI operators
 - **Auto-scaling**: All node groups support auto-scaling
 
 ## Architecture
@@ -45,6 +46,22 @@ module "eks_cluster" {
 
   enable_private_access = true
   enable_public_access  = true
+  public_access_cidrs   = ["203.0.113.10/32"]
+
+  eks_access_entries = {
+    support_viewer = {
+      principal_arn = "arn:aws:iam::123456789012:role/BraintrustSupportViewer"
+      policy_associations = {
+        braintrust_logs = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+          access_scope = {
+            type       = "namespace"
+            namespaces = ["braintrust"]
+          }
+        }
+      }
+    }
+  }
 
   # Encryption
   kms_key_arn = local.kms_key_arn

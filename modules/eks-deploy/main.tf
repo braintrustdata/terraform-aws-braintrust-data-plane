@@ -66,7 +66,7 @@ resource "helm_release" "brainstore_auto_mode" {
         nodeClassName        = "brainstore-reader"
         nodePoolName         = "brainstore-reader"
         ephemeralStorageSize = "1000Gi"
-        instanceSizes        = ["4xlarge"]
+        instanceSizes        = var.brainstore_reader_instance_sizes
         cpuLimit             = "80"
         memoryLimit          = "160Gi"
       }
@@ -74,7 +74,7 @@ resource "helm_release" "brainstore_auto_mode" {
         nodeClassName        = "brainstore-writer"
         nodePoolName         = "brainstore-writer"
         ephemeralStorageSize = "2000Gi"
-        instanceSizes        = ["8xlarge"]
+        instanceSizes        = var.brainstore_writer_instance_sizes
         cpuLimit             = "128"
         memoryLimit          = "256Gi"
       }
