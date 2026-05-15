@@ -23,7 +23,9 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 │   ├── braintrust-data-plane/          # Production example
 │   ├── braintrust-data-plane-sandbox/  # Sandbox/testing example
 │   ├── braintrust-data-plane-external-eks-quarantine/
-│   └── cloudfront-logging/
+│   ├── cloudfront-logging/
+│   ├── eks-auto-mode/                  # EKS Auto Mode example with Terraform-managed Helm deployment
+│   └── eks-terraform-managed/          # EKS example with Terraform-managed node groups and manual Helm install
 ├── scripts/                 # Operational helper scripts
 └── mise.toml                # Tool versions and tasks (terraform, tflint, uv)
 ```

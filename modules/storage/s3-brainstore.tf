@@ -69,7 +69,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
 
     expiration {
       # We use the same var for the expiration interval and the delete interval
-      # in cleanup-old-versions so the total time to deletion is 2 * var.s3_bucket_retention_days
+      # in cleanup-old-versions so the total time to deletion is 2 * var.brainstore_s3_bucket_retention_days
       days = var.brainstore_s3_bucket_retention_days
     }
   }
@@ -85,7 +85,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
 
     expiration {
       # We use the same var for the expiration interval and the delete interval
-      # in cleanup-old-versions so the total time to deletion is 2 * var.s3_bucket_retention_days
+      # in cleanup-old-versions so the total time to deletion is 2 * var.brainstore_s3_bucket_retention_days
       days = var.brainstore_s3_bucket_retention_days
     }
   }

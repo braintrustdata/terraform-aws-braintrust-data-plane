@@ -1,6 +1,6 @@
 # Quarantine VPC IAM resources
 # These resources are needed for the Quarantine VPC functionality and are deployed
-# even when use_deployment_mode_external_eks = true, as they are required for
+# even when EKS deployment mode is enabled, as they are required for
 # running user-defined functions in an isolated environment.
 
 # The role used by the API handler to invoke the user-defined quarantined functions

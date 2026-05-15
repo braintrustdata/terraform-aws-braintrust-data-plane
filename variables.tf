@@ -4,6 +4,8 @@ locals {
   private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : data.aws_availability_zones.available.names[1]
   private_subnet_3_az = var.private_subnet_3_az != null ? var.private_subnet_3_az : data.aws_availability_zones.available.names[2]
   public_subnet_1_az  = var.public_subnet_1_az != null ? var.public_subnet_1_az : data.aws_availability_zones.available.names[0]
+  public_subnet_2_az  = var.public_subnet_2_az != null ? var.public_subnet_2_az : data.aws_availability_zones.available.names[1]
+  public_subnet_3_az  = var.public_subnet_3_az != null ? var.public_subnet_3_az : data.aws_availability_zones.available.names[2]
 
   # Lookup and choose an AZ if not provided for Quarantine VPC
   quarantine_private_subnet_1_az = var.quarantine_private_subnet_1_az != null ? var.quarantine_private_subnet_1_az : data.aws_availability_zones.available.names[0]
@@ -121,6 +123,12 @@ variable "existing_public_subnet_1_id" {
   }
 }
 
+variable "existing_public_subnet_2_id" {
+  type        = string
+  default     = null
+  description = "ID of existing public subnet 2 in a second AZ (optional when create_vpc is false; required for ALB which needs subnets in at least two AZs)"
+}
+
 variable "private_subnet_1_az" {
   type        = string
   default     = null
@@ -139,10 +147,32 @@ variable "private_subnet_3_az" {
   description = "Availability zone for the third private subnet. Leave blank to choose the third available zone"
 }
 
+variable "public_subnet_count" {
+  type        = number
+  default     = 3
+  description = "Number of public subnets to create when create_vpc is true. Use 1 for NLB-only deployments, 2 or 3 for ALB (which requires subnets in at least two AZs)."
+  validation {
+    condition     = contains([1, 2, 3], var.public_subnet_count)
+    error_message = "public_subnet_count must be 1, 2, or 3."
+  }
+}
+
 variable "public_subnet_1_az" {
   type        = string
   default     = null
   description = "Availability zone for the public subnet. Leave blank to choose the first available zone"
+}
+
+variable "public_subnet_2_az" {
+  type        = string
+  default     = null
+  description = "Availability zone for the second public subnet. Leave blank to choose the second available zone."
+}
+
+variable "public_subnet_3_az" {
+  type        = string
+  default     = null
+  description = "Availability zone for the third public subnet. Leave blank to choose the third available zone."
 }
 
 variable "enable_quarantine_vpc" {
@@ -457,13 +487,17 @@ variable "gateway_braintrust_app_url" {
 }
 
 variable "braintrust_api_url" {
-  description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
+  description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode, or when create_eks_cluster is true but the module-managed EKS CloudFront/NLB ingress is disabled."
   type        = string
   default     = null
 
   validation {
-    condition     = !(var.use_deployment_mode_external_eks && var.enable_llm_gateway) || var.braintrust_api_url != null
-    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_llm_gateway are both true."
+    condition = !(var.enable_llm_gateway && ((
+      (var.use_deployment_mode_eks || var.use_deployment_mode_external_eks) && !var.create_eks_cluster
+      ) || (
+      var.create_eks_cluster && !var.eks_enable_cloudfront_nlb_ingress
+    ))) || var.braintrust_api_url != null
+    error_message = "braintrust_api_url is required when enable_llm_gateway = true and the API URL is not created by this module, including external EKS deployments and create_eks_cluster deployments with eks_enable_cloudfront_nlb_ingress = false."
   }
 }
 
@@ -549,13 +583,13 @@ variable "outbound_rate_limit_window_minutes" {
 }
 
 variable "custom_domain" {
-  description = "Custom domain name for the CloudFront distribution"
+  description = "Optional custom domain name for the CloudFront distribution. Leave null to use the generated CloudFront domain."
   type        = string
   default     = null
 }
 
 variable "custom_certificate_arn" {
-  description = "ARN of the ACM certificate for the custom domain"
+  description = "ARN of the us-east-1 ACM certificate for the custom domain. Leave null when using the generated CloudFront domain."
   type        = string
   default     = null
 }
@@ -647,6 +681,10 @@ variable "brainstore_license_key" {
   type        = string
   description = "The license key for the Brainstore instance"
   default     = null
+  validation {
+    condition     = !var.create_eks_cluster || (var.brainstore_license_key != null && trimspace(var.brainstore_license_key) != "")
+    error_message = "brainstore_license_key is required when create_eks_cluster is true."
+  }
 }
 
 variable "brainstore_version_override" {
@@ -824,7 +862,13 @@ variable "use_global_ai_proxy" {
 }
 
 variable "use_deployment_mode_external_eks" {
-  description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
+  description = "Deprecated alias for use_deployment_mode_eks. Preserved for backwards compatibility."
+  type        = bool
+  default     = false
+}
+
+variable "use_deployment_mode_eks" {
+  description = "Enable the EKS/Kubernetes deployment mode. When true, disables lambdas, ec2, and ingress submodules. Use create_eks_cluster to choose whether the EKS cluster is created by this module or managed externally."
   type        = bool
   default     = false
 }
@@ -880,5 +924,346 @@ variable "override_api_iam_role_trust_policy" {
 variable "override_brainstore_iam_role_trust_policy" {
   type        = string
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
+  default     = null
+}
+
+#----------------------------------------------------------------------------------------------
+# EKS Cluster (create_eks_cluster = true)
+#----------------------------------------------------------------------------------------------
+
+variable "create_eks_cluster" {
+  description = "When true, creates an EKS cluster and Pod Identity IAM roles within this module. Automatically disables Lambda services, EC2 Brainstore, and the CloudFront/API Gateway ingress. For externally-managed clusters, leave false and enable use_deployment_mode_eks instead."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.create_eks_cluster || var.use_deployment_mode_eks || var.use_deployment_mode_external_eks
+    error_message = "create_eks_cluster requires use_deployment_mode_eks = true (or the deprecated use_deployment_mode_external_eks = true)."
+  }
+}
+
+variable "eks_use_auto_mode" {
+  description = "Enable EKS Auto Mode. When true, EKS manages compute (system and services nodes), load balancing, and block storage automatically. System and services managed node groups are not created — EKS uses built-in node pools instead. Brainstore node groups are always created as managed node groups because they require a custom NVMe launch template. Defaults to true."
+  type        = bool
+  default     = true
+}
+
+variable "kubernetes_version" {
+  description = "Kubernetes version for the EKS cluster. Only used when create_eks_cluster is true."
+  type        = string
+  default     = "1.31"
+}
+
+variable "eks_enable_private_access" {
+  description = "Whether the EKS private API server endpoint is enabled."
+  type        = bool
+  default     = true
+}
+
+variable "eks_enable_public_access" {
+  description = "Whether the EKS public API server endpoint is enabled."
+  type        = bool
+  default     = true
+}
+
+variable "eks_public_access_cidrs" {
+  description = "CIDR blocks allowed to reach the EKS public API server endpoint."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "eks_access_entries" {
+  description = "Additional EKS access entries to create when create_eks_cluster is true. Use this to grant explicit human or CI access to the cluster without relying only on the cluster creator identity."
+  type = map(object({
+    principal_arn     = string
+    type              = optional(string, "STANDARD")
+    kubernetes_groups = optional(list(string))
+    user_name         = optional(string)
+    policy_associations = optional(map(object({
+      policy_arn = string
+      access_scope = object({
+        type       = string
+        namespaces = optional(list(string), [])
+      })
+    })), {})
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue(flatten([
+      for _, entry in var.eks_access_entries : [
+        for _, policy_association in entry.policy_associations : (
+          contains(["cluster", "namespace"], policy_association.access_scope.type) &&
+          (
+            (
+              policy_association.access_scope.type == "cluster" &&
+              length(policy_association.access_scope.namespaces) == 0
+            ) ||
+            (
+              policy_association.access_scope.type == "namespace" &&
+              length(policy_association.access_scope.namespaces) > 0
+            )
+          )
+        )
+      ]
+    ]))
+    error_message = "Each EKS access policy association must use access_scope.type of cluster with no namespaces, or namespace with at least one namespace."
+  }
+}
+
+variable "eks_enable_cloudfront_nlb_ingress" {
+  description = "When true, creates the module-managed CloudFront + private NLB ingress stack for create_eks_cluster deployments. Set false if you want the EKS cluster without the bundled ingress so you can bring your own ingress/controller setup."
+  type        = bool
+  default     = true
+}
+
+variable "eks_cluster_log_types" {
+  description = "EKS control plane log types to enable."
+  type        = list(string)
+  default     = ["api", "audit", "authenticator"]
+}
+
+variable "eks_cluster_log_retention_days" {
+  description = "Days to retain EKS control plane logs in CloudWatch."
+  type        = number
+  default     = 90
+}
+
+variable "eks_enable_node_ssm" {
+  description = "Enable AWS Systems Manager Session Manager on EKS nodes for debugging."
+  type        = bool
+  default     = false
+}
+
+variable "eks_api_service_account_name" {
+  description = "Kubernetes service account name for the Braintrust API pods."
+  type        = string
+  default     = "braintrust-api"
+}
+
+variable "eks_brainstore_service_account_name" {
+  description = "Kubernetes service account name for Brainstore pods."
+  type        = string
+  default     = "brainstore"
+}
+
+variable "eks_aws_load_balancer_controller_service_account" {
+  description = "Kubernetes service account name for the AWS Load Balancer Controller."
+  type        = string
+  default     = "aws-load-balancer-controller"
+}
+
+variable "eks_node_group_ami_type" {
+  description = "AMI type for the system and services node groups."
+  type        = string
+  default     = "AL2023_x86_64_STANDARD"
+}
+
+variable "eks_brainstore_node_group_ami_type" {
+  description = "AMI type for the brainstore node groups. Defaults to Graviton (ARM64) because c8gd NVMe instances are recommended for Brainstore."
+  type        = string
+  default     = "AL2023_ARM_64_STANDARD"
+}
+
+variable "eks_system_node_group_instance_type" {
+  description = "Instance type for the EKS system node group."
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "eks_system_node_group_desired_size" {
+  description = "Desired node count for the EKS system node group."
+  type        = number
+  default     = 2
+}
+
+variable "eks_system_node_group_min_size" {
+  description = "Minimum node count for the EKS system node group."
+  type        = number
+  default     = 2
+}
+
+variable "eks_system_node_group_max_size" {
+  description = "Maximum node count for the EKS system node group."
+  type        = number
+  default     = 4
+}
+
+variable "eks_system_node_group_disk_size" {
+  description = "Root EBS volume size in GB for EKS system nodes."
+  type        = number
+  default     = 50
+}
+
+variable "eks_services_node_group_instance_type" {
+  description = "Instance type for the EKS services node group."
+  type        = string
+  default     = "r6i.2xlarge"
+}
+
+variable "eks_services_node_group_desired_size" {
+  description = "Desired node count for the EKS services node group."
+  type        = number
+  default     = 2
+}
+
+variable "eks_services_node_group_min_size" {
+  description = "Minimum node count for the EKS services node group."
+  type        = number
+  default     = 2
+}
+
+variable "eks_services_node_group_max_size" {
+  description = "Maximum node count for the EKS services node group."
+  type        = number
+  default     = 10
+}
+
+variable "eks_services_node_group_disk_size" {
+  description = "Root EBS volume size in GB for EKS services nodes."
+  type        = number
+  default     = 100
+}
+
+variable "eks_brainstore_reader_node_group_instance_type" {
+  description = "Instance type for the EKS brainstore reader node group. Must have local NVMe storage."
+  type        = string
+  default     = "c8gd.8xlarge"
+}
+
+variable "eks_brainstore_reader_node_group_desired_size" {
+  description = "Desired node count for the EKS brainstore reader node group."
+  type        = number
+  default     = 2
+}
+
+variable "eks_brainstore_reader_node_group_min_size" {
+  description = "Minimum node count for the EKS brainstore reader node group."
+  type        = number
+  default     = 2
+}
+
+variable "eks_brainstore_reader_node_group_max_size" {
+  description = "Maximum node count for the EKS brainstore reader node group."
+  type        = number
+  default     = 10
+}
+
+variable "eks_brainstore_writer_node_group_instance_type" {
+  description = "Instance type for the EKS brainstore writer node group. Must have local NVMe storage. Defaults to c8gd.16xlarge (2× the vCPU/memory of the reader default)."
+  type        = string
+  default     = "c8gd.16xlarge"
+}
+
+variable "eks_brainstore_writer_node_group_desired_size" {
+  description = "Desired node count for the EKS brainstore writer node group."
+  type        = number
+  default     = 1
+}
+
+variable "eks_brainstore_writer_node_group_min_size" {
+  description = "Minimum node count for the EKS brainstore writer node group."
+  type        = number
+  default     = 1
+}
+
+variable "eks_brainstore_writer_node_group_max_size" {
+  description = "Maximum node count for the EKS brainstore writer node group."
+  type        = number
+  default     = 5
+}
+
+variable "eks_enable_services_spot_node_group" {
+  description = "Add a spot node group for services burst capacity alongside the on-demand baseline."
+  type        = bool
+  default     = false
+}
+
+variable "eks_services_spot_node_group_instance_types" {
+  description = "Instance types for the services spot node group."
+  type        = list(string)
+  default     = ["r6i.2xlarge", "r5.2xlarge", "r6a.2xlarge"]
+}
+
+variable "eks_services_spot_node_group_min_size" {
+  description = "Minimum node count for the services spot node group."
+  type        = number
+  default     = 0
+}
+
+variable "eks_services_spot_node_group_max_size" {
+  description = "Maximum node count for the services spot node group."
+  type        = number
+  default     = 9
+}
+
+variable "eks_enable_brainstore_spot_node_group" {
+  description = "Add a spot node group for brainstore burst capacity. Spot interruptions cause cache loss; pods rehydrate from S3 on restart."
+  type        = bool
+  default     = false
+}
+
+variable "eks_brainstore_spot_node_group_instance_types" {
+  description = "Instance types for the brainstore spot node group. Must be NVMe-backed Graviton instances."
+  type        = list(string)
+  default     = ["c8gd.8xlarge", "c8gd.12xlarge", "c6gd.8xlarge"]
+}
+
+variable "eks_brainstore_spot_node_group_min_size" {
+  description = "Minimum node count for the brainstore spot node group."
+  type        = number
+  default     = 0
+}
+
+variable "eks_brainstore_spot_node_group_max_size" {
+  description = "Maximum node count for the brainstore spot node group."
+  type        = number
+  default     = 9
+}
+
+variable "eks_enable_brainstore_writer_spot_node_group" {
+  description = "Add a spot node group for brainstore writer burst capacity. Spot interruptions cause cache loss; pods rehydrate from S3 on restart."
+  type        = bool
+  default     = false
+}
+
+variable "eks_brainstore_writer_spot_node_group_instance_types" {
+  description = "Instance types for the brainstore writer spot node group. Must be NVMe-backed Graviton instances with 2× the vCPU/memory of reader instances."
+  type        = list(string)
+  default     = ["c8gd.16xlarge", "c7gd.16xlarge", "c6gd.16xlarge"]
+}
+
+variable "eks_brainstore_writer_spot_node_group_min_size" {
+  description = "Minimum node count for the brainstore writer spot node group."
+  type        = number
+  default     = 0
+}
+
+variable "eks_brainstore_writer_spot_node_group_max_size" {
+  description = "Maximum node count for the brainstore writer spot node group."
+  type        = number
+  default     = 9
+}
+
+variable "eks_vpc_cni_addon_version" {
+  description = "Version of the VPC CNI addon. Null uses the default for the cluster version."
+  type        = string
+  default     = null
+}
+
+variable "eks_kube_proxy_addon_version" {
+  description = "Version of the kube-proxy addon. Null uses the default for the cluster version."
+  type        = string
+  default     = null
+}
+
+variable "eks_coredns_addon_version" {
+  description = "Version of the CoreDNS addon. Null uses the default for the cluster version."
+  type        = string
+  default     = null
+}
+
+variable "eks_pod_identity_addon_version" {
+  description = "Version of the EKS Pod Identity agent addon. Null uses the default for the cluster version."
+  type        = string
   default     = null
 }

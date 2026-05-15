@@ -1,0 +1,10 @@
+# Configure remote state here, for example:
+#
+# terraform {
+#   backend "s3" {
+#     bucket       = "<your-state-bucket>"
+#     key          = "braintrust-eks-auto-mode/terraform.tfstate"
+#     region       = "<your-region>"
+#     use_lockfile = true
+#   }
+# }

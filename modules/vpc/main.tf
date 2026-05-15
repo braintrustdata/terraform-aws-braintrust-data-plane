@@ -84,12 +84,39 @@ resource "aws_subnet" "public_subnet_1" {
   map_public_ip_on_launch = false
 
   tags = merge({
-    Name = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"
+    Name                     = "${var.deployment_name}-${var.vpc_name}-public-subnet-1"
+    "kubernetes.io/role/elb" = "1"
   }, local.common_tags)
 
   lifecycle {
     ignore_changes = [cidr_block]
   }
+}
+
+resource "aws_subnet" "public_subnet_2" {
+  count                   = var.public_subnet_2_cidr != null ? 1 : 0
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = var.public_subnet_2_cidr
+  availability_zone       = var.public_subnet_2_az
+  map_public_ip_on_launch = false
+
+  tags = merge({
+    Name                     = "${var.deployment_name}-${var.vpc_name}-public-subnet-2"
+    "kubernetes.io/role/elb" = "1"
+  }, local.common_tags)
+}
+
+resource "aws_subnet" "public_subnet_3" {
+  count                   = var.public_subnet_3_cidr != null ? 1 : 0
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = var.public_subnet_3_cidr
+  availability_zone       = var.public_subnet_3_az
+  map_public_ip_on_launch = false
+
+  tags = merge({
+    Name                     = "${var.deployment_name}-${var.vpc_name}-public-subnet-3"
+    "kubernetes.io/role/elb" = "1"
+  }, local.common_tags)
 }
 
 resource "aws_subnet" "private_subnet_1" {
@@ -98,7 +125,8 @@ resource "aws_subnet" "private_subnet_1" {
   availability_zone = var.private_subnet_1_az
 
   tags = merge({
-    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-1"
+    Name                              = "${var.deployment_name}-${var.vpc_name}-private-subnet-1"
+    "kubernetes.io/role/internal-elb" = "1"
   }, local.common_tags)
 
   lifecycle {
@@ -112,7 +140,8 @@ resource "aws_subnet" "private_subnet_2" {
   availability_zone = var.private_subnet_2_az
 
   tags = merge({
-    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-2"
+    Name                              = "${var.deployment_name}-${var.vpc_name}-private-subnet-2"
+    "kubernetes.io/role/internal-elb" = "1"
   }, local.common_tags)
 
   lifecycle {
@@ -126,7 +155,8 @@ resource "aws_subnet" "private_subnet_3" {
   availability_zone = var.private_subnet_3_az
 
   tags = merge({
-    Name = "${var.deployment_name}-${var.vpc_name}-private-subnet-3"
+    Name                              = "${var.deployment_name}-${var.vpc_name}-private-subnet-3"
+    "kubernetes.io/role/internal-elb" = "1"
   }, local.common_tags)
 
   lifecycle {
@@ -152,6 +182,18 @@ resource "aws_route_table_association" "private_subnet_3_association" {
 resource "aws_route_table_association" "public_subnet_1_association" {
   route_table_id = aws_route_table.public_route_table.id
   subnet_id      = aws_subnet.public_subnet_1.id
+}
+
+resource "aws_route_table_association" "public_subnet_2_association" {
+  count          = var.public_subnet_2_cidr != null ? 1 : 0
+  route_table_id = aws_route_table.public_route_table.id
+  subnet_id      = aws_subnet.public_subnet_2[0].id
+}
+
+resource "aws_route_table_association" "public_subnet_3_association" {
+  count          = var.public_subnet_3_cidr != null ? 1 : 0
+  route_table_id = aws_route_table.public_route_table.id
+  subnet_id      = aws_subnet.public_subnet_3[0].id
 }
 
 resource "aws_vpc_endpoint" "s3" {

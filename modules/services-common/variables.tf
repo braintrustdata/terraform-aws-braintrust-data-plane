@@ -35,6 +35,23 @@ variable "eks_cluster_arn" {
   default     = null
 }
 
+variable "eks_cluster_oidc_issuer_url" {
+  type        = string
+  description = "Optional. OIDC issuer URL for the EKS cluster. Used when enable_eks_irsa is true."
+  default     = null
+}
+
+variable "lookup_eks_cluster_oidc_issuer_url" {
+  type        = bool
+  description = "When true, resolve the EKS cluster OIDC issuer URL from aws_eks_cluster using eks_cluster_arn. Leave false when the caller already passes eks_cluster_oidc_issuer_url, especially if the cluster is being created in the same apply."
+  default     = false
+
+  validation {
+    condition     = !var.lookup_eks_cluster_oidc_issuer_url || var.eks_cluster_arn != null
+    error_message = "eks_cluster_arn is required when lookup_eks_cluster_oidc_issuer_url is true."
+  }
+}
+
 variable "eks_namespace" {
   type        = string
   description = "Optional. If you're using EKS with IRSA or EKS Pod Identity, this restricts the IAM roles to this namespace."

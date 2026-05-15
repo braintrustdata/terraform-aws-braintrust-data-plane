@@ -4,15 +4,13 @@
 # with Quarantine VPC enabled and EKS Pod Identity.
 #
 # This configuration:
-# - Uses external EKS deployment mode (use_deployment_mode_external_eks = true)
+# - Uses external EKS deployment mode (use_deployment_mode_eks = true)
 # - Enables EKS Pod Identity (enable_eks_pod_identity = true)
 # - Deploys the Quarantine VPC (enable_quarantine_vpc = true)
 # - Deploys all IAM permissions needed for the Quarantine VPC
 
 module "braintrust-data-plane" {
-  # Using local source for testing - change to GitHub source for production
-  source = "../../"
-  # source = "github.com/braintrustdata/terraform-braintrust-data-plane"
+  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
   # This is primarily used for tagging and naming resources in your AWS account.
@@ -28,7 +26,7 @@ module "braintrust-data-plane" {
   # Enable external EKS deployment mode
   # When true, disables lambdas, ec2, and ingress submodules.
   # It assumes an EKS deployment is being done outside of terraform.
-  use_deployment_mode_external_eks = true
+  use_deployment_mode_eks = true
 
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module. 
   # Enable EKS Pod Identity for the Braintrust IAM roles

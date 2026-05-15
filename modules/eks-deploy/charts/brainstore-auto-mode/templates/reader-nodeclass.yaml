@@ -1,0 +1,14 @@
+apiVersion: eks.amazonaws.com/v1
+kind: NodeClass
+metadata:
+  name: {{ .Values.reader.nodeClassName }}
+spec:
+  role: {{ .Values.nodeRoleName | quote }}
+  ephemeralStorage:
+    size: {{ .Values.reader.ephemeralStorageSize | quote }}
+  subnetSelectorTerms:
+    - tags:
+        {{ .Values.subnetTagKey }}: {{ .Values.subnetTagValue | quote }}
+  securityGroupSelectorTerms:
+    - tags:
+        {{ .Values.securityGroupKey }}: {{ .Values.securityGroupValue | quote }}

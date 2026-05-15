@@ -9,8 +9,18 @@ output "vpc_cidr" {
 }
 
 output "public_subnet_1_id" {
-  description = "ID of the public subnet"
+  description = "ID of the first public subnet"
   value       = aws_subnet.public_subnet_1.id
+}
+
+output "public_subnet_2_id" {
+  description = "ID of the second public subnet. Null when public_subnet_2_cidr is not set."
+  value       = var.public_subnet_2_cidr != null ? aws_subnet.public_subnet_2[0].id : null
+}
+
+output "public_subnet_3_id" {
+  description = "ID of the third public subnet. Null when public_subnet_3_cidr is not set."
+  value       = var.public_subnet_3_cidr != null ? aws_subnet.public_subnet_3[0].id : null
 }
 
 output "private_subnet_1_id" {
