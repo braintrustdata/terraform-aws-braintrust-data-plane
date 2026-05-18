@@ -37,7 +37,6 @@ locals {
     local.main_vpc_private_subnet_3_id
   ]
 
-  create_lambda_services                  = !var.use_deployment_mode_external_eks
   enable_api_ecs                          = !var.use_deployment_mode_external_eks && (var.enable_api_ecs)
   use_api_ecs_for_brainstore_ai_proxy_url = !var.use_deployment_mode_external_eks && (var.use_api_ecs_for_brainstore_ai_proxy_url)
 }
