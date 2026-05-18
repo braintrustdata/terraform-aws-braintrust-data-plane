@@ -80,7 +80,7 @@ resource "aws_cloudwatch_log_group" "service" {
 
 resource "aws_security_group" "alb" {
   name        = "${var.deployment_name}-api-ecs-alb"
-  description = "Security group for private API ECS ALB"
+  description = "Security group for API ECS ALB"
   vpc_id      = var.vpc_id
   tags = merge({
     Name = "${var.deployment_name}-api-ecs-alb"

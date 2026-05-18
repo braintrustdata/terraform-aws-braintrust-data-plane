@@ -4,7 +4,7 @@ output "service_name" {
 }
 
 output "alb_arn" {
-  description = "ARN of the private API ECS ALB."
+  description = "ARN of the API ECS ALB."
   value       = aws_lb.api_ecs.arn
 }
 
@@ -14,7 +14,7 @@ output "target_group_arn" {
 }
 
 output "alb_security_group_id" {
-  description = "Security group ID attached to the private API ECS ALB."
+  description = "Security group ID attached to the API ECS ALB."
   value       = aws_security_group.alb.id
 }
 
