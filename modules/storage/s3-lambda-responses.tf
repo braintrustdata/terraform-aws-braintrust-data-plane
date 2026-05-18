@@ -11,6 +11,16 @@ resource "aws_s3_bucket" "lambda_responses_bucket" {
   tags = local.common_tags
 }
 
+resource "aws_s3_bucket_abac" "lambda_responses_bucket" {
+  count = var.enable_s3_bucket_abac ? 1 : 0
+
+  bucket = aws_s3_bucket.lambda_responses_bucket.id
+
+  abac_status {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_versioning" "lambda_responses_bucket" {
   bucket = aws_s3_bucket.lambda_responses_bucket.id
   versioning_configuration {

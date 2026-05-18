@@ -657,6 +657,12 @@ variable "s3_additional_allowed_origins" {
   default     = []
 }
 
+variable "enable_s3_bucket_abac" {
+  description = "Enable attribute-based access control (ABAC) on S3 buckets managed by this module. When enabled, bucket tags can be used in authorization policies and tag management requires s3:TagResource, s3:UntagResource, and s3:ListTagsForResource."
+  type        = bool
+  default     = false
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number
