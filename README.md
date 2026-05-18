@@ -76,21 +76,6 @@ If you need to enable CloudFront standard access logging, you can configure it i
 
 See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
 
-## Advanced: Customized Deployments
-
-### API ECS Autoscaling
-
-When API ECS is enabled, its desired task count is managed by Application Auto Scaling. The module always registers a scalable target and CPU and memory target-tracking policies. Terraform seeds the ECS service at `api_ecs_min_count` and then ignores desired count drift so Application Auto Scaling can adjust the service.
-
-The capacity defaults are:
-
-- `api_ecs_min_count = 3`
-- `api_ecs_max_count = 16`
-- `api_ecs_cpu_target_value = 40`
-- `api_ecs_memory_target_value = 50`
-
-For fixed-size deployments, set `api_ecs_min_count` and `api_ecs_max_count` to the same value.
-
 ### Using an Existing VPC
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
