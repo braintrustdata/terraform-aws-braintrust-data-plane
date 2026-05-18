@@ -485,7 +485,7 @@ variable "enable_api_ecs" {
 
 variable "use_api_ecs_for_brainstore_ai_proxy_url" {
   type        = bool
-  description = "Use the API ECS URL for Brainstore's BRAINSTORE_AI_PROXY_URL instead of the AIProxy Lambda Function URL from SSM. Requires enable_api_ecs."
+  description = "Make Brainstore use the API ECS instead of the AIProxy Lambda URL. Requires enable_api_ecs."
   default     = false
 
   validation {

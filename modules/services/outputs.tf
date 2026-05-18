@@ -43,3 +43,7 @@ output "ai_proxy_url_ssm_arn" {
   value       = aws_ssm_parameter.ai_proxy_url.arn
 }
 
+output "ai_proxy_url_ssm_parameter_name" {
+  description = "The name of the SSM parameter containing the AI proxy URL"
+  value       = aws_ssm_parameter.ai_proxy_url.name
+}

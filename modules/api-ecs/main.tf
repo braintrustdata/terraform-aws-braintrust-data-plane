@@ -7,6 +7,7 @@ locals {
 
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
+  api_ecs_url                  = "http://${aws_lb.api_ecs.dns_name}"
 
   base_env_vars = merge({
     ORG_NAME                           = var.braintrust_org_name
@@ -185,6 +186,15 @@ resource "aws_lb_listener" "api_ecs_http" {
       }
     }
   }
+}
+
+resource "aws_ssm_parameter" "api_url" {
+  name        = "/braintrust/${var.deployment_name}/ecs-api-url"
+  type        = "String"
+  value       = local.api_ecs_url
+  description = "API ECS URL for Brainstore"
+
+  tags = local.common_tags
 }
 
 resource "aws_ecs_task_definition" "api_ecs" {

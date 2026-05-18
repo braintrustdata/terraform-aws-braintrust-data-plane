@@ -37,8 +37,11 @@ locals {
     local.main_vpc_private_subnet_3_id
   ]
 
-  enable_api_ecs                          = !var.use_deployment_mode_external_eks && (var.enable_api_ecs)
-  use_api_ecs_for_brainstore_ai_proxy_url = !var.use_deployment_mode_external_eks && (var.use_api_ecs_for_brainstore_ai_proxy_url)
+  enable_api_ecs                             = !var.use_deployment_mode_external_eks && (var.enable_api_ecs)
+  use_api_ecs_for_brainstore_ai_proxy_url    = !var.use_deployment_mode_external_eks && (var.use_api_ecs_for_brainstore_ai_proxy_url)
+  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
+  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
+  brainstore_ai_proxy_url_ssm_parameter_name = (local.use_api_ecs_for_brainstore_ai_proxy_url ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name)
 }
 
 module "main_vpc" {
@@ -419,6 +422,7 @@ module "brainstore" {
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
+  ai_proxy_url_ssm_parameter_name       = local.brainstore_ai_proxy_url_ssm_parameter_name
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
@@ -455,13 +459,11 @@ module "brainstore" {
     local.main_vpc_private_subnet_3_id
   ]
 
-  kms_key_arn                             = local.kms_key_arn
-  brainstore_iam_role_name                = module.services_common.brainstore_iam_role_name
-  custom_tags                             = var.custom_tags
-  custom_post_install_script              = var.brainstore_custom_post_install_script
-  cache_file_size_reader                  = var.brainstore_cache_file_size_reader
-  cache_file_size_writer                  = var.brainstore_cache_file_size_writer
-  locks_s3_path                           = var.brainstore_locks_s3_path
-  use_api_ecs_for_brainstore_ai_proxy_url = local.use_api_ecs_for_brainstore_ai_proxy_url
-  api_ecs_url                             = local.use_api_ecs_for_brainstore_ai_proxy_url ? module.api_ecs[0].effective_url : null
+  kms_key_arn                = local.kms_key_arn
+  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
+  custom_tags                = var.custom_tags
+  custom_post_install_script = var.brainstore_custom_post_install_script
+  cache_file_size_reader     = var.brainstore_cache_file_size_reader
+  cache_file_size_writer     = var.brainstore_cache_file_size_writer
+  locks_s3_path              = var.brainstore_locks_s3_path
 }

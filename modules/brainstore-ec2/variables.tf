@@ -167,16 +167,9 @@ variable "service_token_secret_key" {
   sensitive   = true
 }
 
-variable "use_api_ecs_for_brainstore_ai_proxy_url" {
-  type        = bool
-  description = "If true, use api_ecs_url for BRAINSTORE_AI_PROXY_URL instead of resolving ai-proxy-url from SSM."
-  default     = false
-}
-
-variable "api_ecs_url" {
+variable "ai_proxy_url_ssm_parameter_name" {
   type        = string
-  description = "Internal API ECS URL to use for BRAINSTORE_AI_PROXY_URL when use_api_ecs_for_brainstore_ai_proxy_url is true."
-  default     = null
+  description = "Name of the SSM parameter containing the URL Brainstore should use for BRAINSTORE_AI_PROXY_URL."
 }
 
 variable "brainstore_s3_bucket_arn" {

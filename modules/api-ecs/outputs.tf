@@ -25,10 +25,15 @@ output "task_security_group_id" {
 
 output "http_url" {
   description = "HTTP URL for API ECS ALB."
-  value       = "http://${aws_lb.api_ecs.dns_name}"
+  value       = local.api_ecs_url
 }
 
 output "effective_url" {
   description = "Preferred URL for API ECS ALB."
-  value       = "http://${aws_lb.api_ecs.dns_name}"
+  value       = local.api_ecs_url
+}
+
+output "url_ssm_parameter_name" {
+  description = "Name of the SSM parameter containing the API ECS URL."
+  value       = aws_ssm_parameter.api_url.name
 }
