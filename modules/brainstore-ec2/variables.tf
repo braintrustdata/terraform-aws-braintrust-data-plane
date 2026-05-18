@@ -167,6 +167,11 @@ variable "service_token_secret_key" {
   sensitive   = true
 }
 
+variable "ai_proxy_url_ssm_parameter_name" {
+  type        = string
+  description = "Name of the SSM parameter containing the URL Brainstore should use for BRAINSTORE_AI_PROXY_URL."
+}
+
 variable "brainstore_s3_bucket_arn" {
   type        = string
   description = "The ARN of the S3 bucket used by Brainstore"

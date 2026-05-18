@@ -36,6 +36,11 @@ locals {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
+
+  enable_api_ecs                             = !var.use_deployment_mode_external_eks && (var.enable_api_ecs)
+  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
+  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
+  brainstore_ai_proxy_url_ssm_parameter_name = (local.enable_api_ecs ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name)
 }
 
 module "main_vpc" {
@@ -121,7 +126,8 @@ module "redis" {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
-  vpc_id = local.main_vpc_id
+  vpc_id      = local.main_vpc_id
+  kms_key_arn = local.kms_key_arn
   authorized_security_groups = merge(
     merge(
       {
@@ -235,7 +241,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_llm_gateway ? 1 : 0
+  count  = var.enable_llm_gateway || local.enable_api_ecs ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -283,6 +289,75 @@ module "gateway_ecs" {
   braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
 }
 
+module "api_ecs" {
+  source = "./modules/api-ecs"
+  count  = local.enable_api_ecs ? 1 : 0
+
+  deployment_name      = var.deployment_name
+  api_version_override = var.api_ecs_version_override
+
+  # Telemetry
+  monitoring_telemetry = var.monitoring_telemetry
+
+  # Data stores
+  database_url_secret_arn   = module.database.postgres_database_url_secret_arn
+  redis_url_secret_arn      = module.redis.redis_url_secret_arn
+  function_tools_secret_arn = module.services_common.function_tools_secret_arn
+
+  # Brainstore
+  brainstore_hostname             = module.brainstore[0].dns_name
+  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
+  brainstore_port                 = module.brainstore[0].port
+  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
+  brainstore_enable_export        = var.brainstore_enable_export
+
+  # Storage
+  code_bundle_bucket = module.storage.code_bundle_bucket_id
+  response_bucket    = module.storage.lambda_responses_bucket_id
+
+  # Service configuration
+  braintrust_org_name                   = var.braintrust_org_name
+  primary_org_name                      = var.primary_org_name
+  cpu                                   = var.api_ecs_cpu
+  memory                                = var.api_ecs_memory
+  min_count                             = var.api_ecs_min_count
+  max_count                             = var.api_ecs_max_count
+  log_retention_days                    = var.api_ecs_log_retention_days
+  enable_execute_command                = var.api_ecs_enable_execute_command
+  whitelisted_origins                   = var.whitelisted_origins
+  outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
+  disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
+  billing_telemetry_log_level           = var.billing_telemetry_log_level
+  extra_env_vars                        = var.api_ecs_extra_env_vars
+
+  # Networking
+  vpc_id             = local.main_vpc_id
+  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  authorized_security_groups = merge(
+    {
+      "API"        = module.services_common.api_security_group_id
+      "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    },
+    var.api_ecs_authorized_security_groups,
+  )
+  authorized_cidr_blocks = var.api_ecs_authorized_cidr_blocks
+
+  kms_key_arn            = local.kms_key_arn
+  ecs_cluster_arn        = module.ecs[0].cluster_arn
+  ecs_cluster_name       = module.ecs[0].cluster_name
+  task_role_arn          = module.services_common.api_handler_role_arn
+  task_security_group_id = module.services_common.api_security_group_id
+  custom_tags            = var.custom_tags
+
+  cpu_target_value    = var.api_ecs_cpu_target_value
+  memory_target_value = var.api_ecs_memory_target_value
+}
+
 module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
@@ -316,6 +391,7 @@ module "services_common" {
   eks_namespace                             = var.eks_namespace
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
+  enable_ecs                                = local.enable_api_ecs
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = var.custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
@@ -345,6 +421,7 @@ module "brainstore" {
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
+  ai_proxy_url_ssm_parameter_name       = local.brainstore_ai_proxy_url_ssm_parameter_name
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port

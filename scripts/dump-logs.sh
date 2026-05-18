@@ -1,19 +1,20 @@
 #!/bin/bash
 
 # Usage:
-#   ./dump_logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
+#   ./scripts/dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
 
 ALL_SERVICES=(
   "brainstore"
   "AIProxy"
   "APIHandler"
+  "api-ecs"
   "CatchupETL"
   "MigrateDatabaseFunction"
   "QuarantineWarmupFunction"
   "BillingCron"
   "AutomationCron"
 )
-SERVICES="APIHandler,brainstore"
+SERVICES="APIHandler,api-ecs,brainstore"
 
 if [ -z "$1" ]; then
   echo "Usage: $0 <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]"
@@ -68,6 +69,9 @@ for svc in "${SELECTED_SERVICES[@]}"; do
   if [[ "$svc" == "brainstore" ]]; then
     LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/brainstore"
     LOG_FILE="logs-$DEPLOYMENT_NAME/brainstore.log"
+  elif [[ "$svc" == "api-ecs" ]]; then
+    LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/api-ecs"
+    LOG_FILE="logs-$DEPLOYMENT_NAME/api-ecs.log"
   else
     LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/${DEPLOYMENT_NAME}-$svc"
     LOG_FILE="logs-$DEPLOYMENT_NAME/$svc.log"
@@ -75,19 +79,27 @@ for svc in "${SELECTED_SERVICES[@]}"; do
 
   echo "Fetching logs for the last $MINUTES minutes for $svc..."
   (
+    ERROR_FILE="logs-$DEPLOYMENT_NAME/$svc.err"
     if aws logs filter-log-events \
       --log-group-name "$LOG_GROUP" \
       --start-time $((START * 1000)) \
       --end-time $((NOW * 1000)) \
       --query 'events[*].{timestamp:timestamp, message:message}' \
-      --output text > "$LOG_FILE"; then
+      --output text > "$LOG_FILE" 2> "$ERROR_FILE"; then
+      rm -f "$ERROR_FILE"
       echo "✅ Saved logs for $svc to $LOG_FILE"
     else
-      echo "❌ Failed to fetch logs for $svc"
-      rm -f "$LOG_FILE"
+      if grep -q "ResourceNotFoundException" "$ERROR_FILE"; then
+        echo "⚠️ Skipping logs for $svc; log group not found: $LOG_GROUP"
+      else
+        echo "❌ Failed to fetch logs for $svc"
+        if [[ -s "$ERROR_FILE" ]]; then
+          sed 's/^/  /' "$ERROR_FILE"
+        fi
+      fi
+      rm -f "$LOG_FILE" "$ERROR_FILE"
     fi
   ) &
 done
 
 wait
-

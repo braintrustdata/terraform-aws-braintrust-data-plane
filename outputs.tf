@@ -74,7 +74,7 @@ output "api_security_group_id" {
 }
 
 output "ecs_cluster_arn" {
-  value       = var.enable_llm_gateway ? module.ecs[0].cluster_arn : null
+  value       = var.enable_llm_gateway || local.enable_api_ecs ? module.ecs[0].cluster_arn : null
   description = "ARN of the ECS cluster used for ECS services"
 }
 
@@ -101,6 +101,36 @@ output "gateway_target_group_arn" {
 output "gateway_task_security_group_id" {
   value       = var.enable_llm_gateway ? module.gateway_ecs[0].task_security_group_id : null
   description = "ID of the security group for ECS gateway tasks"
+}
+
+output "api_ecs_service_name" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].service_name : null
+  description = "Name of the ECS API service"
+}
+
+output "api_ecs_alb_arn" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].alb_arn : null
+  description = "ARN of the private API ECS ALB"
+}
+
+output "api_ecs_target_group_arn" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].target_group_arn : null
+  description = "ARN of the API ECS ALB target group"
+}
+
+output "api_ecs_alb_security_group_id" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].alb_security_group_id : null
+  description = "ID of the security group attached to the private API ECS ALB"
+}
+
+output "api_ecs_http_url" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].http_url : null
+  description = "HTTP URL of the private API ECS ALB"
+}
+
+output "api_ecs_task_security_group_id" {
+  value       = local.enable_api_ecs ? module.api_ecs[0].task_security_group_id : null
+  description = "ID of the security group for API ECS tasks"
 }
 
 output "postgres_database_identifier" {

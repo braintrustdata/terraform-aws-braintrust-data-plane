@@ -162,7 +162,7 @@ ${env_key}=${env_value}
 EOF
 
 BRAINSTORE_AI_PROXY_URL=$(aws ssm get-parameter \
-  --name /braintrust/${deployment_name}/ai-proxy-url \
+  --name ${ai_proxy_url_ssm_parameter_name} \
   --query 'Parameter.Value' \
   --output text \
   --region ${aws_region})

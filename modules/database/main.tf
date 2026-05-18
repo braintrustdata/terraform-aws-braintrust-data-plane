@@ -179,6 +179,19 @@ resource "aws_secretsmanager_secret" "database_secret" {
   tags = local.common_tags
 }
 
+resource "aws_secretsmanager_secret" "database_url" {
+  name_prefix = "${var.deployment_name}/DatabaseUrl-"
+  description = "Postgres URL for the Braintrust RDS database"
+  kms_key_id  = var.kms_key_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_secretsmanager_secret_version" "database_url" {
+  secret_id     = aws_secretsmanager_secret.database_url.id
+  secret_string = "postgres://${local.postgres_username}:${local.postgres_password}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/postgres?sslmode=require"
+}
+
 #------------------------------------------------------------------------------
 # Security groups
 #------------------------------------------------------------------------------
