@@ -74,17 +74,19 @@ resource "aws_launch_template" "brainstore" {
     brainstore_release_version  = local.brainstore_release_version
     monitoring_telemetry        = var.monitoring_telemetry
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
-    is_dedicated_reader_node        = local.has_writer_nodes ? "true" : "false"
-    is_dedicated_writer_node        = "false"
-    extra_env_vars                  = var.extra_env_vars
-    internal_observability_api_key  = var.internal_observability_api_key
-    internal_observability_env_name = var.internal_observability_env_name
-    internal_observability_region   = var.internal_observability_region
-    service_token_secret_key        = var.service_token_secret_key
-    custom_post_install_script      = var.custom_post_install_script
-    brainstore_cache_file_size      = local.brainstore_cache_file_size
-    skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-    brainstore_enable_export        = var.brainstore_enable_export
+    is_dedicated_reader_node                = local.has_writer_nodes ? "true" : "false"
+    is_dedicated_writer_node                = "false"
+    extra_env_vars                          = var.extra_env_vars
+    internal_observability_api_key          = var.internal_observability_api_key
+    internal_observability_env_name         = var.internal_observability_env_name
+    internal_observability_region           = var.internal_observability_region
+    service_token_secret_key                = var.service_token_secret_key
+    custom_post_install_script              = var.custom_post_install_script
+    brainstore_cache_file_size              = local.brainstore_cache_file_size
+    skip_pg_for_brainstore_objects          = var.skip_pg_for_brainstore_objects
+    brainstore_enable_export                = var.brainstore_enable_export
+    use_api_ecs_for_brainstore_ai_proxy_url = var.use_api_ecs_for_brainstore_ai_proxy_url
+    api_ecs_url                             = var.api_ecs_url == null ? "" : var.api_ecs_url
   }))
 
   tags = merge({

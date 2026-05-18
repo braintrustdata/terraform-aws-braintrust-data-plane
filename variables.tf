@@ -456,6 +456,143 @@ variable "gateway_braintrust_app_url" {
   default     = "https://www.braintrust.dev"
 }
 
+variable "api_ecs_version_override" {
+  type        = string
+  description = "Optional API ECS image tag override. If unset, uses modules/api-ecs/VERSIONS.json."
+  default     = null
+
+  validation {
+    condition     = var.api_ecs_version_override == null || var.api_ecs_version_override != ""
+    error_message = "api_ecs_version_override must be null or a non-empty string."
+  }
+}
+
+variable "enable_api_ecs" {
+  type        = bool
+  description = "Create the dedicated internal API ECS service."
+  default     = false
+
+  validation {
+    condition     = !(var.enable_api_ecs && var.use_deployment_mode_external_eks)
+    error_message = "enable_api_ecs cannot be true when use_deployment_mode_external_eks is true."
+  }
+
+  validation {
+    condition     = !var.enable_api_ecs || var.enable_brainstore
+    error_message = "enable_api_ecs requires enable_brainstore."
+  }
+}
+
+variable "use_api_ecs_for_brainstore_ai_proxy_url" {
+  type        = bool
+  description = "Use the API ECS URL for Brainstore's BRAINSTORE_AI_PROXY_URL instead of the AIProxy Lambda Function URL from SSM. Requires enable_api_ecs."
+  default     = false
+
+  validation {
+    condition     = !var.use_api_ecs_for_brainstore_ai_proxy_url || var.enable_api_ecs
+    error_message = "use_api_ecs_for_brainstore_ai_proxy_url requires enable_api_ecs."
+  }
+
+  validation {
+    condition     = !(var.use_api_ecs_for_brainstore_ai_proxy_url && var.use_deployment_mode_external_eks)
+    error_message = "use_api_ecs_for_brainstore_ai_proxy_url cannot be true when use_deployment_mode_external_eks is true."
+  }
+}
+
+variable "api_ecs_cpu" {
+  description = "CPU units for the API ECS task definition."
+  type        = number
+  default     = 2048
+}
+
+variable "api_ecs_memory" {
+  description = "Memory in MiB for the API ECS task definition."
+  type        = number
+  default     = 16384
+}
+
+variable "api_ecs_min_count" {
+  description = "Minimum number of API ECS tasks. API ECS desired count is managed by Application Auto Scaling."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.api_ecs_min_count >= 1
+    error_message = "api_ecs_min_count must be at least 1."
+  }
+}
+
+variable "api_ecs_max_count" {
+  description = "Maximum number of API ECS tasks."
+  type        = number
+  default     = 64
+
+  validation {
+    condition     = var.api_ecs_max_count >= var.api_ecs_min_count
+    error_message = "api_ecs_max_count must be greater than or equal to api_ecs_min_count."
+  }
+}
+
+variable "api_ecs_cpu_target_value" {
+  description = "Target average CPU utilization percentage for API ECS autoscaling."
+  type        = number
+  default     = 40
+
+  validation {
+    condition     = var.api_ecs_cpu_target_value > 0 && var.api_ecs_cpu_target_value <= 100
+    error_message = "api_ecs_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_memory_target_value" {
+  description = "Target average memory utilization percentage for API ECS autoscaling."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_memory_target_value > 0 && var.api_ecs_memory_target_value <= 100
+    error_message = "api_ecs_memory_target_value must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_log_retention_days" {
+  description = "CloudWatch log retention period (days) for API ECS logs."
+  type        = number
+  default     = 14
+
+  validation {
+    condition = contains([
+      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.api_ecs_log_retention_days)
+    error_message = "api_ecs_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
+}
+
+variable "api_ecs_extra_env_vars" {
+  description = "Extra environment variables for the API ECS container."
+  type        = map(string)
+  default     = {}
+}
+
+variable "api_ecs_authorized_security_groups" {
+  description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
+  type        = map(string)
+  default     = {}
+}
+
+variable "api_ecs_authorized_cidr_blocks" {
+  description = "CIDR blocks authorized to access the internal API ECS ALB."
+  type        = list(string)
+  default     = []
+}
+
+variable "api_ecs_enable_execute_command" {
+  description = "Enable ECS Exec for API ECS tasks."
+  type        = bool
+  default     = false
+}
+
 variable "braintrust_api_url" {
   description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
   type        = string
