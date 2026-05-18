@@ -38,10 +38,9 @@ locals {
   ]
 
   enable_api_ecs                             = !var.use_deployment_mode_external_eks && (var.enable_api_ecs)
-  use_api_ecs_for_brainstore_ai_proxy_url    = !var.use_deployment_mode_external_eks && (var.use_api_ecs_for_brainstore_ai_proxy_url)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = (local.use_api_ecs_for_brainstore_ai_proxy_url ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name)
+  brainstore_ai_proxy_url_ssm_parameter_name = (local.enable_api_ecs ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name)
 }
 
 module "main_vpc" {

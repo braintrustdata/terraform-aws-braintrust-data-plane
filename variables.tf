@@ -483,22 +483,6 @@ variable "enable_api_ecs" {
   }
 }
 
-variable "use_api_ecs_for_brainstore_ai_proxy_url" {
-  type        = bool
-  description = "Make Brainstore use the API ECS instead of the AIProxy Lambda URL. Requires enable_api_ecs."
-  default     = false
-
-  validation {
-    condition     = !var.use_api_ecs_for_brainstore_ai_proxy_url || var.enable_api_ecs
-    error_message = "use_api_ecs_for_brainstore_ai_proxy_url requires enable_api_ecs."
-  }
-
-  validation {
-    condition     = !(var.use_api_ecs_for_brainstore_ai_proxy_url && var.use_deployment_mode_external_eks)
-    error_message = "use_api_ecs_for_brainstore_ai_proxy_url cannot be true when use_deployment_mode_external_eks is true."
-  }
-}
-
 variable "api_ecs_cpu" {
   description = "CPU units for the API ECS task definition."
   type        = number
