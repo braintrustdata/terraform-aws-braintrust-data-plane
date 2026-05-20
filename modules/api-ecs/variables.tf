@@ -130,6 +130,12 @@ variable "primary_org_name" {
   description = "Primary organization name."
 }
 
+variable "allowed_org_ids" {
+  type        = string
+  default     = ""
+  description = "Comma-separated list of organization IDs allowed to use this data plane. When non-empty, this overrides braintrust_org_name."
+}
+
 variable "database_url_secret_arn" {
   type        = string
   description = "ARN of the secret containing the Postgres URL."

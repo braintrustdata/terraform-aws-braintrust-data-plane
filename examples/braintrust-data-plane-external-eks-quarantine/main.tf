@@ -22,6 +22,10 @@ module "braintrust-data-plane" {
   # Add your organization name from the Braintrust UI here
   braintrust_org_name = "test-org"
 
+  # Optional: comma-separated organization IDs allowed to use this data plane.
+  # When non-empty, this overrides braintrust_org_name.
+  allowed_org_ids = ""
+
   # Brainstore license key (required)
   brainstore_license_key = var.brainstore_license_key
 

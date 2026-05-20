@@ -6,6 +6,7 @@ locals {
   api_common_env_vars = {
     ORG_NAME                   = var.braintrust_org_name
     PRIMARY_ORG_NAME           = var.primary_org_name
+    ALLOWED_ORG_IDS            = var.allowed_org_ids
     BRAINTRUST_DEPLOYMENT_NAME = var.deployment_name
 
     PG_URL             = local.postgres_url

@@ -27,6 +27,12 @@ variable "primary_org_name" {
   }
 }
 
+variable "allowed_org_ids" {
+  type        = string
+  default     = ""
+  description = "Comma-separated list of organization IDs allowed to use this data plane. When non-empty, this overrides braintrust_org_name."
+}
+
 variable "deployment_name" {
   type        = string
   default     = "braintrust"

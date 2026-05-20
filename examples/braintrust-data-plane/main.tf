@@ -15,6 +15,10 @@ module "braintrust-data-plane" {
   # Add your organization name from the Braintrust UI here
   braintrust_org_name = ""
 
+  # Optional: comma-separated organization IDs allowed to use this data plane.
+  # When non-empty, this overrides braintrust_org_name.
+  allowed_org_ids = ""
+
   ### Postgres configuration
   # Changing this will incur a short downtime.
   postgres_instance_type = "db.r8g.2xlarge"

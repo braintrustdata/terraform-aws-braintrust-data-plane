@@ -9,6 +9,12 @@ variable "primary_org_name" {
   description = "Enter your primary organization's name. This is only required if you intend have multiple organizations on your data plane. Owners in this organization will have special permissions to manage data plane internals."
 }
 
+variable "allowed_org_ids" {
+  type        = string
+  default     = ""
+  description = "Comma-separated list of organization IDs allowed to use this data plane. When non-empty, this overrides braintrust_org_name."
+}
+
 variable "deployment_name" {
   type        = string
   description = "Name of this deployment. Will be included in resource names"
