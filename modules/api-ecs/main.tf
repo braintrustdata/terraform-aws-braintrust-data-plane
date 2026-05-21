@@ -21,27 +21,67 @@ locals {
   }
 
   base_env_vars = merge({
-    ORG_NAME                           = var.braintrust_org_name
-    PRIMARY_ORG_NAME                   = var.primary_org_name
-    BRAINTRUST_DEPLOYMENT_NAME         = var.deployment_name
-    RESPONSE_BUCKET                    = var.response_bucket
-    CODE_BUNDLE_BUCKET                 = var.code_bundle_bucket
-    WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
-    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = tostring(var.outbound_rate_limit_window_minutes)
-    OUTBOUND_RATE_LIMIT_MAX_REQUESTS   = tostring(var.outbound_rate_limit_max_requests)
-    BRAINSTORE_ENABLED                 = "true"
-    BRAINSTORE_DEFAULT                 = "force"
-    BRAINSTORE_URL                     = "http://${var.brainstore_hostname}:${var.brainstore_port}"
-    BRAINSTORE_WRITER_URL              = local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-    BRAINSTORE_REALTIME_WAL_BUCKET     = var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
-    BRAINSTORE_INSERT_ROW_REFS         = "true"
-    CONTROL_PLANE_TELEMETRY            = var.monitoring_telemetry
-    TELEMETRY_DISABLE_AGGREGATION      = tostring(var.disable_billing_telemetry_aggregation)
-    TELEMETRY_LOG_LEVEL                = var.billing_telemetry_log_level
-    INSERT_LOGS2                       = "true"
-    NODE_MEMORY_PERCENT                = "80"
-    ALLOW_CODE_FUNCTION_EXECUTION      = "disabled"
-    AI_PROXY_FN_URL                    = "http://127.0.0.1:8000"
+    ORG_NAME                               = var.braintrust_org_name
+    PRIMARY_ORG_NAME                       = var.primary_org_name
+    BRAINTRUST_DEPLOYMENT_NAME             = var.deployment_name
+    RESPONSE_BUCKET                        = var.response_bucket
+    CODE_BUNDLE_BUCKET                     = var.code_bundle_bucket
+    WHITELISTED_ORIGINS                    = join(",", var.whitelisted_origins)
+    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES     = tostring(var.outbound_rate_limit_window_minutes)
+    OUTBOUND_RATE_LIMIT_MAX_REQUESTS       = tostring(var.outbound_rate_limit_max_requests)
+    BRAINSTORE_ENABLED                     = "true"
+    BRAINSTORE_DEFAULT                     = "force"
+    BRAINSTORE_URL                         = "http://${var.brainstore_hostname}:${var.brainstore_port}"
+    BRAINSTORE_WRITER_URL                  = local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+    BRAINSTORE_REALTIME_WAL_BUCKET         = var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
+    BRAINSTORE_INSERT_ROW_REFS             = "true"
+    CONTROL_PLANE_TELEMETRY                = var.monitoring_telemetry
+    TELEMETRY_DISABLE_AGGREGATION          = tostring(var.disable_billing_telemetry_aggregation)
+    TELEMETRY_LOG_LEVEL                    = var.billing_telemetry_log_level
+    INSERT_LOGS2                           = "true"
+    NODE_MEMORY_PERCENT                    = "80"
+    ALLOW_CODE_FUNCTION_EXECUTION          = "disabled"
+    AI_PROXY_FN_URL                        = "http://127.0.0.1:8000"
+    API_SEGMENT_WRITE_KEY                  = var.api_segment_write_key
+    AWS_DEFAULT_REGION                     = data.aws_region.current.region
+    AWS_REGION                             = data.aws_region.current.region
+    BRAINSTORE_BACKFILL_DISABLE_LOGS       = tostring(var.brainstore_backfill_disable_logs)
+    BRAINSTORE_BLOCKED_QUERY_SOURCES       = var.brainstore_blocked_query_sources
+    BRAINSTORE_DISABLE_ETL_LOOP            = "true"
+    BRAINTRUST_API_URL                     = "http://127.0.0.1:8000"
+    CODE_FUNCTION_EXECUTION_TIMEOUT_S      = tostring(var.code_function_execution_timeout_s)
+    DISABLE_ASYNC_SCORING                  = tostring(var.disable_async_scoring)
+    DISABLE_ASYNC_SCORING_OBJECT_IDS       = var.disable_async_scoring_object_ids
+    DISABLE_ATTACHMENT_OPTIMIZATION        = tostring(var.disable_attachment_optimization)
+    DISABLE_LOCAL_BACKGROUND_LOOPS         = "true"
+    DISABLE_SYSADMIN_TELEMETRY             = tostring(var.disable_sysadmin_telemetry)
+    ENABLE_DEEP_SEARCH_LOGGING             = tostring(var.enable_deep_search_logging)
+    ENABLE_RUNTIME_METRICS                 = "false"
+    GATEWAY_URL                            = var.gateway_url
+    INVOKE_RATE_LIMIT_PER_10S              = tostring(var.invoke_rate_limit_per_10s)
+    LAUNCHDARKLY_ENABLED                   = tostring(var.launchdarkly_sdk_key != "")
+    LAUNCHDARKLY_SDK_KEY                   = var.launchdarkly_sdk_key
+    LOG_LEVEL                              = var.log_level
+    LOGS_MAX_SPAN_MB                       = tostring(var.logs_max_span_mb)
+    MAX_LIMIT_FOR_QUERIES                  = tostring(var.max_limit_for_queries)
+    NATIVE_GATEWAY_URL                     = var.native_gateway_url
+    NO_COLOR                               = "1"
+    OTEL_EXTRA_ATTRIBUTES                  = "deployment.environment.name=${var.internal_observability_env_name},env=${var.internal_observability_env_name}"
+    OTLP_HTTP_ENDPOINT                     = local.observability_enabled ? "http://127.0.0.1:4318" : ""
+    PROXY_URL                              = "http://127.0.0.1:8000/v1/proxy"
+    RATELIMIT_API_LOGS_ORG                 = var.ratelimit_api_logs_org
+    RATELIMIT_API_LOGS_ORG_ENFORCE         = tostring(var.ratelimit_api_logs_org_enforce)
+    RATELIMIT_API_LOGS_ORG_WINDOW_SECS     = tostring(var.ratelimit_api_logs_org_window_secs)
+    RATELIMIT_BTQL_DEFAULT                 = tostring(var.ratelimit_btql_default)
+    RATELIMIT_BTQL_ENFORCE                 = tostring(var.ratelimit_btql_enforce)
+    RATELIMIT_BTQL_ORG                     = var.ratelimit_btql_org
+    RATELIMIT_BTQL_WINDOW_SECS             = tostring(var.ratelimit_btql_window_secs)
+    S3_REQUEST_LOG_MIN_HEADER_BYTES        = tostring(var.s3_request_log_min_header_bytes)
+    SKIP_PG_FOR_BRAINSTORE_OBJECTS_S3_PATH = var.skip_pg_for_brainstore_objects_s3_path
+    STRIP_OTEL_ATTRIBUTES_FROM_METADATA    = tostring(var.strip_otel_attributes_from_metadata)
+    TS_API_ASYNC_SCORING_PROXY_URL         = "http://127.0.0.1:8000"
+    TS_API_HOST                            = "0.0.0.0"
+    TS_API_PORT                            = "8000"
     },
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
@@ -64,7 +104,37 @@ locals {
     } : {},
   )
 
-  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
+  merged_env_vars               = merge(local.base_env_vars, var.extra_env_vars)
+  required_secret_names         = var.native_inference_secret_key_secret_arn != "" ? toset(["FUNCTION_SECRET_KEY", "NATIVE_INFERENCE_SECRET_KEY", "PG_URL", "REDIS_URL", "SERVICE_TOKEN_SECRET_KEY"]) : toset(["FUNCTION_SECRET_KEY", "PG_URL", "REDIS_URL", "SERVICE_TOKEN_SECRET_KEY"])
+  configured_secret_names       = toset([for secret in local.api_container_secrets : secret.name])
+  missing_required_secret_names = setsubtract(local.required_secret_names, local.configured_secret_names)
+
+  api_container_secrets = concat(
+    [
+      {
+        name      = "FUNCTION_SECRET_KEY"
+        valueFrom = var.function_tools_secret_arn
+      },
+      {
+        name      = "PG_URL"
+        valueFrom = var.database_url_secret_arn
+      },
+      {
+        name      = "REDIS_URL"
+        valueFrom = var.redis_url_secret_arn
+      },
+      {
+        name      = "SERVICE_TOKEN_SECRET_KEY"
+        valueFrom = var.function_tools_secret_arn
+      }
+    ],
+    var.native_inference_secret_key_secret_arn != "" ? [
+      {
+        name      = "NATIVE_INFERENCE_SECRET_KEY"
+        valueFrom = var.native_inference_secret_key_secret_arn
+      }
+    ] : []
+  )
 
   api_container_definition = merge(
     {
@@ -87,24 +157,7 @@ locals {
           value = local.merged_env_vars[key]
         }
       ]
-      secrets = [
-        {
-          name      = "FUNCTION_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
-        },
-        {
-          name      = "PG_URL"
-          valueFrom = var.database_url_secret_arn
-        },
-        {
-          name      = "REDIS_URL"
-          valueFrom = var.redis_url_secret_arn
-        },
-        {
-          name      = "SERVICE_TOKEN_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
-        }
-      ]
+      secrets = local.api_container_secrets
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
         interval    = 30
@@ -413,6 +466,10 @@ resource "aws_ecs_task_definition" "api_ecs" {
     precondition {
       condition     = contains(local.valid_fargate_memory_by_cpu[tostring(var.cpu)], var.memory)
       error_message = "memory must be a valid Fargate memory value for the configured cpu."
+    }
+    precondition {
+      condition     = length(local.missing_required_secret_names) == 0
+      error_message = "API ECS is missing required secrets: ${join(", ", sort(tolist(local.missing_required_secret_names)))}."
     }
   }
 }

@@ -40,6 +40,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
             var.function_tools_secret_arn,
             var.redis_url_secret_arn,
           ],
+          var.native_inference_secret_key_secret_arn != "" ? [var.native_inference_secret_key_secret_arn] : [],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
         )
       },

@@ -214,6 +214,18 @@ variable "brainstore_enable_export" {
   default     = false
 }
 
+variable "brainstore_backfill_disable_logs" {
+  type        = bool
+  description = "If true, disables Brainstore log backfill work from the API ECS container."
+  default     = false
+}
+
+variable "brainstore_blocked_query_sources" {
+  type        = string
+  description = "Comma-separated list of Brainstore query sources to block."
+  default     = ""
+}
+
 variable "whitelisted_origins" {
   type        = list(string)
   description = "Allowed CORS origins."
@@ -227,6 +239,161 @@ variable "outbound_rate_limit_window_minutes" {
 variable "outbound_rate_limit_max_requests" {
   type        = number
   description = "Outbound rate limit max requests."
+}
+
+variable "log_level" {
+  type        = string
+  description = "Log level for the API ECS container. Empty uses the application default."
+  default     = ""
+
+  validation {
+    condition     = var.log_level == "" || contains(["info", "warn", "error", "debug"], var.log_level)
+    error_message = "log_level must be empty or one of: info, warn, error, debug."
+  }
+}
+
+variable "logs_max_span_mb" {
+  type        = number
+  description = "Maximum size in MB for an individual log span. Set to 0 to disable enforcement."
+  default     = 20
+}
+
+variable "s3_request_log_min_header_bytes" {
+  type        = number
+  description = "Minimum total S3 request header size in bytes required before logging request details. Set to 0 to disable."
+  default     = 0
+}
+
+variable "code_function_execution_timeout_s" {
+  type        = number
+  description = "Timeout in seconds for code function execution."
+  default     = 30
+}
+
+variable "disable_attachment_optimization" {
+  type        = bool
+  description = "Disable automatic conversion of base64 payloads to attachments."
+  default     = false
+}
+
+variable "strip_otel_attributes_from_metadata" {
+  type        = bool
+  description = "Strip parsed OTEL attributes from span metadata."
+  default     = false
+}
+
+variable "enable_deep_search_logging" {
+  type        = bool
+  description = "Enable logging for deep search operations to the optimization project."
+  default     = false
+}
+
+variable "disable_sysadmin_telemetry" {
+  type        = bool
+  description = "Disable sysadmin telemetry for the API ECS container."
+  default     = false
+}
+
+variable "disable_async_scoring" {
+  type        = bool
+  description = "Disable async scoring entirely."
+  default     = false
+}
+
+variable "disable_async_scoring_object_ids" {
+  type        = string
+  description = "Comma-separated list of Brainstore object IDs to disable async scoring for."
+  default     = ""
+}
+
+variable "skip_pg_for_brainstore_objects_s3_path" {
+  type        = string
+  description = "S3 path containing skip-PG config. Takes precedence over skip_pg_for_brainstore_objects when set."
+  default     = ""
+}
+
+variable "max_limit_for_queries" {
+  type        = number
+  description = "If nonzero, imposes a maximum on the limit parameter in queries."
+  default     = 0
+}
+
+variable "invoke_rate_limit_per_10s" {
+  type        = number
+  description = "Maximum number of function invocations allowed per 10-second window."
+  default     = 10000
+}
+
+variable "ratelimit_api_logs_org" {
+  type        = string
+  description = "Comma-separated list of org-specific API logs rate limits."
+  default     = ""
+}
+
+variable "ratelimit_api_logs_org_window_secs" {
+  type        = number
+  description = "Time window in seconds for org-level API logs rate limiting."
+  default     = 60
+}
+
+variable "ratelimit_api_logs_org_enforce" {
+  type        = bool
+  description = "Whether to enforce org-level API logs rate limits."
+  default     = false
+}
+
+variable "ratelimit_btql_default" {
+  type        = number
+  description = "Default rate limit for BTQL queries without a query_source. Use -1 for no rate limiting."
+  default     = -1
+}
+
+variable "ratelimit_btql_org" {
+  type        = string
+  description = "Comma-separated list of org-specific BTQL rate limits."
+  default     = ""
+}
+
+variable "ratelimit_btql_window_secs" {
+  type        = number
+  description = "Time window in seconds for BTQL rate limiting."
+  default     = 60
+}
+
+variable "ratelimit_btql_enforce" {
+  type        = bool
+  description = "Whether to enforce BTQL rate limits."
+  default     = false
+}
+
+variable "gateway_url" {
+  type        = string
+  description = "Gateway URL for routing proxy requests through a gateway service."
+  default     = ""
+}
+
+variable "native_inference_secret_key_secret_arn" {
+  type        = string
+  description = "Secrets Manager secret ARN containing the native inference shared secret key. Leave empty to omit NATIVE_INFERENCE_SECRET_KEY."
+  default     = ""
+}
+
+variable "native_gateway_url" {
+  type        = string
+  description = "Gateway URL for routing brain model requests."
+  default     = ""
+}
+
+variable "api_segment_write_key" {
+  type        = string
+  description = "Segment write key for API server analytics tracking."
+  default     = ""
+}
+
+variable "launchdarkly_sdk_key" {
+  type        = string
+  description = "LaunchDarkly SDK key for internal dynamic feature flagging."
+  default     = ""
 }
 
 variable "monitoring_telemetry" {

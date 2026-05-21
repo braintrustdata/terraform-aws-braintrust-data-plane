@@ -559,6 +559,174 @@ variable "api_ecs_extra_env_vars" {
   default     = {}
 }
 
+variable "api_ecs_log_level" {
+  description = "Log level for the API ECS container. Empty uses the application default."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.api_ecs_log_level == "" || contains(["info", "warn", "error", "debug"], var.api_ecs_log_level)
+    error_message = "api_ecs_log_level must be empty or one of: info, warn, error, debug."
+  }
+}
+
+variable "api_ecs_logs_max_span_mb" {
+  description = "Maximum size in MB for an individual log span. Set to 0 to disable enforcement."
+  type        = number
+  default     = 20
+}
+
+variable "api_ecs_s3_request_log_min_header_bytes" {
+  description = "Minimum total S3 request header size in bytes required before logging request details. Set to 0 to disable."
+  type        = number
+  default     = 0
+}
+
+variable "api_ecs_code_function_execution_timeout_s" {
+  description = "Timeout in seconds for API ECS code function execution."
+  type        = number
+  default     = 30
+}
+
+variable "api_ecs_disable_attachment_optimization" {
+  description = "Disable automatic conversion of base64 payloads to attachments in API ECS."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_strip_otel_attributes_from_metadata" {
+  description = "Strip parsed OTEL attributes from span metadata in API ECS."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_enable_deep_search_logging" {
+  description = "Enable deep search logging from API ECS to the optimization project."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_brainstore_backfill_disable_logs" {
+  description = "Disable Brainstore log backfill work from the API ECS container."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_brainstore_blocked_query_sources" {
+  description = "Comma-separated list of Brainstore query sources to block in API ECS."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_disable_sysadmin_telemetry" {
+  description = "Disable sysadmin telemetry from the API ECS container."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_disable_async_scoring" {
+  description = "Disable async scoring entirely in API ECS."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_disable_async_scoring_object_ids" {
+  description = "Comma-separated list of Brainstore object IDs to disable async scoring for in API ECS."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_skip_pg_for_brainstore_objects_s3_path" {
+  description = "S3 path containing skip-PG config for API ECS. Takes precedence over skip_pg_for_brainstore_objects when set."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_max_limit_for_queries" {
+  description = "If nonzero, imposes a maximum on the limit parameter in API ECS queries."
+  type        = number
+  default     = 0
+}
+
+variable "api_ecs_invoke_rate_limit_per_10s" {
+  description = "Maximum number of function invocations allowed per 10-second window in API ECS."
+  type        = number
+  default     = 10000
+}
+
+variable "api_ecs_ratelimit_api_logs_org" {
+  description = "Comma-separated list of org-specific API logs rate limits for API ECS."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_ratelimit_api_logs_org_window_secs" {
+  description = "Time window in seconds for org-level API logs rate limiting in API ECS."
+  type        = number
+  default     = 60
+}
+
+variable "api_ecs_ratelimit_api_logs_org_enforce" {
+  description = "Whether API ECS enforces org-level API logs rate limits."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_ratelimit_btql_default" {
+  description = "Default rate limit for API ECS BTQL queries without a query_source. Use -1 for no rate limiting."
+  type        = number
+  default     = -1
+}
+
+variable "api_ecs_ratelimit_btql_org" {
+  description = "Comma-separated list of org-specific BTQL rate limits for API ECS."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_ratelimit_btql_window_secs" {
+  description = "Time window in seconds for API ECS BTQL rate limiting."
+  type        = number
+  default     = 60
+}
+
+variable "api_ecs_ratelimit_btql_enforce" {
+  description = "Whether API ECS enforces BTQL rate limits."
+  type        = bool
+  default     = false
+}
+
+variable "api_ecs_gateway_url" {
+  description = "Gateway URL for routing API ECS proxy requests through a gateway service."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_native_inference_secret_key" {
+  description = "Shared secret for decrypting native inference responses in API ECS. Leave empty to disable native inference response decryption."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "api_ecs_native_gateway_url" {
+  description = "Gateway URL for routing API ECS brain model requests."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_api_segment_write_key" {
+  description = "Segment write key for API ECS analytics tracking."
+  type        = string
+  default     = ""
+}
+
+variable "api_ecs_launchdarkly_sdk_key" {
+  description = "LaunchDarkly SDK key for API ECS internal dynamic feature flagging."
+  type        = string
+  default     = ""
+}
+
 variable "api_ecs_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)

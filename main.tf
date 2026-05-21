@@ -306,15 +306,17 @@ module "api_ecs" {
   function_tools_secret_arn = module.services_common.function_tools_secret_arn
 
   # Brainstore
-  brainstore_hostname             = module.brainstore[0].dns_name
-  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
-  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
-  brainstore_port                 = module.brainstore[0].port
-  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
-  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
-  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
+  brainstore_hostname              = module.brainstore[0].dns_name
+  brainstore_writer_hostname       = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname  = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name        = module.storage.brainstore_bucket_id
+  brainstore_port                  = module.brainstore[0].port
+  brainstore_etl_batch_size        = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version    = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects   = var.skip_pg_for_brainstore_objects
+  brainstore_enable_export         = var.brainstore_enable_export
+  brainstore_backfill_disable_logs = var.api_ecs_brainstore_backfill_disable_logs
+  brainstore_blocked_query_sources = var.api_ecs_brainstore_blocked_query_sources
 
   # Storage
   code_bundle_bucket = module.storage.code_bundle_bucket_id
@@ -334,6 +336,31 @@ module "api_ecs" {
   outbound_rate_limit_max_requests          = var.outbound_rate_limit_max_requests
   disable_billing_telemetry_aggregation     = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level               = var.billing_telemetry_log_level
+  log_level                                 = var.api_ecs_log_level
+  logs_max_span_mb                          = var.api_ecs_logs_max_span_mb
+  s3_request_log_min_header_bytes           = var.api_ecs_s3_request_log_min_header_bytes
+  code_function_execution_timeout_s         = var.api_ecs_code_function_execution_timeout_s
+  disable_attachment_optimization           = var.api_ecs_disable_attachment_optimization
+  strip_otel_attributes_from_metadata       = var.api_ecs_strip_otel_attributes_from_metadata
+  enable_deep_search_logging                = var.api_ecs_enable_deep_search_logging
+  disable_sysadmin_telemetry                = var.api_ecs_disable_sysadmin_telemetry
+  disable_async_scoring                     = var.api_ecs_disable_async_scoring
+  disable_async_scoring_object_ids          = var.api_ecs_disable_async_scoring_object_ids
+  skip_pg_for_brainstore_objects_s3_path    = var.api_ecs_skip_pg_for_brainstore_objects_s3_path
+  max_limit_for_queries                     = var.api_ecs_max_limit_for_queries
+  invoke_rate_limit_per_10s                 = var.api_ecs_invoke_rate_limit_per_10s
+  ratelimit_api_logs_org                    = var.api_ecs_ratelimit_api_logs_org
+  ratelimit_api_logs_org_window_secs        = var.api_ecs_ratelimit_api_logs_org_window_secs
+  ratelimit_api_logs_org_enforce            = var.api_ecs_ratelimit_api_logs_org_enforce
+  ratelimit_btql_default                    = var.api_ecs_ratelimit_btql_default
+  ratelimit_btql_org                        = var.api_ecs_ratelimit_btql_org
+  ratelimit_btql_window_secs                = var.api_ecs_ratelimit_btql_window_secs
+  ratelimit_btql_enforce                    = var.api_ecs_ratelimit_btql_enforce
+  gateway_url                               = var.api_ecs_gateway_url
+  native_inference_secret_key_secret_arn    = local.enable_api_ecs && nonsensitive(var.api_ecs_native_inference_secret_key) != "" ? aws_secretsmanager_secret.api_ecs_native_inference_secret_key[0].arn : ""
+  native_gateway_url                        = var.api_ecs_native_gateway_url
+  api_segment_write_key                     = var.api_ecs_api_segment_write_key
+  launchdarkly_sdk_key                      = var.api_ecs_launchdarkly_sdk_key
   extra_env_vars                            = var.api_ecs_extra_env_vars
   internal_observability_api_key_secret_arn = local.enable_api_ecs && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
   internal_observability_env_name           = var.internal_observability_env_name
