@@ -244,6 +244,24 @@ variable "billing_telemetry_log_level" {
   description = "Log level for billing telemetry."
 }
 
+variable "internal_observability_api_key_secret_arn" {
+  type        = string
+  description = "Secrets Manager secret ARN containing the internal observability API key."
+  default     = ""
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
+variable "internal_observability_region" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = "us5"
+}
+
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the API ECS container."

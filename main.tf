@@ -38,6 +38,7 @@ locals {
   ]
 
   enable_api_ecs                             = !var.use_deployment_mode_external_eks && (var.enable_api_ecs)
+  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
   brainstore_ai_proxy_url_ssm_parameter_name = (local.enable_api_ecs ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name)
@@ -320,20 +321,23 @@ module "api_ecs" {
   response_bucket    = module.storage.lambda_responses_bucket_id
 
   # Service configuration
-  braintrust_org_name                   = var.braintrust_org_name
-  primary_org_name                      = var.primary_org_name
-  cpu                                   = var.api_ecs_cpu
-  memory                                = var.api_ecs_memory
-  min_count                             = var.api_ecs_min_count
-  max_count                             = var.api_ecs_max_count
-  log_retention_days                    = var.api_ecs_log_retention_days
-  enable_execute_command                = var.api_ecs_enable_execute_command
-  whitelisted_origins                   = var.whitelisted_origins
-  outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
-  outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
-  disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
-  billing_telemetry_log_level           = var.billing_telemetry_log_level
-  extra_env_vars                        = var.api_ecs_extra_env_vars
+  braintrust_org_name                       = var.braintrust_org_name
+  primary_org_name                          = var.primary_org_name
+  cpu                                       = var.api_ecs_cpu
+  memory                                    = var.api_ecs_memory
+  min_count                                 = var.api_ecs_min_count
+  max_count                                 = var.api_ecs_max_count
+  log_retention_days                        = var.api_ecs_log_retention_days
+  enable_execute_command                    = var.api_ecs_enable_execute_command
+  whitelisted_origins                       = var.whitelisted_origins
+  outbound_rate_limit_window_minutes        = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests          = var.outbound_rate_limit_max_requests
+  disable_billing_telemetry_aggregation     = var.disable_billing_telemetry_aggregation
+  billing_telemetry_log_level               = var.billing_telemetry_log_level
+  extra_env_vars                            = var.api_ecs_extra_env_vars
+  internal_observability_api_key_secret_arn = local.enable_api_ecs && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_env_name           = var.internal_observability_env_name
+  internal_observability_region             = var.internal_observability_region
 
   # Networking
   vpc_id             = local.main_vpc_id

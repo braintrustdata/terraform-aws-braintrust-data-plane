@@ -34,11 +34,14 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Action = [
           "secretsmanager:GetSecretValue",
         ]
-        Resource = [
-          var.database_url_secret_arn,
-          var.function_tools_secret_arn,
-          var.redis_url_secret_arn,
-        ]
+        Resource = concat(
+          [
+            var.database_url_secret_arn,
+            var.function_tools_secret_arn,
+            var.redis_url_secret_arn,
+          ],
+          local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
+        )
       },
       {
         Effect = "Allow"

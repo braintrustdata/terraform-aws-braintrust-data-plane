@@ -8,6 +8,17 @@ locals {
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
   api_ecs_url                  = "http://${aws_lb.api_ecs.dns_name}"
+  observability_enabled        = var.internal_observability_api_key_secret_arn != ""
+
+  valid_fargate_memory_by_cpu = {
+    "256"   = [512, 1024, 2048]
+    "512"   = [1024, 2048, 3072, 4096]
+    "1024"  = [2048, 3072, 4096, 5120, 6144, 7168, 8192]
+    "2048"  = [for value in range(4096, 16385, 1024) : value]
+    "4096"  = [for value in range(8192, 30721, 1024) : value]
+    "8192"  = [for value in range(16384, 61441, 4096) : value]
+    "16384" = [for value in range(32768, 122881, 8192) : value]
+  }
 
   base_env_vars = merge({
     ORG_NAME                           = var.braintrust_org_name
@@ -55,15 +66,191 @@ locals {
 
   merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
-  valid_fargate_memory_by_cpu = {
-    "256"   = [512, 1024, 2048]
-    "512"   = [1024, 2048, 3072, 4096]
-    "1024"  = [2048, 3072, 4096, 5120, 6144, 7168, 8192]
-    "2048"  = [for value in range(4096, 16385, 1024) : value]
-    "4096"  = [for value in range(8192, 30721, 1024) : value]
-    "8192"  = [for value in range(16384, 61441, 4096) : value]
-    "16384" = [for value in range(32768, 122881, 8192) : value]
-  }
+  api_container_definition = merge(
+    {
+      name      = "api"
+      image     = "${var.container_image_repository}:${local.api_version_tag}"
+      essential = true
+      linuxParameters = {
+        initProcessEnabled = true
+      }
+      portMappings = [
+        {
+          containerPort = 8000
+          hostPort      = 8000
+          protocol      = "tcp"
+        }
+      ]
+      environment = [
+        for key in sort(keys(local.merged_env_vars)) : {
+          name  = key
+          value = local.merged_env_vars[key]
+        }
+      ]
+      secrets = [
+        {
+          name      = "FUNCTION_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
+        },
+        {
+          name      = "PG_URL"
+          valueFrom = var.database_url_secret_arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = var.redis_url_secret_arn
+        },
+        {
+          name      = "SERVICE_TOKEN_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
+        }
+      ]
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+        interval    = 30
+        retries     = 3
+        startPeriod = 10
+        timeout     = 5
+      }
+      dependsOn = [
+        for dep in [
+          {
+            containerName = "log-router"
+            condition     = "START"
+          },
+          {
+            containerName = "datadog-agent"
+            condition     = "START"
+          }
+        ] : dep if local.observability_enabled
+      ]
+      logConfiguration = local.api_log_configuration
+      mountPoints      = []
+      systemControls   = []
+      volumesFrom      = []
+    }
+  )
+
+  observability_sidecars = [
+    for sidecar in [
+      {
+        name           = "log-router"
+        essential      = true
+        image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
+        user           = "0"
+        environment    = []
+        mountPoints    = []
+        portMappings   = []
+        systemControls = []
+        volumesFrom    = []
+        firelensConfiguration = {
+          type = "fluentbit"
+          options = {
+            enable-ecs-log-metadata = "true"
+            config-file-type        = "file"
+            config-file-value       = "/fluent-bit/configs/parse-json.conf"
+          }
+        }
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            awslogs-group         = aws_cloudwatch_log_group.service.name
+            awslogs-region        = data.aws_region.current.region
+            awslogs-stream-prefix = "log-router"
+          }
+        }
+        memoryReservation = 50
+      },
+      {
+        name           = "datadog-agent"
+        essential      = true
+        image          = "public.ecr.aws/datadog/agent:7"
+        mountPoints    = []
+        portMappings   = []
+        systemControls = []
+        volumesFrom    = []
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            awslogs-group         = aws_cloudwatch_log_group.service.name
+            awslogs-region        = data.aws_region.current.region
+            awslogs-stream-prefix = "datadog-agent"
+          }
+        }
+        environment = [
+          {
+            name  = "ECS_FARGATE"
+            value = "true"
+          },
+          {
+            name  = "DD_SITE"
+            value = "${var.internal_observability_region}.datadoghq.com"
+          },
+          {
+            name  = "DD_ENV"
+            value = var.internal_observability_env_name
+          },
+          {
+            name  = "DD_SERVICE"
+            value = "braintrust-api"
+          },
+          {
+            name  = "DD_VERSION"
+            value = local.api_version_tag
+          },
+          {
+            name  = "DD_PROCESS_AGENT_ENABLED"
+            value = "true"
+          },
+          {
+            name  = "DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT"
+            value = "0.0.0.0:4318"
+          }
+        ]
+        secrets = [
+          {
+            name      = "DD_API_KEY"
+            valueFrom = var.internal_observability_api_key_secret_arn
+          }
+        ]
+        healthCheck = {
+          command     = ["CMD-SHELL", "agent health"]
+          interval    = 30
+          retries     = 3
+          startPeriod = 15
+          timeout     = 5
+        }
+      }
+    ] : sidecar if local.observability_enabled
+  ]
+
+  api_log_configuration = jsondecode(local.observability_enabled ? jsonencode({
+    logDriver = "awsfirelens"
+    options = {
+      Name           = "datadog"
+      Host           = "http-intake.logs.${var.internal_observability_region}.datadoghq.com"
+      TLS            = "on"
+      provider       = "ecs"
+      dd_service     = "braintrust-api"
+      dd_source      = "nodejs"
+      dd_message_key = "msg"
+      dd_tags        = "env:${var.internal_observability_env_name}"
+      compress       = "gzip"
+    }
+    secretOptions = [
+      {
+        name      = "apikey"
+        valueFrom = var.internal_observability_api_key_secret_arn
+      }
+    ]
+    }) : jsonencode({
+    logDriver = "awslogs"
+    options = {
+      awslogs-group         = aws_cloudwatch_log_group.service.name
+      awslogs-region        = data.aws_region.current.region
+      awslogs-stream-prefix = "api-ecs"
+    }
+  }))
 }
 
 data "aws_region" "current" {}
@@ -151,11 +338,12 @@ resource "aws_lb" "api_ecs" {
 }
 
 resource "aws_lb_target_group" "api_ecs" {
-  name        = "${var.deployment_name}-api-ecs"
-  port        = 8000
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = var.vpc_id
+  name             = "${var.deployment_name}-api-ecs"
+  port             = 8000
+  protocol         = "HTTP"
+  protocol_version = "HTTP1"
+  target_type      = "ip"
+  vpc_id           = var.vpc_id
 
   deregistration_delay = var.target_group_deregistration_delay_seconds
 
@@ -211,58 +399,7 @@ resource "aws_ecs_task_definition" "api_ecs" {
     cpu_architecture        = "ARM64"
   }
 
-  container_definitions = jsonencode([
-    {
-      name      = "api"
-      image     = "${var.container_image_repository}:${local.api_version_tag}"
-      essential = true
-      linuxParameters = {
-        initProcessEnabled = true
-      }
-      portMappings = [
-        {
-          containerPort = 8000
-          hostPort      = 8000
-          protocol      = "tcp"
-        }
-      ]
-      environment = [
-        for key in sort(keys(local.merged_env_vars)) : {
-          name  = key
-          value = local.merged_env_vars[key]
-        }
-      ]
-      secrets = [
-        {
-          name      = "FUNCTION_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
-        },
-        {
-          name      = "PG_URL"
-          valueFrom = var.database_url_secret_arn
-        },
-        {
-          name      = "REDIS_URL"
-          valueFrom = var.redis_url_secret_arn
-        },
-        {
-          name      = "SERVICE_TOKEN_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
-        }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.service.name
-          awslogs-region        = data.aws_region.current.region
-          awslogs-stream-prefix = "api-ecs"
-        }
-      }
-      mountPoints    = []
-      systemControls = []
-      volumesFrom    = []
-    }
-  ])
+  container_definitions = jsonencode(concat([local.api_container_definition], local.observability_sidecars))
 
   tags = merge({
     Name = "${var.deployment_name}-api-ecs"
