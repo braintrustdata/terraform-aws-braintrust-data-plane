@@ -40,8 +40,18 @@ locals {
     TELEMETRY_LOG_LEVEL                               = var.billing_telemetry_log_level
     INSERT_LOGS2                                      = "true"
     NODE_MEMORY_PERCENT                               = "80"
-    ALLOW_CODE_FUNCTION_EXECUTION                     = "disabled"
     AI_PROXY_FN_URL                                   = "http://127.0.0.1:8000"
+    BRAINSTORE_DISABLE_ETL_LOOP                       = "true"
+    DISABLE_ASYNC_SCORING                             = "false"
+    DISABLE_ATTACHMENT_OPTIMIZATION                   = "false"
+    ENABLE_DEEP_SEARCH_LOGGING                        = "false"
+    ENABLE_RUNTIME_METRICS                            = "false"
+    AUTOMATION_CRON_MAX_CONCURRENCY                   = "0"
+    DISABLE_LOCAL_BACKGROUND_LOOPS                    = "true"
+    TS_API_HOST                                       = "0.0.0.0"
+    TS_API_PORT                                       = "8000"
+    PROXY_URL                                         = "http://127.0.0.1:8000/v1/proxy"
+    TS_API_ASYNC_SCORING_PROXY_URL                    = "http://127.0.0.1:8000"
     },
     local.observability_enabled ? {
       DD_API_KEY = var.internal_observability_api_key
