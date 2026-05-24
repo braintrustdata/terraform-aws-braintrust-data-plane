@@ -1,5 +1,8 @@
 locals {
   api_version_tag = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
+  observability_enabled = nonsensitive(
+    var.internal_observability_api_key != null && var.internal_observability_api_key != ""
+  )
 
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
@@ -40,6 +43,13 @@ locals {
     ALLOW_CODE_FUNCTION_EXECUTION                     = "disabled"
     AI_PROXY_FN_URL                                   = "http://127.0.0.1:8000"
     },
+    local.observability_enabled ? {
+      DD_API_KEY = var.internal_observability_api_key
+      DD_ENV     = var.internal_observability_env_name
+      DD_SERVICE = "braintrust-api"
+      DD_SITE    = "${var.internal_observability_region}.datadoghq.com"
+      DD_VERSION = local.api_version_tag
+    } : {},
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
       BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"

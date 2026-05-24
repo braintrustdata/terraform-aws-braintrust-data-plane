@@ -298,7 +298,10 @@ module "api_ecs" {
   api_version_override = var.api_ecs_version_override
 
   # Telemetry
-  monitoring_telemetry = var.monitoring_telemetry
+  monitoring_telemetry            = var.monitoring_telemetry
+  internal_observability_api_key  = var.internal_observability_api_key
+  internal_observability_env_name = var.internal_observability_env_name
+  internal_observability_region   = var.internal_observability_region
 
   # Data stores
   database_url_secret_arn   = module.database.postgres_database_url_secret_arn

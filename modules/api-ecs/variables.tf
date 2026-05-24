@@ -234,6 +234,24 @@ variable "monitoring_telemetry" {
   description = "Telemetry to send to Braintrust's control plane."
 }
 
+variable "internal_observability_api_key" {
+  type        = string
+  description = "Internal Datadog API key. When non-empty, Datadog env vars are enabled for API ECS."
+  default     = ""
+}
+
+variable "internal_observability_region" {
+  type        = string
+  description = "Datadog region suffix (e.g. us5) used to build DD_SITE."
+  default     = "us5"
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  description = "Datadog environment name used for DD_ENV."
+  default     = ""
+}
+
 variable "disable_billing_telemetry_aggregation" {
   type        = bool
   description = "Disable billing telemetry aggregation."
