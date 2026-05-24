@@ -244,6 +244,42 @@ variable "billing_telemetry_log_level" {
   description = "Log level for billing telemetry."
 }
 
+variable "use_quarantine_vpc" {
+  type        = bool
+  description = "Whether quarantine VPC resources should be exposed through API ECS env vars."
+  default     = false
+}
+
+variable "quarantine_invoke_role_arn" {
+  type        = string
+  description = "ARN of the quarantine invoke role."
+  default     = null
+}
+
+variable "quarantine_function_role_arn" {
+  type        = string
+  description = "ARN of the quarantine function role."
+  default     = null
+}
+
+variable "quarantine_vpc_private_subnets" {
+  type        = list(string)
+  description = "Private subnet IDs in the quarantine VPC."
+  default     = []
+}
+
+variable "quarantine_lambda_security_group_id" {
+  type        = string
+  description = "Security group ID used by quarantine lambdas."
+  default     = null
+}
+
+variable "quarantine_vpc_id" {
+  type        = string
+  description = "Quarantine VPC ID."
+  default     = null
+}
+
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the API ECS container."

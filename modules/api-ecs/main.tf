@@ -10,27 +10,34 @@ locals {
   api_ecs_url                  = "http://${aws_lb.api_ecs.dns_name}"
 
   base_env_vars = merge({
-    ORG_NAME                           = var.braintrust_org_name
-    PRIMARY_ORG_NAME                   = var.primary_org_name
-    BRAINTRUST_DEPLOYMENT_NAME         = var.deployment_name
-    RESPONSE_BUCKET                    = var.response_bucket
-    CODE_BUNDLE_BUCKET                 = var.code_bundle_bucket
-    WHITELISTED_ORIGINS                = join(",", var.whitelisted_origins)
-    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES = tostring(var.outbound_rate_limit_window_minutes)
-    OUTBOUND_RATE_LIMIT_MAX_REQUESTS   = tostring(var.outbound_rate_limit_max_requests)
-    BRAINSTORE_ENABLED                 = "true"
-    BRAINSTORE_DEFAULT                 = "force"
-    BRAINSTORE_URL                     = "http://${var.brainstore_hostname}:${var.brainstore_port}"
-    BRAINSTORE_WRITER_URL              = local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-    BRAINSTORE_REALTIME_WAL_BUCKET     = var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
-    BRAINSTORE_INSERT_ROW_REFS         = "true"
-    CONTROL_PLANE_TELEMETRY            = var.monitoring_telemetry
-    TELEMETRY_DISABLE_AGGREGATION      = tostring(var.disable_billing_telemetry_aggregation)
-    TELEMETRY_LOG_LEVEL                = var.billing_telemetry_log_level
-    INSERT_LOGS2                       = "true"
-    NODE_MEMORY_PERCENT                = "80"
-    ALLOW_CODE_FUNCTION_EXECUTION      = "disabled"
-    AI_PROXY_FN_URL                    = "http://127.0.0.1:8000"
+    ORG_NAME                                          = var.braintrust_org_name
+    PRIMARY_ORG_NAME                                  = var.primary_org_name
+    BRAINTRUST_DEPLOYMENT_NAME                        = var.deployment_name
+    RESPONSE_BUCKET                                   = var.response_bucket
+    CODE_BUNDLE_BUCKET                                = var.code_bundle_bucket
+    WHITELISTED_ORIGINS                               = join(",", var.whitelisted_origins)
+    OUTBOUND_RATE_LIMIT_WINDOW_MINUTES                = tostring(var.outbound_rate_limit_window_minutes)
+    OUTBOUND_RATE_LIMIT_MAX_REQUESTS                  = tostring(var.outbound_rate_limit_max_requests)
+    QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc && var.quarantine_invoke_role_arn != null ? var.quarantine_invoke_role_arn : ""
+    QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : ""
+    QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
+    QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
+    QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
+    QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc && var.quarantine_lambda_security_group_id != null ? var.quarantine_lambda_security_group_id : ""
+    QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
+    BRAINSTORE_ENABLED                                = "true"
+    BRAINSTORE_DEFAULT                                = "force"
+    BRAINSTORE_URL                                    = "http://${var.brainstore_hostname}:${var.brainstore_port}"
+    BRAINSTORE_WRITER_URL                             = local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+    BRAINSTORE_REALTIME_WAL_BUCKET                    = var.brainstore_s3_bucket_name != null ? var.brainstore_s3_bucket_name : ""
+    BRAINSTORE_INSERT_ROW_REFS                        = "true"
+    CONTROL_PLANE_TELEMETRY                           = var.monitoring_telemetry
+    TELEMETRY_DISABLE_AGGREGATION                     = tostring(var.disable_billing_telemetry_aggregation)
+    TELEMETRY_LOG_LEVEL                               = var.billing_telemetry_log_level
+    INSERT_LOGS2                                      = "true"
+    NODE_MEMORY_PERCENT                               = "80"
+    ALLOW_CODE_FUNCTION_EXECUTION                     = "disabled"
+    AI_PROXY_FN_URL                                   = "http://127.0.0.1:8000"
     },
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"

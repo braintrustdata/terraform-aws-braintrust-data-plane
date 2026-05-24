@@ -335,6 +335,18 @@ module "api_ecs" {
   billing_telemetry_log_level           = var.billing_telemetry_log_level
   extra_env_vars                        = var.api_ecs_extra_env_vars
 
+  # Quarantine VPC
+  use_quarantine_vpc = var.enable_quarantine_vpc
+  quarantine_vpc_id  = local.quarantine_vpc_id
+  quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
+    local.quarantine_vpc_private_subnet_1_id,
+    local.quarantine_vpc_private_subnet_2_id,
+    local.quarantine_vpc_private_subnet_3_id
+  ] : []
+  quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
+  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
+  quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
+
   # Networking
   vpc_id             = local.main_vpc_id
   private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
