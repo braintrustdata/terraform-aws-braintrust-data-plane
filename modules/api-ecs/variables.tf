@@ -234,9 +234,9 @@ variable "monitoring_telemetry" {
   description = "Telemetry to send to Braintrust's control plane."
 }
 
-variable "internal_observability_api_key" {
+variable "internal_observability_api_key_secret_arn" {
   type        = string
-  description = "Internal Datadog API key. When non-empty, Datadog env vars are enabled for API ECS."
+  description = "Secrets Manager secret ARN containing the internal observability API key."
   default     = ""
 }
 
