@@ -346,6 +346,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
+  quarantine_proxy_url                = module.services[0].ai_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id

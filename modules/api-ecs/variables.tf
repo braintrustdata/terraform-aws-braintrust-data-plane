@@ -280,6 +280,11 @@ variable "quarantine_vpc_id" {
   default     = null
 }
 
+variable "quarantine_proxy_url" {
+  type        = string
+  description = "URL for the AI proxy function used by quarantine execution."
+}
+
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the API ECS container."
