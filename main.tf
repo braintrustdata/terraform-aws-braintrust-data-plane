@@ -37,10 +37,12 @@ locals {
     local.main_vpc_private_subnet_3_id
   ]
 
-  enable_api_ecs                             = !var.use_deployment_mode_external_eks && (var.enable_api_ecs)
+  create_ecs_api                             = !var.use_deployment_mode_external_eks && var.create_ecs_api
+  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
+  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = (local.enable_api_ecs ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name)
+  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
 }
 
 module "main_vpc" {
@@ -241,7 +243,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_llm_gateway || local.enable_api_ecs ? 1 : 0
+  count  = var.enable_llm_gateway || local.create_ecs_api ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -291,13 +293,16 @@ module "gateway_ecs" {
 
 module "api_ecs" {
   source = "./modules/api-ecs"
-  count  = local.enable_api_ecs ? 1 : 0
+  count  = local.create_ecs_api ? 1 : 0
 
   deployment_name      = var.deployment_name
   api_version_override = var.api_ecs_version_override
 
   # Telemetry
-  monitoring_telemetry = var.monitoring_telemetry
+  monitoring_telemetry                      = var.monitoring_telemetry
+  internal_observability_api_key_secret_arn = local.create_ecs_api && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_env_name           = var.internal_observability_env_name
+  internal_observability_region             = var.internal_observability_region
 
   # Data stores
   database_url_secret_arn   = module.database.postgres_database_url_secret_arn
@@ -334,6 +339,19 @@ module "api_ecs" {
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
   extra_env_vars                        = var.api_ecs_extra_env_vars
+
+  # Quarantine VPC
+  use_quarantine_vpc = var.enable_quarantine_vpc
+  quarantine_vpc_id  = local.quarantine_vpc_id
+  quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
+    local.quarantine_vpc_private_subnet_1_id,
+    local.quarantine_vpc_private_subnet_2_id,
+    local.quarantine_vpc_private_subnet_3_id
+  ] : []
+  quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
+  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
+  quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
+  quarantine_proxy_url                = module.services[0].ai_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id
@@ -391,7 +409,7 @@ module "services_common" {
   eks_namespace                             = var.eks_namespace
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
-  enable_ecs                                = local.enable_api_ecs
+  enable_ecs                                = local.create_ecs_api
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = var.custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
