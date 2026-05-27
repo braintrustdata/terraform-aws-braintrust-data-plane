@@ -21,6 +21,12 @@ variable "s3_additional_allowed_origins" {
   default     = []
 }
 
+variable "enable_s3_bucket_abac" {
+  description = "Enable attribute-based access control (ABAC) on S3 buckets managed by this module."
+  type        = bool
+  default     = false
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

@@ -154,6 +154,7 @@ module "storage" {
   kms_key_arn                         = local.kms_key_arn
   brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins       = var.s3_additional_allowed_origins
+  enable_s3_bucket_abac               = var.enable_s3_bucket_abac
   custom_tags                         = var.custom_tags
 }
 
