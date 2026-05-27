@@ -284,6 +284,11 @@ variable "quarantine_vpc_private_subnets" {
   type        = list(string)
   description = "Private subnet IDs in the quarantine VPC."
   default     = []
+
+  validation {
+    condition     = var.use_quarantine_vpc ? length(var.quarantine_vpc_private_subnets) == 3 : true
+    error_message = "quarantine_vpc_private_subnets must contain exactly 3 subnet IDs when use_quarantine_vpc is true."
+  }
 }
 
 variable "quarantine_lambda_security_group_id" {
@@ -296,17 +301,35 @@ variable "quarantine_vpc_id" {
   type        = string
   description = "Quarantine VPC ID."
   default     = null
+
+  validation {
+    condition     = var.use_quarantine_vpc ? var.quarantine_vpc_id != null : true
+    error_message = "quarantine_vpc_id is required when use_quarantine_vpc is true."
+  }
 }
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "URL for the AI proxy function used by quarantine execution."
+  description = "Optional Lambda AI proxy URL used by transitional API ECS deployments."
+  default     = null
 }
 
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the API ECS container."
   default     = {}
+}
+
+variable "private_api_ecs_mode" {
+  type        = bool
+  description = "Whether API ECS is the private-only deployment's primary API service."
+  default     = false
+}
+
+variable "allow_code_function_execution" {
+  type        = bool
+  description = "Allow API ECS to execute code functions in process when quarantine Lambda execution is not configured."
+  default     = false
 }
 
 variable "authorized_security_groups" {
@@ -357,4 +380,54 @@ variable "task_role_arn" {
 variable "task_security_group_id" {
   type        = string
   description = "Security group ID to attach to API ECS tasks."
+}
+
+variable "acm_certificate_arn" {
+  type        = string
+  description = "Existing ACM certificate ARN for API ECS ALB HTTPS listener."
+  default     = null
+
+  validation {
+    condition     = var.acm_certificate_arn == null ? true : trimspace(var.acm_certificate_arn) != ""
+    error_message = "acm_certificate_arn must be null or a non-empty string."
+  }
+
+  validation {
+    condition     = var.acm_certificate_arn == null || !var.create_acm_certificate
+    error_message = "acm_certificate_arn cannot be set when create_acm_certificate is true."
+  }
+}
+
+variable "create_acm_certificate" {
+  type        = bool
+  description = "Create an ACM certificate for API ECS ALB."
+  default     = false
+}
+
+variable "manage_certificate_validation" {
+  type        = bool
+  description = "When true, this module creates Route53 DNS validation records and waits for the ACM certificate to be validated. Set to false to manage validation records outside this module."
+  default     = true
+}
+
+variable "fqdn" {
+  type        = string
+  description = "Full DNS name for the API ECS ALB certificate and preferred endpoint. Required when HTTPS or DNS records are enabled."
+  default     = null
+
+  validation {
+    condition     = var.fqdn == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", trimspace(var.fqdn)))
+    error_message = "fqdn must be a valid fully-qualified domain name with at least two labels."
+  }
+
+  validation {
+    condition     = !(var.create_acm_certificate || var.acm_certificate_arn != null || var.create_dns_record) ? true : (var.fqdn != null ? trimspace(var.fqdn) != "" : false)
+    error_message = "fqdn is required when HTTPS or DNS records are enabled."
+  }
+}
+
+variable "create_dns_record" {
+  type        = bool
+  description = "Create a Route53 alias record for the API ECS ALB. The Route53 zone is derived from fqdn by stripping the first label and must exist in the account."
+  default     = false
 }

@@ -76,6 +76,24 @@ If you need to enable CloudFront standard access logging, you can configure it i
 
 See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
 
+### Private API ECS Deployment Mode
+
+The module can deploy a private-only data plane where the API ECS service is the
+only API ingress path. Set `use_deployment_mode_private_api_ecs = true` to skip
+CloudFront, API Gateway, and the Lambda services module. In this mode, the
+internal API ECS ALB is the endpoint to configure in the Braintrust dashboard,
+and the root `api_url` output points at the API ECS HTTPS URL.
+
+Private mode requires HTTPS on the API ECS ALB. By default, the module creates
+an ACM certificate, DNS validation records, and a Route53 alias record. Provide
+`api_ecs_fqdn`; the Route53 hosted zone is derived by removing the first DNS
+label. To manage the certificate or DNS outside the module, set
+`api_ecs_acm_certificate_arn`, `api_ecs_create_acm_certificate = false`,
+`api_ecs_manage_certificate_validation = false`, and/or
+`api_ecs_create_dns_record = false`.
+
+Switching from a public deployment to a Private deployment will result in downtime and the ingress url will change from Cloudfront to the API ECS ALB.
+
 ### Using an Existing VPC
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.

@@ -489,8 +489,8 @@ variable "enable_ecs_api" {
   default     = false
 
   validation {
-    condition     = !var.enable_ecs_api || var.create_ecs_api
-    error_message = "enable_ecs_api requires create_ecs_api."
+    condition     = !var.enable_ecs_api || var.create_ecs_api || var.use_deployment_mode_private_api_ecs
+    error_message = "enable_ecs_api requires create_ecs_api unless use_deployment_mode_private_api_ecs is true."
   }
 }
 
@@ -586,6 +586,56 @@ variable "api_ecs_enable_execute_command" {
   description = "Enable ECS Exec for API ECS tasks."
   type        = bool
   default     = false
+}
+
+variable "api_ecs_acm_certificate_arn" {
+  description = "Optional existing ACM certificate ARN for the API ECS ALB."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.api_ecs_acm_certificate_arn == null ? true : trimspace(var.api_ecs_acm_certificate_arn) != ""
+    error_message = "api_ecs_acm_certificate_arn must be null or a non-empty string."
+  }
+
+  validation {
+    condition     = var.api_ecs_acm_certificate_arn == null || var.api_ecs_create_acm_certificate != true
+    error_message = "api_ecs_acm_certificate_arn cannot be set when api_ecs_create_acm_certificate is true."
+  }
+}
+
+variable "api_ecs_create_acm_certificate" {
+  description = "Create an ACM certificate for the API ECS ALB. If null, defaults to true in private API ECS mode unless api_ecs_acm_certificate_arn is set."
+  type        = bool
+  default     = null
+}
+
+variable "api_ecs_manage_certificate_validation" {
+  description = "When true, this module creates Route53 DNS validation records and waits for the API ECS ACM certificate to be validated. If null, defaults to true when this module creates the certificate."
+  type        = bool
+  default     = null
+}
+
+variable "api_ecs_fqdn" {
+  description = "Full DNS name for the API ECS ALB certificate and preferred endpoint (for example, api.internal.example.com). Required when private API ECS mode, HTTPS, or DNS records are enabled. When this module manages DNS records, the Route53 zone is derived by stripping the first DNS label and must exist in the account."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.api_ecs_fqdn == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", trimspace(var.api_ecs_fqdn)))
+    error_message = "api_ecs_fqdn must be a valid fully-qualified domain name with at least two labels."
+  }
+
+  validation {
+    condition     = !(var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate == true || var.api_ecs_create_dns_record == true) ? true : (var.api_ecs_fqdn != null ? trimspace(var.api_ecs_fqdn) != "" : false)
+    error_message = "api_ecs_fqdn is required when private API ECS mode, HTTPS, or DNS records are enabled."
+  }
+}
+
+variable "api_ecs_create_dns_record" {
+  description = "Create a Route53 alias record for the API ECS ALB. If null, defaults to true in private API ECS mode and false otherwise."
+  type        = bool
+  default     = null
 }
 
 variable "braintrust_api_url" {
@@ -988,6 +1038,27 @@ variable "use_deployment_mode_external_eks" {
   description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !(var.use_deployment_mode_external_eks && var.use_deployment_mode_private_api_ecs)
+    error_message = "use_deployment_mode_external_eks and use_deployment_mode_private_api_ecs cannot both be true."
+  }
+}
+
+variable "use_deployment_mode_private_api_ecs" {
+  description = "Enable private API ECS deployment mode. When true, CloudFront, API Gateway, and Lambda services are not created; the internal API ECS ALB is the API ingress."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_deployment_mode_private_api_ecs || var.enable_brainstore
+    error_message = "use_deployment_mode_private_api_ecs requires enable_brainstore."
+  }
+
+  validation {
+    condition     = !var.use_deployment_mode_private_api_ecs ? true : ((var.api_ecs_acm_certificate_arn != null ? trimspace(var.api_ecs_acm_certificate_arn) != "" : false) || var.api_ecs_create_acm_certificate != false)
+    error_message = "use_deployment_mode_private_api_ecs requires api_ecs_acm_certificate_arn or api_ecs_create_acm_certificate."
+  }
 }
 
 variable "existing_eks_cluster_arn" {
