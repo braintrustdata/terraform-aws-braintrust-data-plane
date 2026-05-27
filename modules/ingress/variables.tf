@@ -27,6 +27,12 @@ variable "use_global_ai_proxy" {
   default     = false
 }
 
+variable "use_global_gateway_origin" {
+  description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev"
+  type        = bool
+  default     = false
+}
+
 variable "ai_proxy_function_url" {
   description = "The function URL of the AI proxy lambda function"
   type        = string
