@@ -11,6 +11,16 @@ resource "aws_s3_bucket" "code_bundle_bucket" {
   tags = local.common_tags
 }
 
+resource "aws_s3_bucket_abac" "code_bundle_bucket" {
+  count = var.enable_s3_bucket_abac ? 1 : 0
+
+  bucket = aws_s3_bucket.code_bundle_bucket.id
+
+  abac_status {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucket" {
   bucket = aws_s3_bucket.code_bundle_bucket.id
 

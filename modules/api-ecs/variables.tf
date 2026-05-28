@@ -240,6 +240,24 @@ variable "monitoring_telemetry" {
   description = "Telemetry to send to Braintrust's control plane."
 }
 
+variable "internal_observability_api_key_secret_arn" {
+  type        = string
+  description = "Secrets Manager secret ARN containing the internal observability API key."
+  default     = ""
+}
+
+variable "internal_observability_region" {
+  type        = string
+  description = "Datadog region suffix (e.g. us5) used to build DD_SITE."
+  default     = "us5"
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  description = "Datadog environment name used for DD_ENV."
+  default     = ""
+}
+
 variable "disable_billing_telemetry_aggregation" {
   type        = bool
   description = "Disable billing telemetry aggregation."
@@ -248,6 +266,47 @@ variable "disable_billing_telemetry_aggregation" {
 variable "billing_telemetry_log_level" {
   type        = string
   description = "Log level for billing telemetry."
+}
+
+variable "use_quarantine_vpc" {
+  type        = bool
+  description = "Whether quarantine VPC resources should be exposed through API ECS env vars."
+  default     = false
+}
+
+variable "quarantine_invoke_role_arn" {
+  type        = string
+  description = "ARN of the quarantine invoke role."
+  default     = null
+}
+
+variable "quarantine_function_role_arn" {
+  type        = string
+  description = "ARN of the quarantine function role."
+  default     = null
+}
+
+variable "quarantine_vpc_private_subnets" {
+  type        = list(string)
+  description = "Private subnet IDs in the quarantine VPC."
+  default     = []
+}
+
+variable "quarantine_lambda_security_group_id" {
+  type        = string
+  description = "Security group ID used by quarantine lambdas."
+  default     = null
+}
+
+variable "quarantine_vpc_id" {
+  type        = string
+  description = "Quarantine VPC ID."
+  default     = null
+}
+
+variable "quarantine_proxy_url" {
+  type        = string
+  description = "URL for the AI proxy function used by quarantine execution."
 }
 
 variable "extra_env_vars" {

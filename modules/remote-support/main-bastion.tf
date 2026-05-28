@@ -39,7 +39,7 @@ resource "aws_instance" "bastion" {
     http_put_response_hop_limit = 2
   }
 
-  user_data = base64encode(templatefile("${path.module}/bastion-user-data.sh", {
+  user_data = templatefile("${path.module}/bastion-user-data.sh", {
     deployment_name      = var.deployment_name
     region               = data.aws_region.current.region
     database_host        = var.database_host
@@ -47,7 +47,8 @@ resource "aws_instance" "bastion" {
     redis_host           = var.redis_host
     redis_port           = var.redis_port
     lambda_function_arns = var.lambda_function_arns
-  }))
+  })
+  user_data_replace_on_change = true
 
   tags = merge({
     Name = "${var.deployment_name}-bastion"

@@ -473,19 +473,30 @@ variable "api_ecs_version_override" {
   }
 }
 
-variable "enable_api_ecs" {
+variable "create_ecs_api" {
   type        = bool
-  description = "Create the dedicated internal API ECS service."
+  description = "Create the dedicated internal API ECS service infrastructure."
   default     = false
 
   validation {
-    condition     = !(var.enable_api_ecs && var.use_deployment_mode_external_eks)
-    error_message = "enable_api_ecs cannot be true when use_deployment_mode_external_eks is true."
+    condition     = !(var.create_ecs_api && var.use_deployment_mode_external_eks)
+    error_message = "create_ecs_api cannot be true when use_deployment_mode_external_eks is true."
   }
 
   validation {
-    condition     = !var.enable_api_ecs || var.enable_brainstore
-    error_message = "enable_api_ecs requires enable_brainstore."
+    condition     = !var.create_ecs_api || var.enable_brainstore
+    error_message = "create_ecs_api requires enable_brainstore."
+  }
+}
+
+variable "enable_ecs_api" {
+  type        = bool
+  description = "Enable the ECS API as the active API target for Brainstore."
+  default     = false
+
+  validation {
+    condition     = !var.enable_ecs_api || var.create_ecs_api
+    error_message = "enable_ecs_api requires create_ecs_api."
   }
 }
 
@@ -661,6 +672,12 @@ variable "s3_additional_allowed_origins" {
   description = "Additional origins to allow for S3 bucket CORS configuration. Supports a wildcard in the domain name."
   type        = list(string)
   default     = []
+}
+
+variable "enable_s3_bucket_abac" {
+  description = "Enable attribute-based access control (ABAC) on S3 buckets managed by this module. When enabled, bucket tags can be used in authorization policies and tag management requires s3:TagResource, s3:UntagResource, and s3:ListTagsForResource."
+  type        = bool
+  default     = false
 }
 
 variable "outbound_rate_limit_max_requests" {
