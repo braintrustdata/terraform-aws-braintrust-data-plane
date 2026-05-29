@@ -80,17 +80,14 @@ See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory f
 
 The module can deploy a private-only data plane where the API ECS service is the
 only API ingress path. Set `use_deployment_mode_private_api_ecs = true` to skip
-CloudFront, API Gateway, and the Lambda services module. In this mode, the
-internal API ECS ALB is the endpoint to configure in the Braintrust dashboard,
-and the root `api_url` output points at the API ECS HTTPS URL.
+CloudFront, API Gateway, and the Lambda services module. In this mode,
+`custom_domain` is required and should point at the API ECS ALB.
 
-Private mode requires HTTPS on the API ECS ALB. By default, the module creates
-an ACM certificate, DNS validation records, and a Route53 alias record. Provide
-`api_ecs_fqdn`; the Route53 hosted zone is derived by removing the first DNS
-label. To manage the certificate or DNS outside the module, set
-`api_ecs_acm_certificate_arn`, `api_ecs_create_acm_certificate = false`,
-`api_ecs_manage_certificate_validation = false`, and/or
-`api_ecs_create_dns_record = false`.
+By default, private mode exposes the API ECS ALB over HTTP on port 8000. To
+enable HTTPS, also provide `custom_certificate_arn` with an existing ACM
+certificate in the same region as the ALB and covering `custom_domain`. When
+HTTPS is enabled, the ALB also redirects HTTP port 80 to HTTPS port 443. Create
+and manage DNS records outside this module.
 
 Switching from a public deployment to a Private deployment will result in downtime and the ingress url will change from Cloudfront to the API ECS ALB.
 

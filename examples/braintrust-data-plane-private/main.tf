@@ -17,31 +17,17 @@ module "braintrust-data-plane" {
 
   use_deployment_mode_private_api_ecs = true
 
-  # The private API endpoint users will configure in Braintrust.
-  api_ecs_fqdn = "braintrust.internal.example.com"
+  # Private API ECS mode requires a private DNS name for client access. Create
+  # the DNS record outside this module, pointing custom_domain at the API ECS ALB.
+  custom_domain = "braintrust.internal.example.com"
 
-  # By default, private API ECS mode creates the ACM certificate, DNS validation
-  # records, and Route53 alias record. The hosted zone is derived from
-  # api_ecs_fqdn by removing the first DNS label and must exist in this AWS
-  # account.
-
-  # Alternative: manage the certificate and DNS outside the module.
-  #
-  # api_ecs_acm_certificate_arn           = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
-  # api_ecs_create_acm_certificate        = false
-  # api_ecs_manage_certificate_validation = false
-  # api_ecs_create_dns_record             = false
-  #
-  # Alternative: let the module create the ACM certificate, but manage DNS
-  # validation and the endpoint alias outside the module.
-  #
-  # api_ecs_create_acm_certificate        = true
-  # api_ecs_manage_certificate_validation = false
-  # api_ecs_create_dns_record             = false
+  # Optional: enable HTTPS on the private API ALB. The certificate must be in
+  # the same region as the ALB and cover custom_domain.
+  # custom_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
 
   # Permit access from your private networks or from specific security groups.
-  api_ecs_authorized_cidr_blocks = ["10.0.0.0/8"]
-  # api_ecs_authorized_security_groups = {
+  private_api_authorized_cidr_blocks = ["10.0.0.0/8"]
+  # private_api_authorized_security_groups = {
   #   vpn = "sg-0123456789abcdef"
   # }
 

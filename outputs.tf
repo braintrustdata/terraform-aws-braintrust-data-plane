@@ -135,7 +135,7 @@ output "api_ecs_alb_security_group_id" {
 
 output "api_ecs_http_url" {
   value       = local.create_ecs_api ? module.api_ecs[0].http_url : null
-  description = "HTTP URL of the private API ECS ALB"
+  description = "HTTP URL clients should use for the private API ECS endpoint on port 8000"
 }
 
 output "api_ecs_https_url" {
@@ -143,34 +143,14 @@ output "api_ecs_https_url" {
   description = "HTTPS URL of the private API ECS ALB when TLS is enabled"
 }
 
-output "api_ecs_effective_url" {
-  value       = local.create_ecs_api ? module.api_ecs[0].effective_url : null
-  description = "Preferred URL of the private API ECS ALB"
+output "api_ecs_client_url" {
+  value       = local.create_ecs_api ? module.api_ecs[0].client_url : null
+  description = "URL clients should use for the private API ECS ALB"
 }
 
 output "api_ecs_tls_ready" {
   value       = local.create_ecs_api ? module.api_ecs[0].tls_ready : null
   description = "Whether API ECS ALB HTTPS is enabled"
-}
-
-output "api_ecs_fqdn" {
-  value       = local.create_ecs_api ? module.api_ecs[0].fqdn : null
-  description = "Full DNS name configured for the private API ECS ALB"
-}
-
-output "api_ecs_acm_certificate_arn" {
-  value       = local.create_ecs_api ? module.api_ecs[0].acm_certificate_arn : null
-  description = "ARN of the ACM certificate used by the private API ECS ALB"
-}
-
-output "api_ecs_acm_certificate_domain_validation_options" {
-  value       = local.create_ecs_api ? module.api_ecs[0].acm_certificate_domain_validation_options : {}
-  description = "DNS validation options for the managed API ECS ALB ACM certificate"
-}
-
-output "api_ecs_dns_record_fqdn" {
-  value       = local.create_ecs_api ? module.api_ecs[0].dns_record_fqdn : null
-  description = "FQDN of the optional Route53 alias record for the private API ECS ALB"
 }
 
 output "api_ecs_task_security_group_id" {

@@ -338,6 +338,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "brainstore_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of Brainstore security group names to IDs authorized to access the API ECS ALB on port 8000."
+  default     = {}
+}
+
 variable "authorized_cidr_blocks" {
   type        = list(string)
   description = "CIDR blocks authorized to access the API ECS ALB."
@@ -384,50 +390,27 @@ variable "task_security_group_id" {
 
 variable "acm_certificate_arn" {
   type        = string
-  description = "Existing ACM certificate ARN for API ECS ALB HTTPS listener."
+  description = "Existing ACM certificate ARN for API ECS ALB HTTPS listener. When set, HTTPS is enabled and fqdn is required."
   default     = null
 
   validation {
     condition     = var.acm_certificate_arn == null ? true : trimspace(var.acm_certificate_arn) != ""
     error_message = "acm_certificate_arn must be null or a non-empty string."
   }
-
-  validation {
-    condition     = var.acm_certificate_arn == null || !var.create_acm_certificate
-    error_message = "acm_certificate_arn cannot be set when create_acm_certificate is true."
-  }
-}
-
-variable "create_acm_certificate" {
-  type        = bool
-  description = "Create an ACM certificate for API ECS ALB."
-  default     = false
-}
-
-variable "manage_certificate_validation" {
-  type        = bool
-  description = "When true, this module creates Route53 DNS validation records and waits for the ACM certificate to be validated. Set to false to manage validation records outside this module."
-  default     = true
 }
 
 variable "fqdn" {
   type        = string
-  description = "Full DNS name for the API ECS ALB certificate and preferred endpoint. Required when HTTPS or DNS records are enabled."
+  description = "Full DNS name for the API ECS ALB client endpoint. Required when acm_certificate_arn is set."
   default     = null
 
   validation {
-    condition     = var.fqdn == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", trimspace(var.fqdn)))
+    condition     = var.fqdn == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn))
     error_message = "fqdn must be a valid fully-qualified domain name with at least two labels."
   }
 
   validation {
-    condition     = !(var.create_acm_certificate || var.acm_certificate_arn != null || var.create_dns_record) ? true : (var.fqdn != null ? trimspace(var.fqdn) != "" : false)
-    error_message = "fqdn is required when HTTPS or DNS records are enabled."
+    condition     = var.acm_certificate_arn == null || var.fqdn != null
+    error_message = "fqdn is required when acm_certificate_arn is set."
   }
-}
-
-variable "create_dns_record" {
-  type        = bool
-  description = "Create a Route53 alias record for the API ECS ALB. The Route53 zone is derived from fqdn by stripping the first label and must exist in the account."
-  default     = false
 }

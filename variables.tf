@@ -570,13 +570,13 @@ variable "api_ecs_extra_env_vars" {
   default     = {}
 }
 
-variable "api_ecs_authorized_security_groups" {
+variable "private_api_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)
   default     = {}
 }
 
-variable "api_ecs_authorized_cidr_blocks" {
+variable "private_api_authorized_cidr_blocks" {
   description = "CIDR blocks authorized to access the internal API ECS ALB."
   type        = list(string)
   default     = []
@@ -586,56 +586,6 @@ variable "api_ecs_enable_execute_command" {
   description = "Enable ECS Exec for API ECS tasks."
   type        = bool
   default     = false
-}
-
-variable "api_ecs_acm_certificate_arn" {
-  description = "Optional existing ACM certificate ARN for the API ECS ALB."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.api_ecs_acm_certificate_arn == null ? true : trimspace(var.api_ecs_acm_certificate_arn) != ""
-    error_message = "api_ecs_acm_certificate_arn must be null or a non-empty string."
-  }
-
-  validation {
-    condition     = var.api_ecs_acm_certificate_arn == null || var.api_ecs_create_acm_certificate != true
-    error_message = "api_ecs_acm_certificate_arn cannot be set when api_ecs_create_acm_certificate is true."
-  }
-}
-
-variable "api_ecs_create_acm_certificate" {
-  description = "Create an ACM certificate for the API ECS ALB. If null, defaults to true in private API ECS mode unless api_ecs_acm_certificate_arn is set."
-  type        = bool
-  default     = null
-}
-
-variable "api_ecs_manage_certificate_validation" {
-  description = "When true, this module creates Route53 DNS validation records and waits for the API ECS ACM certificate to be validated. If null, defaults to true when this module creates the certificate."
-  type        = bool
-  default     = null
-}
-
-variable "api_ecs_fqdn" {
-  description = "Full DNS name for the API ECS ALB certificate and preferred endpoint (for example, api.internal.example.com). Required when private API ECS mode, HTTPS, or DNS records are enabled. When this module manages DNS records, the Route53 zone is derived by stripping the first DNS label and must exist in the account."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.api_ecs_fqdn == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", trimspace(var.api_ecs_fqdn)))
-    error_message = "api_ecs_fqdn must be a valid fully-qualified domain name with at least two labels."
-  }
-
-  validation {
-    condition     = !(var.use_deployment_mode_private_api_ecs || var.api_ecs_acm_certificate_arn != null || var.api_ecs_create_acm_certificate == true || var.api_ecs_create_dns_record == true) ? true : (var.api_ecs_fqdn != null ? trimspace(var.api_ecs_fqdn) != "" : false)
-    error_message = "api_ecs_fqdn is required when private API ECS mode, HTTPS, or DNS records are enabled."
-  }
-}
-
-variable "api_ecs_create_dns_record" {
-  description = "Create a Route53 alias record for the API ECS ALB. If null, defaults to true in private API ECS mode and false otherwise."
-  type        = bool
-  default     = null
 }
 
 variable "braintrust_api_url" {
@@ -737,15 +687,30 @@ variable "outbound_rate_limit_window_minutes" {
 }
 
 variable "custom_domain" {
-  description = "Custom domain name for the CloudFront distribution"
+  description = "Custom domain name for the data plane API endpoint. Used as the CloudFront custom domain in the default deployment mode. Required in private API ECS mode as the client endpoint."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.custom_domain == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.custom_domain))
+    error_message = "custom_domain must be a valid fully-qualified domain name with at least two labels."
+  }
+
+  validation {
+    condition     = var.use_deployment_mode_private_api_ecs ? var.custom_domain != null : (var.custom_domain == null ? var.custom_certificate_arn == null : var.custom_certificate_arn != null)
+    error_message = "custom_domain is required in private API ECS mode. Outside private API ECS mode, custom_domain and custom_certificate_arn must be set together."
+  }
 }
 
 variable "custom_certificate_arn" {
-  description = "ARN of the ACM certificate for the custom domain"
+  description = "ARN of the ACM certificate for custom_domain. For CloudFront, this certificate must be in us-east-1. For private API ECS mode, setting this enables HTTPS and the certificate must be in the same region as the API ECS ALB."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.custom_certificate_arn == null ? true : trimspace(var.custom_certificate_arn) != ""
+    error_message = "custom_certificate_arn must be null or a non-empty string."
+  }
 }
 
 variable "waf_acl_id" {
@@ -1053,11 +1018,6 @@ variable "use_deployment_mode_private_api_ecs" {
   validation {
     condition     = !var.use_deployment_mode_private_api_ecs || var.enable_brainstore
     error_message = "use_deployment_mode_private_api_ecs requires enable_brainstore."
-  }
-
-  validation {
-    condition     = !var.use_deployment_mode_private_api_ecs ? true : ((var.api_ecs_acm_certificate_arn != null ? trimspace(var.api_ecs_acm_certificate_arn) != "" : false) || var.api_ecs_create_acm_certificate != false)
-    error_message = "use_deployment_mode_private_api_ecs requires api_ecs_acm_certificate_arn or api_ecs_create_acm_certificate."
   }
 }
 

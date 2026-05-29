@@ -49,15 +49,8 @@ locals {
   brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
   # api_url points at the active data-plane endpoint for the selected deployment mode.
   api_url = var.use_deployment_mode_external_eks ? null : (
-    var.use_deployment_mode_private_api_ecs ? module.api_ecs[0].effective_url : module.ingress[0].api_url
+    var.use_deployment_mode_private_api_ecs ? module.api_ecs[0].client_url : module.ingress[0].api_url
   )
-
-  # Private API ECS defaults to creating an ACM certificate unless a certificate ARN is supplied.
-  api_ecs_create_acm_certificate = var.api_ecs_create_acm_certificate != null ? var.api_ecs_create_acm_certificate : (var.use_deployment_mode_private_api_ecs && var.api_ecs_acm_certificate_arn == null)
-  # Certificate validation records are managed by default only when this module creates the certificate.
-  api_ecs_manage_certificate_validation = var.api_ecs_manage_certificate_validation != null ? var.api_ecs_manage_certificate_validation : local.api_ecs_create_acm_certificate
-  # Private API ECS defaults to creating the Route53 alias record for the ALB endpoint.
-  api_ecs_create_dns_record = var.api_ecs_create_dns_record != null ? var.api_ecs_create_dns_record : var.use_deployment_mode_private_api_ecs
 
   enable_internal_observability   = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   ai_proxy_url_ssm_parameter_name = "/braintrust/${var.deployment_name}/ai-proxy-url"
@@ -376,21 +369,15 @@ module "api_ecs" {
   quarantine_proxy_url                = local.create_lambda_services ? module.services[0].ai_proxy_url : null
 
   # Networking
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
-  authorized_security_groups = merge(
-    {
-      "API"        = module.services_common.api_security_group_id
-      "Brainstore" = module.services_common.brainstore_instance_security_group_id
-    },
-    var.api_ecs_authorized_security_groups,
-  )
-  authorized_cidr_blocks        = var.api_ecs_authorized_cidr_blocks
-  acm_certificate_arn           = var.api_ecs_acm_certificate_arn
-  create_acm_certificate        = local.api_ecs_create_acm_certificate
-  manage_certificate_validation = local.api_ecs_manage_certificate_validation
-  fqdn                          = var.api_ecs_fqdn
-  create_dns_record             = local.api_ecs_create_dns_record
+  vpc_id                     = local.main_vpc_id
+  private_subnet_ids         = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  authorized_security_groups = var.private_api_authorized_security_groups
+  brainstore_authorized_security_groups = {
+    "Brainstore" = module.services_common.brainstore_instance_security_group_id
+  }
+  authorized_cidr_blocks = var.private_api_authorized_cidr_blocks
+  acm_certificate_arn    = var.custom_certificate_arn
+  fqdn                   = var.custom_domain
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn

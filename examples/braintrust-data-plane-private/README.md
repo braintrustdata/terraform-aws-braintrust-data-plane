@@ -1,13 +1,9 @@
 This is an example of a private-only Braintrust data plane deployment. It does
 not create CloudFront, API Gateway, or Lambda service resources. The API ECS
-service is the only API ingress path, and the internal API ECS ALB is the API
-URL to configure in the Braintrust dashboard.
+service is the only API ingress path, and `custom_domain` is the client API URL
+to configure in the Braintrust dashboard.
 
-By default, this example lets the module create an ACM certificate, Route53 DNS
-validation records, and a Route53 alias record for the internal ALB. The hosted
-zone is derived from `api_ecs_fqdn` by removing the first DNS label, so
-`braintrust-api.internal.example.com` uses the `internal.example.com` hosted
-zone.
-
-To manage the certificate or DNS outside this module, see the commented
-alternatives in `main.tf`.
+Create the DNS record outside the module, pointing `custom_domain` at the API
+ECS ALB. By default, this example exposes the API ECS ALB over HTTP on port
+8000. To enable HTTPS, also create an ACM certificate outside the module and set
+`custom_certificate_arn`.

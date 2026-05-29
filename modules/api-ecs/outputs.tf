@@ -34,7 +34,7 @@ output "task_security_group_id" {
 }
 
 output "http_url" {
-  description = "HTTP URL for API ECS ALB."
+  description = "HTTP URL clients should use for API ECS on port 8000."
   value       = local.http_url
 }
 
@@ -43,9 +43,9 @@ output "https_url" {
   value       = local.https_url
 }
 
-output "effective_url" {
-  description = "Preferred URL for API ECS ALB."
-  value       = local.effective_url
+output "client_url" {
+  description = "URL clients should use for the API ECS ALB."
+  value       = local.client_url
 }
 
 output "tls_ready" {
@@ -55,29 +55,12 @@ output "tls_ready" {
 
 output "fqdn" {
   description = "Full DNS name configured for the API ECS ALB."
-  value       = local.api_fqdn
+  value       = var.fqdn
 }
 
 output "acm_certificate_arn" {
   description = "ARN of the ACM certificate selected for the API ECS ALB HTTPS listener."
-  value       = local.selected_certificate_arn
-}
-
-output "acm_certificate_domain_validation_options" {
-  description = "DNS validation options for the managed API ECS ALB ACM certificate."
-  value = var.create_acm_certificate ? {
-    for dvo in aws_acm_certificate.alb[0].domain_validation_options : dvo.domain_name => {
-      domain_name = dvo.domain_name
-      name        = dvo.resource_record_name
-      type        = dvo.resource_record_type
-      record      = dvo.resource_record_value
-    }
-  } : {}
-}
-
-output "dns_record_fqdn" {
-  description = "FQDN of the optional Route53 alias record for the API ECS ALB."
-  value       = var.create_dns_record ? aws_route53_record.alb_alias[0].fqdn : null
+  value       = var.acm_certificate_arn
 }
 
 output "url_ssm_parameter_name" {

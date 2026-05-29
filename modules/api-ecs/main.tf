@@ -8,24 +8,11 @@ locals {
 
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
-  # Normalize the optional API hostname before using it for ACM, Route53, or URLs.
-  api_fqdn = var.fqdn != null ? trimspace(var.fqdn) : null
-  # Route53 zone lookup is derived by stripping the first DNS label from the API hostname.
-  derived_zone_name = local.api_fqdn != null ? join(".", slice(split(".", local.api_fqdn), 1, length(split(".", local.api_fqdn)))) : null
-  # Treat an existing ACM certificate ARN as the TLS signal unless this module creates one.
-  provided_certificate_arn = var.acm_certificate_arn != null ? trimspace(var.acm_certificate_arn) : null
-  enable_https             = local.provided_certificate_arn != null || var.create_acm_certificate
-  # Prefer caller-provided certificates; otherwise use the module-managed ACM certificate.
-  selected_certificate_arn = local.provided_certificate_arn != null ? local.provided_certificate_arn : (var.create_acm_certificate ? aws_acm_certificate.alb[0].arn : null)
-  # HTTPS URLs use the configured hostname when present; HTTP always exposes the raw ALB DNS name.
-  preferred_domain_name = local.api_fqdn != null ? local.api_fqdn : aws_lb.api_ecs.dns_name
-  http_url              = "http://${aws_lb.api_ecs.dns_name}"
-  https_url             = local.enable_https ? "https://${local.preferred_domain_name}" : null
-  effective_url         = local.enable_https ? local.https_url : local.http_url
-  # DNS validation is only managed when the module both creates and validates the certificate.
-  manage_acm_validation_records = var.create_acm_certificate && var.manage_certificate_validation
-  # Route53 is needed for certificate validation records or the optional ALB alias record.
-  lookup_route53_zone = local.manage_acm_validation_records || var.create_dns_record
+  # Supplying a certificate enables the public HTTPS listener.
+  enable_https = var.acm_certificate_arn != null
+  http_url     = var.fqdn != null ? "http://${var.fqdn}:8000" : "http://${aws_lb.api_ecs.dns_name}:8000"
+  https_url    = local.enable_https ? "https://${var.fqdn}" : null
+  client_url   = local.enable_https ? local.https_url : local.http_url
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
@@ -67,9 +54,9 @@ locals {
     },
     # In transitional ECS mode, Lambda services still own background loops.
     var.private_api_ecs_mode ? {} : {
-      BRAINSTORE_DISABLE_ETL_LOOP     = "true"
-      AUTOMATION_CRON_MAX_CONCURRENCY = "0"
-      DISABLE_LOCAL_BACKGROUND_LOOPS  = "true"
+      BRAINSTORE_DISABLE_ETL_LOOP      = "true"
+      AUTOMATION_CRON_MAX1_CONCURRENCY = "0"
+      DISABLE_LOCAL_BACKGROUND_LOOPS   = "true"
     },
     # Transitional ECS calls the Lambda AI proxy; private ECS-only keeps proxy work in-process.
     !var.private_api_ecs_mode ? (
@@ -324,27 +311,51 @@ resource "aws_security_group" "alb" {
   }, local.common_tags)
 }
 
-resource "aws_security_group_rule" "alb_ingress_http_from_authorized_security_groups" {
-  for_each = var.authorized_security_groups
+resource "aws_security_group_rule" "alb_ingress_8000_from_authorized_security_groups" {
+  for_each = local.enable_https ? var.brainstore_authorized_security_groups : merge(var.authorized_security_groups, var.brainstore_authorized_security_groups)
+
+  type                     = "ingress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  source_security_group_id = each.value
+  description              = "Allow API ECS HTTP traffic from ${each.key}."
+  security_group_id        = aws_security_group.alb.id
+}
+
+resource "aws_security_group_rule" "alb_ingress_8000_from_authorized_cidr_blocks" {
+  for_each = local.enable_https ? toset([]) : toset(var.authorized_cidr_blocks)
+
+  type              = "ingress"
+  from_port         = 8000
+  to_port           = 8000
+  protocol          = "tcp"
+  cidr_blocks       = [each.value]
+  description       = "Allow API ECS HTTP traffic from authorized CIDR ${each.value}."
+  security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_security_groups" {
+  for_each = local.enable_https ? var.authorized_security_groups : {}
 
   type                     = "ingress"
   from_port                = 80
   to_port                  = 80
   protocol                 = "tcp"
   source_security_group_id = each.value
-  description              = "Allow HTTP traffic from ${each.key}."
+  description              = "Allow HTTP redirect traffic from ${each.key}."
   security_group_id        = aws_security_group.alb.id
 }
 
-resource "aws_security_group_rule" "alb_ingress_http_from_authorized_cidr_blocks" {
-  for_each = toset(var.authorized_cidr_blocks)
+resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_cidr_blocks" {
+  for_each = local.enable_https ? toset(var.authorized_cidr_blocks) : toset([])
 
   type              = "ingress"
   from_port         = 80
   to_port           = 80
   protocol          = "tcp"
   cidr_blocks       = [each.value]
-  description       = "Allow HTTP traffic from authorized CIDR ${each.value}."
+  description       = "Allow HTTP redirect traffic from authorized CIDR ${each.value}."
   security_group_id = aws_security_group.alb.id
 }
 
@@ -436,39 +447,8 @@ resource "aws_lb_target_group" "api_ecs" {
 
 resource "aws_lb_listener" "api_ecs_http" {
   load_balancer_arn = aws_lb.api_ecs.arn
-  port              = 80
+  port              = 8000
   protocol          = "HTTP"
-
-  default_action {
-    type = local.enable_https ? "redirect" : "forward"
-
-    dynamic "redirect" {
-      for_each = local.enable_https ? [1] : []
-      content {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-
-    dynamic "forward" {
-      for_each = local.enable_https ? [] : [1]
-      content {
-        target_group {
-          arn = aws_lb_target_group.api_ecs.arn
-        }
-      }
-    }
-  }
-}
-
-resource "aws_lb_listener" "api_ecs_https" {
-  count             = local.enable_https ? 1 : 0
-  load_balancer_arn = aws_lb.api_ecs.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = local.selected_certificate_arn
 
   default_action {
     type = "forward"
@@ -479,14 +459,48 @@ resource "aws_lb_listener" "api_ecs_https" {
       }
     }
   }
+}
 
-  depends_on = [aws_acm_certificate_validation.alb]
+resource "aws_lb_listener" "api_ecs_http_redirect" {
+  count             = local.enable_https ? 1 : 0
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "api_ecs_https" {
+  count             = local.enable_https ? 1 : 0
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.acm_certificate_arn
+
+  default_action {
+    type = "forward"
+
+    forward {
+      target_group {
+        arn = aws_lb_target_group.api_ecs.arn
+      }
+    }
+  }
 }
 
 resource "aws_ssm_parameter" "api_url" {
   name        = "/braintrust/${var.deployment_name}/ecs-api-url"
   type        = "String"
-  value       = local.effective_url
+  value       = "http://${aws_lb.api_ecs.dns_name}:8000"
   description = "API ECS URL for Brainstore"
 
   tags = local.common_tags
