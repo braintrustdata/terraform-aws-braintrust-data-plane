@@ -5,12 +5,12 @@ output "dns_name" {
 
 output "writer_dns_name" {
   description = "The DNS name of the Brainstore writer NLB, if enabled"
-  value       = local.has_writer_nodes ? aws_lb.brainstore_writer[0].dns_name : null
+  value       = one(aws_lb.brainstore_writer[*].dns_name)
 }
 
 output "fast_reader_dns_name" {
   description = "The DNS name of the Brainstore fast reader NLB, if enabled"
-  value       = local.has_fast_reader_nodes ? aws_lb.brainstore_fast_reader[0].dns_name : null
+  value       = one(aws_lb.brainstore_fast_reader[*].dns_name)
 }
 
 output "port" {

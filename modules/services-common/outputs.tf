@@ -41,15 +41,15 @@ output "function_tools_secret_arn" {
 
 output "quarantine_invoke_role_arn" {
   description = "The ARN of the IAM role used by the API handler to invoke quarantined functions"
-  value       = var.enable_quarantine_vpc ? aws_iam_role.quarantine_invoke_role[0].arn : null
+  value       = one(aws_iam_role.quarantine_invoke_role[*].arn)
 }
 
 output "quarantine_function_role_arn" {
   description = "The ARN of the IAM role used by quarantined Lambda functions"
-  value       = var.enable_quarantine_vpc ? aws_iam_role.quarantine_function_role[0].arn : null
+  value       = one(aws_iam_role.quarantine_function_role[*].arn)
 }
 
 output "quarantine_lambda_security_group_id" {
   description = "The ID of the security group for quarantine Lambda functions"
-  value       = var.enable_quarantine_vpc ? aws_security_group.quarantine_lambda[0].id : null
+  value       = one(aws_security_group.quarantine_lambda[*].id)
 }
