@@ -133,11 +133,6 @@ output "api_ecs_alb_security_group_id" {
   description = "ID of the security group attached to the private API ECS ALB"
 }
 
-output "api_ecs_https_url" {
-  value       = local.create_ecs_api ? module.api_ecs[0].https_url : null
-  description = "HTTPS URL of the private API ECS ALB"
-}
-
 output "api_ecs_client_url" {
   value       = local.create_ecs_api ? module.api_ecs[0].client_url : null
   description = "URL clients should use for the private API ECS ALB"

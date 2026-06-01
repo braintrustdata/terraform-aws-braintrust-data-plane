@@ -33,13 +33,8 @@ output "task_security_group_id" {
   value       = var.task_security_group_id
 }
 
-output "https_url" {
-  description = "HTTPS URL for API ECS ALB."
-  value       = local.https_url
-}
-
 output "client_url" {
-  description = "URL clients should use for the API ECS ALB."
+  description = "URL clients should use for the API ECS ALB. Null unless private API ECS mode is enabled."
   value       = local.https_url
 }
 

@@ -8,7 +8,7 @@ locals {
 
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
-  https_url                    = "https://${var.fqdn}"
+  https_url                    = var.private_api_ecs_mode ? "https://${var.fqdn}" : null
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
@@ -320,7 +320,7 @@ resource "aws_security_group_rule" "alb_ingress_8000_from_authorized_security_gr
 }
 
 resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_security_groups" {
-  for_each = var.authorized_security_groups
+  for_each = var.private_api_ecs_mode ? var.authorized_security_groups : {}
 
   type                     = "ingress"
   from_port                = 80
@@ -332,7 +332,7 @@ resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_se
 }
 
 resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_cidr_blocks" {
-  for_each = toset(var.authorized_cidr_blocks)
+  for_each = toset(var.private_api_ecs_mode ? var.authorized_cidr_blocks : [])
 
   type              = "ingress"
   from_port         = 80
@@ -344,7 +344,7 @@ resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_ci
 }
 
 resource "aws_security_group_rule" "alb_ingress_https_from_authorized_security_groups" {
-  for_each = var.authorized_security_groups
+  for_each = var.private_api_ecs_mode ? var.authorized_security_groups : {}
 
   type                     = "ingress"
   from_port                = 443
@@ -356,7 +356,7 @@ resource "aws_security_group_rule" "alb_ingress_https_from_authorized_security_g
 }
 
 resource "aws_security_group_rule" "alb_ingress_https_from_authorized_cidr_blocks" {
-  for_each = toset(var.authorized_cidr_blocks)
+  for_each = toset(var.private_api_ecs_mode ? var.authorized_cidr_blocks : [])
 
   type              = "ingress"
   from_port         = 443
@@ -446,6 +446,8 @@ resource "aws_lb_listener" "api_ecs_http" {
 }
 
 resource "aws_lb_listener" "api_ecs_http_redirect" {
+  count = var.private_api_ecs_mode ? 1 : 0
+
   load_balancer_arn = aws_lb.api_ecs.arn
   port              = 80
   protocol          = "HTTP"
@@ -462,6 +464,8 @@ resource "aws_lb_listener" "api_ecs_http_redirect" {
 }
 
 resource "aws_lb_listener" "api_ecs_https" {
+  count = var.private_api_ecs_mode ? 1 : 0
+
   load_balancer_arn = aws_lb.api_ecs.arn
   port              = 443
   protocol          = "HTTPS"
@@ -553,7 +557,6 @@ resource "aws_ecs_service" "api_ecs" {
 
   depends_on = [
     aws_lb_listener.api_ecs_http,
-    aws_lb_listener.api_ecs_https,
   ]
 
   lifecycle {
