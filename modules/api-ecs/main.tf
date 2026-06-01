@@ -55,7 +55,7 @@ locals {
     # In transitional ECS mode, Lambda services still own background loops.
     var.private_api_ecs_mode ? {} : {
       BRAINSTORE_DISABLE_ETL_LOOP      = "true"
-      AUTOMATION_CRON_MAX1_CONCURRENCY = "0"
+      AUTOMATION_CRON_MAX_CONCURRENCY = "0"
       DISABLE_LOCAL_BACKGROUND_LOOPS   = "true"
     },
     # Transitional ECS calls the Lambda AI proxy; private ECS-only keeps proxy work in-process.
