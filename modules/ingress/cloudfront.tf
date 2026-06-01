@@ -25,7 +25,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
-      origin_read_timeout      = 60
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
       origin_keepalive_timeout = 60
       https_port               = 443
       http_port                = 80
@@ -48,7 +48,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
-      origin_read_timeout      = 60
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
       origin_keepalive_timeout = 60
       https_port               = 443
       http_port                = 80
@@ -62,7 +62,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
-      origin_read_timeout      = 60
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
       origin_keepalive_timeout = 60
       https_port               = 443
       http_port                = 80
