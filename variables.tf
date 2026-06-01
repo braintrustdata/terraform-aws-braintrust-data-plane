@@ -961,6 +961,12 @@ variable "use_global_ai_proxy" {
   default     = false
 }
 
+variable "use_global_gateway_origin" {
+  description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev. Don't enable this unless instructed by Braintrust."
+  type        = bool
+  default     = false
+}
+
 variable "use_deployment_mode_external_eks" {
   description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
   type        = bool
