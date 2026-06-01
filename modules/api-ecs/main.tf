@@ -413,7 +413,7 @@ resource "aws_lb_target_group" "api_ecs" {
   target_type = "ip"
   vpc_id      = var.vpc_id
 
-  deregistration_delay = var.target_group_deregistration_delay_seconds
+  deregistration_delay = 300
 
   health_check {
     path                = "/"

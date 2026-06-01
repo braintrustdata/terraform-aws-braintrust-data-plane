@@ -367,17 +367,6 @@ variable "enable_execute_command" {
   default     = false
 }
 
-variable "target_group_deregistration_delay_seconds" {
-  type        = number
-  description = "Seconds for the API ECS target group to wait before deregistering draining targets."
-  default     = 300
-
-  validation {
-    condition     = var.target_group_deregistration_delay_seconds >= 0 && var.target_group_deregistration_delay_seconds <= 3600
-    error_message = "target_group_deregistration_delay_seconds must be between 0 and 3600."
-  }
-}
-
 variable "task_role_arn" {
   type        = string
   description = "IAM role ARN for the ECS task. Should be the APIHandlerRole ARN from the services-common module."
