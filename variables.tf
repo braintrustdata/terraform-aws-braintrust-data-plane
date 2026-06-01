@@ -710,6 +710,17 @@ variable "cloudfront_price_class" {
   default     = "PriceClass_100"
 }
 
+variable "cloudfront_origin_read_timeout" {
+  description = "The read timeout (in seconds) for CloudFront origins. Increase this if long-running scorers or tools hit 504 Gateway Timeout errors on /function/invoke. AWS CloudFront supports up to 180s; values above 60s may require an AWS Support ticket to raise the quota."
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 180
+    error_message = "cloudfront_origin_read_timeout must be between 1 and 180 seconds."
+  }
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"

@@ -381,16 +381,17 @@ module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name           = var.deployment_name
-  custom_domain             = var.custom_domain
-  custom_certificate_arn    = var.custom_certificate_arn
-  waf_acl_id                = var.waf_acl_id
-  cloudfront_price_class    = var.cloudfront_price_class
-  use_global_ai_proxy       = var.use_global_ai_proxy
-  use_global_gateway_origin = var.use_global_gateway_origin
-  ai_proxy_function_url     = module.services[0].ai_proxy_url
-  api_handler_function_arn  = module.services[0].api_handler_arn
-  custom_tags               = var.custom_tags
+  deployment_name                = var.deployment_name
+  custom_domain                  = var.custom_domain
+  custom_certificate_arn         = var.custom_certificate_arn
+  waf_acl_id                     = var.waf_acl_id
+  cloudfront_price_class         = var.cloudfront_price_class
+  cloudfront_origin_read_timeout = var.cloudfront_origin_read_timeout
+  use_global_ai_proxy            = var.use_global_ai_proxy
+  use_global_gateway_origin      = var.use_global_gateway_origin
+  ai_proxy_function_url          = module.services[0].ai_proxy_url
+  api_handler_function_arn       = module.services[0].api_handler_arn
+  custom_tags                    = var.custom_tags
 }
 
 module "services_common" {
