@@ -30,8 +30,8 @@ module "braintrust-data-plane" {
   # additional_custom_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/ADDITIONAL_CERTIFICATE_ID"
 
   # Permit access from your private networks or from specific security groups.
-  api_ecs_client_authorized_cidr_blocks = ["10.0.0.0/8"]
-  # api_ecs_client_authorized_security_groups = {
+  private_api_authorized_cidr_blocks = ["10.0.0.0/8"]
+  # private_api_authorized_security_groups = {
   #   vpn = "sg-0123456789abcdef"
   # }
 

@@ -570,13 +570,13 @@ variable "api_ecs_extra_env_vars" {
   default     = {}
 }
 
-variable "api_ecs_client_authorized_security_groups" {
+variable "private_api_authorized_security_groups" {
   description = "Map of security group names to IDs authorized to access the API ECS client endpoint on HTTPS port 443 and HTTP redirect port 80. Only used when use_deployment_mode_private_api_ecs is true. Format: { name = <security_group_id> }"
   type        = map(string)
   default     = {}
 }
 
-variable "api_ecs_client_authorized_cidr_blocks" {
+variable "private_api_authorized_cidr_blocks" {
   description = "CIDR blocks authorized to access the API ECS client endpoint on HTTPS port 443 and HTTP redirect port 80. Only used when use_deployment_mode_private_api_ecs is true."
   type        = list(string)
   default     = []
