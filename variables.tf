@@ -713,6 +713,38 @@ variable "custom_certificate_arn" {
   }
 }
 
+variable "additional_custom_domain" {
+  description = "Optional additional custom domain for private API ECS mode. This attaches an additional certificate to the API ECS ALB HTTPS listener and does not configure CloudFront."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.additional_custom_domain == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.additional_custom_domain))
+    error_message = "additional_custom_domain must be a valid fully-qualified domain name with at least two labels."
+  }
+
+  validation {
+    condition     = var.use_deployment_mode_private_api_ecs || (var.additional_custom_domain == null && var.additional_custom_certificate_arn == null)
+    error_message = "additional_custom_domain and additional_custom_certificate_arn are only supported when use_deployment_mode_private_api_ecs is true."
+  }
+
+  validation {
+    condition     = var.additional_custom_domain == null ? var.additional_custom_certificate_arn == null : var.additional_custom_certificate_arn != null
+    error_message = "additional_custom_domain and additional_custom_certificate_arn must be set together."
+  }
+}
+
+variable "additional_custom_certificate_arn" {
+  description = "Optional ACM certificate ARN for additional_custom_domain in private API ECS mode. This certificate must be in the same region as the API ECS ALB."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.additional_custom_certificate_arn == null ? true : trimspace(var.additional_custom_certificate_arn) != ""
+    error_message = "additional_custom_certificate_arn must be null or a non-empty string."
+  }
+}
+
 variable "waf_acl_id" {
   description = "Optional WAF Web ACL ID to associate with the CloudFront distribution"
   type        = string

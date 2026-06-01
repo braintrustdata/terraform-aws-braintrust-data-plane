@@ -340,7 +340,7 @@ variable "authorized_security_groups" {
 
 variable "internal_authorized_security_groups" {
   type        = map(string)
-  description = "Map of internal data plane security group names to IDs authorized to access the API ECS ALB on port 8000."
+  description = "Map of internal data plane security group names to IDs authorized to access the API ECS ALB."
   default     = {}
 }
 
@@ -396,5 +396,37 @@ variable "fqdn" {
   validation {
     condition     = !var.private_api_ecs_mode || try(can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn)), false)
     error_message = "fqdn is required and must be a valid fully-qualified domain name with at least two labels when private_api_ecs_mode is true."
+  }
+}
+
+variable "additional_acm_certificate_arn" {
+  type        = string
+  description = "Additional ACM certificate ARN to attach to the API ECS ALB HTTPS listener."
+  default     = null
+
+  validation {
+    condition     = var.additional_acm_certificate_arn == null ? true : trimspace(var.additional_acm_certificate_arn) != ""
+    error_message = "additional_acm_certificate_arn must be null or a non-empty string."
+  }
+}
+
+variable "additional_fqdn" {
+  type        = string
+  description = "Additional DNS name for the API ECS ALB HTTPS listener."
+  default     = null
+
+  validation {
+    condition     = var.additional_fqdn == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.additional_fqdn))
+    error_message = "additional_fqdn must be a valid fully-qualified domain name with at least two labels."
+  }
+
+  validation {
+    condition     = var.private_api_ecs_mode || (var.additional_fqdn == null && var.additional_acm_certificate_arn == null)
+    error_message = "additional_fqdn and additional_acm_certificate_arn are only supported when private_api_ecs_mode is true."
+  }
+
+  validation {
+    condition     = var.additional_fqdn == null ? var.additional_acm_certificate_arn == null : var.additional_acm_certificate_arn != null
+    error_message = "additional_fqdn and additional_acm_certificate_arn must be set together."
   }
 }
