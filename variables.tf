@@ -308,7 +308,7 @@ variable "DANGER_disable_database_deletion_protection" {
 variable "redis_instance_type" {
   description = "Instance type for the Redis cluster"
   type        = string
-  default     = "cache.t4g.medium"
+  default     = "cache.r7g.large"
 }
 
 variable "redis_version" {

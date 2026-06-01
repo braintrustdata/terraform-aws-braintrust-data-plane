@@ -33,7 +33,7 @@ variable "custom_security_group_ids" {
 variable "redis_instance_type" {
   type        = string
   description = "Instance type for the Redis cluster"
-  default     = "cache.t4g.medium"
+  default     = "cache.r7g.large"
 }
 
 variable "redis_version" {
