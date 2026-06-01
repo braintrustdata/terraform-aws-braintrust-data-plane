@@ -383,7 +383,7 @@ variable "acm_certificate_arn" {
   default     = null
 
   validation {
-    condition     = var.private_api_ecs_mode ? (var.acm_certificate_arn != null && trimspace(var.acm_certificate_arn) != "") : true
+    condition     = !var.private_api_ecs_mode || try(trimspace(var.acm_certificate_arn) != "", false)
     error_message = "acm_certificate_arn is required and must be a non-empty string when private_api_ecs_mode is true."
   }
 }
@@ -394,7 +394,7 @@ variable "fqdn" {
   default     = null
 
   validation {
-    condition     = var.private_api_ecs_mode ? (var.fqdn != null && can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn))) : true
+    condition     = !var.private_api_ecs_mode || try(can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn)), false)
     error_message = "fqdn is required and must be a valid fully-qualified domain name with at least two labels when private_api_ecs_mode is true."
   }
 }
