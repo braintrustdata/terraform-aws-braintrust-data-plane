@@ -687,7 +687,7 @@ variable "outbound_rate_limit_window_minutes" {
 }
 
 variable "custom_domain" {
-  description = "Custom domain name for the data plane API endpoint. Used as the CloudFront custom domain in the default deployment mode. Required in private API ECS mode as the client endpoint."
+  description = "Custom domain name for the data plane API endpoint. Used as the CloudFront custom domain in the default deployment mode. Required in private API ECS mode as the HTTPS client endpoint."
   type        = string
   default     = null
 
@@ -697,13 +697,13 @@ variable "custom_domain" {
   }
 
   validation {
-    condition     = var.use_deployment_mode_private_api_ecs ? var.custom_domain != null : (var.custom_domain == null ? var.custom_certificate_arn == null : var.custom_certificate_arn != null)
-    error_message = "custom_domain is required in private API ECS mode. Outside private API ECS mode, custom_domain and custom_certificate_arn must be set together."
+    condition     = var.use_deployment_mode_private_api_ecs ? (var.custom_domain != null && var.custom_certificate_arn != null) : (var.custom_domain == null ? var.custom_certificate_arn == null : var.custom_certificate_arn != null)
+    error_message = "custom_domain and custom_certificate_arn are required in private API ECS mode. Outside private API ECS mode, custom_domain and custom_certificate_arn must be set together."
   }
 }
 
 variable "custom_certificate_arn" {
-  description = "ARN of the ACM certificate for custom_domain. For CloudFront, this certificate must be in us-east-1. For private API ECS mode, setting this enables HTTPS and the certificate must be in the same region as the API ECS ALB."
+  description = "ARN of the ACM certificate for custom_domain. For CloudFront, this certificate must be in us-east-1. For private API ECS mode, this certificate must be in the same region as the API ECS ALB."
   type        = string
   default     = null
 

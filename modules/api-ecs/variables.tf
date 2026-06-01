@@ -390,27 +390,22 @@ variable "task_security_group_id" {
 
 variable "acm_certificate_arn" {
   type        = string
-  description = "Existing ACM certificate ARN for API ECS ALB HTTPS listener. When set, HTTPS is enabled and fqdn is required."
+  description = "Existing ACM certificate ARN for API ECS ALB HTTPS listener."
   default     = null
 
   validation {
-    condition     = var.acm_certificate_arn == null ? true : trimspace(var.acm_certificate_arn) != ""
-    error_message = "acm_certificate_arn must be null or a non-empty string."
+    condition     = var.acm_certificate_arn != null ? trimspace(var.acm_certificate_arn) != "" : false
+    error_message = "acm_certificate_arn is required and must be a non-empty string."
   }
 }
 
 variable "fqdn" {
   type        = string
-  description = "Full DNS name for the API ECS ALB client endpoint. Required when acm_certificate_arn is set."
+  description = "Full DNS name for the API ECS ALB client endpoint."
   default     = null
 
   validation {
-    condition     = var.fqdn == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn))
-    error_message = "fqdn must be a valid fully-qualified domain name with at least two labels."
-  }
-
-  validation {
-    condition     = var.acm_certificate_arn == null || var.fqdn != null
-    error_message = "fqdn is required when acm_certificate_arn is set."
+    condition     = var.fqdn != null ? can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn)) : false
+    error_message = "fqdn is required and must be a valid fully-qualified domain name with at least two labels."
   }
 }

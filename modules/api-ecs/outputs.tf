@@ -33,24 +33,14 @@ output "task_security_group_id" {
   value       = var.task_security_group_id
 }
 
-output "http_url" {
-  description = "HTTP URL clients should use for API ECS on port 8000."
-  value       = local.http_url
-}
-
 output "https_url" {
-  description = "HTTPS URL for API ECS ALB when TLS is enabled."
+  description = "HTTPS URL for API ECS ALB."
   value       = local.https_url
 }
 
 output "client_url" {
   description = "URL clients should use for the API ECS ALB."
-  value       = local.client_url
-}
-
-output "tls_ready" {
-  description = "Whether API ECS ALB HTTPS is enabled with usable certificate configuration."
-  value       = local.enable_https
+  value       = local.https_url
 }
 
 output "fqdn" {

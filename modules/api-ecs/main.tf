@@ -8,11 +8,7 @@ locals {
 
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
-  # Supplying a certificate enables the public HTTPS listener.
-  enable_https = var.acm_certificate_arn != null
-  http_url     = var.fqdn != null ? "http://${var.fqdn}:8000" : "http://${aws_lb.api_ecs.dns_name}:8000"
-  https_url    = local.enable_https ? "https://${var.fqdn}" : null
-  client_url   = local.enable_https ? local.https_url : local.http_url
+  https_url                    = "https://${var.fqdn}"
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
@@ -54,9 +50,9 @@ locals {
     },
     # In transitional ECS mode, Lambda services still own background loops.
     var.private_api_ecs_mode ? {} : {
-      BRAINSTORE_DISABLE_ETL_LOOP      = "true"
+      BRAINSTORE_DISABLE_ETL_LOOP     = "true"
       AUTOMATION_CRON_MAX_CONCURRENCY = "0"
-      DISABLE_LOCAL_BACKGROUND_LOOPS   = "true"
+      DISABLE_LOCAL_BACKGROUND_LOOPS  = "true"
     },
     # Transitional ECS calls the Lambda AI proxy; private ECS-only keeps proxy work in-process.
     !var.private_api_ecs_mode ? (
@@ -312,7 +308,7 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_security_group_rule" "alb_ingress_8000_from_authorized_security_groups" {
-  for_each = local.enable_https ? var.internal_authorized_security_groups : merge(var.authorized_security_groups, var.internal_authorized_security_groups)
+  for_each = var.internal_authorized_security_groups
 
   type                     = "ingress"
   from_port                = 8000
@@ -323,20 +319,8 @@ resource "aws_security_group_rule" "alb_ingress_8000_from_authorized_security_gr
   security_group_id        = aws_security_group.alb.id
 }
 
-resource "aws_security_group_rule" "alb_ingress_8000_from_authorized_cidr_blocks" {
-  for_each = local.enable_https ? toset([]) : toset(var.authorized_cidr_blocks)
-
-  type              = "ingress"
-  from_port         = 8000
-  to_port           = 8000
-  protocol          = "tcp"
-  cidr_blocks       = [each.value]
-  description       = "Allow API ECS HTTP traffic from authorized CIDR ${each.value}."
-  security_group_id = aws_security_group.alb.id
-}
-
 resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_security_groups" {
-  for_each = local.enable_https ? var.authorized_security_groups : {}
+  for_each = var.authorized_security_groups
 
   type                     = "ingress"
   from_port                = 80
@@ -348,7 +332,7 @@ resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_se
 }
 
 resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_cidr_blocks" {
-  for_each = local.enable_https ? toset(var.authorized_cidr_blocks) : toset([])
+  for_each = toset(var.authorized_cidr_blocks)
 
   type              = "ingress"
   from_port         = 80
@@ -360,7 +344,7 @@ resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_ci
 }
 
 resource "aws_security_group_rule" "alb_ingress_https_from_authorized_security_groups" {
-  for_each = local.enable_https ? var.authorized_security_groups : {}
+  for_each = var.authorized_security_groups
 
   type                     = "ingress"
   from_port                = 443
@@ -372,7 +356,7 @@ resource "aws_security_group_rule" "alb_ingress_https_from_authorized_security_g
 }
 
 resource "aws_security_group_rule" "alb_ingress_https_from_authorized_cidr_blocks" {
-  for_each = local.enable_https ? toset(var.authorized_cidr_blocks) : toset([])
+  for_each = toset(var.authorized_cidr_blocks)
 
   type              = "ingress"
   from_port         = 443
@@ -462,7 +446,6 @@ resource "aws_lb_listener" "api_ecs_http" {
 }
 
 resource "aws_lb_listener" "api_ecs_http_redirect" {
-  count             = local.enable_https ? 1 : 0
   load_balancer_arn = aws_lb.api_ecs.arn
   port              = 80
   protocol          = "HTTP"
@@ -479,7 +462,6 @@ resource "aws_lb_listener" "api_ecs_http_redirect" {
 }
 
 resource "aws_lb_listener" "api_ecs_https" {
-  count             = local.enable_https ? 1 : 0
   load_balancer_arn = aws_lb.api_ecs.arn
   port              = 443
   protocol          = "HTTPS"

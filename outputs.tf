@@ -133,24 +133,14 @@ output "api_ecs_alb_security_group_id" {
   description = "ID of the security group attached to the private API ECS ALB"
 }
 
-output "api_ecs_http_url" {
-  value       = local.create_ecs_api ? module.api_ecs[0].http_url : null
-  description = "HTTP URL clients should use for the private API ECS endpoint on port 8000"
-}
-
 output "api_ecs_https_url" {
   value       = local.create_ecs_api ? module.api_ecs[0].https_url : null
-  description = "HTTPS URL of the private API ECS ALB when TLS is enabled"
+  description = "HTTPS URL of the private API ECS ALB"
 }
 
 output "api_ecs_client_url" {
   value       = local.create_ecs_api ? module.api_ecs[0].client_url : null
   description = "URL clients should use for the private API ECS ALB"
-}
-
-output "api_ecs_tls_ready" {
-  value       = local.create_ecs_api ? module.api_ecs[0].tls_ready : null
-  description = "Whether API ECS ALB HTTPS is enabled"
 }
 
 output "api_ecs_task_security_group_id" {

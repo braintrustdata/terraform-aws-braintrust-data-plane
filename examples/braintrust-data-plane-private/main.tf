@@ -17,13 +17,11 @@ module "braintrust-data-plane" {
 
   use_deployment_mode_private_api_ecs = true
 
-  # Private API ECS mode requires a private DNS name for client access. Create
-  # the DNS record outside this module, pointing custom_domain at the API ECS ALB.
-  custom_domain = "braintrust.internal.example.com"
-
-  # Optional: enable HTTPS on the private API ALB. The certificate must be in
-  # the same region as the ALB and cover custom_domain.
-  # custom_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
+  # Private API ECS mode requires an HTTPS client endpoint. Create the DNS
+  # record outside this module, pointing custom_domain at the API ECS ALB. The
+  # certificate must be in the same region as the ALB and cover custom_domain.
+  custom_domain          = "braintrust.internal.example.com"
+  custom_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
 
   # Permit access from your private networks or from specific security groups.
   private_api_authorized_cidr_blocks = ["10.0.0.0/8"]

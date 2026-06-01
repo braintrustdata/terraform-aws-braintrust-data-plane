@@ -81,13 +81,13 @@ See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory f
 The module can deploy a private-only data plane where the API ECS service is the
 only API ingress path. Set `use_deployment_mode_private_api_ecs = true` to skip
 CloudFront, API Gateway, and the Lambda services module. In this mode,
-`custom_domain` is required and should point at the API ECS ALB.
+`custom_domain` and `custom_certificate_arn` are required. Create and manage
+DNS records and the ACM certificate outside this module. The DNS name should
+point at the API ECS ALB, and the certificate must be in the same region as the
+ALB and cover `custom_domain`.
 
-By default, private mode exposes the API ECS ALB over HTTP on port 8000. To
-enable HTTPS, also provide `custom_certificate_arn` with an existing ACM
-certificate in the same region as the ALB and covering `custom_domain`. When
-HTTPS is enabled, the ALB also redirects HTTP port 80 to HTTPS port 443. Create
-and manage DNS records outside this module.
+Private mode exposes the client API endpoint over HTTPS on port 443. The ALB
+also redirects HTTP port 80 to HTTPS port 443.
 
 Switching from a public deployment to a Private deployment will result in downtime and the ingress url will change from Cloudfront to the API ECS ALB.
 
