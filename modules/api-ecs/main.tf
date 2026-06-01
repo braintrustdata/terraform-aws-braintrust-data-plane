@@ -312,7 +312,7 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_security_group_rule" "alb_ingress_8000_from_authorized_security_groups" {
-  for_each = local.enable_https ? var.brainstore_authorized_security_groups : merge(var.authorized_security_groups, var.brainstore_authorized_security_groups)
+  for_each = local.enable_https ? var.internal_authorized_security_groups : merge(var.authorized_security_groups, var.internal_authorized_security_groups)
 
   type                     = "ingress"
   from_port                = 8000

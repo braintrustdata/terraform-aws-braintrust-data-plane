@@ -338,9 +338,9 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
-variable "brainstore_authorized_security_groups" {
+variable "internal_authorized_security_groups" {
   type        = map(string)
-  description = "Map of Brainstore security group names to IDs authorized to access the API ECS ALB on port 8000."
+  description = "Map of internal data plane security group names to IDs authorized to access the API ECS ALB on port 8000."
   default     = {}
 }
 
