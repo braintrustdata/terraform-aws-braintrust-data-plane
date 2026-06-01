@@ -373,6 +373,7 @@ module "api_ecs" {
   private_subnet_ids         = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
   authorized_security_groups = var.private_api_authorized_security_groups
   internal_authorized_security_groups = {
+    "API"        = module.services_common.api_security_group_id
     "Brainstore" = module.services_common.brainstore_instance_security_group_id
   }
   authorized_cidr_blocks = var.private_api_authorized_cidr_blocks
