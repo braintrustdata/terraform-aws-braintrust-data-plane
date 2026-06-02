@@ -72,7 +72,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   origin {
-    domain_name = var.global_gateway_origin_domain
+    domain_name = trimsuffix(replace(var.global_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")
     origin_id   = local.cloudfront_GatewayOrigin
 
     custom_origin_config {

@@ -74,6 +74,10 @@ module "braintrust-data-plane" {
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
+  # Only use this when instructed to by the Braintrust team.
+  # use_global_gateway_origin   = false
+  # global_gateway_origin_domain = "gateway.braintrust.dev"
+
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to
   # peer with other VPCs and the default CIDRs conflict.
