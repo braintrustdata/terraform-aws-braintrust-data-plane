@@ -978,6 +978,12 @@ variable "use_global_gateway_origin" {
   default     = false
 }
 
+variable "global_gateway_origin_domain" {
+  description = "Gateway origin domain to use when use_global_gateway_origin is enabled. Don't change this unless instructed by Braintrust."
+  type        = string
+  default     = "gateway.braintrust.dev"
+}
+
 variable "use_deployment_mode_external_eks" {
   description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
   type        = bool

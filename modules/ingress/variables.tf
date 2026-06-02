@@ -33,6 +33,12 @@ variable "use_global_gateway_origin" {
   default     = false
 }
 
+variable "global_gateway_origin_domain" {
+  description = "Gateway origin domain to use when use_global_gateway_origin is enabled"
+  type        = string
+  default     = "gateway.braintrust.dev"
+}
+
 variable "ai_proxy_function_url" {
   description = "The function URL of the AI proxy lambda function"
   type        = string
