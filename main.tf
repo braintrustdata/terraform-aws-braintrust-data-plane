@@ -389,6 +389,7 @@ module "ingress" {
   cloudfront_origin_read_timeout = var.cloudfront_origin_read_timeout
   use_global_ai_proxy            = var.use_global_ai_proxy
   use_global_gateway_origin      = var.use_global_gateway_origin
+  global_gateway_origin_domain   = var.global_gateway_origin_domain
   ai_proxy_function_url          = module.services[0].ai_proxy_url
   api_handler_function_arn       = module.services[0].api_handler_arn
   custom_tags                    = var.custom_tags

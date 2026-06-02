@@ -5,6 +5,10 @@
 module "braintrust-data-plane" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # ... your eixsting configuration ...
+
+  # Only use this when instructed to by the Braintrust team.
+  # use_global_gateway_origin   = false
+  # global_gateway_origin_domain = "gateway.braintrust.dev"
 }
 
 ###############################################################################

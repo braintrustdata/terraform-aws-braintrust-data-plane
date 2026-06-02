@@ -90,6 +90,10 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
+  # Only use this when instructed to by the Braintrust team.
+  # use_global_gateway_origin   = false
+  # global_gateway_origin_domain = "gateway.braintrust.dev"
+
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.
   # Changing them after the fact is not possible and will require a complete rebuild of your Braintrust deployment.
