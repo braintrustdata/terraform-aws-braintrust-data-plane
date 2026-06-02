@@ -376,11 +376,10 @@ module "api_ecs" {
     "API"        = module.services_common.api_security_group_id
     "Brainstore" = module.services_common.brainstore_instance_security_group_id
   }
-  authorized_cidr_blocks         = var.private_api_authorized_cidr_blocks
-  acm_certificate_arn            = var.custom_certificate_arn
-  fqdn                           = var.custom_domain
-  additional_acm_certificate_arn = var.additional_custom_certificate_arn
-  additional_fqdn                = var.additional_custom_domain
+  authorized_cidr_blocks            = var.private_api_authorized_cidr_blocks
+  acm_certificate_arn               = var.custom_certificate_arn
+  fqdn                              = var.custom_domain
+  additional_custom_certificate_arn = var.additional_custom_certificate_arn
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn

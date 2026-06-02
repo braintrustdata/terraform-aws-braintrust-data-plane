@@ -9,6 +9,6 @@ ECS ALB. Create an ACM certificate outside the module that covers
 `custom_domain`, then pass it as `custom_certificate_arn`.
 
 To serve another hostname from the same private API ECS ALB HTTPS listener, set
-`additional_custom_domain` and `additional_custom_certificate_arn`. It is
-private API ECS only and does not configure CloudFront aliases or certificates.
-Internal traffic continues to use `custom_domain`.
+`additional_custom_certificate_arn`. DNS for that hostname is managed outside
+this module. It is private API ECS only and does not configure CloudFront
+aliases or certificates. Internal traffic continues to use `custom_domain`.

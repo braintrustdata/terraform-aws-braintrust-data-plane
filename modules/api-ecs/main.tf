@@ -487,10 +487,10 @@ resource "aws_lb_listener" "api_ecs_https" {
 }
 
 resource "aws_lb_listener_certificate" "api_ecs_additional_https" {
-  count = var.private_api_ecs_mode && var.additional_acm_certificate_arn != null ? 1 : 0
+  count = var.private_api_ecs_mode && var.additional_custom_certificate_arn != null ? 1 : 0
 
   listener_arn    = aws_lb_listener.api_ecs_https[0].arn
-  certificate_arn = var.additional_acm_certificate_arn
+  certificate_arn = var.additional_custom_certificate_arn
 }
 
 resource "aws_ssm_parameter" "api_url" {
