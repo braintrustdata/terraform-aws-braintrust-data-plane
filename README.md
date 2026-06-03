@@ -87,12 +87,7 @@ point at the API ECS ALB, and the certificate must be in the same region as the
 ALB and cover `custom_domain`.
 
 Private mode exposes the client API endpoint over HTTPS on port 443. The ALB
-also redirects HTTP port 80 to HTTPS port 443. Brainstore reaches the API ECS
-service through a separate HTTP listener on port 8000 that is only open to the
-Brainstore instance security group.
-
-When API ECS is enabled, Brainstore uses the API ECS ALB on HTTP port 8000 for
-internal API/proxy traffic.
+also redirects HTTP port 80 to HTTPS port 443.
 
 Switching from a public deployment to a Private deployment will result in downtime and the ingress url will change from Cloudfront to the API ECS ALB.
 
