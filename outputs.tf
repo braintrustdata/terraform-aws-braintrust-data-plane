@@ -169,17 +169,17 @@ output "api_url" {
 }
 
 output "cloudfront_distribution_domain_name" {
-  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_domain_name : null
+  value       = local.create_lambda_services ? module.ingress[0].cloudfront_distribution_domain_name : null
   description = "The domain name of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_arn" {
-  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_arn : null
+  value       = local.create_lambda_services ? module.ingress[0].cloudfront_distribution_arn : null
   description = "The ARN of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_hosted_zone_id" {
-  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
+  value       = local.create_lambda_services ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
   description = "The hosted zone ID of the cloudfront distribution"
 }
 

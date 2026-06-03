@@ -35,7 +35,7 @@ output "task_security_group_id" {
 
 output "client_url" {
   description = "URL clients should use for the API ECS ALB. Null unless private API ECS mode is enabled."
-  value       = local.https_url
+  value       = var.private_api_ecs_mode ? "https://${var.fqdn}" : null
 }
 
 output "fqdn" {

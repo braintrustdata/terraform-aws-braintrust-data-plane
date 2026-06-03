@@ -8,7 +8,6 @@ locals {
 
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
-  https_url                    = var.private_api_ecs_mode ? "https://${var.fqdn}" : null
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
@@ -556,7 +555,6 @@ resource "aws_ecs_service" "api_ecs" {
   }
 
   depends_on = [
-    aws_lb_listener.api_ecs_https,
     aws_lb_listener.api_ecs_brainstore_http,
   ]
 

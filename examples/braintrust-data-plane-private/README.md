@@ -7,4 +7,3 @@ domain.
 Create the DNS record outside the module, pointing `custom_domain` at the API
 ECS ALB. Create an ACM certificate outside the module that covers
 `custom_domain`, then pass it as `custom_certificate_arn`.
-

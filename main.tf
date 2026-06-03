@@ -43,8 +43,6 @@ locals {
   enable_ecs_api = local.create_ecs_api && (var.enable_ecs_api || var.use_deployment_mode_private_api_ecs)
   # Lambda services are skipped for external EKS and private API ECS deployments.
   create_lambda_services = !var.use_deployment_mode_external_eks && !var.use_deployment_mode_private_api_ecs
-  # The ingress module is only needed when Lambda services own the public API path.
-  create_ingress = local.create_lambda_services
   # Brainstore reads the ECS API URL when ECS owns API/proxy behavior, otherwise the Lambda proxy URL.
   brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
   # api_url points at the active data-plane endpoint for the selected deployment mode.
@@ -393,7 +391,7 @@ module "api_ecs" {
 
 module "ingress" {
   source = "./modules/ingress"
-  count  = local.create_ingress ? 1 : 0
+  count  = local.create_lambda_services ? 1 : 0
 
   deployment_name                = var.deployment_name
   custom_domain                  = var.custom_domain

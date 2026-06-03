@@ -59,8 +59,11 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
   ### Redis configuration
-  redis_instance_type = "cache.t4g.medium"
-  redis_version       = "7.0"
+
+  # Default is acceptable for typical production deployments.
+  redis_instance_type = "cache.r7g.large"
+
+  redis_version = "7.0"
 
   ### Network configuration
   # WARNING: Choose these CIDR blocks carefully with your networking team.
