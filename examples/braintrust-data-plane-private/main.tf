@@ -23,11 +23,6 @@ module "braintrust-data-plane" {
   custom_domain          = "braintrust.internal.example.com"
   custom_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
 
-  # To serve another hostname from the same private API ECS ALB HTTPS listener,
-  # attach an additional ACM certificate. DNS is managed outside this module.
-  # This does not configure CloudFront. Internal traffic continues to use custom_domain.
-  # additional_custom_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/ADDITIONAL_CERTIFICATE_ID"
-
   # Permit access from your private networks or from specific security groups.
   private_api_authorized_cidr_blocks = ["10.0.0.0/8"]
   # private_api_authorized_security_groups = {

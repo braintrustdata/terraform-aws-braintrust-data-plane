@@ -9,7 +9,6 @@ locals {
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
   https_url                    = var.private_api_ecs_mode ? "https://${var.fqdn}" : null
-  brainstore_api_url           = var.private_api_ecs_mode ? local.https_url : "http://${aws_lb.api_ecs.dns_name}"
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
@@ -308,18 +307,6 @@ resource "aws_security_group" "alb" {
   }, local.common_tags)
 }
 
-resource "aws_security_group_rule" "alb_ingress_http_from_internal_authorized_security_groups" {
-  for_each = var.private_api_ecs_mode ? {} : var.internal_authorized_security_groups
-
-  type                     = "ingress"
-  from_port                = 80
-  to_port                  = 80
-  protocol                 = "tcp"
-  source_security_group_id = each.value
-  description              = "Allow API ECS HTTP traffic from ${each.key}."
-  security_group_id        = aws_security_group.alb.id
-}
-
 resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_security_groups" {
   for_each = var.private_api_ecs_mode ? var.authorized_security_groups : {}
 
@@ -345,7 +332,7 @@ resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_ci
 }
 
 resource "aws_security_group_rule" "alb_ingress_https_from_authorized_security_groups" {
-  for_each = var.private_api_ecs_mode ? merge(var.internal_authorized_security_groups, var.authorized_security_groups) : {}
+  for_each = var.private_api_ecs_mode ? var.authorized_security_groups : {}
 
   type                     = "ingress"
   from_port                = 443
@@ -366,6 +353,18 @@ resource "aws_security_group_rule" "alb_ingress_https_from_authorized_cidr_block
   cidr_blocks       = [each.value]
   description       = "Allow HTTPS traffic from authorized CIDR ${each.value}."
   security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_security_group_rule" "alb_ingress_http_from_internal_authorized_security_groups" {
+  for_each = var.internal_authorized_security_groups
+
+  type                     = "ingress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  source_security_group_id = each.value
+  description              = "Allow API ECS HTTP traffic from ${each.key}."
+  security_group_id        = aws_security_group.alb.id
 }
 
 resource "aws_security_group_rule" "alb_egress_all" {
@@ -430,24 +429,6 @@ resource "aws_lb_target_group" "api_ecs" {
   }, local.common_tags)
 }
 
-resource "aws_lb_listener" "api_ecs_http" {
-  count = var.private_api_ecs_mode ? 0 : 1
-
-  load_balancer_arn = aws_lb.api_ecs.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type = "forward"
-
-    forward {
-      target_group {
-        arn = aws_lb_target_group.api_ecs.arn
-      }
-    }
-  }
-}
-
 resource "aws_lb_listener" "api_ecs_http_redirect" {
   count = var.private_api_ecs_mode ? 1 : 0
 
@@ -486,17 +467,26 @@ resource "aws_lb_listener" "api_ecs_https" {
   }
 }
 
-resource "aws_lb_listener_certificate" "api_ecs_additional_https" {
-  count = var.private_api_ecs_mode && var.additional_custom_certificate_arn != null ? 1 : 0
+resource "aws_lb_listener" "api_ecs_brainstore_http" {
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 8000
+  protocol          = "HTTP"
 
-  listener_arn    = aws_lb_listener.api_ecs_https[0].arn
-  certificate_arn = var.additional_custom_certificate_arn
+  default_action {
+    type = "forward"
+
+    forward {
+      target_group {
+        arn = aws_lb_target_group.api_ecs.arn
+      }
+    }
+  }
 }
 
 resource "aws_ssm_parameter" "api_url" {
   name        = "/braintrust/${var.deployment_name}/ecs-api-url"
   type        = "String"
-  value       = local.brainstore_api_url
+  value       = "http://${aws_lb.api_ecs.dns_name}:8000"
   description = "API ECS URL for Brainstore"
 
   tags = local.common_tags
@@ -566,8 +556,8 @@ resource "aws_ecs_service" "api_ecs" {
   }
 
   depends_on = [
-    aws_lb_listener.api_ecs_http,
     aws_lb_listener.api_ecs_https,
+    aws_lb_listener.api_ecs_brainstore_http,
   ]
 
   lifecycle {

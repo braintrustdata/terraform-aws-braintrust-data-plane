@@ -398,9 +398,3 @@ variable "fqdn" {
     error_message = "fqdn is required and must be a valid fully-qualified domain name with at least two labels when private_api_ecs_mode is true."
   }
 }
-
-variable "additional_custom_certificate_arn" {
-  type        = string
-  description = "Additional ACM certificate ARN to attach to the API ECS ALB HTTPS listener."
-  default     = null
-}

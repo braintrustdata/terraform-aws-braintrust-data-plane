@@ -708,17 +708,6 @@ variable "custom_certificate_arn" {
   default     = null
 }
 
-variable "additional_custom_certificate_arn" {
-  description = "Optional additional ACM certificate ARN to attach to the private API ECS ALB HTTPS listener. This certificate must be in the same region as the API ECS ALB."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.use_deployment_mode_private_api_ecs || var.additional_custom_certificate_arn == null
-    error_message = "additional_custom_certificate_arn is only supported when use_deployment_mode_private_api_ecs is true."
-  }
-}
-
 variable "waf_acl_id" {
   description = "Optional WAF Web ACL ID to associate with the CloudFront distribution"
   type        = string
