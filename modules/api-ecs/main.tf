@@ -50,6 +50,9 @@ locals {
     TS_API_PORT                                       = "8000"
     PROXY_URL                                         = "http://127.0.0.1:8000/v1/proxy"
     TS_API_ASYNC_SCORING_PROXY_URL                    = "http://127.0.0.1:8000"
+    BRAINTRUST_UNSAFE_URL_REQUEST_MODE                = var.unsafe_url_request_mode
+    BRAINTRUST_URL_SECURITY_DNS_SERVERS               = var.url_security_dns_servers
+    BRAINTRUST_URL_SECURITY_ALLOW_CIDRS               = var.url_security_allow_cidrs
     },
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"

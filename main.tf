@@ -203,6 +203,9 @@ module "services" {
   whitelisted_origins                        = var.whitelisted_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
+  unsafe_url_request_mode                    = var.unsafe_url_request_mode
+  url_security_dns_servers                   = var.url_security_dns_servers
+  url_security_allow_cidrs                   = var.url_security_allow_cidrs
   extra_env_vars                             = var.service_extra_env_vars
 
   # Billing usage telemetry
@@ -284,12 +287,15 @@ module "gateway_ecs" {
     },
     var.gateway_authorized_security_groups,
   )
-  extra_env_vars         = var.gateway_extra_env_vars
-  custom_tags            = var.custom_tags
-  brainstore_license_key = var.brainstore_license_key
-  enable_execute_command = var.gateway_enable_execute_command
-  braintrust_app_url     = var.gateway_braintrust_app_url
-  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  extra_env_vars           = var.gateway_extra_env_vars
+  custom_tags              = var.custom_tags
+  brainstore_license_key   = var.brainstore_license_key
+  enable_execute_command   = var.gateway_enable_execute_command
+  braintrust_app_url       = var.gateway_braintrust_app_url
+  braintrust_api_url       = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  unsafe_url_request_mode  = var.unsafe_url_request_mode
+  url_security_dns_servers = var.url_security_dns_servers
+  url_security_allow_cidrs = var.url_security_allow_cidrs
 }
 
 module "api_ecs" {
@@ -339,6 +345,9 @@ module "api_ecs" {
   outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
+  unsafe_url_request_mode               = var.unsafe_url_request_mode
+  url_security_dns_servers              = var.url_security_dns_servers
+  url_security_allow_cidrs              = var.url_security_allow_cidrs
   extra_env_vars                        = var.api_ecs_extra_env_vars
 
   # Quarantine VPC

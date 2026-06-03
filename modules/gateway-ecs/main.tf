@@ -14,6 +14,10 @@ locals {
     AUTH_CACHE_REDIS_URL        = "redis://${var.redis_host}:${var.redis_port}"
     GATEWAY_JSON_LOGS           = "true"
     OTLP_HTTP_ENDPOINT          = "https://www.braintrust.dev/api/pulse/otel"
+
+    BRAINTRUST_UNSAFE_URL_REQUEST_MODE  = var.unsafe_url_request_mode
+    BRAINTRUST_URL_SECURITY_DNS_SERVERS = var.url_security_dns_servers
+    BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = var.url_security_allow_cidrs
   }
   plain_license_env_var = var.brainstore_license_key == null ? {} : {
     BRAINSTORE_LICENSE_KEY = var.brainstore_license_key

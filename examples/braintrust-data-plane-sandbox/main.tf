@@ -79,4 +79,10 @@ module "braintrust-data-plane" {
   # peer with other VPCs and the default CIDRs conflict.
   # vpc_cidr            = "10.175.0.0/21"
   # quarantine_vpc_cidr = "10.175.8.0/21"
+
+  ### Optional URL-security controls for externally supplied outbound HTTP URLs.
+  ### Leave unset to use the application default mode of "warn".
+  # unsafe_url_request_mode  = "reject"
+  # url_security_dns_servers = "1.1.1.1,8.8.8.8"
+  # url_security_allow_cidrs = "10.0.0.0/8"
 }

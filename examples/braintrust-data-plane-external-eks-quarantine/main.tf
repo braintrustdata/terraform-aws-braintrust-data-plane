@@ -103,4 +103,10 @@ module "braintrust-data-plane" {
   # custom_tags = {
   #   CustomTagKey = "SomeValue"
   # }
+
+  ### Optional URL-security controls for Braintrust services created by this module.
+  ### External EKS workloads must also receive matching env vars in their own deployment manifests.
+  # unsafe_url_request_mode  = "reject"
+  # url_security_dns_servers = "1.1.1.1,8.8.8.8"
+  # url_security_allow_cidrs = "10.0.0.0/8"
 }

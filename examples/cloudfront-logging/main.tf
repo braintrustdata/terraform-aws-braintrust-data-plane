@@ -5,6 +5,7 @@
 module "braintrust-data-plane" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # ... your eixsting configuration ...
+  # Optional URL-security inputs are shown in examples/braintrust-data-plane/main.tf.
 }
 
 ###############################################################################
