@@ -40,6 +40,10 @@ locals {
     TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
     TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
 
+    BRAINTRUST_UNSAFE_URL_REQUEST_MODE  = var.unsafe_url_request_mode
+    BRAINTRUST_URL_SECURITY_DNS_SERVERS = var.url_security_dns_servers
+    BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = var.url_security_allow_cidrs
+
     SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
     CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
   }
@@ -55,8 +59,6 @@ locals {
       AI_PROXY_INVOKE_ROLE = aws_iam_role.ai_proxy_invoke_role.arn
       CATCHUP_ETL_ARN      = aws_lambda_function.catchup_etl.arn
       INSERT_LOGS2         = "true"
-
-      BRAINTRUST_UNSAFE_URL_REQUEST_MODE = var.unsafe_url_request_mode
     },
     var.brainstore_wal_footer_version != "" ? {
       BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version

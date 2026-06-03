@@ -17,6 +17,10 @@ locals {
     AUTH_CACHE_REDIS_URL        = "redis://${var.redis_host}:${var.redis_port}"
     GATEWAY_JSON_LOGS           = "true"
     OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
+
+    BRAINTRUST_UNSAFE_URL_REQUEST_MODE  = var.unsafe_url_request_mode
+    BRAINTRUST_URL_SECURITY_DNS_SERVERS = var.url_security_dns_servers
+    BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = var.url_security_allow_cidrs
     },
     local.observability_enabled ? {
       DD_ENV     = var.internal_observability_env_name

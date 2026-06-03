@@ -336,6 +336,20 @@ variable "quarantine_proxy_url" {
   description = "URL for the AI proxy function used by quarantine execution."
 }
 
+variable "url_security_dns_servers" {
+  description = "Comma-separated DNS resolver IP addresses Braintrust backends should query when checking user-supplied URLs. Set this to force URL-security validation through trusted resolvers, such as VPC or corporate DNS, before falling back to the host resolver. Leave empty to use the application default resolver behavior."
+  type        = string
+  default     = ""
+  nullable    = false
+}
+
+variable "url_security_allow_cidrs" {
+  description = "Optional comma-separated CIDR ranges that Braintrust backend URL-security validation may allow even if private or reserved. Hard-blocked metadata, link-local, multicast, unspecified, and future-use ranges remain blocked."
+  type        = string
+  default     = ""
+  nullable    = false
+}
+
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the API ECS container."

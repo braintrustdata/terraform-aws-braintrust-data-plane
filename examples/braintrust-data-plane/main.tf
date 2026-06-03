@@ -117,9 +117,11 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
-  # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
-  # unsafe_url_request_mode = "warn"
+  # Optional URL-security controls for externally supplied outbound HTTP URLs.
+  # Leave unset to use the application default mode of "warn".
+  # unsafe_url_request_mode  = "reject"
+  # url_security_dns_servers = "1.1.1.1,8.8.8.8"
+  # url_security_allow_cidrs = "10.0.0.0/8"
 
   # Uncomment these to set extra environment variables for the services.
   # Only use this when instructed to by the Braintrust team.

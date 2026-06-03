@@ -9,6 +9,8 @@ module "braintrust-data-plane" {
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
+
+  # Optional URL-security inputs are shown in examples/braintrust-data-plane/main.tf.
 }
 
 ###############################################################################
