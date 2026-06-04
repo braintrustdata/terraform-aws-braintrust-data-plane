@@ -57,6 +57,9 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
+  # Disable fast readers to reduce costs in sandbox. Production deployments enable by default.
+  brainstore_fast_reader_instance_count = 0
+
   ### WARNING: skip_pg_for_brainstore_objects is safe for fresh sandbox deployments
   ### but can cause data loss or downtime if applied incorrectly to existing
   ### production environments. It is a ONE-WAY operation that cannot be rolled
