@@ -899,7 +899,7 @@ variable "brainstore_extra_env_vars_writer" {
 variable "brainstore_fast_reader_instance_count" {
   type        = number
   description = "The number of dedicated fast reader nodes to create"
-  default     = 0
+  default     = 2
 }
 
 variable "brainstore_fast_reader_instance_type" {
