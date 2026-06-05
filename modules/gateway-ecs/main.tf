@@ -3,9 +3,23 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name = "gateway"
-  container_port = 8080
-  base_env_vars = {
+  container_name           = "gateway"
+  container_port           = 8080
+  unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
+  url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
+  url_security_allow_cidrs = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  url_security_env_vars = merge(
+    local.unsafe_url_request_mode != "" ? {
+      BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
+    } : {},
+    local.url_security_dns_servers != "" ? {
+      BRAINTRUST_URL_SECURITY_DNS_SERVERS = local.url_security_dns_servers
+    } : {},
+    local.url_security_allow_cidrs != "" ? {
+      BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
+    } : {}
+  )
+  base_env_vars = merge({
     GATEWAY_ENV        = "production"
     BRAINTRUST_APP_URL = var.braintrust_app_url
     BRAINTRUST_API_URL = var.braintrust_api_url
@@ -14,11 +28,7 @@ locals {
     AUTH_CACHE_REDIS_URL        = "redis://${var.redis_host}:${var.redis_port}"
     GATEWAY_JSON_LOGS           = "true"
     OTLP_HTTP_ENDPOINT          = "https://www.braintrust.dev/api/pulse/otel"
-
-    BRAINTRUST_UNSAFE_URL_REQUEST_MODE  = var.unsafe_url_request_mode
-    BRAINTRUST_URL_SECURITY_DNS_SERVERS = var.url_security_dns_servers
-    BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = var.url_security_allow_cidrs
-  }
+  }, local.url_security_env_vars)
   plain_license_env_var = var.brainstore_license_key == null ? {} : {
     BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
   }
