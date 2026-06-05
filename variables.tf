@@ -308,7 +308,7 @@ variable "DANGER_disable_database_deletion_protection" {
 variable "redis_instance_type" {
   description = "Instance type for the Redis cluster"
   type        = string
-  default     = "cache.t4g.medium"
+  default     = "cache.r7g.large"
 }
 
 variable "redis_version" {
@@ -733,6 +733,17 @@ variable "cloudfront_price_class" {
   default     = "PriceClass_100"
 }
 
+variable "cloudfront_origin_read_timeout" {
+  description = "The read timeout (in seconds) for CloudFront origins. Increase this if long-running scorers or tools hit 504 Gateway Timeout errors on /function/invoke. AWS CloudFront supports up to 180s; values above 60s may require an AWS Support ticket to raise the quota."
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 180
+    error_message = "cloudfront_origin_read_timeout must be between 1 and 180 seconds."
+  }
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
@@ -911,7 +922,7 @@ variable "brainstore_extra_env_vars_writer" {
 variable "brainstore_fast_reader_instance_count" {
   type        = number
   description = "The number of dedicated fast reader nodes to create"
-  default     = 0
+  default     = 2
 }
 
 variable "brainstore_fast_reader_instance_type" {
@@ -982,6 +993,18 @@ variable "use_global_ai_proxy" {
   description = "Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust."
   type        = bool
   default     = false
+}
+
+variable "use_global_gateway_origin" {
+  description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev. Don't enable this unless instructed by Braintrust."
+  type        = bool
+  default     = false
+}
+
+variable "global_gateway_origin_domain" {
+  description = "Gateway origin domain to use when use_global_gateway_origin is enabled. Don't change this unless instructed by Braintrust."
+  type        = string
+  default     = "gateway.braintrust.dev"
 }
 
 variable "use_deployment_mode_external_eks" {

@@ -85,10 +85,14 @@ module "braintrust-data-plane" {
 
   ### Redis configuration
   # Default is acceptable for typical production deployments.
-  redis_instance_type = "cache.t4g.medium"
+  redis_instance_type = "cache.r7g.large"
 
   # Redis engine version
   redis_version = "7.0"
+
+  # Only use this when instructed to by the Braintrust team.
+  # use_global_gateway_origin   = false
+  # global_gateway_origin_domain = "gateway.braintrust.dev"
 
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.
