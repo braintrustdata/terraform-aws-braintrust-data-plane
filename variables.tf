@@ -489,8 +489,8 @@ variable "enable_ecs_api" {
   default     = false
 
   validation {
-    condition     = !var.enable_ecs_api || var.create_ecs_api
-    error_message = "enable_ecs_api requires create_ecs_api."
+    condition     = !var.enable_ecs_api || var.create_ecs_api || var.use_deployment_mode_private_api_ecs
+    error_message = "enable_ecs_api requires create_ecs_api unless use_deployment_mode_private_api_ecs is true."
   }
 }
 
@@ -570,14 +570,14 @@ variable "api_ecs_extra_env_vars" {
   default     = {}
 }
 
-variable "api_ecs_authorized_security_groups" {
-  description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
+variable "private_api_authorized_security_groups" {
+  description = "Map of security group names to IDs authorized to access the API ECS client endpoint on HTTPS port 443 and HTTP redirect port 80. Only used when use_deployment_mode_private_api_ecs is true. Format: { name = <security_group_id> }"
   type        = map(string)
   default     = {}
 }
 
-variable "api_ecs_authorized_cidr_blocks" {
-  description = "CIDR blocks authorized to access the internal API ECS ALB."
+variable "private_api_authorized_cidr_blocks" {
+  description = "CIDR blocks authorized to access the API ECS client endpoint on HTTPS port 443 and HTTP redirect port 80. Only used when use_deployment_mode_private_api_ecs is true."
   type        = list(string)
   default     = []
 }
@@ -687,13 +687,23 @@ variable "outbound_rate_limit_window_minutes" {
 }
 
 variable "custom_domain" {
-  description = "Custom domain name for the CloudFront distribution"
+  description = "Custom domain name for the data plane API endpoint. Used as the CloudFront custom domain in the default deployment mode. Required in private API ECS mode as the HTTPS client endpoint."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.custom_domain == null ? true : can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.custom_domain))
+    error_message = "custom_domain must be a valid fully-qualified domain name with at least two labels."
+  }
+
+  validation {
+    condition     = var.use_deployment_mode_private_api_ecs ? (var.custom_domain != null && var.custom_certificate_arn != null) : (var.custom_domain == null ? var.custom_certificate_arn == null : var.custom_certificate_arn != null)
+    error_message = "custom_domain and custom_certificate_arn are required in private API ECS mode. Outside private API ECS mode, custom_domain and custom_certificate_arn must be set together."
+  }
 }
 
 variable "custom_certificate_arn" {
-  description = "ARN of the ACM certificate for the custom domain"
+  description = "ARN of the ACM certificate for custom_domain. For CloudFront, this certificate must be in us-east-1. For private API ECS mode, this certificate must be in the same region as the API ECS ALB."
   type        = string
   default     = null
 }
@@ -988,6 +998,22 @@ variable "use_deployment_mode_external_eks" {
   description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !(var.use_deployment_mode_external_eks && var.use_deployment_mode_private_api_ecs)
+    error_message = "use_deployment_mode_external_eks and use_deployment_mode_private_api_ecs cannot both be true."
+  }
+}
+
+variable "use_deployment_mode_private_api_ecs" {
+  description = "Enable private API ECS deployment mode. When true, CloudFront, API Gateway, and Lambda services are not created; the internal API ECS ALB is the API ingress."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_deployment_mode_private_api_ecs || var.enable_brainstore
+    error_message = "use_deployment_mode_private_api_ecs requires enable_brainstore."
+  }
 }
 
 variable "existing_eks_cluster_arn" {

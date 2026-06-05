@@ -8,7 +8,6 @@ locals {
 
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
-  api_ecs_url                  = "http://${aws_lb.api_ecs.dns_name}"
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
@@ -21,12 +20,12 @@ locals {
     OUTBOUND_RATE_LIMIT_MAX_REQUESTS                  = tostring(var.outbound_rate_limit_max_requests)
     QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc && var.quarantine_invoke_role_arn != null ? var.quarantine_invoke_role_arn : ""
     QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : ""
-    QUARANTINE_PROXY_URL                              = var.quarantine_proxy_url
     QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
     QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
     QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
     QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc && var.quarantine_lambda_security_group_id != null ? var.quarantine_lambda_security_group_id : ""
     QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
+    QUARANTINE_REGION                                 = var.use_quarantine_vpc ? data.aws_region.current.region : ""
     BRAINSTORE_ENABLED                                = "true"
     BRAINSTORE_DEFAULT                                = "force"
     BRAINSTORE_URL                                    = "http://${var.brainstore_hostname}:${var.brainstore_port}"
@@ -39,18 +38,33 @@ locals {
     INSERT_LOGS2                                      = "true"
     NODE_MEMORY_PERCENT                               = "80"
     AI_PROXY_FN_URL                                   = "http://127.0.0.1:8000"
-    BRAINSTORE_DISABLE_ETL_LOOP                       = "true"
     DISABLE_ASYNC_SCORING                             = "false"
     DISABLE_ATTACHMENT_OPTIMIZATION                   = "false"
     ENABLE_DEEP_SEARCH_LOGGING                        = "false"
     ENABLE_RUNTIME_METRICS                            = "false"
-    AUTOMATION_CRON_MAX_CONCURRENCY                   = "0"
-    DISABLE_LOCAL_BACKGROUND_LOOPS                    = "true"
     TS_API_HOST                                       = "0.0.0.0"
     TS_API_PORT                                       = "8000"
     PROXY_URL                                         = "http://127.0.0.1:8000/v1/proxy"
     TS_API_ASYNC_SCORING_PROXY_URL                    = "http://127.0.0.1:8000"
     },
+    # In transitional ECS mode, Lambda services still own background loops.
+    var.private_api_ecs_mode ? {} : {
+      BRAINSTORE_DISABLE_ETL_LOOP     = "true"
+      AUTOMATION_CRON_MAX_CONCURRENCY = "0"
+      DISABLE_LOCAL_BACKGROUND_LOOPS  = "true"
+    },
+    # Transitional ECS calls the Lambda AI proxy; private ECS-only keeps proxy work in-process.
+    !var.private_api_ecs_mode ? (
+      var.quarantine_proxy_url != null ? (
+        trimspace(var.quarantine_proxy_url) != "" ? {
+          QUARANTINE_PROXY_URL = var.quarantine_proxy_url
+        } : {}
+      ) : {}
+    ) : {},
+    # Private ECS-only can fall back to in-process execution when quarantine VPC is disabled.
+    var.allow_code_function_execution ? {
+      ALLOW_CODE_FUNCTION_EXECUTION = "true"
+    } : {},
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
       BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"
@@ -292,28 +306,64 @@ resource "aws_security_group" "alb" {
   }, local.common_tags)
 }
 
-resource "aws_security_group_rule" "alb_ingress_http_from_authorized_security_groups" {
-  for_each = var.authorized_security_groups
+resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_security_groups" {
+  for_each = var.private_api_ecs_mode ? var.authorized_security_groups : {}
 
   type                     = "ingress"
   from_port                = 80
   to_port                  = 80
   protocol                 = "tcp"
   source_security_group_id = each.value
-  description              = "Allow HTTP traffic from ${each.key}."
+  description              = "Allow HTTP redirect traffic from ${each.key}."
   security_group_id        = aws_security_group.alb.id
 }
 
-resource "aws_security_group_rule" "alb_ingress_http_from_authorized_cidr_blocks" {
-  for_each = toset(var.authorized_cidr_blocks)
+resource "aws_security_group_rule" "alb_ingress_http_redirect_from_authorized_cidr_blocks" {
+  for_each = toset(var.private_api_ecs_mode ? var.authorized_cidr_blocks : [])
 
   type              = "ingress"
   from_port         = 80
   to_port           = 80
   protocol          = "tcp"
   cidr_blocks       = [each.value]
-  description       = "Allow HTTP traffic from authorized CIDR ${each.value}."
+  description       = "Allow HTTP redirect traffic from authorized CIDR ${each.value}."
   security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_security_group_rule" "alb_ingress_https_from_authorized_security_groups" {
+  for_each = var.private_api_ecs_mode ? var.authorized_security_groups : {}
+
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = each.value
+  description              = "Allow HTTPS traffic from ${each.key}."
+  security_group_id        = aws_security_group.alb.id
+}
+
+resource "aws_security_group_rule" "alb_ingress_https_from_authorized_cidr_blocks" {
+  for_each = toset(var.private_api_ecs_mode ? var.authorized_cidr_blocks : [])
+
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = [each.value]
+  description       = "Allow HTTPS traffic from authorized CIDR ${each.value}."
+  security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_security_group_rule" "alb_ingress_http_from_internal_authorized_security_groups" {
+  for_each = var.internal_authorized_security_groups
+
+  type                     = "ingress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  source_security_group_id = each.value
+  description              = "Allow API ECS HTTP traffic from ${each.key}."
+  security_group_id        = aws_security_group.alb.id
 }
 
 resource "aws_security_group_rule" "alb_egress_all" {
@@ -362,7 +412,7 @@ resource "aws_lb_target_group" "api_ecs" {
   target_type = "ip"
   vpc_id      = var.vpc_id
 
-  deregistration_delay = var.target_group_deregistration_delay_seconds
+  deregistration_delay = 300
 
   health_check {
     path                = "/"
@@ -378,13 +428,52 @@ resource "aws_lb_target_group" "api_ecs" {
   }, local.common_tags)
 }
 
-resource "aws_lb_listener" "api_ecs_http" {
+resource "aws_lb_listener" "api_ecs_http_redirect" {
+  count = var.private_api_ecs_mode ? 1 : 0
+
   load_balancer_arn = aws_lb.api_ecs.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "api_ecs_https" {
+  count = var.private_api_ecs_mode ? 1 : 0
+
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.acm_certificate_arn
+
+  default_action {
     type = "forward"
+
+    forward {
+      target_group {
+        arn = aws_lb_target_group.api_ecs.arn
+      }
+    }
+  }
+}
+
+resource "aws_lb_listener" "api_ecs_brainstore_http" {
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 8000
+  protocol          = "HTTP"
+
+  default_action {
+    type = "forward"
+
     forward {
       target_group {
         arn = aws_lb_target_group.api_ecs.arn
@@ -396,7 +485,7 @@ resource "aws_lb_listener" "api_ecs_http" {
 resource "aws_ssm_parameter" "api_url" {
   name        = "/braintrust/${var.deployment_name}/ecs-api-url"
   type        = "String"
-  value       = local.api_ecs_url
+  value       = "http://${aws_lb.api_ecs.dns_name}:8000"
   description = "API ECS URL for Brainstore"
 
   tags = local.common_tags
@@ -466,7 +555,7 @@ resource "aws_ecs_service" "api_ecs" {
   }
 
   depends_on = [
-    aws_lb_listener.api_ecs_http,
+    aws_lb_listener.api_ecs_brainstore_http,
   ]
 
   lifecycle {

@@ -8,6 +8,16 @@ output "alb_arn" {
   value       = aws_lb.api_ecs.arn
 }
 
+output "alb_dns_name" {
+  description = "DNS name of the API ECS ALB."
+  value       = aws_lb.api_ecs.dns_name
+}
+
+output "alb_zone_id" {
+  description = "Hosted zone ID of the API ECS ALB."
+  value       = aws_lb.api_ecs.zone_id
+}
+
 output "target_group_arn" {
   description = "ARN of the API ECS ALB target group."
   value       = aws_lb_target_group.api_ecs.arn
@@ -23,9 +33,19 @@ output "task_security_group_id" {
   value       = var.task_security_group_id
 }
 
-output "http_url" {
-  description = "HTTP URL for API ECS ALB."
-  value       = local.api_ecs_url
+output "client_url" {
+  description = "URL clients should use for the API ECS ALB. Null unless private API ECS mode is enabled."
+  value       = var.private_api_ecs_mode ? "https://${var.fqdn}" : null
+}
+
+output "fqdn" {
+  description = "Full DNS name configured for the API ECS ALB."
+  value       = var.fqdn
+}
+
+output "acm_certificate_arn" {
+  description = "ARN of the ACM certificate selected for the API ECS ALB HTTPS listener."
+  value       = var.acm_certificate_arn
 }
 
 output "url_ssm_parameter_name" {

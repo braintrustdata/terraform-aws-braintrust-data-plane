@@ -284,6 +284,11 @@ variable "quarantine_vpc_private_subnets" {
   type        = list(string)
   description = "Private subnet IDs in the quarantine VPC."
   default     = []
+
+  validation {
+    condition     = var.use_quarantine_vpc ? length(var.quarantine_vpc_private_subnets) == 3 : true
+    error_message = "quarantine_vpc_private_subnets must contain exactly 3 subnet IDs when use_quarantine_vpc is true."
+  }
 }
 
 variable "quarantine_lambda_security_group_id" {
@@ -296,11 +301,17 @@ variable "quarantine_vpc_id" {
   type        = string
   description = "Quarantine VPC ID."
   default     = null
+
+  validation {
+    condition     = var.use_quarantine_vpc ? var.quarantine_vpc_id != null : true
+    error_message = "quarantine_vpc_id is required when use_quarantine_vpc is true."
+  }
 }
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "URL for the AI proxy function used by quarantine execution."
+  description = "Optional Lambda AI proxy URL used by transitional API ECS deployments."
+  default     = null
 }
 
 variable "extra_env_vars" {
@@ -309,9 +320,27 @@ variable "extra_env_vars" {
   default     = {}
 }
 
+variable "private_api_ecs_mode" {
+  type        = bool
+  description = "Whether API ECS is the private-only deployment's primary API service."
+  default     = false
+}
+
+variable "allow_code_function_execution" {
+  type        = bool
+  description = "Allow API ECS to execute code functions in process when quarantine Lambda execution is not configured."
+  default     = false
+}
+
 variable "authorized_security_groups" {
   type        = map(string)
   description = "Map of security group names to IDs authorized to access the API ECS ALB."
+  default     = {}
+}
+
+variable "internal_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of internal data plane security group names to IDs authorized to access the API ECS ALB."
   default     = {}
 }
 
@@ -338,17 +367,6 @@ variable "enable_execute_command" {
   default     = false
 }
 
-variable "target_group_deregistration_delay_seconds" {
-  type        = number
-  description = "Seconds for the API ECS target group to wait before deregistering draining targets."
-  default     = 300
-
-  validation {
-    condition     = var.target_group_deregistration_delay_seconds >= 0 && var.target_group_deregistration_delay_seconds <= 3600
-    error_message = "target_group_deregistration_delay_seconds must be between 0 and 3600."
-  }
-}
-
 variable "task_role_arn" {
   type        = string
   description = "IAM role ARN for the ECS task. Should be the APIHandlerRole ARN from the services-common module."
@@ -357,4 +375,26 @@ variable "task_role_arn" {
 variable "task_security_group_id" {
   type        = string
   description = "Security group ID to attach to API ECS tasks."
+}
+
+variable "acm_certificate_arn" {
+  type        = string
+  description = "Existing ACM certificate ARN for API ECS ALB HTTPS listener."
+  default     = null
+
+  validation {
+    condition     = !var.private_api_ecs_mode || try(trimspace(var.acm_certificate_arn) != "", false)
+    error_message = "acm_certificate_arn is required and must be a non-empty string when private_api_ecs_mode is true."
+  }
+}
+
+variable "fqdn" {
+  type        = string
+  description = "Full DNS name for the API ECS ALB client endpoint."
+  default     = null
+
+  validation {
+    condition     = !var.private_api_ecs_mode || try(can(regex("^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", var.fqdn)), false)
+    error_message = "fqdn is required and must be a valid fully-qualified domain name with at least two labels when private_api_ecs_mode is true."
+  }
 }

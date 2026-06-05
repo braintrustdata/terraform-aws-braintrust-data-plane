@@ -5,6 +5,7 @@ Example configurations for deploying the Braintrust data plane on AWS. Copy the 
 | Example | Description |
 |---|---|
 | [braintrust-data-plane](./braintrust-data-plane/) | Standard production-sized deployment. Start here for most use cases. |
+| [braintrust-data-plane-private](./braintrust-data-plane-private/) | Private-only deployment where API ECS is the only API ingress path and the internal API ECS ALB is the API URL. |
 | [braintrust-data-plane-sandbox](./braintrust-data-plane-sandbox/) | Minimal deployment for infrastructure testing. Downsized instances, no quarantine VPC, deletion protection disabled. Not for workload testing. |
 | [braintrust-data-plane-external-eks-quarantine](./braintrust-data-plane-external-eks-quarantine/) | Deployment with an external EKS cluster and quarantine VPC for user-defined functions. |
 | [cloudfront-logging](./cloudfront-logging/) | Add-on example for enabling CloudFront access logging to S3. |

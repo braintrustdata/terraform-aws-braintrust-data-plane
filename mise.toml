@@ -20,17 +20,25 @@ terraform init -upgrade
 terraform validate
 
 echo "Validating example code"
-cd examples/braintrust-data-plane
+validate_example() {
+  local example="$1"
+  (
+    cd "$example"
 # Override the module source to point to the local module.
 # '*_override.tf' is a lesser known native terraform feature
-trap 'rm -f main_override.tf' EXIT
+    trap 'rm -f main_override.tf' EXIT
 cat <<EOF> main_override.tf
 module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
-terraform init -upgrade
-terraform validate
+    terraform init -upgrade
+    terraform validate
+  )
+}
+
+validate_example examples/braintrust-data-plane
+validate_example examples/braintrust-data-plane-private
 """
 
 [tasks.validate-tofu]
@@ -43,15 +51,23 @@ tofu init -upgrade
 tofu validate
 
 echo "Validating example code with OpenTofu"
-cd examples/braintrust-data-plane
+validate_example() {
+  local example="$1"
+  (
+    cd "$example"
 # Override the module source to point to the local module.
 # '*_override.tf' is a lesser known native terraform feature
-trap 'rm -f main_override.tf' EXIT
+    trap 'rm -f main_override.tf' EXIT
 cat <<EOF> main_override.tf
 module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
-tofu init -upgrade
-tofu validate
+    tofu init -upgrade
+    tofu validate
+  )
+}
+
+validate_example examples/braintrust-data-plane
+validate_example examples/braintrust-data-plane-private
 """

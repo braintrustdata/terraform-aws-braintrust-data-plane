@@ -37,12 +37,22 @@ locals {
     local.main_vpc_private_subnet_3_id
   ]
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks && var.create_ecs_api
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
-  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
+  # Private API ECS mode forces the ECS API service to exist unless external EKS owns the API.
+  create_ecs_api = !var.use_deployment_mode_external_eks && (var.create_ecs_api || var.use_deployment_mode_private_api_ecs)
+  # Private API ECS mode also forces traffic to be routed to the ECS API service.
+  enable_ecs_api = local.create_ecs_api && (var.enable_ecs_api || var.use_deployment_mode_private_api_ecs)
+  # Lambda services are skipped for external EKS and private API ECS deployments.
+  create_lambda_services = !var.use_deployment_mode_external_eks && !var.use_deployment_mode_private_api_ecs
+  # Brainstore reads the ECS API URL when ECS owns API/proxy behavior, otherwise the Lambda proxy URL.
   brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  # api_url points at the active data-plane endpoint for the selected deployment mode.
+  api_url = var.use_deployment_mode_external_eks ? null : (
+    var.use_deployment_mode_private_api_ecs ? module.api_ecs[0].client_url : module.ingress[0].api_url
+  )
+
+  enable_internal_observability   = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  ai_proxy_url_ssm_parameter_name = "/braintrust/${var.deployment_name}/ai-proxy-url"
+  api_ecs_url_ssm_parameter_name  = "/braintrust/${var.deployment_name}/ecs-api-url"
 }
 
 module "main_vpc" {
@@ -104,7 +114,7 @@ module "database" {
       },
       var.database_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      local.create_lambda_services ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
   )
@@ -138,7 +148,7 @@ module "redis" {
       },
       var.redis_authorized_security_groups,
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      local.create_lambda_services ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
   )
@@ -160,7 +170,7 @@ module "storage" {
 
 module "services" {
   source = "./modules/services"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = local.create_lambda_services ? 1 : 0
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
@@ -289,7 +299,7 @@ module "gateway_ecs" {
   brainstore_license_key = var.brainstore_license_key
   enable_execute_command = var.gateway_enable_execute_command
   braintrust_app_url     = var.gateway_braintrust_app_url
-  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : local.api_url
 }
 
 module "api_ecs" {
@@ -340,6 +350,8 @@ module "api_ecs" {
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
   extra_env_vars                        = var.api_ecs_extra_env_vars
+  private_api_ecs_mode                  = var.use_deployment_mode_private_api_ecs
+  allow_code_function_execution         = var.use_deployment_mode_private_api_ecs && !var.enable_quarantine_vpc
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -352,19 +364,19 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = module.services[0].ai_proxy_url
+  quarantine_proxy_url                = local.create_lambda_services ? module.services[0].ai_proxy_url : null
 
   # Networking
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
-  authorized_security_groups = merge(
-    {
-      "API"        = module.services_common.api_security_group_id
-      "Brainstore" = module.services_common.brainstore_instance_security_group_id
-    },
-    var.api_ecs_authorized_security_groups,
-  )
-  authorized_cidr_blocks = var.api_ecs_authorized_cidr_blocks
+  vpc_id                     = local.main_vpc_id
+  private_subnet_ids         = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  authorized_security_groups = var.private_api_authorized_security_groups
+  authorized_cidr_blocks     = var.private_api_authorized_cidr_blocks
+  internal_authorized_security_groups = {
+    "API"        = module.services_common.api_security_group_id
+    "Brainstore" = module.services_common.brainstore_instance_security_group_id
+  }
+  acm_certificate_arn = var.custom_certificate_arn
+  fqdn                = var.custom_domain
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
@@ -379,7 +391,7 @@ module "api_ecs" {
 
 module "ingress" {
   source = "./modules/ingress"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = local.create_lambda_services ? 1 : 0
 
   deployment_name                = var.deployment_name
   custom_domain                  = var.custom_domain
@@ -465,7 +477,7 @@ module "brainstore" {
         "API" = module.services_common.api_security_group_id
       },
       # This is a deprecated security group that will be removed in the future
-      !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
+      local.create_lambda_services ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group
   )
