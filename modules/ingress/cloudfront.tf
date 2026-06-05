@@ -5,7 +5,9 @@ locals {
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   cloudfront_AIProxyOrigin             = "AIProxyOrigin"
   cloudfront_CloudflareProxy           = "CloudflareProxy"
+  cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
+  cloudfront_ProxyOrigin               = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
 }
 
 resource "aws_cloudfront_distribution" "dataplane" {
@@ -23,7 +25,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
-      origin_read_timeout      = 60
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
       origin_keepalive_timeout = 60
       https_port               = 443
       http_port                = 80
@@ -46,7 +48,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
-      origin_read_timeout      = 60
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
       origin_keepalive_timeout = 60
       https_port               = 443
       http_port                = 80
@@ -60,13 +62,27 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
-      origin_read_timeout      = 60
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
       origin_keepalive_timeout = 60
       https_port               = 443
       http_port                = 80
       origin_ssl_protocols     = ["TLSv1.2"]
     }
 
+  }
+
+  origin {
+    domain_name = trimsuffix(replace(var.global_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")
+    origin_id   = local.cloudfront_GatewayOrigin
+
+    custom_origin_config {
+      origin_protocol_policy   = "https-only"
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
+      origin_keepalive_timeout = 60
+      https_port               = 443
+      http_port                = 80
+      origin_ssl_protocols     = ["TLSv1.2"]
+    }
   }
 
   default_cache_behavior {
@@ -80,8 +96,21 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   dynamic "ordered_cache_behavior" {
+    for_each = toset(["/v1/proxy", "/v1/proxy/*"])
+    content {
+      path_pattern           = ordered_cache_behavior.value
+      allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods         = ["GET", "HEAD", "OPTIONS"]
+      target_origin_id       = var.use_global_gateway_origin ? local.cloudfront_GatewayOrigin : local.cloudfront_ProxyOrigin
+      viewer_protocol_policy = "redirect-to-https"
+
+      cache_policy_id          = local.cloudfront_CachingDisabled
+      origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
+    }
+  }
+
+  dynamic "ordered_cache_behavior" {
     for_each = toset([
-      "/v1/proxy", "/v1/proxy/*",
       "/v1/eval", "/v1/eval/*",
       "/v1/function/*/?*",
       "/function/*"
@@ -90,7 +119,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
+      target_origin_id       = local.cloudfront_ProxyOrigin
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled

@@ -74,7 +74,7 @@ module "braintrust-data-plane" {
   ### Redis configuration
 
   # Default is acceptable for typical production deployments.
-  redis_instance_type = "cache.t4g.medium"
+  redis_instance_type = "cache.r7g.large"
 
   # Redis engine version
   redis_version = "7.0"
@@ -107,6 +107,10 @@ module "braintrust-data-plane" {
   # impacting other non-Braintrust Lambdas. Recommended 100 to 1000 for production in a shared account.
   # api_handler_reserved_concurrent_executions = -1
   # ai_proxy_reserved_concurrent_executions    = -1
+
+  # Only use this when instructed to by the Braintrust team.
+  # use_global_gateway_origin   = false
+  # global_gateway_origin_domain = "gateway.braintrust.dev"
 
   # Uncomment these to set extra environment variables for the services.
   # Only use this when instructed to by the Braintrust team.
