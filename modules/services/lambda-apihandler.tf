@@ -2,8 +2,23 @@ locals {
   api_handler_base_function_name = "APIHandler"
   api_handler_function_name      = "${var.deployment_name}-${local.api_handler_base_function_name}"
   api_handler_original_handler   = "index.handler"
+  unsafe_url_request_mode        = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
+  url_security_dns_servers       = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
+  url_security_allow_cidrs       = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  url_security_env_vars = merge(
+    local.unsafe_url_request_mode != "" ? {
+      BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
+    } : {},
+    local.url_security_dns_servers != "" ? {
+      BRAINTRUST_URL_SECURITY_DNS_SERVERS = local.url_security_dns_servers
+    } : {},
+    local.url_security_allow_cidrs != "" ? {
+      BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
+    } : {}
+  )
+
   # Shared between the AI Proxy and API Handler
-  api_common_env_vars = {
+  api_common_env_vars = merge({
     ORG_NAME                   = var.braintrust_org_name
     PRIMARY_ORG_NAME           = var.primary_org_name
     ALLOWED_ORG_IDS            = var.allowed_org_ids
@@ -40,13 +55,9 @@ locals {
     TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
     TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
 
-    BRAINTRUST_UNSAFE_URL_REQUEST_MODE  = var.unsafe_url_request_mode
-    BRAINTRUST_URL_SECURITY_DNS_SERVERS = var.url_security_dns_servers
-    BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = var.url_security_allow_cidrs
-
     SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
     CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
-  }
+  }, local.url_security_env_vars)
   api_fast_reader_env_vars = local.using_brainstore_fast_reader ? {
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
     BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
