@@ -325,7 +325,7 @@ variable "redis_authorized_security_groups" {
 
 ## Services
 
-variable "enable_llm_gateway" {
+variable "enable_ai_gateway" {
   description = "Enable ECS gateway service deployment (Fargate with private ALB)"
   type        = bool
   default     = false
@@ -342,115 +342,115 @@ variable "container_insights" {
   }
 }
 
-variable "gateway_version_override" {
+variable "ai_gateway_version_override" {
   type        = string
   description = "Lock Gateway on a specific version. Don't set this unless instructed by Braintrust."
   default     = null
 
   validation {
-    condition     = var.gateway_version_override == null || var.gateway_version_override != ""
-    error_message = "gateway_version_override must be null or a non-empty string."
+    condition     = var.ai_gateway_version_override == null || var.ai_gateway_version_override != ""
+    error_message = "ai_gateway_version_override must be null or a non-empty string."
   }
 }
 
-variable "gateway_cpu" {
+variable "ai_gateway_cpu" {
   description = "CPU units for the gateway ECS task definition"
   type        = number
   default     = 2048
 }
 
-variable "gateway_memory" {
+variable "ai_gateway_memory" {
   description = "Memory in MiB for the gateway ECS task definition"
   type        = number
   default     = 4096
 }
 
-variable "gateway_min_capacity" {
+variable "ai_gateway_min_capacity" {
   description = "Minimum task count for the gateway ECS service"
   type        = number
   default     = 2
 }
 
-variable "gateway_max_capacity" {
+variable "ai_gateway_max_capacity" {
   description = "Maximum task count for the gateway ECS service"
   type        = number
   default     = 6
 
   validation {
-    condition     = var.gateway_max_capacity >= var.gateway_min_capacity
-    error_message = "gateway_max_capacity must be greater than or equal to gateway_min_capacity."
+    condition     = var.ai_gateway_max_capacity >= var.ai_gateway_min_capacity
+    error_message = "ai_gateway_max_capacity must be greater than or equal to ai_gateway_min_capacity."
   }
 }
 
-variable "gateway_target_cpu_utilization" {
+variable "ai_gateway_target_cpu_utilization" {
   description = "Target average CPU utilization percentage for gateway ECS autoscaling"
   type        = number
   default     = 70
 
   validation {
-    condition     = var.gateway_target_cpu_utilization > 0 && var.gateway_target_cpu_utilization <= 100
-    error_message = "gateway_target_cpu_utilization must be between 1 and 100."
+    condition     = var.ai_gateway_target_cpu_utilization > 0 && var.ai_gateway_target_cpu_utilization <= 100
+    error_message = "ai_gateway_target_cpu_utilization must be between 1 and 100."
   }
 }
 
-variable "gateway_target_memory_utilization" {
+variable "ai_gateway_target_memory_utilization" {
   description = "Target average memory utilization percentage for gateway ECS autoscaling"
   type        = number
   default     = 75
 
   validation {
-    condition     = var.gateway_target_memory_utilization > 0 && var.gateway_target_memory_utilization <= 100
-    error_message = "gateway_target_memory_utilization must be between 1 and 100."
+    condition     = var.ai_gateway_target_memory_utilization > 0 && var.ai_gateway_target_memory_utilization <= 100
+    error_message = "ai_gateway_target_memory_utilization must be between 1 and 100."
   }
 }
 
-variable "gateway_log_retention_days" {
+variable "ai_gateway_log_retention_days" {
   description = "CloudWatch log retention period (days) for gateway ECS logs"
   type        = number
   default     = 14
 
   validation {
     condition = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
-    ], var.gateway_log_retention_days)
-    error_message = "gateway_log_retention_days must be a valid CloudWatch Logs retention value."
+    ], var.ai_gateway_log_retention_days)
+    error_message = "ai_gateway_log_retention_days must be a valid CloudWatch Logs retention value."
   }
 }
 
-variable "gateway_extra_env_vars" {
+variable "ai_gateway_extra_env_vars" {
   description = "Extra environment variables for the gateway ECS container"
   type        = map(string)
   default     = {}
 
   validation {
-    condition     = !contains(keys(var.gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in gateway_extra_env_vars; use brainstore_license_key."
+    condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key."
   }
 }
 
-variable "gateway_cpu_architecture" {
+variable "ai_gateway_cpu_architecture" {
   description = "CPU architecture for the gateway ECS task definition."
   type        = string
   default     = "ARM64"
 
   validation {
-    condition     = contains(["ARM64", "X86_64"], var.gateway_cpu_architecture)
-    error_message = "gateway_cpu_architecture must be either ARM64 or X86_64."
+    condition     = contains(["ARM64", "X86_64"], var.ai_gateway_cpu_architecture)
+    error_message = "ai_gateway_cpu_architecture must be either ARM64 or X86_64."
   }
 }
 
-variable "gateway_authorized_security_groups" {
+variable "ai_gateway_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal gateway ALB. Format: { name = <security_group_id> }"
   type        = map(string)
   default     = {}
 }
 
-variable "gateway_enable_execute_command" {
+variable "ai_gateway_enable_execute_command" {
   description = "Enable ECS Exec for gateway tasks."
   type        = bool
   default     = false
 }
 
-variable "gateway_braintrust_app_url" {
+variable "ai_gateway_braintrust_app_url" {
   description = "Braintrust app URL used by the gateway service."
   type        = string
   default     = "https://www.braintrust.dev"
@@ -594,8 +594,8 @@ variable "braintrust_api_url" {
   default     = null
 
   validation {
-    condition     = !(var.use_deployment_mode_external_eks && var.enable_llm_gateway) || var.braintrust_api_url != null
-    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_llm_gateway are both true."
+    condition     = !(var.use_deployment_mode_external_eks && var.enable_ai_gateway) || var.braintrust_api_url != null
+    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_ai_gateway are both true."
   }
 }
 
@@ -972,14 +972,14 @@ variable "use_global_ai_proxy" {
   default     = false
 }
 
-variable "use_global_gateway_origin" {
+variable "use_global_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev. Don't enable this unless instructed by Braintrust."
   type        = bool
   default     = false
 }
 
-variable "global_gateway_origin_domain" {
-  description = "Gateway origin domain to use when use_global_gateway_origin is enabled. Don't change this unless instructed by Braintrust."
+variable "global_ai_gateway_origin_domain" {
+  description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled. Don't change this unless instructed by Braintrust."
   type        = string
   default     = "gateway.braintrust.dev"
 }
