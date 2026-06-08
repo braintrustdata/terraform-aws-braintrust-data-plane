@@ -72,7 +72,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   origin {
-    domain_name = trimsuffix(replace(var.global_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")
+    domain_name = trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")
     origin_id   = local.cloudfront_GatewayOrigin
 
     custom_origin_config {
@@ -101,7 +101,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = var.use_global_gateway_origin ? local.cloudfront_GatewayOrigin : local.cloudfront_ProxyOrigin
+      target_origin_id       = var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : local.cloudfront_ProxyOrigin
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
