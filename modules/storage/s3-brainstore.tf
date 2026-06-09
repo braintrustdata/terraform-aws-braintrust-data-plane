@@ -91,7 +91,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
     filter {
       and {
         # !IMPORTANT!: do not change this path
-        prefix                   = "brainstore/wal/"
+        prefix                   = "brainstore/wal/object-store-objects/"
         object_size_greater_than = 0
       }
     }
