@@ -85,6 +85,24 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
   }
 
   rule {
+    id     = "transition-wal-to-standard-ia"
+    status = "Enabled"
+
+    filter {
+      and {
+        # !IMPORTANT!: do not change this path
+        prefix                   = "brainstore/wal/"
+        object_size_greater_than = 0
+      }
+    }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+  }
+
+  rule {
     id     = "delete-wal-deletion-logs"
     status = "Enabled"
 
