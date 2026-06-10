@@ -64,6 +64,15 @@ data "http" "lambda_versions" {
 
   url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.region}.amazonaws.com/lambda/${each.value}/version-${local.lambda_version_tag}"
 
+  # External S3 lookups are otherwise a single attempt with no backoff, so a
+  # transient network blip (connection reset) fails the whole plan. Retry.
+  retry {
+    attempts     = 5
+    min_delay_ms = 500
+    max_delay_ms = 5000
+  }
+  request_timeout_ms = 10000
+
   lifecycle {
     postcondition {
       condition     = self.status_code < 400
