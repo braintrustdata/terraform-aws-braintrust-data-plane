@@ -85,24 +85,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
   }
 
   rule {
-    id     = "transition-wal-to-standard-ia"
-    status = "Enabled"
-
-    filter {
-      and {
-        # !IMPORTANT!: do not change this path
-        prefix                   = "brainstore/wal/object-store-objects/"
-        object_size_greater_than = 0
-      }
-    }
-
-    transition {
-      days          = 30
-      storage_class = "STANDARD_IA"
-    }
-  }
-
-  rule {
     id     = "delete-wal-deletion-logs"
     status = "Enabled"
 
@@ -115,6 +97,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
       # We use the same var for the expiration interval and the delete interval
       # in cleanup-old-versions so the total time to deletion is 2 * var.s3_bucket_retention_days
       days = var.brainstore_s3_bucket_retention_days
+    }
+  }
+
+  rule {
+    id     = "transition-wal-to-standard-ia"
+    status = "Enabled"
+
+    filter {
+      and {
+        prefix                   = "brainstore/wal/object-store-objects/"
+        object_size_greater_than = 1
+      }
+    }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
     }
   }
 }
