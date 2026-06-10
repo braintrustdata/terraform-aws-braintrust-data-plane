@@ -99,6 +99,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
       days = var.brainstore_s3_bucket_retention_days
     }
   }
+
+  rule {
+    id     = "transition-wal-to-standard-ia"
+    status = "Enabled"
+
+    filter {
+      and {
+        prefix                   = "brainstore/wal/object-store-objects/"
+        object_size_greater_than = 1
+      }
+    }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "brainstore" {
