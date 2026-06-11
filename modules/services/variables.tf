@@ -409,3 +409,9 @@ variable "internal_observability_region" {
   type        = string
   default     = "us5"
 }
+
+variable "internal_observability_trace_disabled_plugins" {
+  description = "Datadog trace plugins to disable for internal observability."
+  type        = string
+  default     = ""
+}

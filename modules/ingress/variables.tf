@@ -27,14 +27,14 @@ variable "use_global_ai_proxy" {
   default     = false
 }
 
-variable "use_global_gateway_origin" {
+variable "use_global_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev"
   type        = bool
   default     = false
 }
 
-variable "global_gateway_origin_domain" {
-  description = "Gateway origin domain to use when use_global_gateway_origin is enabled"
+variable "global_ai_gateway_origin_domain" {
+  description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled"
   type        = string
   default     = "gateway.braintrust.dev"
 }

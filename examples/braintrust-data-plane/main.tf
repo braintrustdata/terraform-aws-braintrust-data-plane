@@ -111,8 +111,8 @@ module "braintrust-data-plane" {
   # url_security_allow_cidrs = "10.0.0.0/8"
 
   # Only use this when instructed to by the Braintrust team.
-  # use_global_gateway_origin   = false
-  # global_gateway_origin_domain = "gateway.braintrust.dev"
+  # use_global_ai_gateway_origin   = false
+  # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # Uncomment these to set extra environment variables for the services.
   # Only use this when instructed to by the Braintrust team.
