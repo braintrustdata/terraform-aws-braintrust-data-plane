@@ -125,6 +125,16 @@ module "braintrust-data-plane" {
   # }
 
 
+  ### S3 CORS configuration
+  # Additional CORS origins for the code bundle and lambda responses buckets.
+  # Use s3_additional_allowed_origins to apply the same origins to both buckets,
+  # or set per-bucket vars to scope an origin to just one bucket. Values from all
+  # three are merged. Supports wildcards in the domain name.
+  # s3_additional_allowed_origins                  = ["https://app.example.com"]
+  # s3_code_bundle_additional_allowed_origins      = []
+  # s3_lambda_responses_additional_allowed_origins = []
+
+
   ### Braintrust Remote Support
 
   # Enable sharing of Cloudwatch logs with Braintrust staff
