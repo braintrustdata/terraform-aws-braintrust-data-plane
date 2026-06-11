@@ -237,9 +237,10 @@ module "services" {
   custom_tags                         = var.custom_tags
 
   # Observability
-  internal_observability_api_key  = var.internal_observability_api_key
-  internal_observability_env_name = var.internal_observability_env_name
-  internal_observability_region   = var.internal_observability_region
+  internal_observability_api_key                = var.internal_observability_api_key
+  internal_observability_env_name               = var.internal_observability_env_name
+  internal_observability_region                 = var.internal_observability_region
+  internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 }
 
 module "ecs" {
@@ -300,10 +301,11 @@ module "api_ecs" {
   api_version_override = var.api_ecs_version_override
 
   # Telemetry
-  monitoring_telemetry                      = var.monitoring_telemetry
-  internal_observability_api_key_secret_arn = local.create_ecs_api && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
-  internal_observability_env_name           = var.internal_observability_env_name
-  internal_observability_region             = var.internal_observability_region
+  monitoring_telemetry                          = var.monitoring_telemetry
+  internal_observability_api_key_secret_arn     = local.create_ecs_api && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_env_name               = var.internal_observability_env_name
+  internal_observability_region                 = var.internal_observability_region
+  internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 
   # Data stores
   database_url_secret_arn   = module.database.postgres_database_url_secret_arn

@@ -960,6 +960,12 @@ variable "internal_observability_region" {
   default     = "us5"
 }
 
+variable "internal_observability_trace_disabled_plugins" {
+  type        = string
+  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  default     = ""
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
