@@ -258,6 +258,12 @@ variable "internal_observability_env_name" {
   default     = ""
 }
 
+variable "internal_observability_trace_disabled_plugins" {
+  type        = string
+  description = "Datadog trace plugins to disable for internal observability."
+  default     = ""
+}
+
 variable "disable_billing_telemetry_aggregation" {
   type        = bool
   description = "Disable billing telemetry aggregation."

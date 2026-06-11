@@ -71,6 +71,9 @@ locals {
     var.brainstore_etl_batch_size != null ? {
       BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
     } : {},
+    local.observability_enabled && trimspace(var.internal_observability_trace_disabled_plugins) != "" ? {
+      DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
+    } : {},
   )
 
   merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)

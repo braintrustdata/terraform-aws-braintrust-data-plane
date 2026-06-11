@@ -109,8 +109,8 @@ module "braintrust-data-plane" {
   # ai_proxy_reserved_concurrent_executions    = -1
 
   # Only use this when instructed to by the Braintrust team.
-  # use_global_gateway_origin   = false
-  # global_gateway_origin_domain = "gateway.braintrust.dev"
+  # use_global_ai_gateway_origin   = false
+  # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # Uncomment these to set extra environment variables for the services.
   # Only use this when instructed to by the Braintrust team.
