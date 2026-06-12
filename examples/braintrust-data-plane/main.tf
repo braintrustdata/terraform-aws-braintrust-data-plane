@@ -104,6 +104,12 @@ module "braintrust-data-plane" {
   # api_handler_reserved_concurrent_executions = -1
   # ai_proxy_reserved_concurrent_executions    = -1
 
+  # Optional URL-security controls for externally supplied outbound HTTP URLs.
+  # Leave unset to use the application default mode of "warn".
+  # unsafe_url_request_mode  = "reject"
+  # url_security_dns_servers = "1.1.1.1,8.8.8.8"
+  # url_security_allow_cidrs = "10.0.0.0/8"
+
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
