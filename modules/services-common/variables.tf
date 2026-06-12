@@ -59,6 +59,29 @@ variable "enable_ecs" {
   default     = false
 }
 
+variable "create_gateway_alb" {
+  type        = bool
+  description = "Whether to create the internal AI gateway ALB."
+  default     = false
+}
+
+variable "gateway_alb_private_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs for the internal AI gateway ALB."
+  default     = []
+
+  validation {
+    condition     = !var.create_gateway_alb || (length(var.gateway_alb_private_subnet_ids) >= 2 && length(distinct(var.gateway_alb_private_subnet_ids)) == length(var.gateway_alb_private_subnet_ids))
+    error_message = "gateway_alb_private_subnet_ids must contain at least 2 unique subnet IDs when create_gateway_alb is true."
+  }
+}
+
+variable "gateway_alb_authorized_security_groups" {
+  type        = map(string)
+  description = "Map of security group names to IDs that are authorized to access the internal AI gateway ALB on port 80."
+  default     = {}
+}
+
 variable "code_bundle_s3_bucket_arn" {
   type        = string
   description = "The ARN of the code bundle S3 bucket"

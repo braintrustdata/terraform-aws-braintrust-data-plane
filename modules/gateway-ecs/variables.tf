@@ -151,10 +151,14 @@ variable "redis_security_group_id" {
   description = "Security group ID of the dedicated gateway ElastiCache instance."
 }
 
-variable "authorized_security_groups" {
-  type        = map(string)
-  description = "Map of security group names to their IDs that are authorized to access the gateway ALB on port 80. Format: { name = <security_group_id> }"
-  default     = {}
+variable "gateway_alb_security_group_id" {
+  type        = string
+  description = "Security group ID attached to the internal gateway ALB."
+}
+
+variable "gateway_target_group_arn" {
+  type        = string
+  description = "ARN of the internal gateway ALB target group."
 }
 
 variable "custom_tags" {

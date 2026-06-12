@@ -251,3 +251,34 @@ moved {
   from = module.services[0].aws_security_group_rule.quarantine_lambda_allow_egress_all[0]
   to   = module.services_common.aws_security_group_rule.quarantine_lambda_allow_egress_all[0]
 }
+
+# Gateway ALB resources moved from gateway-ecs -> services-common
+moved {
+  from = module.gateway_ecs[0].aws_security_group.alb
+  to   = module.services_common.aws_security_group.gateway_alb[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_security_group_rule.alb_ingress_from_authorized_security_groups
+  to   = module.services_common.aws_security_group_rule.gateway_alb_ingress_from_authorized_security_groups
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_security_group_rule.alb_egress_all
+  to   = module.services_common.aws_security_group_rule.gateway_alb_egress_all[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_lb.gateway
+  to   = module.services_common.aws_lb.gateway[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_lb_target_group.gateway
+  to   = module.services_common.aws_lb_target_group.gateway[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_lb_listener.gateway_http
+  to   = module.services_common.aws_lb_listener.gateway_http[0]
+}

@@ -325,10 +325,21 @@ variable "redis_authorized_security_groups" {
 
 ## Services
 
-variable "enable_ai_gateway" {
-  description = "Enable ECS gateway service deployment (Fargate with private ALB)"
+variable "create_ai_gateway" {
+  description = "Create the ECS gateway service deployment (Fargate with private ALB)."
   type        = bool
   default     = false
+}
+
+variable "enable_ai_gateway" {
+  description = "Enable the AI gateway as the active gateway target for API services."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_ai_gateway || var.create_ai_gateway
+    error_message = "enable_ai_gateway requires create_ai_gateway."
+  }
 }
 
 variable "container_insights" {
@@ -589,13 +600,13 @@ variable "api_ecs_enable_execute_command" {
 }
 
 variable "braintrust_api_url" {
-  description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
+  description = "Optional. Braintrust API URL used by the gateway. Required when using external EKS deployment mode."
   type        = string
   default     = null
 
   validation {
-    condition     = !(var.use_deployment_mode_external_eks && var.enable_ai_gateway) || var.braintrust_api_url != null
-    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_ai_gateway are both true."
+    condition     = !(var.use_deployment_mode_external_eks && var.create_ai_gateway) || var.braintrust_api_url != null
+    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and create_ai_gateway are both true."
   }
 }
 
