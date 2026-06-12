@@ -7,7 +7,9 @@ terraform {
     }
     http = {
       source  = "hashicorp/http"
-      version = "~> 3.0"
+      # 3.3.0 is the first release with the data source's retry block and
+      # request_timeout_ms (used in modules/services/main.tf).
+      version = "~> 3.3"
     }
     random = {
       source  = "hashicorp/random"
