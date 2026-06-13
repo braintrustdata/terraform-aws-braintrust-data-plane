@@ -127,13 +127,18 @@ variable "braintrust_org_name" {
 
 variable "primary_org_name" {
   type        = string
-  description = "Primary organization name."
+  default     = ""
+  description = "Required when braintrust_org_name is empty or \"*\". Used to authorize self-hosted service-token management."
+  validation {
+    condition     = !contains(["", "*"], trimspace(var.braintrust_org_name)) || trimspace(var.primary_org_name) != ""
+    error_message = "Set primary_org_name when braintrust_org_name is empty or \"*\"; self-hosted service-token management needs a primary organization."
+  }
 }
 
 variable "allowed_org_ids" {
   type        = string
   default     = ""
-  description = "Comma-separated list of organization IDs allowed to use this data plane. When non-empty, this overrides braintrust_org_name."
+  description = "Optional comma-separated org ID allowlist. If braintrust_org_name is set to a specific name, that org is included in the allowlist."
 }
 
 variable "database_url_secret_arn" {
