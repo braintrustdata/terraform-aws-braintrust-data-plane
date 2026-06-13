@@ -13,6 +13,7 @@ locals {
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
     PRIMARY_ORG_NAME                                  = var.primary_org_name
+    ALLOWED_ORG_IDS                                   = var.allowed_org_ids
     BRAINTRUST_DEPLOYMENT_NAME                        = var.deployment_name
     RESPONSE_BUCKET                                   = var.response_bucket
     CODE_BUNDLE_BUCKET                                = var.code_bundle_bucket

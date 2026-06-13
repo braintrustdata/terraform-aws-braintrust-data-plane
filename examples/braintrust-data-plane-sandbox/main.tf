@@ -13,8 +13,13 @@ module "braintrust-data-plane" {
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
   deployment_name = "bt-sandbox"
 
-  # Add your organization name from the Braintrust UI here
-  braintrust_org_name = ""
+  # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
+  # and set primary_org_name for service-token management.
+  braintrust_org_name = "your-org-name"
+
+  # Optional comma-separated org ID allowlist. If braintrust_org_name is
+  # a specific name, that org is included in the allowlist.
+  allowed_org_ids = ""
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
