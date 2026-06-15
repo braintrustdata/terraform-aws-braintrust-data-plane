@@ -23,8 +23,13 @@ module "braintrust-data-plane" {
   # and set primary_org_name for service-token management.
   braintrust_org_name = "test-org"
 
-  # Optional comma-separated org ID allowlist. If braintrust_org_name is
-  # a specific name, that org is included in the allowlist.
+  # Required when braintrust_org_name is "*", or when it is unset/empty and allowed_org_ids is empty.
+  primary_org_name = "test-org"
+
+  # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
+  # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+  # If braintrust_org_name is a specific name, include that org's ID here
+  # for forward compatibility.
   allowed_org_ids = ""
 
   # Brainstore license key (required)
@@ -35,7 +40,7 @@ module "braintrust-data-plane" {
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
-  # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module. 
+  # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles
   #enable_eks_pod_identity = true
   #enable_eks_irsa = true

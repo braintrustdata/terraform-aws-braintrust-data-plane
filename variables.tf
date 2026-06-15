@@ -30,7 +30,11 @@ variable "primary_org_name" {
 variable "allowed_org_ids" {
   type        = string
   default     = ""
-  description = "Optional comma-separated org ID allowlist. If braintrust_org_name is set to a specific name, that org is included in the allowlist."
+  description = "Optional comma-separated Braintrust Org ID allowlist. Use Braintrust Org IDs, not org names; for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\". If braintrust_org_name is a specific name, include that org's Braintrust Org ID here for forward compatibility."
+  validation {
+    condition     = var.allowed_org_ids == "" || can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(,[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})*$", var.allowed_org_ids))
+    error_message = "allowed_org_ids must be empty or a comma-separated list of Braintrust Org UUIDs without spaces, for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\"."
+  }
 }
 
 variable "deployment_name" {

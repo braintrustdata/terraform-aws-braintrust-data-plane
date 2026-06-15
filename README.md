@@ -19,6 +19,17 @@ If you're using a brand new AWS account for your Braintrust data plane you will 
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
 
+### Organization access configuration
+
+Prefer ID-based organization access for new deployments:
+
+```hcl
+primary_org_name = "your-org-name"
+allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+```
+
+`allowed_org_ids` is a comma-separated list of Braintrust Org IDs, not org names. Do not include spaces. You can find an org ID by hovering over the org name in the Braintrust UI. If you keep `braintrust_org_name` set to a specific org name for compatibility, that org is allowed by name today; include its Braintrust Org ID in `allowed_org_ids` for forward compatibility. `braintrust_org_name` remains supported for compatibility, but Braintrust plans to move toward ID-based configuration.
+
 ## Useful scripts
 
 ### dump-logs.sh

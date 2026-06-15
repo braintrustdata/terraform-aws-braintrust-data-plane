@@ -17,8 +17,12 @@ module "braintrust-data-plane" {
   # and set primary_org_name for service-token management.
   braintrust_org_name = "your-org-name"
 
-  # Optional comma-separated org ID allowlist. If braintrust_org_name is
-  # a specific name, that org is included in the allowlist.
+  # Required when braintrust_org_name is "*", or when it is unset/empty.
+  primary_org_name = "your-org-name"
+
+  # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
+  # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+  # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
   allowed_org_ids = ""
 
   ### Tagging

@@ -7,6 +7,12 @@ This is an example of a standard **production-sized** Braintrust data plane depl
 * `provider.tf` should be modified to use your AWS account and region.
 * `terraform.tf` should be modified to use the remote backend that your company uses. Typically this is an S3 bucket and DynamoDB table.
 * `main.tf` should be modified to meet your needs for the Braintrust deployment. The defaults are sensible only for a small development deployment.
+* Prefer ID-based organization access for new deployments:
+  ```hcl
+  primary_org_name = "your-org-name"
+  allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+  ```
+  `allowed_org_ids` must contain Braintrust Org IDs, not org names, and should not include spaces. You can find an org ID by hovering over the org name in the Braintrust UI. If you keep `braintrust_org_name` set to a specific org name for compatibility, that org is allowed by name today; include its Braintrust Org ID in `allowed_org_ids` for forward compatibility. `braintrust_org_name` remains supported for compatibility, but Braintrust plans to move toward ID-based configuration.
 * Brainstore requires a license key which you can find in the Braintrust UI under Settings > Data Plane
   ![Brainstore License Key](../../assets/Brainstore-License-Key.png)
 * The recommended approach is to store the license key in AWS Secrets Manager and reference it using a Terraform data source:
@@ -49,4 +55,3 @@ Paste the API URL into the text field, and click Save. Leave the Proxy and Realt
 
 Verify in the UI that the ping to each endpoint is successful.
 ![Verify Successful Ping](../../assets/Braintrust-API-URL-verify.png)
-
