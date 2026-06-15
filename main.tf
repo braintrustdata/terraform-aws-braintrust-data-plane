@@ -150,12 +150,14 @@ module "redis" {
 module "storage" {
   source = "./modules/storage"
 
-  deployment_name                     = var.deployment_name
-  kms_key_arn                         = local.kms_key_arn
-  brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
-  s3_additional_allowed_origins       = var.s3_additional_allowed_origins
-  enable_s3_bucket_abac               = var.enable_s3_bucket_abac
-  custom_tags                         = var.custom_tags
+  deployment_name                                = var.deployment_name
+  kms_key_arn                                    = local.kms_key_arn
+  brainstore_s3_bucket_retention_days            = var.brainstore_s3_bucket_retention_days
+  s3_additional_allowed_origins                  = var.s3_additional_allowed_origins
+  s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
+  s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
+  enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
+  custom_tags                                    = var.custom_tags
 }
 
 module "services" {

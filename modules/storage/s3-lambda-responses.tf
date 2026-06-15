@@ -75,7 +75,7 @@ resource "aws_s3_bucket_cors_configuration" "lambda_responses_bucket" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "HEAD"]
-    allowed_origins = local.all_origins
+    allowed_origins = local.lambda_responses_allowed_origins
     max_age_seconds = 3600
   }
 }

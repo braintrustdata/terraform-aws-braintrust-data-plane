@@ -16,8 +16,20 @@ variable "brainstore_s3_bucket_retention_days" {
 }
 
 variable "s3_additional_allowed_origins" {
+  description = "Additional CORS origins applied to both the code bundle and lambda responses buckets. Merged with any bucket-specific values from s3_code_bundle_additional_allowed_origins and s3_lambda_responses_additional_allowed_origins. Supports wildcards in the domain name."
   type        = list(string)
-  description = "Additional origins to allow for S3 bucket CORS configuration. Supports a wildcard in the domain name."
+  default     = []
+}
+
+variable "s3_code_bundle_additional_allowed_origins" {
+  description = "Additional CORS origins for the code bundle bucket. Supports wildcards in the domain name."
+  type        = list(string)
+  default     = []
+}
+
+variable "s3_lambda_responses_additional_allowed_origins" {
+  description = "Additional CORS origins for the lambda responses bucket. Supports wildcards in the domain name."
+  type        = list(string)
   default     = []
 }
 
