@@ -114,6 +114,12 @@ variable "internal_observability_api_key_secret_arn" {
   default     = ""
 }
 
+variable "internal_observability_enabled" {
+  type        = bool
+  description = "Whether to enable internal Datadog observability for gateway ECS."
+  default     = false
+}
+
 variable "internal_observability_region" {
   type        = string
   description = "Datadog region suffix (e.g. us5) used to build DD_SITE."

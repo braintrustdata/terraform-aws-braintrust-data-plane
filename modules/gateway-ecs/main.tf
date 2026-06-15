@@ -5,7 +5,7 @@ locals {
 
   container_name        = "gateway"
   container_port        = 8080
-  observability_enabled = var.internal_observability_api_key_secret_arn != ""
+  observability_enabled = var.internal_observability_enabled
   gateway_version_tag   = element(reverse(split(":", var.container_image)), 0)
   base_env_vars = merge({
     GATEWAY_ENV        = "production"
