@@ -18,10 +18,12 @@ locals {
     GATEWAY_JSON_LOGS           = "true"
     OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
     },
+    local.observability_enabled ? {
+      DD_ENV     = var.internal_observability_env_name
+      DD_VERSION = local.gateway_version_tag
+    } : {},
     local.observability_enabled && trimspace(var.internal_observability_trace_disabled_plugins) != "" ? {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
-      DD_ENV                    = var.internal_observability_env_name
-      DD_VERSION                = local.gateway_version_tag
     } : {},
   )
   plain_license_env_var = var.brainstore_license_key == null ? {} : {
