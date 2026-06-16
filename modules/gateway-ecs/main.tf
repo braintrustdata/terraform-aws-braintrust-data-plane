@@ -20,6 +20,8 @@ locals {
     },
     local.observability_enabled && trimspace(var.internal_observability_trace_disabled_plugins) != "" ? {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
+      DD_ENV                    = var.internal_observability_env_name
+      DD_VERSION                = local.gateway_version_tag
     } : {},
   )
   plain_license_env_var = var.brainstore_license_key == null ? {} : {
@@ -88,7 +90,7 @@ locals {
           },
           {
             name  = "DD_SERVICE"
-            value = "braintrust-gateway"
+            value = "gateway"
           },
           {
             name  = "DD_VERSION"
