@@ -19,10 +19,18 @@ Run the following script to create the Braintrust management role. This should b
 ./managed-byoc/create-management-role.sh --profile <aws-profile>
 ```
 
+Braintrust may provide an ExternalId for additional cross-account protection. When provided, pass it with `--external-id` (or the `EXTERNAL_ID` environment variable). The value must match what Braintrust uses when assuming the role.
+
+```bash
+./managed-byoc/create-management-role.sh --profile <aws-profile> --external-id <braintrust-provided-id>
+```
+
 This role and policy set is the required baseline for managed BYOC. You can review the Trust Policy and Inline Policy in the following files:
 
-- Trust Policy: `managed-byoc/policies/management-role-trust-policy.json`
+- Trust Policy: `managed-byoc/policies/management-role-trust-policy.json` (base policy; ExternalId is injected by the script when `--external-id` is provided)
 - Inline Policy: `managed-byoc/policies/management-role-policy.json`
+
+If you re-run the script without `--external-id` after previously setting one, the trust policy will be updated to remove the ExternalId condition.
 
 ## 3) Optional: Organization Service Control Policy (SCP) guardrail
 
