@@ -47,10 +47,6 @@ locals {
     dependsOn = [
       for dep in [
         {
-          containerName = "log-router"
-          condition     = "START"
-        },
-        {
           containerName = "datadog-agent"
           condition     = "START"
         }
@@ -61,34 +57,6 @@ locals {
 
   observability_sidecars = [
     for sidecar in [
-      {
-        name           = "log-router"
-        essential      = true
-        image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
-        user           = "0"
-        environment    = []
-        mountPoints    = []
-        portMappings   = []
-        systemControls = []
-        volumesFrom    = []
-        firelensConfiguration = {
-          type = "fluentbit"
-          options = {
-            enable-ecs-log-metadata = "true"
-            config-file-type        = "file"
-            config-file-value       = "/fluent-bit/configs/parse-json.conf"
-          }
-        }
-        logConfiguration = {
-          logDriver = "awslogs"
-          options = {
-            awslogs-group         = aws_cloudwatch_log_group.service.name
-            awslogs-region        = data.aws_region.current.region
-            awslogs-stream-prefix = "log-router"
-          }
-        }
-        memoryReservation = 50
-      },
       {
         name           = "datadog-agent"
         essential      = true
@@ -133,6 +101,14 @@ locals {
           {
             name  = "DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT"
             value = "0.0.0.0:4318"
+          },
+          {
+            name  = "DD_LOGS_ENABLED"
+            value = "true"
+          },
+          {
+            name  = "DD_OTLP_CONFIG_LOGS_ENABLED"
+            value = "true"
           }
         ]
         secrets = [
@@ -152,33 +128,14 @@ locals {
     ] : sidecar if local.observability_enabled
   ]
 
-  gateway_log_configuration = jsondecode(local.observability_enabled ? jsonencode({
-    logDriver = "awsfirelens"
-    options = {
-      Name           = "datadog"
-      Host           = "http-intake.logs.${var.internal_observability_region}.datadoghq.com"
-      TLS            = "on"
-      provider       = "ecs"
-      dd_service     = "braintrust-gateway"
-      dd_source      = "gateway"
-      dd_message_key = "msg"
-      dd_tags        = "env:${var.internal_observability_env_name}"
-      compress       = "gzip"
-    }
-    secretOptions = [
-      {
-        name      = "apikey"
-        valueFrom = var.internal_observability_api_key_secret_arn
-      }
-    ]
-    }) : jsonencode({
+  gateway_log_configuration = {
     logDriver = "awslogs"
     options = {
       awslogs-group         = aws_cloudwatch_log_group.service.name
       awslogs-region        = data.aws_region.current.region
       awslogs-stream-prefix = "gateway"
     }
-  }))
+  }
 
   valid_fargate_memory_by_cpu = {
     "256"   = [512, 1024, 2048]
