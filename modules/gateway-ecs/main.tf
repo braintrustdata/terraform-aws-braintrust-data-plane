@@ -9,6 +9,7 @@ locals {
   gateway_version_tag   = element(reverse(split(":", var.container_image)), 0)
   base_env_vars = merge({
     GATEWAY_ENV        = "production"
+    GATEWAY_REGION     = data.aws_region.current.region
     BRAINTRUST_APP_URL = var.braintrust_app_url
     BRAINTRUST_API_URL = var.braintrust_api_url
 
@@ -290,6 +291,10 @@ resource "aws_lb" "gateway" {
   load_balancer_type = "application"
   subnets            = var.private_subnet_ids
   security_groups    = [aws_security_group.alb.id]
+
+  client_keep_alive = var.alb_client_keep_alive
+  idle_timeout      = var.alb_idle_timeout
+
   tags = merge({
     Name = "${var.deployment_name}-gateway"
   }, local.common_tags)
@@ -302,8 +307,10 @@ resource "aws_lb_target_group" "gateway" {
   target_type = "ip"
   vpc_id      = var.vpc_id
 
+  deregistration_delay = var.alb_deregistration_delay
+
   health_check {
-    path                = "/"
+    path                = "/health"
     matcher             = "200"
     healthy_threshold   = 3
     unhealthy_threshold = 3
