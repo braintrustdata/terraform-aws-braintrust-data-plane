@@ -19,7 +19,7 @@ Run the following script to create the Braintrust management role. This should b
 ./managed-byoc/create-management-role.sh --profile <aws-profile>
 ```
 
-Braintrust may provide an ExternalId for additional cross-account protection. When provided, pass it with `--external-id` (or the `EXTERNAL_ID` environment variable). The value must match what Braintrust uses when assuming the role.
+If an ExternalId is needed for additional cross-account protection, pass it with `--external-id` (or the `EXTERNAL_ID` environment variable). The value must be shared with the Braintrust team so that it matches with what Braintrust uses when assuming the role. This path requires `jq` in addition to the AWS CLI.
 
 ```bash
 ./managed-byoc/create-management-role.sh --profile <aws-profile> --external-id <braintrust-provided-id>

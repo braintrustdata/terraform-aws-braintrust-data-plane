@@ -19,7 +19,7 @@ Usage:
 Options:
   --profile, -p       AWS profile to use (default: AWS_PROFILE env var, else "default")
   --role-name, -r     IAM role name to create (default: BraintrustManagementRole)
-  --external-id, -e   ExternalId required for sts:AssumeRole (optional)
+  --external-id, -e   ExternalId for sts:AssumeRole (optional)
   --help, -h          Show this help
 
 Environment:
@@ -38,13 +38,9 @@ require_cmd() {
 }
 
 build_trust_policy() {
-  if [[ -n "$EXTERNAL_ID" ]]; then
-    jq --arg external_id "$EXTERNAL_ID" \
-      '.Statement[0].Condition = {"StringEquals": {"sts:ExternalId": $external_id}}' \
-      "$TRUST_POLICY_PATH"
-  else
-    cat "$TRUST_POLICY_PATH"
-  fi
+  jq --arg external_id "$EXTERNAL_ID" \
+    '.Statement[0].Condition = {"StringEquals": {"sts:ExternalId": $external_id}}' \
+    "$TRUST_POLICY_PATH"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -86,7 +82,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_cmd aws
-require_cmd jq
 
 if [[ -n "$EXTERNAL_ID" ]]; then
   if (( ${#EXTERNAL_ID} < 2 || ${#EXTERNAL_ID} > 1224 )); then
@@ -110,7 +105,12 @@ if ! ACCOUNT_ID="$(aws sts get-caller-identity --profile "$PROFILE" --query 'Acc
   exit 1
 fi
 
-TRUST_POLICY="$(build_trust_policy)"
+if [[ -n "$EXTERNAL_ID" ]]; then
+  require_cmd jq
+  TRUST_POLICY_DOCUMENT="$(build_trust_policy)"
+else
+  TRUST_POLICY_DOCUMENT="file://$TRUST_POLICY_PATH"
+fi
 
 echo "About to create/update Braintrust management role with:"
 echo "  AWS profile : $PROFILE"
@@ -130,7 +130,7 @@ if aws iam get-role --profile "$PROFILE" --role-name "$ROLE_NAME" >/dev/null 2>&
   aws iam update-assume-role-policy \
     --profile "$PROFILE" \
     --role-name "$ROLE_NAME" \
-    --policy-document "$TRUST_POLICY" \
+    --policy-document "$TRUST_POLICY_DOCUMENT" \
     >/dev/null
   echo "Updating max session duration to 4 hours..."
   aws iam update-role \
@@ -143,7 +143,7 @@ else
   aws iam create-role \
     --profile "$PROFILE" \
     --role-name "$ROLE_NAME" \
-    --assume-role-policy-document "$TRUST_POLICY" \
+    --assume-role-policy-document "$TRUST_POLICY_DOCUMENT" \
     --max-session-duration "$MAX_SESSION_DURATION_SECONDS" \
     >/dev/null
 fi
