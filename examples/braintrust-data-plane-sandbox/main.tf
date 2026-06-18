@@ -85,6 +85,10 @@ module "braintrust-data-plane" {
   # use_global_gateway_origin   = false
   # global_gateway_origin_domain = "gateway.braintrust.dev"
 
+  # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
+  # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
+  # unsafe_url_request_mode = "warn"
+
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to
   # peer with other VPCs and the default CIDRs conflict.

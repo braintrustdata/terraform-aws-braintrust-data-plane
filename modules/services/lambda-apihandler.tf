@@ -55,6 +55,8 @@ locals {
       AI_PROXY_INVOKE_ROLE = aws_iam_role.ai_proxy_invoke_role.arn
       CATCHUP_ETL_ARN      = aws_lambda_function.catchup_etl.arn
       INSERT_LOGS2         = "true"
+
+      BRAINTRUST_UNSAFE_URL_REQUEST_MODE = var.unsafe_url_request_mode
     },
     var.brainstore_wal_footer_version != "" ? {
       BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version

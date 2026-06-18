@@ -153,6 +153,17 @@ variable "outbound_rate_limit_window_minutes" {
   default     = 1
 }
 
+variable "unsafe_url_request_mode" {
+  description = "How to handle URL-security validation failures for externally supplied outbound HTTP URLs."
+  type        = string
+  default     = "warn"
+
+  validation {
+    condition     = contains(["off", "proxy", "warn", "reject"], var.unsafe_url_request_mode)
+    error_message = "unsafe_url_request_mode must be one of: off, proxy, warn, reject."
+  }
+}
+
 variable "api_handler_provisioned_concurrency" {
   type        = number
   description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."

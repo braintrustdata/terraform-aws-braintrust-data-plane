@@ -204,6 +204,7 @@ module "services" {
   whitelisted_origins                        = var.whitelisted_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
+  unsafe_url_request_mode                    = var.unsafe_url_request_mode
   extra_env_vars                             = var.service_extra_env_vars
 
   # Billing usage telemetry
@@ -339,6 +340,7 @@ module "api_ecs" {
   whitelisted_origins                   = var.whitelisted_origins
   outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
+  unsafe_url_request_mode               = var.unsafe_url_request_mode
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
   extra_env_vars                        = var.api_ecs_extra_env_vars

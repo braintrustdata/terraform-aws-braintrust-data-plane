@@ -20,6 +20,7 @@ locals {
     WHITELISTED_ORIGINS                               = join(",", var.whitelisted_origins)
     OUTBOUND_RATE_LIMIT_WINDOW_MINUTES                = tostring(var.outbound_rate_limit_window_minutes)
     OUTBOUND_RATE_LIMIT_MAX_REQUESTS                  = tostring(var.outbound_rate_limit_max_requests)
+    BRAINTRUST_UNSAFE_URL_REQUEST_MODE                = var.unsafe_url_request_mode
     QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc && var.quarantine_invoke_role_arn != null ? var.quarantine_invoke_role_arn : ""
     QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : ""
     QUARANTINE_PROXY_URL                              = var.quarantine_proxy_url

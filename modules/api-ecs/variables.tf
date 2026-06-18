@@ -235,6 +235,17 @@ variable "outbound_rate_limit_max_requests" {
   description = "Outbound rate limit max requests."
 }
 
+variable "unsafe_url_request_mode" {
+  description = "How to handle URL-security validation failures for externally supplied outbound HTTP URLs."
+  type        = string
+  default     = "warn"
+
+  validation {
+    condition     = contains(["off", "proxy", "warn", "reject"], var.unsafe_url_request_mode)
+    error_message = "unsafe_url_request_mode must be one of: off, proxy, warn, reject."
+  }
+}
+
 variable "monitoring_telemetry" {
   type        = string
   description = "Telemetry to send to Braintrust's control plane."

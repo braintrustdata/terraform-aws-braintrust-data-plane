@@ -692,6 +692,17 @@ variable "outbound_rate_limit_window_minutes" {
   default     = 1
 }
 
+variable "unsafe_url_request_mode" {
+  description = "How to handle URL-security validation failures for externally supplied outbound HTTP URLs."
+  type        = string
+  default     = "warn"
+
+  validation {
+    condition     = contains(["off", "proxy", "warn", "reject"], var.unsafe_url_request_mode)
+    error_message = "unsafe_url_request_mode must be one of: off, proxy, warn, reject."
+  }
+}
+
 variable "custom_domain" {
   description = "Custom domain name for the CloudFront distribution"
   type        = string
