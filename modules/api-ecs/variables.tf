@@ -127,13 +127,23 @@ variable "braintrust_org_name" {
 
 variable "primary_org_name" {
   type        = string
-  description = "Primary organization name."
+  default     = ""
+  description = "Required when braintrust_org_name is empty or \"*\". Used to authorize self-hosted service-token management."
+  validation {
+    # ok if non-empty or braintrust_org_name is not empty or "*"
+    condition     = trimspace(var.primary_org_name) != "" || !contains(["", "*"], trimspace(var.braintrust_org_name))
+    error_message = "Set primary_org_name when braintrust_org_name is empty or \"*\"; self-hosted service-token management needs a primary organization."
+  }
 }
 
 variable "allowed_org_ids" {
   type        = string
   default     = ""
-  description = "Comma-separated list of organization IDs allowed to use this data plane. When non-empty, this overrides braintrust_org_name."
+  description = "Optional comma-separated Braintrust Org ID allowlist. Use Braintrust Org IDs, not org names; for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\". If braintrust_org_name is a specific name, include that org's Braintrust Org ID here for forward compatibility."
+  validation {
+    condition     = var.allowed_org_ids == "" || can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(,[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})*$", var.allowed_org_ids))
+    error_message = "allowed_org_ids must be empty or a comma-separated list of Braintrust Org UUIDs without spaces, for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\"."
+  }
 }
 
 variable "database_url_secret_arn" {
@@ -266,6 +276,12 @@ variable "internal_observability_region" {
 variable "internal_observability_env_name" {
   type        = string
   description = "Datadog environment name used for DD_ENV."
+  default     = ""
+}
+
+variable "internal_observability_trace_disabled_plugins" {
+  type        = string
+  description = "Datadog trace plugins to disable for internal observability."
   default     = ""
 }
 

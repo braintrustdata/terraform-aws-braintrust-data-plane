@@ -47,7 +47,7 @@ resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "GET", "HEAD"]
-    allowed_origins = local.all_origins
+    allowed_origins = local.code_bundle_allowed_origins
     max_age_seconds = 3600
   }
 }

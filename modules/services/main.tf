@@ -14,14 +14,18 @@ locals {
   datadog_extension_layer_arn     = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension:70"
   nodejs_datadog_handler          = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
   python_datadog_handler          = "datadog_lambda.handler.handler"
-  datadog_env_vars = {
+  datadog_env_vars = merge({
     DD_SITE            = "${var.internal_observability_region}.datadoghq.com"
     DD_API_KEY         = var.internal_observability_api_key != null ? var.internal_observability_api_key : ""
     DD_ENV             = var.internal_observability_env_name
     DD_VERSION         = local.lambda_version_tag
     DD_TAGS            = "braintrustdeploymentname:${var.deployment_name}"
     OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-  }
+    },
+    trimspace(var.internal_observability_trace_disabled_plugins) != "" ? {
+      DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
+    } : {}
+  )
 
   # Extract bucket IDs from ARNs (format: arn:aws:s3:::bucket-name)
   code_bundle_bucket_id      = split(":::", var.code_bundle_bucket_arn)[1]
@@ -63,6 +67,15 @@ data "http" "lambda_versions" {
   for_each = toset(local.lambda_names)
 
   url = "https://${local.lambda_s3_bucket}.s3.${data.aws_region.current.region}.amazonaws.com/lambda/${each.value}/version-${local.lambda_version_tag}"
+
+  # External S3 lookups are otherwise a single attempt with no backoff, so a
+  # transient network blip (connection reset) fails the whole plan. Retry.
+  retry {
+    attempts     = 5
+    min_delay_ms = 500
+    max_delay_ms = 5000
+  }
+  request_timeout_ms = 10000
 
   lifecycle {
     postcondition {

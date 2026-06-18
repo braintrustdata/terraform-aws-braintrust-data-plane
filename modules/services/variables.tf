@@ -6,13 +6,22 @@ variable "braintrust_org_name" {
 variable "primary_org_name" {
   type        = string
   default     = ""
-  description = "Enter your primary organization's name. This is only required if you intend have multiple organizations on your data plane. Owners in this organization will have special permissions to manage data plane internals."
+  description = "Required when braintrust_org_name is empty or \"*\". Used to authorize self-hosted service-token management."
+  validation {
+    # ok if non-empty or braintrust_org_name is not empty or "*"
+    condition     = !contains(["", "*"], trimspace(var.braintrust_org_name)) || trimspace(var.primary_org_name) != ""
+    error_message = "Set primary_org_name when braintrust_org_name is empty or \"*\"; self-hosted service-token management needs a primary organization."
+  }
 }
 
 variable "allowed_org_ids" {
   type        = string
   default     = ""
-  description = "Comma-separated list of organization IDs allowed to use this data plane. When non-empty, this overrides braintrust_org_name."
+  description = "Optional comma-separated Braintrust Org ID allowlist. Use Braintrust Org IDs, not org names; for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\". If braintrust_org_name is a specific name, include that org's Braintrust Org ID here for forward compatibility."
+  validation {
+    condition     = var.allowed_org_ids == "" || can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(,[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})*$", var.allowed_org_ids))
+    error_message = "allowed_org_ids must be empty or a comma-separated list of Braintrust Org UUIDs without spaces, for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\"."
+  }
 }
 
 variable "deployment_name" {
@@ -402,4 +411,10 @@ variable "internal_observability_region" {
   description = "Datadog region for observability (e.g., us5, us1, eu1)."
   type        = string
   default     = "us5"
+}
+
+variable "internal_observability_trace_disabled_plugins" {
+  description = "Datadog trace plugins to disable for internal observability."
+  type        = string
+  default     = ""
 }

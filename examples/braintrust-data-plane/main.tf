@@ -12,11 +12,16 @@ module "braintrust-data-plane" {
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
   deployment_name = "braintrust"
 
-  # Add your organization name from the Braintrust UI here
-  braintrust_org_name = ""
+  # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
+  # and set primary_org_name for service-token management.
+  braintrust_org_name = "your-org-name"
 
-  # Optional: comma-separated organization IDs allowed to use this data plane.
-  # When non-empty, this overrides braintrust_org_name.
+  # Required when braintrust_org_name is "*", or when it is unset/empty.
+  primary_org_name = "your-org-name"
+
+  # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
+  # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+  # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
   allowed_org_ids = ""
 
   ### Postgres configuration
@@ -109,8 +114,8 @@ module "braintrust-data-plane" {
   # ai_proxy_reserved_concurrent_executions    = -1
 
   # Only use this when instructed to by the Braintrust team.
-  # use_global_gateway_origin   = false
-  # global_gateway_origin_domain = "gateway.braintrust.dev"
+  # use_global_ai_gateway_origin   = false
+  # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
   # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
@@ -131,6 +136,16 @@ module "braintrust-data-plane" {
   #   QuarantineWarmupFunction = {}
   #   AutomationCron           = {}
   # }
+
+
+  ### S3 CORS configuration
+  # Additional CORS origins for the code bundle and lambda responses buckets.
+  # Use s3_additional_allowed_origins to apply the same origins to both buckets,
+  # or set per-bucket vars to scope an origin to just one bucket. Values from all
+  # three are merged. Supports wildcards in the domain name.
+  # s3_additional_allowed_origins                  = ["https://app.example.com"]
+  # s3_code_bundle_additional_allowed_origins      = []
+  # s3_lambda_responses_additional_allowed_origins = []
 
 
   ### Braintrust Remote Support

@@ -150,12 +150,14 @@ module "redis" {
 module "storage" {
   source = "./modules/storage"
 
-  deployment_name                     = var.deployment_name
-  kms_key_arn                         = local.kms_key_arn
-  brainstore_s3_bucket_retention_days = var.brainstore_s3_bucket_retention_days
-  s3_additional_allowed_origins       = var.s3_additional_allowed_origins
-  enable_s3_bucket_abac               = var.enable_s3_bucket_abac
-  custom_tags                         = var.custom_tags
+  deployment_name                                = var.deployment_name
+  kms_key_arn                                    = local.kms_key_arn
+  brainstore_s3_bucket_retention_days            = var.brainstore_s3_bucket_retention_days
+  s3_additional_allowed_origins                  = var.s3_additional_allowed_origins
+  s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
+  s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
+  enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
+  custom_tags                                    = var.custom_tags
 }
 
 module "services" {
@@ -239,14 +241,15 @@ module "services" {
   custom_tags                         = var.custom_tags
 
   # Observability
-  internal_observability_api_key  = var.internal_observability_api_key
-  internal_observability_env_name = var.internal_observability_env_name
-  internal_observability_region   = var.internal_observability_region
+  internal_observability_api_key                = var.internal_observability_api_key
+  internal_observability_env_name               = var.internal_observability_env_name
+  internal_observability_region                 = var.internal_observability_region
+  internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 }
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_llm_gateway || local.create_ecs_api ? 1 : 0
+  count  = var.enable_ai_gateway || local.create_ecs_api ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -256,7 +259,7 @@ module "ecs" {
 
 module "gateway_ecs" {
   source = "./modules/gateway-ecs"
-  count  = var.enable_llm_gateway ? 1 : 0
+  count  = var.enable_ai_gateway ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -266,16 +269,16 @@ module "gateway_ecs" {
   ecs_cluster_name   = module.ecs[0].cluster_name
   container_image = format(
     "public.ecr.aws/braintrust/gateway:%s",
-    var.gateway_version_override == null ? "prerelease" : var.gateway_version_override
+    var.ai_gateway_version_override == null ? "prerelease" : var.ai_gateway_version_override
   )
-  cpu                       = var.gateway_cpu
-  memory                    = var.gateway_memory
-  cpu_architecture          = var.gateway_cpu_architecture
-  min_capacity              = var.gateway_min_capacity
-  max_capacity              = var.gateway_max_capacity
-  target_cpu_utilization    = var.gateway_target_cpu_utilization
-  target_memory_utilization = var.gateway_target_memory_utilization
-  log_retention_days        = var.gateway_log_retention_days
+  cpu                       = var.ai_gateway_cpu
+  memory                    = var.ai_gateway_memory
+  cpu_architecture          = var.ai_gateway_cpu_architecture
+  min_capacity              = var.ai_gateway_min_capacity
+  max_capacity              = var.ai_gateway_max_capacity
+  target_cpu_utilization    = var.ai_gateway_target_cpu_utilization
+  target_memory_utilization = var.ai_gateway_target_memory_utilization
+  log_retention_days        = var.ai_gateway_log_retention_days
   redis_host                = module.redis.redis_endpoint
   redis_port                = module.redis.redis_port
   redis_security_group_id   = module.redis.redis_security_group_id
@@ -284,13 +287,13 @@ module "gateway_ecs" {
       "API"        = module.services_common.api_security_group_id
       "Brainstore" = module.services_common.brainstore_instance_security_group_id
     },
-    var.gateway_authorized_security_groups,
+    var.ai_gateway_authorized_security_groups,
   )
-  extra_env_vars         = var.gateway_extra_env_vars
+  extra_env_vars         = var.ai_gateway_extra_env_vars
   custom_tags            = var.custom_tags
   brainstore_license_key = var.brainstore_license_key
-  enable_execute_command = var.gateway_enable_execute_command
-  braintrust_app_url     = var.gateway_braintrust_app_url
+  enable_execute_command = var.ai_gateway_enable_execute_command
+  braintrust_app_url     = var.ai_gateway_braintrust_app_url
   braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
 }
 
@@ -302,10 +305,11 @@ module "api_ecs" {
   api_version_override = var.api_ecs_version_override
 
   # Telemetry
-  monitoring_telemetry                      = var.monitoring_telemetry
-  internal_observability_api_key_secret_arn = local.create_ecs_api && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
-  internal_observability_env_name           = var.internal_observability_env_name
-  internal_observability_region             = var.internal_observability_region
+  monitoring_telemetry                          = var.monitoring_telemetry
+  internal_observability_api_key_secret_arn     = local.create_ecs_api && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_env_name               = var.internal_observability_env_name
+  internal_observability_region                 = var.internal_observability_region
+  internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 
   # Data stores
   database_url_secret_arn   = module.database.postgres_database_url_secret_arn
@@ -385,18 +389,18 @@ module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name                = var.deployment_name
-  custom_domain                  = var.custom_domain
-  custom_certificate_arn         = var.custom_certificate_arn
-  waf_acl_id                     = var.waf_acl_id
-  cloudfront_price_class         = var.cloudfront_price_class
-  cloudfront_origin_read_timeout = var.cloudfront_origin_read_timeout
-  use_global_ai_proxy            = var.use_global_ai_proxy
-  use_global_gateway_origin      = var.use_global_gateway_origin
-  global_gateway_origin_domain   = var.global_gateway_origin_domain
-  ai_proxy_function_url          = module.services[0].ai_proxy_url
-  api_handler_function_arn       = module.services[0].api_handler_arn
-  custom_tags                    = var.custom_tags
+  deployment_name                 = var.deployment_name
+  custom_domain                   = var.custom_domain
+  custom_certificate_arn          = var.custom_certificate_arn
+  waf_acl_id                      = var.waf_acl_id
+  cloudfront_price_class          = var.cloudfront_price_class
+  cloudfront_origin_read_timeout  = var.cloudfront_origin_read_timeout
+  use_global_ai_proxy             = var.use_global_ai_proxy
+  use_global_ai_gateway_origin    = var.use_global_ai_gateway_origin
+  global_ai_gateway_origin_domain = var.global_ai_gateway_origin_domain
+  ai_proxy_function_url           = module.services[0].ai_proxy_url
+  api_handler_function_arn        = module.services[0].api_handler_arn
+  custom_tags                     = var.custom_tags
 }
 
 module "services_common" {
