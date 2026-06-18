@@ -14,14 +14,20 @@ You must have full administrative permissions in that dedicated account to compl
 
 Run the following script to create the Braintrust management role. This should be run in the customer AWS account dedicated to Braintrust-managed infrastructure. You can optionally provide an AWS profile to use with the `--profile` flag.
 
+The script requires the AWS CLI, `jq`, and `uuidgen`.
+
 ```bash
 # Run using the specified profile. Leave off to use the default profile.
 ./managed-byoc/create-management-role.sh --profile <aws-profile>
 ```
 
+The script sets an ExternalId in the role trust policy for cross-account protection. On first create it auto-generates a value in the form `braintrust-<uuid>`. Re-running against an existing role generates a new ExternalId if it doesn't exist, or preserves the existing ExternalId.
+
+When the script completes, share the printed **Role ARN** and **External ID** with Braintrust.
+
 This role and policy set is the required baseline for managed BYOC. You can review the Trust Policy and Inline Policy in the following files:
 
-- Trust Policy: `managed-byoc/policies/management-role-trust-policy.json`
+- Trust Policy: `managed-byoc/policies/management-role-trust-policy.json` (base policy; ExternalId is always injected by the script at runtime)
 - Inline Policy: `managed-byoc/policies/management-role-policy.json`
 
 ## 3) Optional: Organization Service Control Policy (SCP) guardrail
