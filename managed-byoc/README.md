@@ -21,7 +21,7 @@ The script requires the AWS CLI, `jq`, and `uuidgen`.
 ./managed-byoc/create-management-role.sh --profile <aws-profile>
 ```
 
-The script sets an ExternalId in the role trust policy for cross-account protection. On first create it auto-generates a value in the form `braintrust-<uuid>`. Re-running against an existing role preserves the existing ExternalId.
+The script sets an ExternalId in the role trust policy for cross-account protection. On first create it auto-generates a value in the form `braintrust-<uuid>`. Re-running against an existing role generates a new ExternalId if it doesn't exist, or preserves the existing ExternalId.
 
 When the script completes, share the printed **Role ARN** and **External ID** with Braintrust.
 
