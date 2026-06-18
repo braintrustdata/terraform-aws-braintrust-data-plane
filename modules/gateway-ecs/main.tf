@@ -3,22 +3,143 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name = "gateway"
-  container_port = 8080
-  base_env_vars = {
+  container_name        = "gateway"
+  container_port        = 8080
+  observability_enabled = var.internal_observability_enabled
+  gateway_version_tag   = element(reverse(split(":", var.container_image)), 0)
+  base_env_vars = merge({
     GATEWAY_ENV        = "production"
+    GATEWAY_REGION     = data.aws_region.current.region
     BRAINTRUST_APP_URL = var.braintrust_app_url
     BRAINTRUST_API_URL = var.braintrust_api_url
 
     COMPLETIONS_CACHE_REDIS_URL = "redis://${var.redis_host}:${var.redis_port}"
     AUTH_CACHE_REDIS_URL        = "redis://${var.redis_host}:${var.redis_port}"
     GATEWAY_JSON_LOGS           = "true"
-    OTLP_HTTP_ENDPOINT          = "https://www.braintrust.dev/api/pulse/otel"
-  }
+    OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
+    },
+    local.observability_enabled ? {
+      DD_ENV     = var.internal_observability_env_name
+      DD_VERSION = local.gateway_version_tag
+    } : {},
+    local.observability_enabled && trimspace(var.internal_observability_trace_disabled_plugins) != "" ? {
+      DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
+    } : {},
+  )
   plain_license_env_var = var.brainstore_license_key == null ? {} : {
     BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
   }
   merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+
+  gateway_container_definition = {
+    name      = local.container_name
+    image     = var.container_image
+    essential = true
+    portMappings = [
+      {
+        containerPort = local.container_port
+        hostPort      = local.container_port
+        protocol      = "tcp"
+      }
+    ]
+    environment = [
+      for key in sort(keys(local.merged_env_vars)) : {
+        name  = key
+        value = local.merged_env_vars[key]
+      }
+    ]
+    dependsOn = [
+      for dep in [
+        {
+          containerName = "datadog-agent"
+          condition     = "START"
+        }
+      ] : dep if local.observability_enabled
+    ]
+    logConfiguration = local.gateway_log_configuration
+  }
+
+  observability_sidecars = [
+    for sidecar in [
+      {
+        name           = "datadog-agent"
+        essential      = true
+        image          = "public.ecr.aws/datadog/agent:7"
+        mountPoints    = []
+        portMappings   = []
+        systemControls = []
+        volumesFrom    = []
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            awslogs-group         = aws_cloudwatch_log_group.service.name
+            awslogs-region        = data.aws_region.current.region
+            awslogs-stream-prefix = "datadog-agent"
+          }
+        }
+        environment = [
+          {
+            name  = "ECS_FARGATE"
+            value = "true"
+          },
+          {
+            name  = "DD_SITE"
+            value = "${var.internal_observability_region}.datadoghq.com"
+          },
+          {
+            name  = "DD_ENV"
+            value = var.internal_observability_env_name
+          },
+          {
+            name  = "DD_SERVICE"
+            value = "gateway"
+          },
+          {
+            name  = "DD_VERSION"
+            value = local.gateway_version_tag
+          },
+          {
+            name  = "DD_PROCESS_AGENT_ENABLED"
+            value = "true"
+          },
+          {
+            name  = "DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT"
+            value = "0.0.0.0:4318"
+          },
+          {
+            name  = "DD_LOGS_ENABLED"
+            value = "true"
+          },
+          {
+            name  = "DD_OTLP_CONFIG_LOGS_ENABLED"
+            value = "true"
+          }
+        ]
+        secrets = [
+          {
+            name      = "DD_API_KEY"
+            valueFrom = var.internal_observability_api_key_secret_arn
+          }
+        ]
+        healthCheck = {
+          command     = ["CMD-SHELL", "agent health"]
+          interval    = 30
+          retries     = 3
+          startPeriod = 15
+          timeout     = 5
+        }
+      }
+    ] : sidecar if local.observability_enabled
+  ]
+
+  gateway_log_configuration = {
+    logDriver = "awslogs"
+    options = {
+      awslogs-group         = aws_cloudwatch_log_group.service.name
+      awslogs-region        = data.aws_region.current.region
+      awslogs-stream-prefix = "gateway"
+    }
+  }
 
   valid_fargate_memory_by_cpu = {
     "256"   = [512, 1024, 2048]
@@ -131,6 +252,10 @@ resource "aws_lb" "gateway" {
   load_balancer_type = "application"
   subnets            = var.private_subnet_ids
   security_groups    = [aws_security_group.alb.id]
+
+  client_keep_alive = var.alb_client_keep_alive
+  idle_timeout      = var.alb_idle_timeout
+
   tags = merge({
     Name = "${var.deployment_name}-gateway"
   }, local.common_tags)
@@ -143,8 +268,10 @@ resource "aws_lb_target_group" "gateway" {
   target_type = "ip"
   vpc_id      = var.vpc_id
 
+  deregistration_delay = var.alb_deregistration_delay
+
   health_check {
-    path                = "/"
+    path                = "/health"
     matcher             = "200"
     healthy_threshold   = 3
     unhealthy_threshold = 3
@@ -181,6 +308,38 @@ resource "aws_iam_role_policy_attachment" "task_execution_default" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "task_execution_observability_secrets" {
+  count = local.observability_enabled ? 1 : 0
+
+  name = "${var.deployment_name}-gateway-task-exec-observability-secrets"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+        ]
+        Resource = var.internal_observability_api_key_secret_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+        ]
+        Resource = var.kms_key_arn
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "task" {
   name               = "${var.deployment_name}-gateway-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
@@ -203,34 +362,7 @@ resource "aws_ecs_task_definition" "gateway" {
     cpu_architecture        = var.cpu_architecture
   }
 
-  container_definitions = jsonencode([
-    {
-      name      = local.container_name
-      image     = var.container_image
-      essential = true
-      portMappings = [
-        {
-          containerPort = local.container_port
-          hostPort      = local.container_port
-          protocol      = "tcp"
-        }
-      ]
-      environment = [
-        for key, value in local.merged_env_vars : {
-          name  = key
-          value = value
-        }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.service.name
-          awslogs-region        = data.aws_region.current.region
-          awslogs-stream-prefix = "gateway"
-        }
-      }
-    }
-  ])
+  container_definitions = jsonencode(concat([local.gateway_container_definition], local.observability_sidecars))
 
   tags = merge({
     Name = "${var.deployment_name}-gateway"

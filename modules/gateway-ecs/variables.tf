@@ -108,6 +108,69 @@ variable "log_retention_days" {
   }
 }
 
+variable "alb_client_keep_alive" {
+  type        = number
+  description = "Client keep-alive duration in seconds for the gateway ALB."
+  default     = 4000
+
+  validation {
+    condition     = var.alb_client_keep_alive >= 60 && var.alb_client_keep_alive <= 604800
+    error_message = "alb_client_keep_alive must be between 60 and 604800 seconds."
+  }
+}
+
+variable "alb_idle_timeout" {
+  type        = number
+  description = "Idle timeout in seconds for the gateway ALB."
+  default     = 3600
+
+  validation {
+    condition     = var.alb_idle_timeout >= 1 && var.alb_idle_timeout <= 4000
+    error_message = "alb_idle_timeout must be between 1 and 4000 seconds."
+  }
+}
+
+variable "alb_deregistration_delay" {
+  type        = number
+  description = "Seconds for the gateway target group to wait before deregistering draining targets."
+  default     = 600
+
+  validation {
+    condition     = var.alb_deregistration_delay >= 0 && var.alb_deregistration_delay <= 3600
+    error_message = "alb_deregistration_delay must be between 0 and 3600 seconds."
+  }
+}
+
+variable "internal_observability_api_key_secret_arn" {
+  type        = string
+  description = "Secrets Manager secret ARN containing the internal observability API key."
+  default     = ""
+}
+
+variable "internal_observability_enabled" {
+  type        = bool
+  description = "Whether to enable internal Datadog observability for gateway ECS."
+  default     = false
+}
+
+variable "internal_observability_region" {
+  type        = string
+  description = "Datadog region suffix (e.g. us5) used to build DD_SITE."
+  default     = "us5"
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  description = "Datadog environment name used for DD_ENV."
+  default     = ""
+}
+
+variable "internal_observability_trace_disabled_plugins" {
+  type        = string
+  description = "Datadog trace plugins to disable for internal observability."
+  default     = ""
+}
+
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the gateway container."
