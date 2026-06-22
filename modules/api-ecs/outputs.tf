@@ -1,6 +1,15 @@
 output "service_name" {
-  description = "Name of the API ECS service."
-  value       = aws_ecs_service.api_ecs.name
+  description = "Name of the primary braintrust-api ECS service."
+  value       = aws_ecs_service.braintrust_api.name
+}
+
+output "service_names" {
+  description = "Names of all API ECS services."
+  value = {
+    braintrust_api            = aws_ecs_service.braintrust_api.name
+    braintrust_api_ingest     = aws_ecs_service.braintrust_api_ingest.name
+    braintrust_api_background = aws_ecs_service.braintrust_api_background.name
+  }
 }
 
 output "alb_arn" {
@@ -9,8 +18,17 @@ output "alb_arn" {
 }
 
 output "target_group_arn" {
-  description = "ARN of the API ECS ALB target group."
-  value       = aws_lb_target_group.api_ecs.arn
+  description = "ARN of the braintrust-api ALB target group."
+  value       = aws_lb_target_group.braintrust_api.arn
+}
+
+output "target_group_arns" {
+  description = "ARNs of all API ECS ALB target groups."
+  value = {
+    braintrust_api            = aws_lb_target_group.braintrust_api.arn
+    braintrust_api_ingest     = aws_lb_target_group.braintrust_api_ingest.arn
+    braintrust_api_background = aws_lb_target_group.braintrust_api_background.arn
+  }
 }
 
 output "alb_security_group_id" {

@@ -550,62 +550,6 @@ variable "enable_ecs_api" {
   }
 }
 
-variable "api_ecs_cpu" {
-  description = "CPU units for the API ECS task definition."
-  type        = number
-  default     = 2048
-}
-
-variable "api_ecs_memory" {
-  description = "Memory in MiB for the API ECS task definition."
-  type        = number
-  default     = 16384
-}
-
-variable "api_ecs_min_count" {
-  description = "Minimum number of API ECS tasks. API ECS desired count is managed by Application Auto Scaling."
-  type        = number
-  default     = 3
-
-  validation {
-    condition     = var.api_ecs_min_count >= 1
-    error_message = "api_ecs_min_count must be at least 1."
-  }
-}
-
-variable "api_ecs_max_count" {
-  description = "Maximum number of API ECS tasks."
-  type        = number
-  default     = 64
-
-  validation {
-    condition     = var.api_ecs_max_count >= var.api_ecs_min_count
-    error_message = "api_ecs_max_count must be greater than or equal to api_ecs_min_count."
-  }
-}
-
-variable "api_ecs_cpu_target_value" {
-  description = "Target average CPU utilization percentage for API ECS autoscaling."
-  type        = number
-  default     = 40
-
-  validation {
-    condition     = var.api_ecs_cpu_target_value > 0 && var.api_ecs_cpu_target_value <= 100
-    error_message = "api_ecs_cpu_target_value must be between 1 and 100."
-  }
-}
-
-variable "api_ecs_memory_target_value" {
-  description = "Target average memory utilization percentage for API ECS autoscaling."
-  type        = number
-  default     = 50
-
-  validation {
-    condition     = var.api_ecs_memory_target_value > 0 && var.api_ecs_memory_target_value <= 100
-    error_message = "api_ecs_memory_target_value must be between 1 and 100."
-  }
-}
-
 variable "api_ecs_log_retention_days" {
   description = "CloudWatch log retention period (days) for API ECS logs."
   type        = number
@@ -617,6 +561,141 @@ variable "api_ecs_log_retention_days" {
       365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
     ], var.api_ecs_log_retention_days)
     error_message = "api_ecs_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
+}
+
+variable "api_ecs_braintrust_api_cpu" {
+  description = "CPU units for the braintrust-api ECS task definition (user-interactive queries)."
+  type        = number
+  default     = 1024
+}
+
+variable "api_ecs_braintrust_api_memory" {
+  description = "Memory in MiB for the braintrust-api ECS task definition."
+  type        = number
+  default     = 8192
+}
+
+variable "api_ecs_braintrust_api_min_count" {
+  description = "Minimum number of braintrust-api ECS tasks. Desired count is managed by Application Auto Scaling."
+  type        = number
+  default     = 5
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_min_count >= 1
+    error_message = "api_ecs_braintrust_api_min_count must be at least 1."
+  }
+}
+
+variable "api_ecs_braintrust_api_max_count" {
+  description = "Maximum number of braintrust-api ECS tasks."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_max_count >= var.api_ecs_braintrust_api_min_count
+    error_message = "api_ecs_braintrust_api_max_count must be greater than or equal to api_ecs_braintrust_api_min_count."
+  }
+}
+
+variable "api_ecs_braintrust_api_cpu_target_value" {
+  description = "Target average CPU utilization percentage for braintrust-api ECS autoscaling."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_cpu_target_value > 0 && var.api_ecs_braintrust_api_cpu_target_value <= 100
+    error_message = "api_ecs_braintrust_api_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_braintrust_api_ingest_cpu" {
+  description = "CPU units for the braintrust-api-ingest ECS task definition."
+  type        = number
+  default     = 2048
+}
+
+variable "api_ecs_braintrust_api_ingest_memory" {
+  description = "Memory in MiB for the braintrust-api-ingest ECS task definition."
+  type        = number
+  default     = 8192
+}
+
+variable "api_ecs_braintrust_api_ingest_min_count" {
+  description = "Minimum number of braintrust-api-ingest ECS tasks. Desired count is managed by Application Auto Scaling."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_ingest_min_count >= 1
+    error_message = "api_ecs_braintrust_api_ingest_min_count must be at least 1."
+  }
+}
+
+variable "api_ecs_braintrust_api_ingest_max_count" {
+  description = "Maximum number of braintrust-api-ingest ECS tasks."
+  type        = number
+  default     = 200
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_ingest_max_count >= var.api_ecs_braintrust_api_ingest_min_count
+    error_message = "api_ecs_braintrust_api_ingest_max_count must be greater than or equal to api_ecs_braintrust_api_ingest_min_count."
+  }
+}
+
+variable "api_ecs_braintrust_api_ingest_cpu_target_value" {
+  description = "Target average CPU utilization percentage for braintrust-api-ingest ECS autoscaling."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_ingest_cpu_target_value > 0 && var.api_ecs_braintrust_api_ingest_cpu_target_value <= 100
+    error_message = "api_ecs_braintrust_api_ingest_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_braintrust_api_background_cpu" {
+  description = "CPU units for the braintrust-api-background ECS task definition."
+  type        = number
+  default     = 2048
+}
+
+variable "api_ecs_braintrust_api_background_memory" {
+  description = "Memory in MiB for the braintrust-api-background ECS task definition."
+  type        = number
+  default     = 16384
+}
+
+variable "api_ecs_braintrust_api_background_min_count" {
+  description = "Minimum number of braintrust-api-background ECS tasks. Desired count is managed by Application Auto Scaling."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_background_min_count >= 1
+    error_message = "api_ecs_braintrust_api_background_min_count must be at least 1."
+  }
+}
+
+variable "api_ecs_braintrust_api_background_max_count" {
+  description = "Maximum number of braintrust-api-background ECS tasks."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_background_max_count >= var.api_ecs_braintrust_api_background_min_count
+    error_message = "api_ecs_braintrust_api_background_max_count must be greater than or equal to api_ecs_braintrust_api_background_min_count."
+  }
+}
+
+variable "api_ecs_braintrust_api_background_cpu_target_value" {
+  description = "Target average CPU utilization percentage for braintrust-api-background ECS autoscaling."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_background_cpu_target_value > 0 && var.api_ecs_braintrust_api_background_cpu_target_value <= 100
+    error_message = "api_ecs_braintrust_api_background_cpu_target_value must be between 1 and 100."
   }
 }
 

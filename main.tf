@@ -348,24 +348,35 @@ module "api_ecs" {
   response_bucket    = module.storage.lambda_responses_bucket_id
 
   # Service configuration
-  braintrust_org_name                   = var.braintrust_org_name
-  primary_org_name                      = var.primary_org_name
-  allowed_org_ids                       = var.allowed_org_ids
-  cpu                                   = var.api_ecs_cpu
-  memory                                = var.api_ecs_memory
-  min_count                             = var.api_ecs_min_count
-  max_count                             = var.api_ecs_max_count
-  log_retention_days                    = var.api_ecs_log_retention_days
-  enable_execute_command                = var.api_ecs_enable_execute_command
-  whitelisted_origins                   = var.whitelisted_origins
-  outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
-  outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
-  disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
-  billing_telemetry_log_level           = var.billing_telemetry_log_level
-  unsafe_url_request_mode               = var.unsafe_url_request_mode
-  url_security_dns_servers              = var.url_security_dns_servers
-  url_security_allow_cidrs              = var.url_security_allow_cidrs
-  extra_env_vars                        = var.api_ecs_extra_env_vars
+  braintrust_org_name                        = var.braintrust_org_name
+  primary_org_name                           = var.primary_org_name
+  allowed_org_ids                            = var.allowed_org_ids
+  log_retention_days                         = var.api_ecs_log_retention_days
+  enable_execute_command                     = var.api_ecs_enable_execute_command
+  braintrust_api_cpu                         = var.api_ecs_braintrust_api_cpu
+  braintrust_api_memory                      = var.api_ecs_braintrust_api_memory
+  braintrust_api_min_count                   = var.api_ecs_braintrust_api_min_count
+  braintrust_api_max_count                   = var.api_ecs_braintrust_api_max_count
+  braintrust_api_cpu_target_value            = var.api_ecs_braintrust_api_cpu_target_value
+  braintrust_api_ingest_cpu                  = var.api_ecs_braintrust_api_ingest_cpu
+  braintrust_api_ingest_memory               = var.api_ecs_braintrust_api_ingest_memory
+  braintrust_api_ingest_min_count            = var.api_ecs_braintrust_api_ingest_min_count
+  braintrust_api_ingest_max_count            = var.api_ecs_braintrust_api_ingest_max_count
+  braintrust_api_ingest_cpu_target_value     = var.api_ecs_braintrust_api_ingest_cpu_target_value
+  braintrust_api_background_cpu              = var.api_ecs_braintrust_api_background_cpu
+  braintrust_api_background_memory           = var.api_ecs_braintrust_api_background_memory
+  braintrust_api_background_min_count        = var.api_ecs_braintrust_api_background_min_count
+  braintrust_api_background_max_count        = var.api_ecs_braintrust_api_background_max_count
+  braintrust_api_background_cpu_target_value = var.api_ecs_braintrust_api_background_cpu_target_value
+  whitelisted_origins                        = var.whitelisted_origins
+  outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
+  disable_billing_telemetry_aggregation      = var.disable_billing_telemetry_aggregation
+  billing_telemetry_log_level                = var.billing_telemetry_log_level
+  unsafe_url_request_mode                    = var.unsafe_url_request_mode
+  url_security_dns_servers                   = var.url_security_dns_servers
+  url_security_allow_cidrs                   = var.url_security_allow_cidrs
+  extra_env_vars                             = var.api_ecs_extra_env_vars
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -398,9 +409,6 @@ module "api_ecs" {
   task_role_arn          = module.services_common.api_handler_role_arn
   task_security_group_id = module.services_common.api_security_group_id
   custom_tags            = var.custom_tags
-
-  cpu_target_value    = var.api_ecs_cpu_target_value
-  memory_target_value = var.api_ecs_memory_target_value
 }
 
 module "ingress" {
