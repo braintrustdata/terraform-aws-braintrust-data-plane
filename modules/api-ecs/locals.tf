@@ -93,6 +93,16 @@ locals {
 
   merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
+  api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
+
+  api_service_env_vars = {
+    for service_name in local.api_service_names :
+    service_name => merge(local.merged_env_vars, {
+      CLOUDWATCH_METRICS_SERVICE_NAME    = service_name
+      CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
+    })
+  }
+
   api_container_depends_on = [
     for dep in [
       {
@@ -118,12 +128,6 @@ locals {
         containerPort = 8000
         hostPort      = 8000
         protocol      = "tcp"
-      }
-    ]
-    environment = [
-      for key in sort(keys(local.merged_env_vars)) : {
-        name  = key
-        value = local.merged_env_vars[key]
       }
     ]
     secrets = [
@@ -247,7 +251,7 @@ locals {
   }
 
   observability_sidecars = {
-    for service_name in ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"] :
+    for service_name in local.api_service_names :
     service_name => [
       for sidecar in [
         {
@@ -343,11 +347,17 @@ locals {
   }
 
   api_container_definitions = {
-    for service_name in ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"] :
+    for service_name in local.api_service_names :
     service_name => jsonencode(concat([
       merge(local.api_container_base, {
         dependsOn        = local.api_container_depends_on
         logConfiguration = local.api_log_configurations[service_name]
+        environment = [
+          for key in sort(keys(local.api_service_env_vars[service_name])) : {
+            name  = key
+            value = local.api_service_env_vars[service_name][key]
+          }
+        ]
       })
     ], local.observability_sidecars[service_name]))
   }

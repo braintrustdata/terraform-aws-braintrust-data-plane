@@ -609,6 +609,17 @@ variable "api_ecs_braintrust_api_cpu_target_value" {
   }
 }
 
+variable "api_ecs_braintrust_api_event_loop_utilization_target_value" {
+  description = "Target EventLoopUtilizationPercent for braintrust-api ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  type        = number
+  default     = 40
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_event_loop_utilization_target_value > 0 && var.api_ecs_braintrust_api_event_loop_utilization_target_value <= 100
+    error_message = "api_ecs_braintrust_api_event_loop_utilization_target_value must be between 1 and 100."
+  }
+}
+
 variable "api_ecs_braintrust_api_ingest_cpu" {
   description = "CPU units for the braintrust-api-ingest ECS task definition."
   type        = number
@@ -654,6 +665,17 @@ variable "api_ecs_braintrust_api_ingest_cpu_target_value" {
   }
 }
 
+variable "api_ecs_braintrust_api_ingest_event_loop_utilization_target_value" {
+  description = "Target EventLoopUtilizationPercent for braintrust-api-ingest ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  type        = number
+  default     = 40
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_ingest_event_loop_utilization_target_value > 0 && var.api_ecs_braintrust_api_ingest_event_loop_utilization_target_value <= 100
+    error_message = "api_ecs_braintrust_api_ingest_event_loop_utilization_target_value must be between 1 and 100."
+  }
+}
+
 variable "api_ecs_braintrust_api_background_cpu" {
   description = "CPU units for the braintrust-api-background ECS task definition."
   type        = number
@@ -696,6 +718,17 @@ variable "api_ecs_braintrust_api_background_cpu_target_value" {
   validation {
     condition     = var.api_ecs_braintrust_api_background_cpu_target_value > 0 && var.api_ecs_braintrust_api_background_cpu_target_value <= 100
     error_message = "api_ecs_braintrust_api_background_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "api_ecs_braintrust_api_background_event_loop_utilization_target_value" {
+  description = "Target EventLoopUtilizationPercent for braintrust-api-background ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  type        = number
+  default     = 40
+
+  validation {
+    condition     = var.api_ecs_braintrust_api_background_event_loop_utilization_target_value > 0 && var.api_ecs_braintrust_api_background_event_loop_utilization_target_value <= 100
+    error_message = "api_ecs_braintrust_api_background_event_loop_utilization_target_value must be between 1 and 100."
   }
 }
 

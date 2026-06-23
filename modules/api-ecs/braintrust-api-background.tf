@@ -104,3 +104,33 @@ resource "aws_appautoscaling_policy" "braintrust_api_background_cpu_target" {
     scale_out_cooldown = 60
   }
 }
+
+resource "aws_appautoscaling_policy" "braintrust_api_background_event_loop_target" {
+  name               = "${var.deployment_name}-braintrust-api-background-event-loop-target"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.braintrust_api_background.resource_id
+  scalable_dimension = aws_appautoscaling_target.braintrust_api_background.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.braintrust_api_background.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    customized_metric_specification {
+      metric_name = "EventLoopUtilizationPercent"
+      namespace   = "Braintrust/Api"
+      statistic   = "Average"
+
+      dimensions {
+        name  = "ServiceName"
+        value = local.braintrust_api_background_name
+      }
+
+      dimensions {
+        name  = "DeploymentName"
+        value = var.deployment_name
+      }
+    }
+
+    target_value       = var.braintrust_api_background_event_loop_utilization_target_value
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}

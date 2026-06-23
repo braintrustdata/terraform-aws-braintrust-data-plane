@@ -95,6 +95,17 @@ variable "braintrust_api_cpu_target_value" {
   }
 }
 
+variable "braintrust_api_event_loop_utilization_target_value" {
+  type        = number
+  description = "Target EventLoopUtilizationPercent for braintrust-api ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  default     = 40
+
+  validation {
+    condition     = var.braintrust_api_event_loop_utilization_target_value > 0 && var.braintrust_api_event_loop_utilization_target_value <= 100
+    error_message = "braintrust_api_event_loop_utilization_target_value must be between 1 and 100."
+  }
+}
+
 variable "braintrust_api_ingest_cpu" {
   type        = number
   description = "CPU units for the braintrust-api-ingest ECS task definition."
@@ -140,6 +151,17 @@ variable "braintrust_api_ingest_cpu_target_value" {
   }
 }
 
+variable "braintrust_api_ingest_event_loop_utilization_target_value" {
+  type        = number
+  description = "Target EventLoopUtilizationPercent for braintrust-api-ingest ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  default     = 40
+
+  validation {
+    condition     = var.braintrust_api_ingest_event_loop_utilization_target_value > 0 && var.braintrust_api_ingest_event_loop_utilization_target_value <= 100
+    error_message = "braintrust_api_ingest_event_loop_utilization_target_value must be between 1 and 100."
+  }
+}
+
 variable "braintrust_api_background_cpu" {
   type        = number
   description = "CPU units for the braintrust-api-background ECS task definition."
@@ -182,6 +204,17 @@ variable "braintrust_api_background_cpu_target_value" {
   validation {
     condition     = var.braintrust_api_background_cpu_target_value > 0 && var.braintrust_api_background_cpu_target_value <= 100
     error_message = "braintrust_api_background_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_background_event_loop_utilization_target_value" {
+  type        = number
+  description = "Target EventLoopUtilizationPercent for braintrust-api-background ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  default     = 40
+
+  validation {
+    condition     = var.braintrust_api_background_event_loop_utilization_target_value > 0 && var.braintrust_api_background_event_loop_utilization_target_value <= 100
+    error_message = "braintrust_api_background_event_loop_utilization_target_value must be between 1 and 100."
   }
 }
 
