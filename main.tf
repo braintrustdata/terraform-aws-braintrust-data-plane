@@ -40,6 +40,7 @@ locals {
   create_ecs_api                             = !var.use_deployment_mode_external_eks && var.create_ecs_api
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || var.enable_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
   brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
@@ -279,6 +280,9 @@ module "gateway_ecs" {
   target_cpu_utilization    = var.ai_gateway_target_cpu_utilization
   target_memory_utilization = var.ai_gateway_target_memory_utilization
   log_retention_days        = var.ai_gateway_log_retention_days
+  alb_client_keep_alive     = var.ai_gateway_alb_client_keep_alive
+  alb_idle_timeout          = var.ai_gateway_alb_idle_timeout
+  alb_deregistration_delay  = var.ai_gateway_alb_deregistration_delay
   redis_host                = module.redis.redis_endpoint
   redis_port                = module.redis.redis_port
   redis_security_group_id   = module.redis.redis_security_group_id
@@ -295,6 +299,13 @@ module "gateway_ecs" {
   enable_execute_command = var.ai_gateway_enable_execute_command
   braintrust_app_url     = var.ai_gateway_braintrust_app_url
   braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+
+  # Observability
+  internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_enabled                = local.create_internal_observability_secret
+  internal_observability_env_name               = var.internal_observability_env_name
+  internal_observability_region                 = var.internal_observability_region
+  internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 }
 
 module "api_ecs" {
@@ -306,7 +317,7 @@ module "api_ecs" {
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
-  internal_observability_api_key_secret_arn     = local.create_ecs_api && local.enable_internal_observability ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins

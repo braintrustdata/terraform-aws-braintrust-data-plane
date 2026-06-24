@@ -8,6 +8,7 @@ ROLE_POLICY_PATH="$SCRIPT_DIR/policies/management-role-policy.json"
 ROLE_NAME="${ROLE_NAME:-BraintrustManagementRole}"
 PROFILE="${AWS_PROFILE:-default}"
 INLINE_POLICY_NAME="${INLINE_POLICY_NAME:-BraintrustManagementRolePolicy}"
+EXTERNAL_ID=""
 MAX_SESSION_DURATION_SECONDS=14400
 
 usage() {
@@ -21,8 +22,8 @@ Options:
   --help, -h       Show this help
 
 Environment:
-  AWS_PROFILE      Default profile if --profile is not provided
-  ROLE_NAME        Default role name if --role-name is not provided
+  AWS_PROFILE         Default profile if --profile is not provided
+  ROLE_NAME           Default role name if --role-name is not provided
   INLINE_POLICY_NAME  Name for inline role policy (default: BraintrustManagementRolePolicy)
 EOF
 }
@@ -32,6 +33,40 @@ require_cmd() {
     echo "Missing required command: $1" >&2
     exit 1
   fi
+}
+
+generate_external_id() {
+  local uuid=""
+  if command -v uuidgen >/dev/null 2>&1; then
+    uuid="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  elif [[ -r /proc/sys/kernel/random/uuid ]]; then
+    uuid="$(cat /proc/sys/kernel/random/uuid)"
+  else
+    echo "Missing UUID source: uuidgen or /proc/sys/kernel/random/uuid" >&2
+    exit 1
+  fi
+  EXTERNAL_ID="braintrust-${uuid}"
+}
+
+resolve_external_id() {
+  if aws iam get-role --profile "$PROFILE" --role-name "$ROLE_NAME" >/dev/null 2>&1; then
+    local existing
+    existing="$(aws iam get-role \
+      --profile "$PROFILE" \
+      --role-name "$ROLE_NAME" \
+      --output json | jq -r '.Role.AssumeRolePolicyDocument | fromjson | .Statement[0].Condition.StringEquals."sts:ExternalId" // empty')"
+    if [[ -n "$existing" && "$existing" != "null" ]]; then
+      EXTERNAL_ID="$existing"
+      return
+    fi
+  fi
+  generate_external_id
+}
+
+build_trust_policy() {
+  jq --arg external_id "$EXTERNAL_ID" \
+    '.Statement[0].Condition = {"StringEquals": {"sts:ExternalId": $external_id}}' \
+    "$TRUST_POLICY_PATH"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -65,6 +100,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_cmd aws
+require_cmd jq
 
 if [[ ! -f "$TRUST_POLICY_PATH" ]]; then
   echo "Trust policy file not found: $TRUST_POLICY_PATH" >&2
@@ -80,6 +116,9 @@ if ! ACCOUNT_ID="$(aws sts get-caller-identity --profile "$PROFILE" --query 'Acc
   echo "Failed to resolve account for profile '$PROFILE'. Check AWS credentials/profile setup." >&2
   exit 1
 fi
+
+resolve_external_id
+TRUST_POLICY_DOCUMENT="$(build_trust_policy)"
 
 echo "About to create/update Braintrust management role with:"
 echo "  AWS profile : $PROFILE"
@@ -98,7 +137,7 @@ if aws iam get-role --profile "$PROFILE" --role-name "$ROLE_NAME" >/dev/null 2>&
   aws iam update-assume-role-policy \
     --profile "$PROFILE" \
     --role-name "$ROLE_NAME" \
-    --policy-document "file://$TRUST_POLICY_PATH" \
+    --policy-document "$TRUST_POLICY_DOCUMENT" \
     >/dev/null
   echo "Updating max session duration to 4 hours..."
   aws iam update-role \
@@ -111,7 +150,7 @@ else
   aws iam create-role \
     --profile "$PROFILE" \
     --role-name "$ROLE_NAME" \
-    --assume-role-policy-document "file://$TRUST_POLICY_PATH" \
+    --assume-role-policy-document "$TRUST_POLICY_DOCUMENT" \
     --max-session-duration "$MAX_SESSION_DURATION_SECONDS" \
     >/dev/null
 fi
@@ -126,3 +165,6 @@ aws iam put-role-policy \
 
 echo "Done. Role '$ROLE_NAME' is configured in account $ACCOUNT_ID."
 echo "Role ARN: arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME"
+echo
+echo "Share this External ID with Braintrust:"
+echo "  $EXTERNAL_ID"

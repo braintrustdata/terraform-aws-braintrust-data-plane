@@ -426,6 +426,39 @@ variable "ai_gateway_log_retention_days" {
   }
 }
 
+variable "ai_gateway_alb_client_keep_alive" {
+  description = "Client keep-alive duration in seconds for the gateway ALB."
+  type        = number
+  default     = 4000
+
+  validation {
+    condition     = var.ai_gateway_alb_client_keep_alive >= 60 && var.ai_gateway_alb_client_keep_alive <= 604800
+    error_message = "ai_gateway_alb_client_keep_alive must be between 60 and 604800 seconds."
+  }
+}
+
+variable "ai_gateway_alb_idle_timeout" {
+  description = "Idle timeout in seconds for the gateway ALB."
+  type        = number
+  default     = 3600
+
+  validation {
+    condition     = var.ai_gateway_alb_idle_timeout >= 1 && var.ai_gateway_alb_idle_timeout <= 4000
+    error_message = "ai_gateway_alb_idle_timeout must be between 1 and 4000 seconds."
+  }
+}
+
+variable "ai_gateway_alb_deregistration_delay" {
+  description = "Seconds for the gateway target group to wait before deregistering draining targets."
+  type        = number
+  default     = 600
+
+  validation {
+    condition     = var.ai_gateway_alb_deregistration_delay >= 0 && var.ai_gateway_alb_deregistration_delay <= 3600
+    error_message = "ai_gateway_alb_deregistration_delay must be between 0 and 3600 seconds."
+  }
+}
+
 variable "ai_gateway_extra_env_vars" {
   description = "Extra environment variables for the gateway ECS container"
   type        = map(string)
