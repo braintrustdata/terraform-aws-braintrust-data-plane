@@ -19,28 +19,6 @@ locals {
   brainstore_cache_file_size             = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
   brainstore_writer_cache_file_size      = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
   brainstore_fast_reader_cache_file_size = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage * 0.9)}gb"
-  autoscaling_group_enabled_metrics = [
-    "GroupAndWarmPoolDesiredCapacity",
-    "GroupAndWarmPoolTotalCapacity",
-    "GroupDesiredCapacity",
-    "GroupInServiceCapacity",
-    "GroupInServiceInstances",
-    "GroupMaxSize",
-    "GroupMinSize",
-    "GroupPendingCapacity",
-    "GroupPendingInstances",
-    "GroupStandbyCapacity",
-    "GroupStandbyInstances",
-    "GroupTerminatingCapacity",
-    "GroupTerminatingInstances",
-    "GroupTotalCapacity",
-    "GroupTotalInstances",
-    "WarmPoolDesiredCapacity",
-    "WarmPoolPendingCapacity",
-    "WarmPoolTerminatingCapacity",
-    "WarmPoolTotalCapacity",
-    "WarmPoolWarmedCapacity",
-  ]
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -198,8 +176,8 @@ resource "aws_autoscaling_group" "brainstore" {
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
   wait_for_elb_capacity     = var.instance_count
-  enabled_metrics           = local.autoscaling_group_enabled_metrics
-  metrics_granularity       = "1Minute"
+  # AWS enables all Auto Scaling group metrics when granularity is set without an explicit metrics list.
+  metrics_granularity = "1Minute"
 
   launch_template {
     id      = aws_launch_template.brainstore.id

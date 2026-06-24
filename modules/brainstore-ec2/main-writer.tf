@@ -155,8 +155,8 @@ resource "aws_autoscaling_group" "brainstore_writer" {
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_writer[0].arn]
   wait_for_elb_capacity     = var.writer_instance_count
-  enabled_metrics           = local.autoscaling_group_enabled_metrics
-  metrics_granularity       = "1Minute"
+  # AWS enables all Auto Scaling group metrics when granularity is set without an explicit metrics list.
+  metrics_granularity = "1Minute"
 
   launch_template {
     id      = aws_launch_template.brainstore_writer[0].id
