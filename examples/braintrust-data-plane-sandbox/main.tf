@@ -99,7 +99,6 @@ module "braintrust-data-plane" {
   # peer with other VPCs and the default CIDRs conflict.
   # vpc_cidr            = "10.175.0.0/21"
   # quarantine_vpc_cidr = "10.175.8.0/21"
-
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
   # Use s3_additional_allowed_origins to apply the same origins to both buckets,

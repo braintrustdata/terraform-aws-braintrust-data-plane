@@ -121,7 +121,6 @@ module "braintrust-data-plane" {
   # custom_tags = {
   #   CustomTagKey = "SomeValue"
   # }
-
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
   # Use s3_additional_allowed_origins to apply the same origins to both buckets,

@@ -499,6 +499,19 @@ variable "ai_gateway_braintrust_app_url" {
   default     = "https://www.braintrust.dev"
 }
 
+
+variable "url_security_dns_servers" {
+  description = "Comma-separated DNS resolver IP addresses Braintrust backends should query when checking user-supplied URLs. Set this to force URL-security validation through trusted resolvers, such as VPC or corporate DNS, before falling back to the host resolver. Leave empty to use the application default resolver behavior."
+  type        = string
+  default     = ""
+}
+
+variable "url_security_allow_cidrs" {
+  description = "Optional comma-separated CIDR ranges that Braintrust backend URL-security validation may allow even if private or reserved. Hard-blocked metadata, link-local, multicast, unspecified, and future-use ranges remain blocked."
+  type        = string
+  default     = ""
+}
+
 variable "api_ecs_version_override" {
   type        = string
   description = "Optional API ECS image tag override. If unset, uses modules/api-ecs/VERSIONS.json."
@@ -742,13 +755,13 @@ variable "outbound_rate_limit_window_minutes" {
 }
 
 variable "unsafe_url_request_mode" {
-  description = "How to handle URL-security validation failures for externally supplied outbound HTTP URLs."
+  description = "Controls how Braintrust backends handle outbound requests to user-supplied URLs that fail URL-security checks, such as URLs resolving to private or reserved IP ranges. Use off to allow, proxy to proxy, warn to allow with warnings, or reject to block. Leave empty to use the application default of warn."
   type        = string
-  default     = "warn"
+  default     = ""
 
   validation {
-    condition     = contains(["off", "proxy", "warn", "reject"], var.unsafe_url_request_mode)
-    error_message = "unsafe_url_request_mode must be one of: off, proxy, warn, reject."
+    condition     = contains(["", "off", "proxy", "warn", "reject"], var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode))
+    error_message = "unsafe_url_request_mode must be empty or one of: off, proxy, warn, reject."
   }
 }
 
