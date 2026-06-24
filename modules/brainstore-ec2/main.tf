@@ -19,7 +19,7 @@ locals {
   brainstore_cache_file_size             = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
   brainstore_writer_cache_file_size      = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
   brainstore_fast_reader_cache_file_size = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage * 0.9)}gb"
-  autoscaling_group_enabled_metrics     = [
+  autoscaling_group_enabled_metrics = [
     "GroupAndWarmPoolDesiredCapacity",
     "GroupAndWarmPoolTotalCapacity",
     "GroupDesiredCapacity",
