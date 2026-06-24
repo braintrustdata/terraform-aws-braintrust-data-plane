@@ -93,6 +93,29 @@ resource "aws_iam_role_policy_attachment" "api_handler_additional_policy" {
   policy_arn = var.service_additional_policy_arns[count.index]
 }
 
+resource "aws_iam_role_policy" "api_handler_cloudwatch_metrics" {
+  count = var.enable_ecs ? 1 : 0
+  name  = "cloudwatch-autoscaling-metrics"
+  role  = aws_iam_role.api_handler_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "CloudWatchAutoscalingMetrics"
+        Effect = "Allow"
+        Action = ["cloudwatch:PutMetricData"]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "cloudwatch:namespace" = "Braintrust/Api"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_policy" "api_handler_policy" {
   name = "${var.deployment_name}-APIHandlerRolePolicy"
   policy = jsonencode({ # nosemgrep
