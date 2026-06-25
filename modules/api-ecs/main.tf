@@ -9,10 +9,25 @@ locals {
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
   api_ecs_url                  = "http://${aws_lb.api_ecs.dns_name}"
+  unsafe_url_request_mode      = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
+  url_security_dns_servers     = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
+  url_security_allow_cidrs     = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  url_security_env_vars = merge(
+    local.unsafe_url_request_mode != "" ? {
+      BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
+    } : {},
+    local.url_security_dns_servers != "" ? {
+      BRAINTRUST_URL_SECURITY_DNS_SERVERS = local.url_security_dns_servers
+    } : {},
+    local.url_security_allow_cidrs != "" ? {
+      BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
+    } : {}
+  )
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
     PRIMARY_ORG_NAME                                  = var.primary_org_name
+    ALLOWED_ORG_IDS                                   = var.allowed_org_ids
     BRAINTRUST_DEPLOYMENT_NAME                        = var.deployment_name
     RESPONSE_BUCKET                                   = var.response_bucket
     CODE_BUNDLE_BUCKET                                = var.code_bundle_bucket
@@ -51,6 +66,7 @@ locals {
     PROXY_URL                                         = "http://127.0.0.1:8000/v1/proxy"
     TS_API_ASYNC_SCORING_PROXY_URL                    = "http://127.0.0.1:8000"
     },
+    local.url_security_env_vars,
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
       BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"

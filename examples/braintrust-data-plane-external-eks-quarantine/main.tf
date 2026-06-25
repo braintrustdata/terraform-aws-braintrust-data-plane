@@ -19,8 +19,18 @@ module "braintrust-data-plane" {
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
   deployment_name = "braintrust"
 
-  # Add your organization name from the Braintrust UI here
+  # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
+  # and set primary_org_name for service-token management.
   braintrust_org_name = "test-org"
+
+  # Required when braintrust_org_name is "*", or when it is unset/empty and allowed_org_ids is empty.
+  primary_org_name = "test-org"
+
+  # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
+  # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+  # If braintrust_org_name is a specific name, include that org's ID here
+  # for forward compatibility.
+  allowed_org_ids = ""
 
   # Brainstore license key (required)
   brainstore_license_key = var.brainstore_license_key
@@ -30,7 +40,7 @@ module "braintrust-data-plane" {
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
-  # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module. 
+  # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles
   #enable_eks_pod_identity = true
   #enable_eks_irsa = true
@@ -94,6 +104,10 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
+  # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
+  # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
+  # unsafe_url_request_mode = "warn"
+
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.
   # Changing them after the fact is not possible and will require a complete rebuild of your Braintrust deployment.
@@ -107,7 +121,6 @@ module "braintrust-data-plane" {
   # custom_tags = {
   #   CustomTagKey = "SomeValue"
   # }
-
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
   # Use s3_additional_allowed_origins to apply the same origins to both buckets,

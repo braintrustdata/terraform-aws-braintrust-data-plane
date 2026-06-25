@@ -102,9 +102,9 @@ resource "aws_iam_role_policy" "api_handler_cloudwatch_metrics" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "CloudWatchAutoscalingMetrics"
-        Effect = "Allow"
-        Action = ["cloudwatch:PutMetricData"]
+        Sid      = "CloudWatchAutoscalingMetrics"
+        Effect   = "Allow"
+        Action   = ["cloudwatch:PutMetricData"]
         Resource = "*"
         Condition = {
           StringEquals = {

@@ -12,8 +12,17 @@ module "braintrust-data-plane" {
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
   deployment_name = "braintrust"
 
-  # Add your organization name from the Braintrust UI here
-  braintrust_org_name = ""
+  # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
+  # and set primary_org_name for service-token management.
+  braintrust_org_name = "your-org-name"
+
+  # Required when braintrust_org_name is "*", or when it is unset/empty.
+  primary_org_name = "your-org-name"
+
+  # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
+  # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+  # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
+  allowed_org_ids = ""
 
   ### Postgres configuration
   # Changing this will incur a short downtime.
@@ -107,6 +116,12 @@ module "braintrust-data-plane" {
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
+
+  # Optional URL-security controls for externally supplied outbound HTTP URLs.
+  # Leave unset to use the application default mode of "warn".
+  # unsafe_url_request_mode  = "reject"
+  # url_security_dns_servers = "1.1.1.1,8.8.8.8"
+  # url_security_allow_cidrs = "10.0.0.0/8"
 
   # Uncomment these to set extra environment variables for the services.
   # Only use this when instructed to by the Braintrust team.

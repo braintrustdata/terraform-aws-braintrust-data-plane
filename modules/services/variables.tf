@@ -6,7 +6,22 @@ variable "braintrust_org_name" {
 variable "primary_org_name" {
   type        = string
   default     = ""
-  description = "Enter your primary organization's name. This is only required if you intend have multiple organizations on your data plane. Owners in this organization will have special permissions to manage data plane internals."
+  description = "Required when braintrust_org_name is empty or \"*\". Used to authorize self-hosted service-token management."
+  validation {
+    # ok if non-empty or braintrust_org_name is not empty or "*"
+    condition     = !contains(["", "*"], trimspace(var.braintrust_org_name)) || trimspace(var.primary_org_name) != ""
+    error_message = "Set primary_org_name when braintrust_org_name is empty or \"*\"; self-hosted service-token management needs a primary organization."
+  }
+}
+
+variable "allowed_org_ids" {
+  type        = string
+  default     = ""
+  description = "Optional comma-separated Braintrust Org ID allowlist. Use Braintrust Org IDs, not org names; for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\". If braintrust_org_name is a specific name, include that org's Braintrust Org ID here for forward compatibility."
+  validation {
+    condition     = var.allowed_org_ids == "" || can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(,[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})*$", var.allowed_org_ids))
+    error_message = "allowed_org_ids must be empty or a comma-separated list of Braintrust Org UUIDs without spaces, for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\"."
+  }
 }
 
 variable "deployment_name" {
@@ -147,6 +162,17 @@ variable "outbound_rate_limit_window_minutes" {
   default     = 1
 }
 
+variable "unsafe_url_request_mode" {
+  description = "Controls how Braintrust backends handle outbound requests to user-supplied URLs that fail URL-security checks, such as URLs resolving to private or reserved IP ranges. Use off to allow, proxy to proxy, warn to allow with warnings, or reject to block. Leave empty to use the application default of warn."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = contains(["", "off", "proxy", "warn", "reject"], var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode))
+    error_message = "unsafe_url_request_mode must be empty or one of: off, proxy, warn, reject."
+  }
+}
+
 variable "api_handler_provisioned_concurrency" {
   type        = number
   description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
@@ -234,6 +260,19 @@ variable "skip_pg_for_brainstore_objects" {
     condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
     error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
   }
+}
+
+
+variable "url_security_dns_servers" {
+  description = "Comma-separated DNS resolver IP addresses Braintrust backends should query when checking user-supplied URLs. Set this to force URL-security validation through trusted resolvers, such as VPC or corporate DNS, before falling back to the host resolver. Leave empty to use the application default resolver behavior."
+  type        = string
+  default     = ""
+}
+
+variable "url_security_allow_cidrs" {
+  description = "Optional comma-separated CIDR ranges that Braintrust backend URL-security validation may allow even if private or reserved. Hard-blocked metadata, link-local, multicast, unspecified, and future-use ranges remain blocked."
+  type        = string
+  default     = ""
 }
 
 variable "brainstore_enable_export" {

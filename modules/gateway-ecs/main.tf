@@ -3,10 +3,24 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name        = "gateway"
-  container_port        = 8080
-  observability_enabled = var.internal_observability_enabled
-  gateway_version_tag   = element(reverse(split(":", var.container_image)), 0)
+  container_name           = "gateway"
+  container_port           = 8080
+  observability_enabled    = var.internal_observability_enabled
+  gateway_version_tag      = element(reverse(split(":", var.container_image)), 0)
+  unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
+  url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
+  url_security_allow_cidrs = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  url_security_env_vars = merge(
+    local.unsafe_url_request_mode != "" ? {
+      BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
+    } : {},
+    local.url_security_dns_servers != "" ? {
+      BRAINTRUST_URL_SECURITY_DNS_SERVERS = local.url_security_dns_servers
+    } : {},
+    local.url_security_allow_cidrs != "" ? {
+      BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
+    } : {}
+  )
   base_env_vars = merge({
     GATEWAY_ENV        = "production"
     GATEWAY_REGION     = data.aws_region.current.region
@@ -18,6 +32,7 @@ locals {
     GATEWAY_JSON_LOGS           = "true"
     OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
     },
+    local.url_security_env_vars,
     local.observability_enabled ? {
       DD_ENV     = var.internal_observability_env_name
       DD_VERSION = local.gateway_version_tag

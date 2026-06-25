@@ -198,6 +198,7 @@ module "services" {
   # Service configuration
   braintrust_org_name                        = var.braintrust_org_name
   primary_org_name                           = var.primary_org_name
+  allowed_org_ids                            = var.allowed_org_ids
   api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   api_handler_memory_limit                   = var.api_handler_memory_limit
@@ -206,6 +207,9 @@ module "services" {
   whitelisted_origins                        = var.whitelisted_origins
   outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
+  unsafe_url_request_mode                    = var.unsafe_url_request_mode
+  url_security_dns_servers                   = var.url_security_dns_servers
+  url_security_allow_cidrs                   = var.url_security_allow_cidrs
   extra_env_vars                             = var.service_extra_env_vars
 
   # Billing usage telemetry
@@ -291,12 +295,15 @@ module "gateway_ecs" {
     },
     var.ai_gateway_authorized_security_groups,
   )
-  extra_env_vars         = var.ai_gateway_extra_env_vars
-  custom_tags            = var.custom_tags
-  brainstore_license_key = var.brainstore_license_key
-  enable_execute_command = var.ai_gateway_enable_execute_command
-  braintrust_app_url     = var.ai_gateway_braintrust_app_url
-  braintrust_api_url     = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  extra_env_vars           = var.ai_gateway_extra_env_vars
+  custom_tags              = var.custom_tags
+  brainstore_license_key   = var.brainstore_license_key
+  enable_execute_command   = var.ai_gateway_enable_execute_command
+  braintrust_app_url       = var.ai_gateway_braintrust_app_url
+  braintrust_api_url       = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  unsafe_url_request_mode  = var.unsafe_url_request_mode
+  url_security_dns_servers = var.url_security_dns_servers
+  url_security_allow_cidrs = var.url_security_allow_cidrs
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -343,6 +350,7 @@ module "api_ecs" {
   # Service configuration
   braintrust_org_name                   = var.braintrust_org_name
   primary_org_name                      = var.primary_org_name
+  allowed_org_ids                       = var.allowed_org_ids
   cpu                                   = var.api_ecs_cpu
   memory                                = var.api_ecs_memory
   min_count                             = var.api_ecs_min_count
@@ -354,6 +362,9 @@ module "api_ecs" {
   outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level           = var.billing_telemetry_log_level
+  unsafe_url_request_mode               = var.unsafe_url_request_mode
+  url_security_dns_servers              = var.url_security_dns_servers
+  url_security_allow_cidrs              = var.url_security_allow_cidrs
   extra_env_vars                        = var.api_ecs_extra_env_vars
 
   # Quarantine VPC
