@@ -693,6 +693,18 @@ locals {
           ]
         })
       }
+      "/automation/cron/{id}/reschedule" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/billing/status" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
