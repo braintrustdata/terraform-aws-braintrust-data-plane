@@ -63,7 +63,13 @@ module "main_vpc" {
   private_subnet_3_cidr     = cidrsubnet(var.vpc_cidr, 3, 3)
   private_subnet_3_az       = local.private_subnet_3_az
   enable_brainstore_ec2_ssm = var.enable_brainstore_ec2_ssm
-  custom_tags               = var.custom_tags
+
+  # Main VPC interface endpoints are disabled for now.
+  enable_sts_vpc_endpoint  = false
+  enable_ec2_vpc_endpoint  = false
+  enable_logs_vpc_endpoint = false
+
+  custom_tags = var.custom_tags
 }
 
 module "quarantine_vpc" {
@@ -82,7 +88,14 @@ module "quarantine_vpc" {
   private_subnet_2_az   = local.quarantine_private_subnet_2_az
   private_subnet_3_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
   private_subnet_3_az   = local.quarantine_private_subnet_3_az
-  custom_tags           = var.custom_tags
+
+  # The quarantine VPC always gets STS, EC2, and Logs interface endpoints so
+  # that the quarantine function role can be locked to in-VPC traffic.
+  enable_sts_vpc_endpoint  = true
+  enable_ec2_vpc_endpoint  = true
+  enable_logs_vpc_endpoint = true
+
+  custom_tags = var.custom_tags
 }
 
 module "database" {

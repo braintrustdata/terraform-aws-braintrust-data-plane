@@ -64,3 +64,21 @@ variable "enable_brainstore_ec2_ssm" {
   type        = bool
   default     = false
 }
+
+variable "enable_sts_vpc_endpoint" {
+  description = "Optional. true creates an interface VPC endpoint for STS in this VPC so STS calls stay on the AWS network."
+  type        = bool
+  default     = false
+}
+
+variable "enable_ec2_vpc_endpoint" {
+  description = "Optional. true creates an interface VPC endpoint for the EC2 API in this VPC so EC2 calls stay on the AWS network."
+  type        = bool
+  default     = false
+}
+
+variable "enable_logs_vpc_endpoint" {
+  description = "Optional. true creates an interface VPC endpoint for CloudWatch Logs in this VPC so log delivery stays on the AWS network."
+  type        = bool
+  default     = false
+}
