@@ -53,28 +53,6 @@ resource "aws_cloudfront_distribution" "dataplane" {
   price_class  = var.cloudfront_price_class
   aliases      = var.custom_domain != null ? [var.custom_domain] : null
 
-  dynamic "origin" {
-    for_each = var.enable_full_ecs_api ? [1] : []
-    content {
-      origin_id   = local.cloudfront_ApiEcsOrigin
-      domain_name = var.api_ecs_alb_dns_name
-
-      vpc_origin_config {
-        vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs[0].id
-        origin_keepalive_timeout = 60
-        origin_read_timeout      = var.cloudfront_origin_read_timeout
-      }
-
-      dynamic "custom_header" {
-        for_each = var.custom_domain != null ? [1] : []
-        content {
-          name  = "X-CloudFront-Domain"
-          value = var.custom_domain
-        }
-      }
-    }
-  }
-
   origin {
     origin_id   = local.cloudfront_APIGatewayOrigin
     origin_path = "/api"
@@ -138,6 +116,28 @@ resource "aws_cloudfront_distribution" "dataplane" {
       https_port               = 443
       http_port                = 80
       origin_ssl_protocols     = ["TLSv1.2"]
+    }
+  }
+
+  dynamic "origin" {
+    for_each = var.enable_full_ecs_api ? [1] : []
+    content {
+      origin_id   = local.cloudfront_ApiEcsOrigin
+      domain_name = var.api_ecs_alb_dns_name
+
+      vpc_origin_config {
+        vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs[0].id
+        origin_keepalive_timeout = 60
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+      }
+
+      dynamic "custom_header" {
+        for_each = var.custom_domain != null ? [1] : []
+        content {
+          name  = "X-CloudFront-Domain"
+          value = var.custom_domain
+        }
+      }
     }
   }
 
