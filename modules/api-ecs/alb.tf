@@ -31,6 +31,19 @@ resource "aws_security_group_rule" "alb_ingress_http_from_authorized_cidr_blocks
   security_group_id = aws_security_group.alb.id
 }
 
+data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_cloudfront" {
+  security_group_id = aws_security_group.alb.id
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+  description       = "Allow HTTP traffic from CloudFront VPC origins."
+}
+
 resource "aws_security_group_rule" "alb_egress_all" {
   type              = "egress"
   from_port         = 0

@@ -49,6 +49,29 @@ variable "api_handler_function_arn" {
   type        = string
 }
 
+variable "enable_full_ecs_api" {
+  description = "Route CloudFront API and AI Proxy traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_full_ecs_api || (var.api_ecs_alb_arn != null && var.api_ecs_alb_dns_name != null)
+    error_message = "enable_full_ecs_api requires api_ecs_alb_arn and api_ecs_alb_dns_name."
+  }
+}
+
+variable "api_ecs_alb_arn" {
+  description = "ARN of the API ECS ALB. Required when enable_full_ecs_api is true."
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_alb_dns_name" {
+  description = "DNS name of the API ECS ALB. Required when enable_full_ecs_api is true."
+  type        = string
+  default     = null
+}
+
 variable "cloudfront_price_class" {
   description = "The price class for the CloudFront distribution"
   type        = string

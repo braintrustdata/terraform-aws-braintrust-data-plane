@@ -17,6 +17,11 @@ output "alb_arn" {
   value       = aws_lb.api_ecs.arn
 }
 
+output "alb_dns_name" {
+  description = "DNS name of the API ECS ALB."
+  value       = aws_lb.api_ecs.dns_name
+}
+
 output "target_group_arn" {
   description = "ARN of the braintrust-api ALB target group."
   value       = aws_lb_target_group.braintrust_api.arn

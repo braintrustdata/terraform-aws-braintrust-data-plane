@@ -4,10 +4,45 @@ locals {
   # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   cloudfront_AIProxyOrigin             = "AIProxyOrigin"
+  cloudfront_ApiEcsOrigin              = "ApiEcsOrigin"
   cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
   cloudfront_ProxyOrigin               = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
+
+  cloudfront_api_origin_id = var.enable_full_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_APIGatewayOrigin
+
+  cloudfront_proxy_origin_id = (
+    var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : (
+      var.enable_full_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+    )
+  )
+
+  cloudfront_function_origin_id = var.enable_full_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+}
+
+resource "aws_cloudfront_vpc_origin" "api_ecs" {
+  count = var.enable_full_ecs_api ? 1 : 0
+
+  vpc_origin_endpoint_config {
+    name                   = "${var.deployment_name}-api-ecs"
+    arn                    = var.api_ecs_alb_arn
+    http_port              = 80
+    https_port             = 443
+    origin_protocol_policy = "http-only"
+
+    origin_ssl_protocols {
+      items    = ["TLSv1.2"]
+      quantity = 1
+    }
+  }
+
+  timeouts {
+    create = "30m"
+    update = "30m"
+  }
+
+  tags = local.common_tags
 }
 
 resource "aws_cloudfront_distribution" "dataplane" {
@@ -17,6 +52,28 @@ resource "aws_cloudfront_distribution" "dataplane" {
   web_acl_id   = var.waf_acl_id
   price_class  = var.cloudfront_price_class
   aliases      = var.custom_domain != null ? [var.custom_domain] : null
+
+  dynamic "origin" {
+    for_each = var.enable_full_ecs_api ? [1] : []
+    content {
+      origin_id   = local.cloudfront_ApiEcsOrigin
+      domain_name = var.api_ecs_alb_dns_name
+
+      vpc_origin_config {
+        vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs[0].id
+        origin_keepalive_timeout = 60
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+      }
+
+      dynamic "custom_header" {
+        for_each = var.custom_domain != null ? [1] : []
+        content {
+          name  = "X-CloudFront-Domain"
+          value = var.custom_domain
+        }
+      }
+    }
+  }
 
   origin {
     origin_id   = local.cloudfront_APIGatewayOrigin
@@ -56,19 +113,21 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
-  origin {
-    domain_name = "braintrustproxy.com"
-    origin_id   = local.cloudfront_CloudflareProxy
+  dynamic "origin" {
+    for_each = var.use_global_ai_proxy ? [1] : []
+    content {
+      domain_name = "braintrustproxy.com"
+      origin_id   = local.cloudfront_CloudflareProxy
 
-    custom_origin_config {
-      origin_protocol_policy   = "https-only"
-      origin_read_timeout      = var.cloudfront_origin_read_timeout
-      origin_keepalive_timeout = 60
-      https_port               = 443
-      http_port                = 80
-      origin_ssl_protocols     = ["TLSv1.2"]
+      custom_origin_config {
+        origin_protocol_policy   = "https-only"
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+        origin_keepalive_timeout = 60
+        https_port               = 443
+        http_port                = 80
+        origin_ssl_protocols     = ["TLSv1.2"]
+      }
     }
-
   }
 
   origin {
@@ -88,7 +147,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = local.cloudfront_APIGatewayOrigin
+    target_origin_id       = local.cloudfront_api_origin_id
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id          = local.cloudfront_CachingDisabled
@@ -101,7 +160,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : local.cloudfront_ProxyOrigin
+      target_origin_id       = local.cloudfront_proxy_origin_id
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
@@ -119,7 +178,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = local.cloudfront_ProxyOrigin
+      target_origin_id       = local.cloudfront_function_origin_id
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled

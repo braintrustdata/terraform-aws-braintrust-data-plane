@@ -445,7 +445,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "URL for the AI proxy function used by quarantine execution."
+  description = "AI proxy/Gateway URL used for quarantine execution."
 }
 
 
