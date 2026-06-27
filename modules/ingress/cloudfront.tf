@@ -113,20 +113,17 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
-  dynamic "origin" {
-    for_each = var.use_global_ai_proxy ? [1] : []
-    content {
-      domain_name = "braintrustproxy.com"
-      origin_id   = local.cloudfront_CloudflareProxy
+  origin {
+    domain_name = "braintrustproxy.com"
+    origin_id   = local.cloudfront_CloudflareProxy
 
-      custom_origin_config {
-        origin_protocol_policy   = "https-only"
-        origin_read_timeout      = var.cloudfront_origin_read_timeout
-        origin_keepalive_timeout = 60
-        https_port               = 443
-        http_port                = 80
-        origin_ssl_protocols     = ["TLSv1.2"]
-      }
+    custom_origin_config {
+      origin_protocol_policy   = "https-only"
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
+      origin_keepalive_timeout = 60
+      https_port               = 443
+      http_port                = 80
+      origin_ssl_protocols     = ["TLSv1.2"]
     }
   }
 
