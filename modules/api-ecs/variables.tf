@@ -484,6 +484,23 @@ variable "authorized_cidr_blocks" {
   }
 }
 
+variable "alb_certificate_arn" {
+  type        = string
+  description = "Optional ACM certificate ARN for the API ECS ALB. When set together with alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80."
+  default     = null
+}
+
+variable "alb_custom_domain" {
+  type        = string
+  description = "Optional custom domain served by the API ECS ALB. Must be covered by alb_certificate_arn. When set together with alb_certificate_arn, the ALB serves HTTPS on port 443 and the API URL becomes https://<alb_custom_domain>."
+  default     = null
+
+  validation {
+    condition     = (var.alb_custom_domain == null) == (var.alb_certificate_arn == null)
+    error_message = "alb_custom_domain and alb_certificate_arn must both be set or both be null."
+  }
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources."
   type        = map(string)

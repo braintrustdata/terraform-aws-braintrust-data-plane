@@ -40,7 +40,7 @@ locals {
 resource "aws_lb_listener_rule" "alb_path_routes" {
   for_each = local.alb_path_listener_rules
 
-  listener_arn = aws_lb_listener.api_ecs_http.arn
+  listener_arn = aws_lb_listener.api_ecs.arn
   priority     = each.value.priority
 
   action {

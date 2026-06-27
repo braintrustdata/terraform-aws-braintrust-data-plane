@@ -11,11 +11,11 @@ resource "aws_security_group_rule" "alb_ingress_http_from_authorized_security_gr
   for_each = var.authorized_security_groups
 
   type                     = "ingress"
-  from_port                = 80
-  to_port                  = 80
+  from_port                = local.alb_listener_port
+  to_port                  = local.alb_listener_port
   protocol                 = "tcp"
   source_security_group_id = each.value
-  description              = "Allow HTTP traffic from ${each.key}."
+  description              = "Allow inbound traffic from ${each.key}."
   security_group_id        = aws_security_group.alb.id
 }
 
@@ -23,11 +23,11 @@ resource "aws_security_group_rule" "alb_ingress_http_from_authorized_cidr_blocks
   for_each = toset(var.authorized_cidr_blocks)
 
   type              = "ingress"
-  from_port         = 80
-  to_port           = 80
+  from_port         = local.alb_listener_port
+  to_port           = local.alb_listener_port
   protocol          = "tcp"
   cidr_blocks       = [each.value]
-  description       = "Allow HTTP traffic from authorized CIDR ${each.value}."
+  description       = "Allow inbound traffic from authorized CIDR ${each.value}."
   security_group_id = aws_security_group.alb.id
 }
 
@@ -38,10 +38,10 @@ data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
 resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_cloudfront" {
   security_group_id = aws_security_group.alb.id
   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id
-  from_port         = 80
-  to_port           = 80
+  from_port         = local.alb_listener_port
+  to_port           = local.alb_listener_port
   ip_protocol       = "tcp"
-  description       = "Allow HTTP traffic from CloudFront VPC origins."
+  description       = "Allow inbound traffic from CloudFront VPC origins."
 }
 
 resource "aws_security_group_rule" "alb_egress_all" {
@@ -152,10 +152,14 @@ resource "aws_lb_target_group" "braintrust_api_background" {
   }, local.common_tags)
 }
 
-resource "aws_lb_listener" "api_ecs_http" {
+resource "aws_lb_listener" "api_ecs" {
   load_balancer_arn = aws_lb.api_ecs.arn
-  port              = 80
-  protocol          = "HTTP"
+  port              = local.alb_listener_port
+  protocol          = local.alb_https_enabled ? "HTTPS" : "HTTP"
+
+  # This must be a policy that support TLS 1.2 since Cloudfront does not support TLS 1.3 for origins yet.
+  ssl_policy      = local.alb_https_enabled ? "ELBSecurityPolicy-TLS13-1-2-2021-06" : null
+  certificate_arn = local.alb_https_enabled ? var.alb_certificate_arn : null
 
   default_action {
     type = "forward"

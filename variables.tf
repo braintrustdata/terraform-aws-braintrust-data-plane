@@ -761,6 +761,23 @@ variable "braintrust_api_authorized_cidr_blocks" {
   default     = []
 }
 
+variable "braintrust_api_alb_certificate_arn" {
+  description = "Optional ACM certificate ARN for the internal API ECS ALB. When set together with braintrust_api_alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80, plain HTTP is disabled, and all API URLs use https://<braintrust_api_alb_custom_domain>. Defaults to plain HTTP."
+  type        = string
+  default     = null
+}
+
+variable "braintrust_api_alb_custom_domain" {
+  description = "Optional custom domain served by the internal API ECS ALB. Must be covered by braintrust_api_alb_certificate_arn and resolve to the ALB. When set together with braintrust_api_alb_certificate_arn, the ALB serves HTTPS on port 443. Defaults to plain HTTP using the ALB's AWS-assigned DNS name."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = (var.braintrust_api_alb_custom_domain == null) == (var.braintrust_api_alb_certificate_arn == null)
+    error_message = "braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn must both be set or both be null."
+  }
+}
+
 variable "api_ecs_enable_execute_command" {
   description = "Enable ECS Exec for API ECS tasks."
   type        = bool

@@ -55,8 +55,8 @@ variable "enable_full_ecs_api" {
   default     = false
 
   validation {
-    condition     = !var.enable_full_ecs_api || (var.api_ecs_alb_arn != null && var.api_ecs_alb_dns_name != null)
-    error_message = "enable_full_ecs_api requires api_ecs_alb_arn and api_ecs_alb_dns_name."
+    condition     = !var.enable_full_ecs_api || (var.api_ecs_alb_arn != null && var.api_ecs_alb_domain != null)
+    error_message = "enable_full_ecs_api requires api_ecs_alb_arn and api_ecs_alb_domain."
   }
 }
 
@@ -66,10 +66,16 @@ variable "api_ecs_alb_arn" {
   default     = null
 }
 
-variable "api_ecs_alb_dns_name" {
-  description = "DNS name of the API ECS ALB. Required when enable_full_ecs_api is true."
+variable "api_ecs_alb_domain" {
+  description = "Domain used as the API ECS ALB CloudFront origin. When the ALB serves HTTPS this must be the custom domain covered by the ALB certificate so it validates; otherwise it is the ALB's AWS-assigned DNS name. Required when enable_full_ecs_api is true."
   type        = string
   default     = null
+}
+
+variable "api_ecs_alb_https_enabled" {
+  description = "Whether the API ECS ALB serves HTTPS. When true, CloudFront connects to the ALB origin over HTTPS; otherwise it connects over HTTP."
+  type        = bool
+  default     = false
 }
 
 variable "cloudfront_price_class" {

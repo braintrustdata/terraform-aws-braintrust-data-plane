@@ -408,6 +408,9 @@ module "api_ecs" {
   )
   authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
 
+  alb_certificate_arn = var.braintrust_api_alb_certificate_arn
+  alb_custom_domain   = var.braintrust_api_alb_custom_domain
+
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
   ecs_cluster_name       = module.ecs[0].cluster_name
@@ -433,7 +436,8 @@ module "ingress" {
   api_handler_function_arn        = module.services[0].api_handler_arn
   enable_full_ecs_api             = local.enable_full_ecs_api
   api_ecs_alb_arn                 = local.enable_full_ecs_api ? module.api_ecs[0].alb_arn : null
-  api_ecs_alb_dns_name            = local.enable_full_ecs_api ? module.api_ecs[0].alb_dns_name : null
+  api_ecs_alb_domain              = local.enable_full_ecs_api ? module.api_ecs[0].alb_domain : null
+  api_ecs_alb_https_enabled       = local.enable_full_ecs_api ? module.api_ecs[0].alb_https_enabled : false
   custom_tags                     = var.custom_tags
 }
 

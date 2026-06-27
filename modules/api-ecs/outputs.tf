@@ -22,6 +22,16 @@ output "alb_dns_name" {
   value       = aws_lb.api_ecs.dns_name
 }
 
+output "alb_https_enabled" {
+  description = "Whether the API ECS ALB serves HTTPS (a certificate and custom domain were provided)."
+  value       = local.alb_https_enabled
+}
+
+output "alb_domain" {
+  description = "Domain to use as the API ECS ALB origin: the custom domain when serving HTTPS (so the certificate validates), otherwise the ALB's AWS-assigned DNS name."
+  value       = local.alb_https_enabled ? var.alb_custom_domain : aws_lb.api_ecs.dns_name
+}
+
 output "target_group_arn" {
   description = "ARN of the braintrust-api ALB target group."
   value       = aws_lb_target_group.braintrust_api.arn
@@ -47,7 +57,7 @@ output "task_security_group_id" {
 }
 
 output "http_url" {
-  description = "HTTP URL for API ECS ALB."
+  description = "URL for the API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)."
   value       = local.api_ecs_url
 }
 

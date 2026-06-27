@@ -29,7 +29,7 @@ resource "aws_cloudfront_vpc_origin" "api_ecs" {
     arn                    = var.api_ecs_alb_arn
     http_port              = 80
     https_port             = 443
-    origin_protocol_policy = "http-only"
+    origin_protocol_policy = var.api_ecs_alb_https_enabled ? "https-only" : "http-only"
 
     origin_ssl_protocols {
       items    = ["TLSv1.2"]
@@ -123,7 +123,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     for_each = var.enable_full_ecs_api ? [1] : []
     content {
       origin_id   = local.cloudfront_ApiEcsOrigin
-      domain_name = var.api_ecs_alb_dns_name
+      domain_name = var.api_ecs_alb_domain
 
       vpc_origin_config {
         vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs[0].id

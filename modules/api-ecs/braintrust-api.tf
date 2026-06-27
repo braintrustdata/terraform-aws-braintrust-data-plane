@@ -66,7 +66,7 @@ resource "aws_ecs_service" "braintrust_api" {
   }
 
   depends_on = [
-    aws_lb_listener.api_ecs_http,
+    aws_lb_listener.api_ecs,
   ]
 
   lifecycle {
