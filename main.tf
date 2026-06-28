@@ -47,6 +47,17 @@ locals {
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
   brainstore_ai_proxy_url_ssm_parameter_name = local.use_ecs_api_for_brainstore ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
 
+  # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
+  # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
+  # version, changes the launch template, and triggers a rolling instance
+  # refresh. Legacy lambda mode passes just the bare name. one() keeps this
+  # index-safe when api_ecs is absent.
+  brainstore_ai_proxy_url_ssm_parameter = (
+    local.use_ecs_api_for_brainstore
+    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
+    : local.brainstore_ai_proxy_url_ssm_parameter_name
+  )
+
   # In full ECS API mode, use the global AI gateway origin domain for the AI proxy URL
   api_ecs_ai_proxy_url = local.enable_full_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : module.services[0].ai_proxy_url
 }
@@ -489,7 +500,7 @@ module "brainstore" {
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
-  ai_proxy_url_ssm_parameter_name       = local.brainstore_ai_proxy_url_ssm_parameter_name
+  ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
