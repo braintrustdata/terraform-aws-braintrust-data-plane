@@ -52,7 +52,15 @@ The `internal_observability_*` variables (Datadog API key, env name, region) are
 
 Python scripts in `scripts/` use `#!/usr/bin/env -S uv run --script` with inline dependency metadata. This allows zero-setup execution without managing virtual environments. Do not replace these with plain `python3` shebangs or add `requirements.txt` files.
 
-## Critical Safety Constraints
+### In-place upgrades on existing deployments
+
+Module changes must be applyable directly to live customer stacks without tear-down or multi-phase hacks. When restructuring resources:
+
+- Add `moved` blocks to `moved_state.tf` instead of taint/recreate (see existing brainstore, ingress, and gateway ALB moves).
+- Avoid env-only changes on Lambdas that do not need them — e.g. do not merge shared env into `MigrateDatabaseFunction` or crons, because that publishes a new Lambda version and re-invokes migrations.
+- Prefer state moves and in-place updates over replace; if a resource must be replaced, document why and whether downtime is expected.
+- `terraform plan` on an existing gateway deployment should show `has moved to` for relocated ALB resources, in-place env updates for APIHandler/AIProxy/ECS API, and no unexpected destroys.
+
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 
