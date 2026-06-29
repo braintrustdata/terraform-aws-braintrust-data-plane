@@ -53,3 +53,28 @@ output "quarantine_lambda_security_group_id" {
   description = "The ID of the security group for quarantine Lambda functions"
   value       = one(aws_security_group.quarantine_lambda[*].id)
 }
+
+output "gateway_alb_dns_name" {
+  description = "Internal DNS name of the private gateway ALB"
+  value       = try(aws_lb.gateway[0].dns_name, null)
+}
+
+output "gateway_alb_arn" {
+  description = "ARN of the private gateway ALB"
+  value       = try(aws_lb.gateway[0].arn, null)
+}
+
+output "gateway_alb_security_group_id" {
+  description = "Security group ID attached to the private gateway ALB"
+  value       = try(aws_security_group.gateway_alb[0].id, null)
+}
+
+output "gateway_target_group_arn" {
+  description = "ARN of the gateway ALB target group"
+  value       = try(aws_lb_target_group.gateway[0].arn, null)
+}
+
+output "gateway_url" {
+  description = "Private in-VPC gateway URL for GATEWAY_URL on api-ts services"
+  value       = var.enable_ai_gateway ? "http://${aws_lb.gateway[0].dns_name}" : null
+}

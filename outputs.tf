@@ -84,18 +84,23 @@ output "gateway_service_name" {
 }
 
 output "gateway_alb_dns_name" {
-  value       = var.enable_ai_gateway ? module.gateway_ecs[0].alb_dns_name : null
+  value       = var.enable_ai_gateway ? module.services_common.gateway_alb_dns_name : null
   description = "Internal DNS name of the private gateway ALB"
 }
 
 output "gateway_alb_arn" {
-  value       = var.enable_ai_gateway ? module.gateway_ecs[0].alb_arn : null
+  value       = var.enable_ai_gateway ? module.services_common.gateway_alb_arn : null
   description = "ARN of the private gateway ALB"
 }
 
 output "gateway_target_group_arn" {
-  value       = var.enable_ai_gateway ? module.gateway_ecs[0].target_group_arn : null
+  value       = var.enable_ai_gateway ? module.services_common.gateway_target_group_arn : null
   description = "ARN of the gateway ALB target group"
+}
+
+output "gateway_url" {
+  value       = var.enable_ai_gateway ? module.services_common.gateway_url : null
+  description = "Private in-VPC gateway URL for GATEWAY_URL on api-ts services"
 }
 
 output "gateway_task_security_group_id" {
