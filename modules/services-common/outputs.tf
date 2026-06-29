@@ -74,7 +74,12 @@ output "gateway_target_group_arn" {
   value       = try(aws_lb_target_group.gateway[0].arn, null)
 }
 
+output "gateway_http_listener_arn" {
+  description = "ARN of the gateway ALB HTTP listener"
+  value       = try(aws_lb_listener.gateway_http[0].arn, null)
+}
+
 output "gateway_url" {
   description = "Private in-VPC gateway URL for GATEWAY_URL on api-ts services"
-  value       = var.enable_ai_gateway ? "http://${aws_lb.gateway[0].dns_name}" : null
+  value       = try("http://${aws_lb.gateway[0].dns_name}", null)
 }

@@ -51,10 +51,13 @@ locals {
   # MigrateDatabaseFunction or crons — that changes their env hash and re-runs
   # migrations or replaces unrelated functions on existing deployments.
   gateway_lambda_env_services = toset(["APIHandler", "AIProxy"])
-  service_extra_env_vars = {
-    for service_name, env in var.service_extra_env_vars :
-    service_name => contains(local.gateway_lambda_env_services, service_name) ? merge(env, local.gateway_env_vars) : env
-  }
+  service_extra_env_vars = merge(
+    var.service_extra_env_vars,
+    { for svc in local.gateway_lambda_env_services : svc => merge(
+      lookup(var.service_extra_env_vars, svc, {}),
+      local.gateway_env_vars,
+    ) }
+  )
 }
 
 module "main_vpc" {
@@ -294,6 +297,7 @@ module "gateway_ecs" {
   redis_security_group_id   = module.redis.redis_security_group_id
   target_group_arn          = module.services_common.gateway_target_group_arn
   alb_security_group_id     = module.services_common.gateway_alb_security_group_id
+  gateway_http_listener_arn = module.services_common.gateway_http_listener_arn
   extra_env_vars            = var.ai_gateway_extra_env_vars
   custom_tags               = var.custom_tags
   brainstore_license_key    = var.brainstore_license_key

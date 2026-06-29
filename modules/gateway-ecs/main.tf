@@ -300,6 +300,10 @@ resource "aws_ecs_task_definition" "gateway" {
   }
 }
 
+resource "terraform_data" "gateway_http_listener" {
+  input = var.gateway_http_listener_arn
+}
+
 resource "aws_ecs_service" "gateway" {
   name                              = "${var.deployment_name}-gateway"
   cluster                           = var.ecs_cluster_arn
@@ -327,6 +331,8 @@ resource "aws_ecs_service" "gateway" {
     container_name   = local.container_name
     container_port   = local.container_port
   }
+
+  depends_on = [terraform_data.gateway_http_listener]
 
   lifecycle {
     ignore_changes = [desired_count]

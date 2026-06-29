@@ -111,11 +111,19 @@ variable "log_retention_days" {
 variable "target_group_arn" {
   type        = string
   description = "ARN of the gateway ALB target group created in services-common."
+  nullable    = true
 }
 
 variable "alb_security_group_id" {
   type        = string
   description = "Security group ID of the gateway ALB created in services-common."
+  nullable    = true
+}
+
+variable "gateway_http_listener_arn" {
+  type        = string
+  description = "ARN of the gateway ALB HTTP listener created in services-common; orders ECS registration after the listener exists."
+  nullable    = true
 }
 
 variable "internal_observability_api_key_secret_arn" {
