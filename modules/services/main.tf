@@ -2,9 +2,21 @@ locals {
   # Lambdas can only be deployed from s3 buckets in the same region. These are
   # the regions where we currently host our lambda code.
   # Contact support if you need a new region to be supported.
-  supported_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "ca-central-1", "ap-southeast-2", "sa-east-1"]
-  lambda_s3_bucket  = "braintrust-assets-${data.aws_region.current.region}"
-  lambda_names      = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
+  supported_regions = [
+    "ap-northeast-1",
+    "ap-south-1",
+    "ap-southeast-2",
+    "ca-central-1",
+    "eu-central-1",
+    "eu-west-1",
+    "eu-west-2",
+    "sa-east-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-2",
+  ]
+  lambda_s3_bucket = "braintrust-assets-${data.aws_region.current.region}"
+  lambda_names     = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
   duckdb_nodejs_arm64_layer_arn   = "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
   observability_enabled           = nonsensitive(var.internal_observability_api_key != null && var.internal_observability_api_key != "")
@@ -89,7 +101,7 @@ data "aws_region" "current" {
   lifecycle {
     postcondition {
       condition     = contains(local.supported_regions, self.region)
-      error_message = "Region must be one of: us-east-1, us-east-2, us-west-2, eu-west-1, ca-central-1, ap-southeast-2, sa-east-1. Contact support if you need a new region to be supported."
+      error_message = "Region must be one of: ${join(", ", local.supported_regions)}. Contact support if you need a new region to be supported."
     }
   }
 }
