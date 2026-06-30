@@ -65,13 +65,14 @@ resource "aws_ecs_service" "braintrust_api_ingest" {
     container_port   = 8000
   }
 
-  depends_on = [
-    aws_lb_listener.api_ecs,
-    aws_lb_listener_rule.alb_path_routes,
-  ]
+  # The listener's default action lists this target group at weight 0, which
+  # associates it with the ALB so ECS will attach the service. Path rules are not
+  # required for that association and only exist once enable_full_ecs_api is true.
+  depends_on = [aws_lb_listener.api_ecs_http]
 
   lifecycle {
-    ignore_changes = [desired_count]
+    create_before_destroy = false
+    ignore_changes        = [desired_count]
   }
 
   tags = merge({

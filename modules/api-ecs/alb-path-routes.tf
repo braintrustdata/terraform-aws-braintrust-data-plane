@@ -9,7 +9,12 @@
 #   - method: HTTP method to match (e.g. "POST"); omit to match any method
 
 locals {
-  alb_path_routes = [
+  # Path routing only applies once traffic has been cut over to the new services
+  # (enable_full_ecs_api = true). While it is false, drop the path rules so ALL
+  # traffic falls through the listener default action to the legacy target group.
+  # The ingest/background target groups still exist (the services are pre-created
+  # and warm), they just receive no traffic until these rules are added.
+  alb_path_routes = var.enable_full_ecs_api ? [
     # braintrust-api-ingest
     { path = "/logs3", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/otel/v1/traces", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
@@ -25,7 +30,7 @@ locals {
     { path = "/automation/logs/trigger", method = "POST", target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/chat/completions", target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/responses", target_group = aws_lb_target_group.braintrust_api_background.arn },
-  ]
+  ] : []
 
   alb_path_listener_rules = {
     for idx, route in local.alb_path_routes :
@@ -40,7 +45,7 @@ locals {
 resource "aws_lb_listener_rule" "alb_path_routes" {
   for_each = local.alb_path_listener_rules
 
-  listener_arn = aws_lb_listener.api_ecs.arn
+  listener_arn = aws_lb_listener.api_ecs_http.arn
   priority     = each.value.priority
 
   action {

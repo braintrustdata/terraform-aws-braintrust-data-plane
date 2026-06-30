@@ -369,6 +369,13 @@ module "api_ecs" {
   allowed_org_ids                                               = var.allowed_org_ids
   log_retention_days                                            = var.braintrust_api_log_retention_days
   enable_execute_command                                        = var.api_ecs_enable_execute_command
+  enable_full_ecs_api                                           = local.enable_full_ecs_api
+  legacy_api_ecs_cpu                                            = var.api_ecs_cpu
+  legacy_api_ecs_memory                                         = var.api_ecs_memory
+  legacy_api_ecs_min_count                                      = var.api_ecs_min_count
+  legacy_api_ecs_max_count                                      = var.api_ecs_max_count
+  legacy_api_ecs_cpu_target_value                               = var.api_ecs_cpu_target_value
+  legacy_api_ecs_memory_target_value                            = var.api_ecs_memory_target_value
   braintrust_api_cpu                                            = var.braintrust_api_cpu
   braintrust_api_memory                                         = var.braintrust_api_memory
   braintrust_api_min_count                                      = var.braintrust_api_min_count
@@ -446,9 +453,9 @@ module "ingress" {
   ai_proxy_function_url           = module.services[0].ai_proxy_url
   api_handler_function_arn        = module.services[0].api_handler_arn
   enable_full_ecs_api             = local.enable_full_ecs_api
-  api_ecs_alb_arn                 = local.enable_full_ecs_api ? module.api_ecs[0].alb_arn : null
-  api_ecs_alb_domain              = local.enable_full_ecs_api ? module.api_ecs[0].alb_domain : null
-  api_ecs_alb_https_enabled       = local.enable_full_ecs_api ? module.api_ecs[0].alb_https_enabled : false
+  api_ecs_alb_arn                 = local.create_ecs_api ? module.api_ecs[0].alb_arn : null
+  api_ecs_alb_domain              = local.create_ecs_api ? module.api_ecs[0].alb_domain : null
+  api_ecs_alb_https_enabled       = local.create_ecs_api ? module.api_ecs[0].alb_https_enabled : false
   custom_tags                     = var.custom_tags
 }
 

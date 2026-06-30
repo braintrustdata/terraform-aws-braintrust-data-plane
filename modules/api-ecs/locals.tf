@@ -101,6 +101,12 @@ locals {
 
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
+  api_log_group_names = {
+    "braintrust-api"            = aws_cloudwatch_log_group.braintrust_api.name
+    "braintrust-api-ingest"     = aws_cloudwatch_log_group.braintrust_api_ingest.name
+    "braintrust-api-background" = aws_cloudwatch_log_group.braintrust_api_background.name
+  }
+
   api_service_env_vars = {
     for service_name in local.api_service_names :
     service_name => merge(local.merged_env_vars, {
@@ -167,14 +173,15 @@ locals {
   }
 
   api_log_configurations = {
-    "braintrust-api" = jsondecode(local.observability_enabled ? jsonencode({
+    for service_name in local.api_service_names :
+    service_name => jsondecode(local.observability_enabled ? jsonencode({
       logDriver = "awsfirelens"
       options = {
         Name           = "datadog"
         Host           = "http-intake.logs.${var.internal_observability_region}.datadoghq.com"
         TLS            = "on"
         provider       = "ecs"
-        dd_service     = "braintrust-api"
+        dd_service     = service_name
         dd_source      = "nodejs"
         dd_message_key = "msg"
         dd_tags        = "env:${var.internal_observability_env_name}"
@@ -189,72 +196,14 @@ locals {
       }) : jsonencode({
       logDriver = "awslogs"
       options = {
-        awslogs-group         = aws_cloudwatch_log_group.braintrust_api.name
+        awslogs-group         = local.api_log_group_names[service_name]
         awslogs-region        = data.aws_region.current.region
-        awslogs-stream-prefix = "braintrust-api"
-      }
-    }))
-    "braintrust-api-ingest" = jsondecode(local.observability_enabled ? jsonencode({
-      logDriver = "awsfirelens"
-      options = {
-        Name           = "datadog"
-        Host           = "http-intake.logs.${var.internal_observability_region}.datadoghq.com"
-        TLS            = "on"
-        provider       = "ecs"
-        dd_service     = "braintrust-api-ingest"
-        dd_source      = "nodejs"
-        dd_message_key = "msg"
-        dd_tags        = "env:${var.internal_observability_env_name}"
-        compress       = "gzip"
-      }
-      secretOptions = [
-        {
-          name      = "apikey"
-          valueFrom = var.internal_observability_api_key_secret_arn
-        }
-      ]
-      }) : jsonencode({
-      logDriver = "awslogs"
-      options = {
-        awslogs-group         = aws_cloudwatch_log_group.braintrust_api_ingest.name
-        awslogs-region        = data.aws_region.current.region
-        awslogs-stream-prefix = "braintrust-api-ingest"
-      }
-    }))
-    "braintrust-api-background" = jsondecode(local.observability_enabled ? jsonencode({
-      logDriver = "awsfirelens"
-      options = {
-        Name           = "datadog"
-        Host           = "http-intake.logs.${var.internal_observability_region}.datadoghq.com"
-        TLS            = "on"
-        provider       = "ecs"
-        dd_service     = "braintrust-api-background"
-        dd_source      = "nodejs"
-        dd_message_key = "msg"
-        dd_tags        = "env:${var.internal_observability_env_name}"
-        compress       = "gzip"
-      }
-      secretOptions = [
-        {
-          name      = "apikey"
-          valueFrom = var.internal_observability_api_key_secret_arn
-        }
-      ]
-      }) : jsonencode({
-      logDriver = "awslogs"
-      options = {
-        awslogs-group         = aws_cloudwatch_log_group.braintrust_api_background.name
-        awslogs-region        = data.aws_region.current.region
-        awslogs-stream-prefix = "braintrust-api-background"
+        awslogs-stream-prefix = service_name
       }
     }))
   }
 
-  observability_log_groups = {
-    "braintrust-api"            = aws_cloudwatch_log_group.braintrust_api.name
-    "braintrust-api-ingest"     = aws_cloudwatch_log_group.braintrust_api_ingest.name
-    "braintrust-api-background" = aws_cloudwatch_log_group.braintrust_api_background.name
-  }
+  observability_log_groups = local.api_log_group_names
 
   observability_sidecars = {
     for service_name in local.api_service_names :

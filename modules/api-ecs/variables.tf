@@ -513,6 +513,48 @@ variable "enable_execute_command" {
   default     = false
 }
 
+variable "enable_full_ecs_api" {
+  type        = bool
+  description = "Cutover switch for the new API ECS services. The braintrust-api, braintrust-api-ingest, and braintrust-api-background services are always created so they stay warm, but while this is false the ALB keeps forwarding ALL traffic to the legacy api-ecs service (legacy-api-ecs.tf) and the new services receive no traffic. When true, the ALB default action moves to braintrust-api and path-based rules split ingest/background traffic onto their dedicated services."
+  default     = false
+}
+
+variable "legacy_api_ecs_cpu" {
+  type        = number
+  description = "CPU units for the retained legacy api-ecs task definition. Defaults to the pre-migration value; only change it if your deployed legacy task used a different size."
+  default     = 2048
+}
+
+variable "legacy_api_ecs_memory" {
+  type        = number
+  description = "Memory (MiB) for the retained legacy api-ecs task definition."
+  default     = 16384
+}
+
+variable "legacy_api_ecs_min_count" {
+  type        = number
+  description = "Minimum number of retained legacy api-ecs tasks. Desired count is managed by Application Auto Scaling."
+  default     = 3
+}
+
+variable "legacy_api_ecs_max_count" {
+  type        = number
+  description = "Maximum number of retained legacy api-ecs tasks."
+  default     = 64
+}
+
+variable "legacy_api_ecs_cpu_target_value" {
+  type        = number
+  description = "Target average CPU utilization percentage for the retained legacy api-ecs autoscaling."
+  default     = 40
+}
+
+variable "legacy_api_ecs_memory_target_value" {
+  type        = number
+  description = "Target average memory utilization percentage for the retained legacy api-ecs autoscaling."
+  default     = 50
+}
+
 variable "target_group_deregistration_delay_seconds" {
   type        = number
   description = "Seconds for the API ECS target group to wait before deregistering draining targets."

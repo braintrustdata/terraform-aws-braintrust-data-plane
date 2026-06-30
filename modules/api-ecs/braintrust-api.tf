@@ -65,12 +65,14 @@ resource "aws_ecs_service" "braintrust_api" {
     container_port   = 8000
   }
 
-  depends_on = [
-    aws_lb_listener.api_ecs,
-  ]
+  # The listener's default action associates this target group with the ALB,
+  # which ECS requires before it will attach the service. (See the association
+  # note on aws_lb_listener.api_ecs_http.)
+  depends_on = [aws_lb_listener.api_ecs_http]
 
   lifecycle {
-    ignore_changes = [desired_count]
+    create_before_destroy = false
+    ignore_changes        = [desired_count]
   }
 
   tags = merge({
