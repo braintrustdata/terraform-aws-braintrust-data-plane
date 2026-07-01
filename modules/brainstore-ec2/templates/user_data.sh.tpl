@@ -161,8 +161,13 @@ ${env_key}=${env_value}
 %{ endfor ~}
 EOF
 
+# ai_proxy_url_ssm_parameter is either a bare "<name>" or a version-pinned
+# "<name>:<version>" selector. When a version is pinned, it is baked into
+# user_data, so a value change (e.g. the API URL switching from HTTP to HTTPS)
+# bumps the version, changes the launch template, and triggers a rolling
+# instance refresh.
 BRAINSTORE_AI_PROXY_URL=$(aws ssm get-parameter \
-  --name ${ai_proxy_url_ssm_parameter_name} \
+  --name "${ai_proxy_url_ssm_parameter}" \
   --query 'Parameter.Value' \
   --output text \
   --region ${aws_region})

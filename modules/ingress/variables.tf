@@ -49,6 +49,35 @@ variable "api_handler_function_arn" {
   type        = string
 }
 
+variable "enable_full_ecs_api" {
+  description = "Route CloudFront API and AI Proxy traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_full_ecs_api || (var.api_ecs_alb_arn != null && var.api_ecs_alb_domain != null)
+    error_message = "enable_full_ecs_api requires api_ecs_alb_arn and api_ecs_alb_domain."
+  }
+}
+
+variable "api_ecs_alb_arn" {
+  description = "ARN of the API ECS ALB. When set, CloudFront creates a VPC origin for it; enable_full_ecs_api controls whether traffic is routed there."
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_alb_domain" {
+  description = "Domain used as the API ECS ALB CloudFront origin. When the ALB serves HTTPS this must be the custom domain covered by the ALB certificate so it validates; otherwise it is the ALB's AWS-assigned DNS name. Required when api_ecs_alb_arn is set."
+  type        = string
+  default     = null
+}
+
+variable "api_ecs_alb_https_enabled" {
+  description = "Whether the API ECS ALB serves HTTPS. When true, CloudFront connects to the ALB origin over HTTPS; otherwise it connects over HTTP."
+  type        = bool
+  default     = false
+}
+
 variable "cloudfront_price_class" {
   description = "The price class for the CloudFront distribution"
   type        = string

@@ -125,7 +125,7 @@ output "api_ecs_alb_security_group_id" {
 
 output "api_ecs_http_url" {
   value       = local.create_ecs_api ? module.api_ecs[0].http_url : null
-  description = "HTTP URL of the private API ECS ALB"
+  description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
 }
 
 output "api_ecs_task_security_group_id" {

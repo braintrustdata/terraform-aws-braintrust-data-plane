@@ -50,59 +50,171 @@ variable "api_version_override" {
   }
 }
 
-variable "cpu" {
+variable "braintrust_api_cpu" {
   type        = number
-  description = "CPU units for the API ECS task definition."
-  default     = 2048
+  description = "CPU units for the braintrust-api ECS task definition (user-interactive queries)."
+  default     = 1024
 }
 
-variable "memory" {
+variable "braintrust_api_memory" {
   type        = number
-  description = "Memory (MiB) for the API ECS task definition."
-  default     = 16384
+  description = "Memory (MiB) for the braintrust-api ECS task definition."
+  default     = 8192
 }
 
-variable "min_count" {
+variable "braintrust_api_min_count" {
   type        = number
-  description = "Minimum number of API ECS tasks. Desired count is managed by Application Auto Scaling."
-  default     = 3
+  description = "Minimum number of braintrust-api ECS tasks. Desired count is managed by Application Auto Scaling."
+  default     = 5
 
   validation {
-    condition     = var.min_count >= 1
-    error_message = "min_count must be at least 1."
+    condition     = var.braintrust_api_min_count >= 1
+    error_message = "braintrust_api_min_count must be at least 1."
   }
 }
 
-variable "max_count" {
+variable "braintrust_api_max_count" {
   type        = number
-  description = "Maximum number of API ECS tasks."
-  default     = 64
-
-  validation {
-    condition     = var.max_count >= var.min_count
-    error_message = "max_count must be greater than or equal to min_count."
-  }
-}
-
-variable "cpu_target_value" {
-  type        = number
-  description = "Target average CPU utilization percentage for API ECS autoscaling."
-  default     = 40
-
-  validation {
-    condition     = var.cpu_target_value > 0 && var.cpu_target_value <= 100
-    error_message = "cpu_target_value must be between 1 and 100."
-  }
-}
-
-variable "memory_target_value" {
-  type        = number
-  description = "Target average memory utilization percentage for API ECS autoscaling."
+  description = "Maximum number of braintrust-api ECS tasks."
   default     = 50
 
   validation {
-    condition     = var.memory_target_value > 0 && var.memory_target_value <= 100
-    error_message = "memory_target_value must be between 1 and 100."
+    condition     = var.braintrust_api_max_count >= var.braintrust_api_min_count
+    error_message = "braintrust_api_max_count must be greater than or equal to braintrust_api_min_count."
+  }
+}
+
+variable "braintrust_api_cpu_target_value" {
+  type        = number
+  description = "Target average CPU utilization percentage for braintrust-api ECS autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.braintrust_api_cpu_target_value > 0 && var.braintrust_api_cpu_target_value <= 100
+    error_message = "braintrust_api_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_event_loop_utilization_target_value" {
+  type        = number
+  description = "Target EventLoopUtilizationPercent for braintrust-api ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  default     = 40
+
+  validation {
+    condition     = var.braintrust_api_event_loop_utilization_target_value > 0 && var.braintrust_api_event_loop_utilization_target_value <= 100
+    error_message = "braintrust_api_event_loop_utilization_target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_ingest_cpu" {
+  type        = number
+  description = "CPU units for the braintrust-api-ingest ECS task definition."
+  default     = 2048
+}
+
+variable "braintrust_api_ingest_memory" {
+  type        = number
+  description = "Memory (MiB) for the braintrust-api-ingest ECS task definition."
+  default     = 8192
+}
+
+variable "braintrust_api_ingest_min_count" {
+  type        = number
+  description = "Minimum number of braintrust-api-ingest ECS tasks. Desired count is managed by Application Auto Scaling."
+  default     = 10
+
+  validation {
+    condition     = var.braintrust_api_ingest_min_count >= 1
+    error_message = "braintrust_api_ingest_min_count must be at least 1."
+  }
+}
+
+variable "braintrust_api_ingest_max_count" {
+  type        = number
+  description = "Maximum number of braintrust-api-ingest ECS tasks."
+  default     = 200
+
+  validation {
+    condition     = var.braintrust_api_ingest_max_count >= var.braintrust_api_ingest_min_count
+    error_message = "braintrust_api_ingest_max_count must be greater than or equal to braintrust_api_ingest_min_count."
+  }
+}
+
+variable "braintrust_api_ingest_cpu_target_value" {
+  type        = number
+  description = "Target average CPU utilization percentage for braintrust-api-ingest ECS autoscaling."
+  default     = 30
+
+  validation {
+    condition     = var.braintrust_api_ingest_cpu_target_value > 0 && var.braintrust_api_ingest_cpu_target_value <= 100
+    error_message = "braintrust_api_ingest_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_ingest_event_loop_utilization_target_value" {
+  type        = number
+  description = "Target EventLoopUtilizationPercent for braintrust-api-ingest ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  default     = 40
+
+  validation {
+    condition     = var.braintrust_api_ingest_event_loop_utilization_target_value > 0 && var.braintrust_api_ingest_event_loop_utilization_target_value <= 100
+    error_message = "braintrust_api_ingest_event_loop_utilization_target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_background_cpu" {
+  type        = number
+  description = "CPU units for the braintrust-api-background ECS task definition."
+  default     = 2048
+}
+
+variable "braintrust_api_background_memory" {
+  type        = number
+  description = "Memory (MiB) for the braintrust-api-background ECS task definition."
+  default     = 16384
+}
+
+variable "braintrust_api_background_min_count" {
+  type        = number
+  description = "Minimum number of braintrust-api-background ECS tasks. Desired count is managed by Application Auto Scaling."
+  default     = 10
+
+  validation {
+    condition     = var.braintrust_api_background_min_count >= 1
+    error_message = "braintrust_api_background_min_count must be at least 1."
+  }
+}
+
+variable "braintrust_api_background_max_count" {
+  type        = number
+  description = "Maximum number of braintrust-api-background ECS tasks."
+  default     = 50
+
+  validation {
+    condition     = var.braintrust_api_background_max_count >= var.braintrust_api_background_min_count
+    error_message = "braintrust_api_background_max_count must be greater than or equal to braintrust_api_background_min_count."
+  }
+}
+
+variable "braintrust_api_background_cpu_target_value" {
+  type        = number
+  description = "Target average CPU utilization percentage for braintrust-api-background ECS autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.braintrust_api_background_cpu_target_value > 0 && var.braintrust_api_background_cpu_target_value <= 100
+    error_message = "braintrust_api_background_cpu_target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_background_event_loop_utilization_target_value" {
+  type        = number
+  description = "Target EventLoopUtilizationPercent for braintrust-api-background ECS autoscaling (Braintrust/Api CloudWatch metric)."
+  default     = 40
+
+  validation {
+    condition     = var.braintrust_api_background_event_loop_utilization_target_value > 0 && var.braintrust_api_background_event_loop_utilization_target_value <= 100
+    error_message = "braintrust_api_background_event_loop_utilization_target_value must be between 1 and 100."
   }
 }
 
@@ -333,7 +445,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "URL for the AI proxy function used by quarantine execution."
+  description = "AI proxy/Gateway URL used for quarantine execution."
 }
 
 
@@ -372,6 +484,23 @@ variable "authorized_cidr_blocks" {
   }
 }
 
+variable "alb_certificate_arn" {
+  type        = string
+  description = "Optional ACM certificate ARN for the API ECS ALB. When set together with alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80."
+  default     = null
+}
+
+variable "alb_custom_domain" {
+  type        = string
+  description = "Optional custom domain served by the API ECS ALB. Must be covered by alb_certificate_arn. When set together with alb_certificate_arn, the ALB serves HTTPS on port 443 and the API URL becomes https://<alb_custom_domain>."
+  default     = null
+
+  validation {
+    condition     = (var.alb_custom_domain == null) == (var.alb_certificate_arn == null)
+    error_message = "alb_custom_domain and alb_certificate_arn must both be set or both be null."
+  }
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources."
   type        = map(string)
@@ -382,6 +511,48 @@ variable "enable_execute_command" {
   type        = bool
   description = "Enable ECS Exec on the API ECS service."
   default     = false
+}
+
+variable "enable_full_ecs_api" {
+  type        = bool
+  description = "Cutover switch for the new API ECS services. The braintrust-api, braintrust-api-ingest, and braintrust-api-background services are always created so they stay warm, but while this is false the ALB keeps forwarding ALL traffic to the legacy api-ecs service (legacy-api-ecs.tf) and the new services receive no traffic. When true, the ALB default action moves to braintrust-api and path-based rules split ingest/background traffic onto their dedicated services."
+  default     = false
+}
+
+variable "legacy_api_ecs_cpu" {
+  type        = number
+  description = "CPU units for the retained legacy api-ecs task definition. Defaults to the pre-migration value; only change it if your deployed legacy task used a different size."
+  default     = 2048
+}
+
+variable "legacy_api_ecs_memory" {
+  type        = number
+  description = "Memory (MiB) for the retained legacy api-ecs task definition."
+  default     = 16384
+}
+
+variable "legacy_api_ecs_min_count" {
+  type        = number
+  description = "Minimum number of retained legacy api-ecs tasks. Desired count is managed by Application Auto Scaling."
+  default     = 3
+}
+
+variable "legacy_api_ecs_max_count" {
+  type        = number
+  description = "Maximum number of retained legacy api-ecs tasks."
+  default     = 64
+}
+
+variable "legacy_api_ecs_cpu_target_value" {
+  type        = number
+  description = "Target average CPU utilization percentage for the retained legacy api-ecs autoscaling."
+  default     = 40
+}
+
+variable "legacy_api_ecs_memory_target_value" {
+  type        = number
+  description = "Target average memory utilization percentage for the retained legacy api-ecs autoscaling."
+  default     = 50
 }
 
 variable "target_group_deregistration_delay_seconds" {

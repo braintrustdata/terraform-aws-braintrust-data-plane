@@ -39,11 +39,27 @@ locals {
 
   create_ecs_api                             = !var.use_deployment_mode_external_eks && var.create_ecs_api
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
+  enable_full_ecs_api                        = local.create_ecs_api && var.enable_full_ecs_api
+  use_ecs_api_for_brainstore                 = local.enable_ecs_api || local.enable_full_ecs_api
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || var.enable_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  brainstore_ai_proxy_url_ssm_parameter_name = local.use_ecs_api_for_brainstore ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+
+  # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
+  # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
+  # version, changes the launch template, and triggers a rolling instance
+  # refresh. Legacy lambda mode passes just the bare name. one() keeps this
+  # index-safe when api_ecs is absent.
+  brainstore_ai_proxy_url_ssm_parameter = (
+    local.use_ecs_api_for_brainstore
+    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
+    : local.brainstore_ai_proxy_url_ssm_parameter_name
+  )
+
+  # In full ECS API mode, use the global AI gateway origin domain for the AI proxy URL
+  api_ecs_ai_proxy_url = local.enable_full_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : module.services[0].ai_proxy_url
 }
 
 module "main_vpc" {
@@ -318,7 +334,7 @@ module "api_ecs" {
   count  = local.create_ecs_api ? 1 : 0
 
   deployment_name      = var.deployment_name
-  api_version_override = var.api_ecs_version_override
+  api_version_override = var.braintrust_api_version_override
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
@@ -348,24 +364,42 @@ module "api_ecs" {
   response_bucket    = module.storage.lambda_responses_bucket_id
 
   # Service configuration
-  braintrust_org_name                   = var.braintrust_org_name
-  primary_org_name                      = var.primary_org_name
-  allowed_org_ids                       = var.allowed_org_ids
-  cpu                                   = var.api_ecs_cpu
-  memory                                = var.api_ecs_memory
-  min_count                             = var.api_ecs_min_count
-  max_count                             = var.api_ecs_max_count
-  log_retention_days                    = var.api_ecs_log_retention_days
-  enable_execute_command                = var.api_ecs_enable_execute_command
-  whitelisted_origins                   = var.whitelisted_origins
-  outbound_rate_limit_window_minutes    = var.outbound_rate_limit_window_minutes
-  outbound_rate_limit_max_requests      = var.outbound_rate_limit_max_requests
-  disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
-  billing_telemetry_log_level           = var.billing_telemetry_log_level
-  unsafe_url_request_mode               = var.unsafe_url_request_mode
-  url_security_dns_servers              = var.url_security_dns_servers
-  url_security_allow_cidrs              = var.url_security_allow_cidrs
-  extra_env_vars                        = var.api_ecs_extra_env_vars
+  braintrust_org_name                                           = var.braintrust_org_name
+  primary_org_name                                              = var.primary_org_name
+  allowed_org_ids                                               = var.allowed_org_ids
+  log_retention_days                                            = var.braintrust_api_log_retention_days
+  enable_execute_command                                        = var.api_ecs_enable_execute_command
+  enable_full_ecs_api                                           = local.enable_full_ecs_api
+  legacy_api_ecs_cpu                                            = var.api_ecs_cpu
+  legacy_api_ecs_memory                                         = var.api_ecs_memory
+  legacy_api_ecs_min_count                                      = var.api_ecs_min_count
+  legacy_api_ecs_max_count                                      = var.api_ecs_max_count
+  legacy_api_ecs_cpu_target_value                               = var.api_ecs_cpu_target_value
+  legacy_api_ecs_memory_target_value                            = var.api_ecs_memory_target_value
+  braintrust_api_cpu                                            = var.braintrust_api_cpu
+  braintrust_api_memory                                         = var.braintrust_api_memory
+  braintrust_api_min_count                                      = var.braintrust_api_min_count
+  braintrust_api_max_count                                      = var.braintrust_api_max_count
+  braintrust_api_cpu_target_value                               = var.braintrust_api_cpu_target_value
+  braintrust_api_event_loop_utilization_target_value            = var.braintrust_api_event_loop_utilization_target_value
+  braintrust_api_ingest_cpu                                     = var.braintrust_api_ingest_cpu
+  braintrust_api_ingest_memory                                  = var.braintrust_api_ingest_memory
+  braintrust_api_ingest_min_count                               = var.braintrust_api_ingest_min_count
+  braintrust_api_ingest_max_count                               = var.braintrust_api_ingest_max_count
+  braintrust_api_ingest_cpu_target_value                        = var.braintrust_api_ingest_cpu_target_value
+  braintrust_api_ingest_event_loop_utilization_target_value     = var.braintrust_api_ingest_event_loop_utilization_target_value
+  braintrust_api_background_cpu                                 = var.braintrust_api_background_cpu
+  braintrust_api_background_memory                              = var.braintrust_api_background_memory
+  braintrust_api_background_min_count                           = var.braintrust_api_background_min_count
+  braintrust_api_background_max_count                           = var.braintrust_api_background_max_count
+  braintrust_api_background_cpu_target_value                    = var.braintrust_api_background_cpu_target_value
+  braintrust_api_background_event_loop_utilization_target_value = var.braintrust_api_background_event_loop_utilization_target_value
+  whitelisted_origins                                           = var.whitelisted_origins
+  outbound_rate_limit_window_minutes                            = var.outbound_rate_limit_window_minutes
+  outbound_rate_limit_max_requests                              = var.outbound_rate_limit_max_requests
+  disable_billing_telemetry_aggregation                         = var.disable_billing_telemetry_aggregation
+  billing_telemetry_log_level                                   = var.billing_telemetry_log_level
+  extra_env_vars                                                = var.braintrust_api_extra_env_vars
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -378,7 +412,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = module.services[0].ai_proxy_url
+  quarantine_proxy_url                = local.api_ecs_ai_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id
@@ -388,9 +422,12 @@ module "api_ecs" {
       "API"        = module.services_common.api_security_group_id
       "Brainstore" = module.services_common.brainstore_instance_security_group_id
     },
-    var.api_ecs_authorized_security_groups,
+    var.braintrust_api_authorized_security_groups,
   )
-  authorized_cidr_blocks = var.api_ecs_authorized_cidr_blocks
+  authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
+
+  alb_certificate_arn = var.braintrust_api_alb_certificate_arn
+  alb_custom_domain   = var.braintrust_api_alb_custom_domain
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
@@ -398,9 +435,6 @@ module "api_ecs" {
   task_role_arn          = module.services_common.api_handler_role_arn
   task_security_group_id = module.services_common.api_security_group_id
   custom_tags            = var.custom_tags
-
-  cpu_target_value    = var.api_ecs_cpu_target_value
-  memory_target_value = var.api_ecs_memory_target_value
 }
 
 module "ingress" {
@@ -418,6 +452,10 @@ module "ingress" {
   global_ai_gateway_origin_domain = var.global_ai_gateway_origin_domain
   ai_proxy_function_url           = module.services[0].ai_proxy_url
   api_handler_function_arn        = module.services[0].api_handler_arn
+  enable_full_ecs_api             = local.enable_full_ecs_api
+  api_ecs_alb_arn                 = local.create_ecs_api ? module.api_ecs[0].alb_arn : null
+  api_ecs_alb_domain              = local.create_ecs_api ? module.api_ecs[0].alb_domain : null
+  api_ecs_alb_https_enabled       = local.create_ecs_api ? module.api_ecs[0].alb_https_enabled : false
   custom_tags                     = var.custom_tags
 }
 
@@ -469,7 +507,7 @@ module "brainstore" {
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
-  ai_proxy_url_ssm_parameter_name       = local.brainstore_ai_proxy_url_ssm_parameter_name
+  ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
