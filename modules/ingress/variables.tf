@@ -64,22 +64,12 @@ variable "api_ecs_alb_arn" {
   description = "ARN of the API ECS ALB. When set, CloudFront creates a VPC origin for it; enable_full_ecs_api controls whether traffic is routed there."
   type        = string
   default     = null
-
-  validation {
-    condition     = var.api_ecs_alb_arn == null || var.api_ecs_alb_domain != null
-    error_message = "api_ecs_alb_domain is required when api_ecs_alb_arn is set."
-  }
 }
 
 variable "api_ecs_alb_domain" {
   description = "Domain used as the API ECS ALB CloudFront origin. When the ALB serves HTTPS this must be the custom domain covered by the ALB certificate so it validates; otherwise it is the ALB's AWS-assigned DNS name. Required when api_ecs_alb_arn is set."
   type        = string
   default     = null
-
-  validation {
-    condition     = var.api_ecs_alb_domain == null || var.api_ecs_alb_arn != null
-    error_message = "api_ecs_alb_arn is required when api_ecs_alb_domain is set."
-  }
 }
 
 variable "api_ecs_alb_https_enabled" {

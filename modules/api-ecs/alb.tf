@@ -188,6 +188,8 @@ resource "aws_lb_listener" "api_ecs_http" {
         arn    = aws_lb_target_group.braintrust_api.arn
         weight = var.enable_full_ecs_api ? 100 : 0
       }
+      # This is a hack to allow these services to be created before the cutover from the legacy api-ecs service
+      # Target groups MUST be associated with a load balancer before the service is created.
       target_group {
         arn    = aws_lb_target_group.braintrust_api_ingest.arn
         weight = 0
