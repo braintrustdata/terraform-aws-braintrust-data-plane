@@ -39,12 +39,14 @@ locals {
 
   create_ecs_api                             = !var.use_deployment_mode_external_eks && var.create_ecs_api
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
+  create_ai_gateway                          = var.create_ai_gateway
+  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || var.enable_ai_gateway)
+  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
   brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
-  gateway_env_vars = var.enable_ai_gateway ? {
+  gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.services_common.gateway_url
   } : {}
   # Only wire GATEWAY_URL into Lambdas that call the gateway. Do not merge into
@@ -266,7 +268,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_ai_gateway || local.create_ecs_api ? 1 : 0
+  count  = local.create_ai_gateway || local.create_ecs_api ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -276,7 +278,7 @@ module "ecs" {
 
 module "gateway_ecs" {
   source = "./modules/gateway-ecs"
-  count  = var.enable_ai_gateway ? 1 : 0
+  count  = local.create_ai_gateway ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -453,7 +455,7 @@ module "services_common" {
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
   enable_quarantine_vpc                     = var.enable_quarantine_vpc
   quarantine_vpc_id                         = local.quarantine_vpc_id
-  enable_ai_gateway                         = var.enable_ai_gateway
+  create_ai_gateway                         = local.create_ai_gateway
   private_subnet_ids = [
     local.main_vpc_private_subnet_1_id,
     local.main_vpc_private_subnet_2_id,

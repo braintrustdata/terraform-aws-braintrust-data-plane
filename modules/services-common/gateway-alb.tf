@@ -10,7 +10,7 @@ locals {
 }
 
 resource "aws_security_group" "gateway_alb" {
-  count = var.enable_ai_gateway ? 1 : 0
+  count = var.create_ai_gateway ? 1 : 0
 
   name        = "${var.deployment_name}-gateway-alb"
   description = "Security group for private gateway ALB"
@@ -21,7 +21,7 @@ resource "aws_security_group" "gateway_alb" {
 }
 
 resource "aws_security_group_rule" "gateway_alb_ingress_from_authorized_security_groups" {
-  for_each = var.enable_ai_gateway ? local.gateway_alb_authorized_security_groups : {}
+  for_each = var.create_ai_gateway ? local.gateway_alb_authorized_security_groups : {}
 
   type                     = "ingress"
   from_port                = 80
@@ -33,7 +33,7 @@ resource "aws_security_group_rule" "gateway_alb_ingress_from_authorized_security
 }
 
 resource "aws_security_group_rule" "gateway_alb_egress_all" {
-  count = var.enable_ai_gateway ? 1 : 0
+  count = var.create_ai_gateway ? 1 : 0
 
   type              = "egress"
   from_port         = 0
@@ -45,7 +45,7 @@ resource "aws_security_group_rule" "gateway_alb_egress_all" {
 }
 
 resource "aws_lb" "gateway" {
-  count = var.enable_ai_gateway ? 1 : 0
+  count = var.create_ai_gateway ? 1 : 0
 
   name               = "${var.deployment_name}-gateway"
   internal           = true
@@ -62,7 +62,7 @@ resource "aws_lb" "gateway" {
 }
 
 resource "aws_lb_target_group" "gateway" {
-  count = var.enable_ai_gateway ? 1 : 0
+  count = var.create_ai_gateway ? 1 : 0
 
   name        = "${var.deployment_name}-gateway"
   port        = local.gateway_container_port
@@ -87,7 +87,7 @@ resource "aws_lb_target_group" "gateway" {
 }
 
 resource "aws_lb_listener" "gateway_http" {
-  count = var.enable_ai_gateway ? 1 : 0
+  count = var.create_ai_gateway ? 1 : 0
 
   load_balancer_arn = aws_lb.gateway[0].arn
   port              = 80

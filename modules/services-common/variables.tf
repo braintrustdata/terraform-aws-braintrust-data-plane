@@ -127,7 +127,7 @@ variable "quarantine_vpc_id" {
   }
 }
 
-variable "enable_ai_gateway" {
+variable "create_ai_gateway" {
   type        = bool
   description = "When true, create the private gateway internal ALB and target group in this module."
   default     = false
@@ -139,8 +139,8 @@ variable "private_subnet_ids" {
   default     = []
 
   validation {
-    condition     = !var.enable_ai_gateway || (length(var.private_subnet_ids) >= 2 && length(distinct(var.private_subnet_ids)) == length(var.private_subnet_ids))
-    error_message = "private_subnet_ids must contain at least 2 unique subnet IDs when enable_ai_gateway is true."
+    condition     = !var.create_ai_gateway || (length(var.private_subnet_ids) >= 2 && length(distinct(var.private_subnet_ids)) == length(var.private_subnet_ids))
+    error_message = "private_subnet_ids must contain at least 2 unique subnet IDs when create_ai_gateway is true."
   }
 }
 
