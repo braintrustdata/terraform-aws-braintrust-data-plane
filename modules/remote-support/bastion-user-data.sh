@@ -51,13 +51,39 @@ EOF
 
 cat <<'EOF' > /home/ubuntu/ec2-connect.sh
 #!/bin/bash
+set -euo pipefail
 
+instance_id="$1"
 os_user="ubuntu"
-echo "Connecting to instance $os_user@$1"
-aws ec2-instance-connect ssh \
-  --instance-id "$1" \
-  --os-user "$os_user" \
-  --connection-type direct
+
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+
+key="$tmpdir/eic_key"
+ssh-keygen -q -t ed25519 -N "" -f "$key"
+
+az="$(aws ec2 describe-instances \
+  --instance-ids "$instance_id" \
+  --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' \
+  --output text)"
+
+aws ec2-instance-connect send-ssh-public-key \
+  --instance-id "$instance_id" \
+  --instance-os-user "$os_user" \
+  --availability-zone "$az" \
+  --ssh-public-key "file://$key.pub" >/dev/null
+
+
+private_ip="$(aws ec2 describe-instances \
+  --instance-ids "$instance_id" \
+  --query 'Reservations[0].Instances[0].PrivateIpAddress' \
+  --output text)"
+
+echo "Connecting to instance $os_user@$instance_id ($private_ip)"
+/usr/bin/ssh \
+  -i "$key" \
+  -o StrictHostKeyChecking=no \
+  "$os_user@$private_ip"
 EOF
 
 chmod +x /home/ubuntu/*.sh
