@@ -29,6 +29,7 @@ locals {
     PRIMARY_ORG_NAME                                  = var.primary_org_name
     ALLOWED_ORG_IDS                                   = var.allowed_org_ids
     BRAINTRUST_DEPLOYMENT_NAME                        = var.deployment_name
+    BRAINTRUST_LEGACY_IDS                             = "true" # emit v3 spans in py+ts sdks. remove this setting when v4 migration is complete
     RESPONSE_BUCKET                                   = var.response_bucket
     CODE_BUNDLE_BUCKET                                = var.code_bundle_bucket
     WHITELISTED_ORIGINS                               = join(",", var.whitelisted_origins)

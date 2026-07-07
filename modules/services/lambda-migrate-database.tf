@@ -24,6 +24,7 @@ resource "aws_lambda_function" "migrate_database" {
   }
   environment {
     variables = merge({
+      BRAINTRUST_LEGACY_IDS           = "true" # emit v3 spans in py+ts sdks. remove this setting when v4 migration is complete
       BRAINTRUST_RUN_DRAFT_MIGRATIONS = var.run_draft_migrations
       PG_URL                          = local.postgres_url
       INSERT_LOGS2                    = "true"
