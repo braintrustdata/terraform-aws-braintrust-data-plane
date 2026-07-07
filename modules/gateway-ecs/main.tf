@@ -190,37 +190,6 @@ resource "aws_cloudwatch_log_group" "service" {
   }, local.common_tags)
 }
 
-resource "aws_security_group" "alb" {
-  name        = "${var.deployment_name}-gateway-alb"
-  description = "Security group for private gateway ALB"
-  vpc_id      = var.vpc_id
-  tags = merge({
-    Name = "${var.deployment_name}-gateway-alb"
-  }, local.common_tags)
-}
-
-resource "aws_security_group_rule" "alb_ingress_from_authorized_security_groups" {
-  for_each = var.authorized_security_groups
-
-  type                     = "ingress"
-  from_port                = 80
-  to_port                  = 80
-  protocol                 = "tcp"
-  source_security_group_id = each.value
-  description              = "Allow HTTP traffic from ${each.key}."
-  security_group_id        = aws_security_group.alb.id
-}
-
-resource "aws_security_group_rule" "alb_egress_all" {
-  type              = "egress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "Allow all outbound traffic from gateway ALB"
-  security_group_id = aws_security_group.alb.id
-}
-
 resource "aws_security_group" "task" {
   name        = "${var.deployment_name}-gateway-task"
   description = "Security group for gateway ECS tasks"
@@ -235,7 +204,7 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   from_port                = local.container_port
   to_port                  = local.container_port
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.alb.id
+  source_security_group_id = var.alb_security_group_id
   description              = "Allow inbound traffic from gateway ALB to gateway tasks"
   security_group_id        = aws_security_group.task.id
 }
@@ -259,55 +228,6 @@ resource "aws_vpc_security_group_ingress_rule" "cache_allow_ingress_from_gateway
 
   security_group_id = var.redis_security_group_id
   tags              = local.common_tags
-}
-
-resource "aws_lb" "gateway" {
-  name               = "${var.deployment_name}-gateway"
-  internal           = true
-  load_balancer_type = "application"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.alb.id]
-
-  client_keep_alive = var.alb_client_keep_alive
-  idle_timeout      = var.alb_idle_timeout
-
-  tags = merge({
-    Name = "${var.deployment_name}-gateway"
-  }, local.common_tags)
-}
-
-resource "aws_lb_target_group" "gateway" {
-  name        = "${var.deployment_name}-gateway"
-  port        = local.container_port
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = var.vpc_id
-
-  deregistration_delay = var.alb_deregistration_delay
-
-  health_check {
-    path                = "/health"
-    matcher             = "200"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 10
-  }
-
-  tags = merge({
-    Name = "${var.deployment_name}-gateway"
-  }, local.common_tags)
-}
-
-resource "aws_lb_listener" "gateway_http" {
-  load_balancer_arn = aws_lb.gateway.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.gateway.arn
-  }
 }
 
 resource "aws_iam_role" "task_execution" {
@@ -395,6 +315,10 @@ resource "aws_ecs_task_definition" "gateway" {
   }
 }
 
+resource "terraform_data" "gateway_http_listener" {
+  input = var.gateway_http_listener_arn
+}
+
 resource "aws_ecs_service" "gateway" {
   name                              = "${var.deployment_name}-gateway"
   cluster                           = var.ecs_cluster_arn
@@ -418,12 +342,12 @@ resource "aws_ecs_service" "gateway" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.gateway.arn
+    target_group_arn = var.target_group_arn
     container_name   = local.container_name
     container_port   = local.container_port
   }
 
-  depends_on = [aws_lb_listener.gateway_http]
+  depends_on = [terraform_data.gateway_http_listener]
 
   lifecycle {
     ignore_changes = [desired_count]
