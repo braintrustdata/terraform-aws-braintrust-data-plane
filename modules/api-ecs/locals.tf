@@ -64,6 +64,7 @@ locals {
     DISABLE_ASYNC_SCORING                             = "false"
     DISABLE_ATTACHMENT_OPTIMIZATION                   = "false"
     ENABLE_DEEP_SEARCH_LOGGING                        = "false"
+    ENABLE_CLOUDWATCH_METRICS                         = "true"
     ENABLE_RUNTIME_METRICS                            = "false"
     AUTOMATION_CRON_MAX_CONCURRENCY                   = "0"
     DISABLE_LOCAL_BACKGROUND_LOOPS                    = "true"
@@ -114,6 +115,11 @@ locals {
       CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
     })
   }
+
+  legacy_api_env_vars = merge(local.merged_env_vars, {
+    CLOUDWATCH_METRICS_SERVICE_NAME    = "api-ecs"
+    CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
+  })
 
   api_container_depends_on = [
     for dep in [

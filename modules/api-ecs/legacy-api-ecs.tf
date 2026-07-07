@@ -115,9 +115,9 @@ locals {
     dependsOn        = local.api_container_depends_on
     logConfiguration = local.legacy_api_log_configuration
     environment = [
-      for key in sort(keys(local.merged_env_vars)) : {
+      for key in sort(keys(local.legacy_api_env_vars)) : {
         name  = key
-        value = local.merged_env_vars[key]
+        value = local.legacy_api_env_vars[key]
       }
     ]
   })
