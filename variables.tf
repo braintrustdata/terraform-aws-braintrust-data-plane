@@ -342,7 +342,7 @@ variable "create_ai_gateway" {
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API to the private gateway. Requires create_ai_gateway."
+  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
   type        = bool
   default     = false
 
