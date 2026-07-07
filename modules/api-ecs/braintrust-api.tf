@@ -135,3 +135,60 @@ resource "aws_appautoscaling_policy" "braintrust_api_event_loop_target" {
     scale_out_cooldown = 60
   }
 }
+
+resource "aws_appautoscaling_policy" "braintrust_api_event_loop_delay_step" {
+  name               = "${var.deployment_name}-braintrust-api-event-loop-delay-step"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.braintrust_api.resource_id
+  scalable_dimension = aws_appautoscaling_target.braintrust_api.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.braintrust_api.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "PercentChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Average"
+
+    # Alarm threshold is 50ms. Breach range (50, 70] scales out by 10%.
+    step_adjustment {
+      metric_interval_lower_bound = 0
+      metric_interval_upper_bound = 20
+      scaling_adjustment          = 10
+    }
+
+    # Breach range (70, 150] scales out by 25%.
+    step_adjustment {
+      metric_interval_lower_bound = 20
+      metric_interval_upper_bound = 100
+      scaling_adjustment          = 25
+    }
+
+    # Breach range (150, +inf) scales out by 50%.
+    step_adjustment {
+      metric_interval_lower_bound = 100
+      scaling_adjustment          = 50
+    }
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "braintrust_api_event_loop_delay_high" {
+  alarm_name          = "${var.deployment_name}-braintrust-api-event-loop-delay-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "EventLoopDelayMeanMs"
+  namespace           = "Braintrust/Api"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 50
+  treat_missing_data  = "notBreaching"
+  alarm_description   = "Scale out braintrust-api when EventLoopDelayMeanMs exceeds 50ms."
+  alarm_actions       = [aws_appautoscaling_policy.braintrust_api_event_loop_delay_step.arn]
+
+  dimensions = {
+    DeploymentName = var.deployment_name
+    ServiceName    = local.braintrust_api_name
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-braintrust-api-event-loop-delay-high"
+  }, local.common_tags)
+}

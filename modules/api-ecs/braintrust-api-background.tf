@@ -135,3 +135,60 @@ resource "aws_appautoscaling_policy" "braintrust_api_background_event_loop_targe
     scale_out_cooldown = 60
   }
 }
+
+resource "aws_appautoscaling_policy" "braintrust_api_background_event_loop_delay_step" {
+  name               = "${var.deployment_name}-braintrust-api-background-event-loop-delay-step"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.braintrust_api_background.resource_id
+  scalable_dimension = aws_appautoscaling_target.braintrust_api_background.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.braintrust_api_background.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "PercentChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Average"
+
+    # Alarm threshold is 100ms. Breach range (100, 200] scales out by 15%.
+    step_adjustment {
+      metric_interval_lower_bound = 0
+      metric_interval_upper_bound = 100
+      scaling_adjustment          = 15
+    }
+
+    # Breach range (200, 400) scales out by 30%.
+    step_adjustment {
+      metric_interval_lower_bound = 100
+      metric_interval_upper_bound = 300
+      scaling_adjustment          = 30
+    }
+
+    # Breach range [400, +inf) scales out by 100%.
+    step_adjustment {
+      metric_interval_lower_bound = 300
+      scaling_adjustment          = 100
+    }
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "braintrust_api_background_event_loop_delay_high" {
+  alarm_name          = "${var.deployment_name}-braintrust-api-background-event-loop-delay-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "EventLoopDelayMeanMs"
+  namespace           = "Braintrust/Api"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 100
+  treat_missing_data  = "notBreaching"
+  alarm_description   = "Scale out braintrust-api-background when EventLoopDelayMeanMs exceeds 100ms."
+  alarm_actions       = [aws_appautoscaling_policy.braintrust_api_background_event_loop_delay_step.arn]
+
+  dimensions = {
+    DeploymentName = var.deployment_name
+    ServiceName    = local.braintrust_api_background_name
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-braintrust-api-background-event-loop-delay-high"
+  }, local.common_tags)
+}
