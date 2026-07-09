@@ -24,6 +24,7 @@ resource "aws_lambda_function" "billing_cron" {
   environment {
     variables = merge({
       ORG_NAME                      = var.braintrust_org_name
+      BRAINTRUST_LEGACY_IDS         = "true" # emit v3 spans in py+ts sdks. remove this setting when v4 migration is complete
       PG_URL                        = local.postgres_url
       REDIS_HOST                    = var.redis_host
       REDIS_PORT                    = var.redis_port
