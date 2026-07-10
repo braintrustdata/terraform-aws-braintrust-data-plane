@@ -335,10 +335,21 @@ variable "redis_authorized_security_groups" {
 
 ## Services
 
-variable "enable_ai_gateway" {
-  description = "Enable ECS gateway service deployment (Fargate with private ALB)"
+variable "create_ai_gateway" {
+  description = "Create the private gateway infrastructure (internal ALB and ECS gateway service)."
   type        = bool
   default     = false
+}
+
+variable "enable_ai_gateway" {
+  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_ai_gateway || var.create_ai_gateway
+    error_message = "enable_ai_gateway requires create_ai_gateway."
+  }
 }
 
 variable "container_insights" {
@@ -851,8 +862,8 @@ variable "braintrust_api_url" {
   default     = null
 
   validation {
-    condition     = !(var.use_deployment_mode_external_eks && var.enable_ai_gateway) || var.braintrust_api_url != null
-    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and enable_ai_gateway are both true."
+    condition     = !(var.use_deployment_mode_external_eks && var.create_ai_gateway) || var.braintrust_api_url != null
+    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and create_ai_gateway are both true."
   }
 }
 

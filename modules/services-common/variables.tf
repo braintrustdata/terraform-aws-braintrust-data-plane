@@ -126,3 +126,59 @@ variable "quarantine_vpc_id" {
     error_message = "quarantine_vpc_id is required when enable_quarantine_vpc is true."
   }
 }
+
+variable "create_ai_gateway" {
+  type        = bool
+  description = "When true, create the private gateway internal ALB and target group in this module."
+  default     = false
+}
+
+variable "private_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs for the gateway internal ALB."
+  default     = []
+
+  validation {
+    condition     = !var.create_ai_gateway || (length(var.private_subnet_ids) >= 2 && length(distinct(var.private_subnet_ids)) == length(var.private_subnet_ids))
+    error_message = "private_subnet_ids must contain at least 2 unique subnet IDs when create_ai_gateway is true."
+  }
+}
+
+variable "ai_gateway_authorized_security_groups" {
+  type        = map(string)
+  description = "Additional security groups authorized to reach the gateway ALB on port 80."
+  default     = {}
+}
+
+variable "ai_gateway_alb_client_keep_alive" {
+  type        = number
+  description = "Client keep-alive duration in seconds for the gateway ALB."
+  default     = 4000
+
+  validation {
+    condition     = var.ai_gateway_alb_client_keep_alive >= 60 && var.ai_gateway_alb_client_keep_alive <= 604800
+    error_message = "ai_gateway_alb_client_keep_alive must be between 60 and 604800 seconds."
+  }
+}
+
+variable "ai_gateway_alb_idle_timeout" {
+  type        = number
+  description = "Idle timeout in seconds for the gateway ALB."
+  default     = 3600
+
+  validation {
+    condition     = var.ai_gateway_alb_idle_timeout >= 1 && var.ai_gateway_alb_idle_timeout <= 4000
+    error_message = "ai_gateway_alb_idle_timeout must be between 1 and 4000 seconds."
+  }
+}
+
+variable "ai_gateway_alb_deregistration_delay" {
+  type        = number
+  description = "Seconds for the gateway target group to wait before deregistering draining targets."
+  default     = 600
+
+  validation {
+    condition     = var.ai_gateway_alb_deregistration_delay >= 0 && var.ai_gateway_alb_deregistration_delay <= 3600
+    error_message = "ai_gateway_alb_deregistration_delay must be between 0 and 3600 seconds."
+  }
+}

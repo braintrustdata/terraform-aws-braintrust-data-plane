@@ -41,8 +41,10 @@ locals {
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
   enable_full_ecs_api                        = local.create_ecs_api && var.enable_full_ecs_api
   use_ecs_api_for_brainstore                 = local.enable_ecs_api || local.enable_full_ecs_api
+  create_ai_gateway                          = var.create_ai_gateway
+  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || var.enable_ai_gateway)
+  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
   brainstore_ai_proxy_url_ssm_parameter_name = local.use_ecs_api_for_brainstore ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
@@ -60,6 +62,20 @@ locals {
 
   # In full ECS API mode, use the global AI gateway origin domain for the AI proxy URL
   api_ecs_ai_proxy_url = local.enable_full_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : module.services[0].ai_proxy_url
+  gateway_env_vars = local.enable_ai_gateway ? {
+    GATEWAY_URL = module.services_common.gateway_url
+  } : {}
+  # Only wire GATEWAY_URL into Lambdas that call the gateway. Do not merge into
+  # MigrateDatabaseFunction or crons — that changes their env hash and re-runs
+  # migrations or replaces unrelated functions on existing deployments.
+  gateway_lambda_env_services = toset(["APIHandler", "AIProxy"])
+  service_extra_env_vars = merge(
+    var.service_extra_env_vars,
+    { for svc in local.gateway_lambda_env_services : svc => merge(
+      lookup(var.service_extra_env_vars, svc, {}),
+      local.gateway_env_vars,
+    ) }
+  )
 }
 
 module "main_vpc" {
@@ -226,7 +242,7 @@ module "services" {
   unsafe_url_request_mode                    = var.unsafe_url_request_mode
   url_security_dns_servers                   = var.url_security_dns_servers
   url_security_allow_cidrs                   = var.url_security_allow_cidrs
-  extra_env_vars                             = var.service_extra_env_vars
+  extra_env_vars                             = local.service_extra_env_vars
 
   # Billing usage telemetry
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
@@ -268,7 +284,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = var.enable_ai_gateway || local.create_ecs_api ? 1 : 0
+  count  = local.create_ai_gateway || local.create_ecs_api ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -278,7 +294,7 @@ module "ecs" {
 
 module "gateway_ecs" {
   source = "./modules/gateway-ecs"
-  count  = var.enable_ai_gateway ? 1 : 0
+  count  = local.create_ai_gateway ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -298,28 +314,21 @@ module "gateway_ecs" {
   target_cpu_utilization    = var.ai_gateway_target_cpu_utilization
   target_memory_utilization = var.ai_gateway_target_memory_utilization
   log_retention_days        = var.ai_gateway_log_retention_days
-  alb_client_keep_alive     = var.ai_gateway_alb_client_keep_alive
-  alb_idle_timeout          = var.ai_gateway_alb_idle_timeout
-  alb_deregistration_delay  = var.ai_gateway_alb_deregistration_delay
   redis_host                = module.redis.redis_endpoint
   redis_port                = module.redis.redis_port
   redis_security_group_id   = module.redis.redis_security_group_id
-  authorized_security_groups = merge(
-    {
-      "API"        = module.services_common.api_security_group_id
-      "Brainstore" = module.services_common.brainstore_instance_security_group_id
-    },
-    var.ai_gateway_authorized_security_groups,
-  )
-  extra_env_vars           = var.ai_gateway_extra_env_vars
-  custom_tags              = var.custom_tags
-  brainstore_license_key   = var.brainstore_license_key
-  enable_execute_command   = var.ai_gateway_enable_execute_command
-  braintrust_app_url       = var.ai_gateway_braintrust_app_url
-  braintrust_api_url       = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
-  unsafe_url_request_mode  = var.unsafe_url_request_mode
-  url_security_dns_servers = var.url_security_dns_servers
-  url_security_allow_cidrs = var.url_security_allow_cidrs
+  target_group_arn          = module.services_common.gateway_target_group_arn
+  alb_security_group_id     = module.services_common.gateway_alb_security_group_id
+  gateway_http_listener_arn = module.services_common.gateway_http_listener_arn
+  extra_env_vars            = var.ai_gateway_extra_env_vars
+  custom_tags               = var.custom_tags
+  brainstore_license_key    = var.brainstore_license_key
+  enable_execute_command    = var.ai_gateway_enable_execute_command
+  braintrust_app_url        = var.ai_gateway_braintrust_app_url
+  braintrust_api_url        = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  unsafe_url_request_mode   = var.unsafe_url_request_mode
+  url_security_dns_servers  = var.url_security_dns_servers
+  url_security_allow_cidrs  = var.url_security_allow_cidrs
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -399,7 +408,10 @@ module "api_ecs" {
   outbound_rate_limit_max_requests                              = var.outbound_rate_limit_max_requests
   disable_billing_telemetry_aggregation                         = var.disable_billing_telemetry_aggregation
   billing_telemetry_log_level                                   = var.billing_telemetry_log_level
-  extra_env_vars                                                = var.braintrust_api_extra_env_vars
+  unsafe_url_request_mode                                       = var.unsafe_url_request_mode
+  url_security_dns_servers                                      = var.url_security_dns_servers
+  url_security_allow_cidrs                                      = var.url_security_allow_cidrs
+  extra_env_vars                                                = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars)
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -485,6 +497,16 @@ module "services_common" {
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
   enable_quarantine_vpc                     = var.enable_quarantine_vpc
   quarantine_vpc_id                         = local.quarantine_vpc_id
+  create_ai_gateway                         = local.create_ai_gateway
+  private_subnet_ids = [
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id,
+  ]
+  ai_gateway_authorized_security_groups = var.ai_gateway_authorized_security_groups
+  ai_gateway_alb_client_keep_alive      = var.ai_gateway_alb_client_keep_alive
+  ai_gateway_alb_idle_timeout           = var.ai_gateway_alb_idle_timeout
+  ai_gateway_alb_deregistration_delay   = var.ai_gateway_alb_deregistration_delay
 }
 
 module "brainstore" {
