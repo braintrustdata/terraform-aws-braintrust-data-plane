@@ -441,22 +441,23 @@ module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name                 = var.deployment_name
-  custom_domain                   = var.custom_domain
-  custom_certificate_arn          = var.custom_certificate_arn
-  waf_acl_id                      = var.waf_acl_id
-  cloudfront_price_class          = var.cloudfront_price_class
-  cloudfront_origin_read_timeout  = var.cloudfront_origin_read_timeout
-  use_global_ai_proxy             = var.use_global_ai_proxy
-  use_global_ai_gateway_origin    = var.use_global_ai_gateway_origin
-  global_ai_gateway_origin_domain = var.global_ai_gateway_origin_domain
-  ai_proxy_function_url           = module.services[0].ai_proxy_url
-  api_handler_function_arn        = module.services[0].api_handler_arn
-  enable_full_ecs_api             = local.enable_full_ecs_api
-  api_ecs_alb_arn                 = local.create_ecs_api ? module.api_ecs[0].alb_arn : null
-  api_ecs_alb_domain              = local.create_ecs_api ? module.api_ecs[0].alb_domain : null
-  api_ecs_alb_https_enabled       = local.create_ecs_api ? module.api_ecs[0].alb_https_enabled : false
-  custom_tags                     = var.custom_tags
+  deployment_name                  = var.deployment_name
+  custom_domain                    = var.custom_domain
+  custom_certificate_arn           = var.custom_certificate_arn
+  waf_acl_id                       = var.waf_acl_id
+  cloudfront_price_class           = var.cloudfront_price_class
+  cloudfront_origin_read_timeout   = var.cloudfront_origin_read_timeout
+  use_global_ai_proxy              = var.use_global_ai_proxy
+  use_global_ai_gateway_origin     = var.use_global_ai_gateway_origin
+  global_ai_gateway_origin_domain  = var.global_ai_gateway_origin_domain
+  ai_proxy_function_url            = module.services[0].ai_proxy_url
+  api_handler_function_arn         = module.services[0].api_handler_arn
+  enable_full_ecs_api              = local.enable_full_ecs_api
+  create_ecs_api_cloudfront_origin = local.create_ecs_api
+  api_ecs_alb_arn                  = local.create_ecs_api ? module.api_ecs[0].alb_arn : null
+  api_ecs_alb_domain               = local.create_ecs_api ? module.api_ecs[0].alb_domain : null
+  api_ecs_alb_https_enabled        = local.create_ecs_api ? module.api_ecs[0].alb_https_enabled : false
+  custom_tags                      = var.custom_tags
 }
 
 module "services_common" {

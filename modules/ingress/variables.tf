@@ -49,14 +49,20 @@ variable "api_handler_function_arn" {
   type        = string
 }
 
+variable "create_ecs_api_cloudfront_origin" {
+  description = "Pre-create the CloudFront VPC origin for the API ECS ALB when the ALB is being provisioned."
+  type        = bool
+  default     = false
+}
+
 variable "enable_full_ecs_api" {
   description = "Route CloudFront API and AI Proxy traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda."
   type        = bool
   default     = false
 
   validation {
-    condition     = !var.enable_full_ecs_api || (var.api_ecs_alb_arn != null && var.api_ecs_alb_domain != null)
-    error_message = "enable_full_ecs_api requires api_ecs_alb_arn and api_ecs_alb_domain."
+    condition     = !var.enable_full_ecs_api || var.create_ecs_api_cloudfront_origin
+    error_message = "enable_full_ecs_api requires create_ecs_api_cloudfront_origin."
   }
 }
 

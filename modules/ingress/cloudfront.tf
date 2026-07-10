@@ -19,14 +19,10 @@ locals {
   )
 
   cloudfront_function_origin_id = var.enable_full_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
-
-  # Pre-create the VPC origin when the ECS API ALB exists so flipping
-  # enable_full_ecs_api only changes routing, not origin infrastructure.
-  create_ecs_api_cloudfront_origin = var.api_ecs_alb_arn != null
 }
 
 resource "aws_cloudfront_vpc_origin" "api_ecs" {
-  count = local.create_ecs_api_cloudfront_origin ? 1 : 0
+  count = var.create_ecs_api_cloudfront_origin ? 1 : 0
 
   vpc_origin_endpoint_config {
     name                   = "${var.deployment_name}-api-ecs"
@@ -124,7 +120,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   dynamic "origin" {
-    for_each = local.create_ecs_api_cloudfront_origin ? [1] : []
+    for_each = var.create_ecs_api_cloudfront_origin ? [1] : []
     content {
       origin_id   = local.cloudfront_ApiEcsOrigin
       domain_name = var.api_ecs_alb_domain
