@@ -18,6 +18,8 @@ locals {
     # braintrust-api-ingest
     { path = "/logs3", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/otel/v1/traces", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/attachment", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/attachment/status", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
 
     # braintrust-api-background
     { path = "/v1/eval", method = "POST", target_group = aws_lb_target_group.braintrust_api_background.arn },
