@@ -333,6 +333,29 @@ locals {
     "8192"  = [for value in range(16384, 61441, 4096) : value]
     "16384" = [for value in range(32768, 122881, 8192) : value]
   }
+
+  api_event_loop_delay_configs = {
+    "braintrust-api"            = var.braintrust_api_event_loop_delay_autoscaling
+    "braintrust-api-ingest"     = var.braintrust_api_ingest_event_loop_delay_autoscaling
+    "braintrust-api-background" = var.braintrust_api_background_event_loop_delay_autoscaling
+  }
+
+  event_loop_delay_alarm_thresholds = {
+    for service_name, config in local.api_event_loop_delay_configs :
+    service_name => config.steps[0].threshold_ms
+  }
+
+  event_loop_delay_step_adjustments = {
+    for service_name, config in local.api_event_loop_delay_configs : service_name => [
+      for idx, step in config.steps : {
+        lower_bound = step.threshold_ms - config.steps[0].threshold_ms
+        upper_bound = idx < length(config.steps) - 1 ? (
+          config.steps[idx + 1].threshold_ms - config.steps[0].threshold_ms
+        ) : null
+        scaling_adjustment = step.scaling_adjustment
+      }
+    ]
+  }
 }
 
 data "aws_region" "current" {}

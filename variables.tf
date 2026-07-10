@@ -620,26 +620,45 @@ variable "braintrust_api_max_count" {
   }
 }
 
-variable "braintrust_api_cpu_target_value" {
-  description = "Target average CPU utilization percentage for braintrust-api ECS autoscaling."
-  type        = number
-  default     = 50
+variable "braintrust_api_cpu_autoscaling" {
+  description = "CPU target tracking autoscaling for the braintrust-api ECS service."
+  type = object({
+    target_value       = optional(number, 50)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
 
-  validation {
-    condition     = var.braintrust_api_cpu_target_value > 0 && var.braintrust_api_cpu_target_value <= 100
-    error_message = "braintrust_api_cpu_target_value must be between 1 and 100."
-  }
+  default = {}
 }
 
-variable "braintrust_api_event_loop_utilization_target_value" {
-  description = "Target EventLoopUtilizationPercent for braintrust-api ECS autoscaling (Braintrust/Api CloudWatch metric)."
-  type        = number
-  default     = 40
+variable "braintrust_api_event_loop_utilization_autoscaling" {
+  description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api ECS service."
+  type = object({
+    target_value       = optional(number, 40)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
 
-  validation {
-    condition     = var.braintrust_api_event_loop_utilization_target_value > 0 && var.braintrust_api_event_loop_utilization_target_value <= 100
-    error_message = "braintrust_api_event_loop_utilization_target_value must be between 1 and 100."
-  }
+  default = {}
+}
+
+variable "braintrust_api_event_loop_delay_autoscaling" {
+  description = "EventLoopDelayMeanMs step scaling autoscaling for the braintrust-api ECS service."
+  type = object({
+    evaluation_periods = optional(number, 2)
+    period             = optional(number, 60)
+    cooldown           = optional(number, 60)
+    steps = optional(list(object({
+      threshold_ms       = number
+      scaling_adjustment = number
+      })), [
+      { threshold_ms = 50, scaling_adjustment = 10 },
+      { threshold_ms = 70, scaling_adjustment = 25 },
+      { threshold_ms = 150, scaling_adjustment = 50 },
+    ])
+  })
+
+  default = {}
 }
 
 variable "braintrust_api_ingest_cpu" {
@@ -676,26 +695,45 @@ variable "braintrust_api_ingest_max_count" {
   }
 }
 
-variable "braintrust_api_ingest_cpu_target_value" {
-  description = "Target average CPU utilization percentage for braintrust-api-ingest ECS autoscaling."
-  type        = number
-  default     = 30
+variable "braintrust_api_ingest_cpu_autoscaling" {
+  description = "CPU target tracking autoscaling for the braintrust-api-ingest ECS service."
+  type = object({
+    target_value       = optional(number, 30)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
 
-  validation {
-    condition     = var.braintrust_api_ingest_cpu_target_value > 0 && var.braintrust_api_ingest_cpu_target_value <= 100
-    error_message = "braintrust_api_ingest_cpu_target_value must be between 1 and 100."
-  }
+  default = {}
 }
 
-variable "braintrust_api_ingest_event_loop_utilization_target_value" {
-  description = "Target EventLoopUtilizationPercent for braintrust-api-ingest ECS autoscaling (Braintrust/Api CloudWatch metric)."
-  type        = number
-  default     = 40
+variable "braintrust_api_ingest_event_loop_utilization_autoscaling" {
+  description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-ingest ECS service."
+  type = object({
+    target_value       = optional(number, 40)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
 
-  validation {
-    condition     = var.braintrust_api_ingest_event_loop_utilization_target_value > 0 && var.braintrust_api_ingest_event_loop_utilization_target_value <= 100
-    error_message = "braintrust_api_ingest_event_loop_utilization_target_value must be between 1 and 100."
-  }
+  default = {}
+}
+
+variable "braintrust_api_ingest_event_loop_delay_autoscaling" {
+  description = "EventLoopDelayMeanMs step scaling autoscaling for the braintrust-api-ingest ECS service."
+  type = object({
+    evaluation_periods = optional(number, 2)
+    period             = optional(number, 60)
+    cooldown           = optional(number, 60)
+    steps = optional(list(object({
+      threshold_ms       = number
+      scaling_adjustment = number
+      })), [
+      { threshold_ms = 100, scaling_adjustment = 15 },
+      { threshold_ms = 200, scaling_adjustment = 30 },
+      { threshold_ms = 400, scaling_adjustment = 100 },
+    ])
+  })
+
+  default = {}
 }
 
 variable "braintrust_api_background_cpu" {
@@ -732,26 +770,45 @@ variable "braintrust_api_background_max_count" {
   }
 }
 
-variable "braintrust_api_background_cpu_target_value" {
-  description = "Target average CPU utilization percentage for braintrust-api-background ECS autoscaling."
-  type        = number
-  default     = 50
+variable "braintrust_api_background_cpu_autoscaling" {
+  description = "CPU target tracking autoscaling for the braintrust-api-background ECS service."
+  type = object({
+    target_value       = optional(number, 50)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
 
-  validation {
-    condition     = var.braintrust_api_background_cpu_target_value > 0 && var.braintrust_api_background_cpu_target_value <= 100
-    error_message = "braintrust_api_background_cpu_target_value must be between 1 and 100."
-  }
+  default = {}
 }
 
-variable "braintrust_api_background_event_loop_utilization_target_value" {
-  description = "Target EventLoopUtilizationPercent for braintrust-api-background ECS autoscaling (Braintrust/Api CloudWatch metric)."
-  type        = number
-  default     = 40
+variable "braintrust_api_background_event_loop_utilization_autoscaling" {
+  description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-background ECS service."
+  type = object({
+    target_value       = optional(number, 40)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
 
-  validation {
-    condition     = var.braintrust_api_background_event_loop_utilization_target_value > 0 && var.braintrust_api_background_event_loop_utilization_target_value <= 100
-    error_message = "braintrust_api_background_event_loop_utilization_target_value must be between 1 and 100."
-  }
+  default = {}
+}
+
+variable "braintrust_api_background_event_loop_delay_autoscaling" {
+  description = "EventLoopDelayMeanMs step scaling autoscaling for the braintrust-api-background ECS service."
+  type = object({
+    evaluation_periods = optional(number, 2)
+    period             = optional(number, 60)
+    cooldown           = optional(number, 60)
+    steps = optional(list(object({
+      threshold_ms       = number
+      scaling_adjustment = number
+      })), [
+      { threshold_ms = 100, scaling_adjustment = 15 },
+      { threshold_ms = 200, scaling_adjustment = 30 },
+      { threshold_ms = 400, scaling_adjustment = 100 },
+    ])
+  })
+
+  default = {}
 }
 
 variable "braintrust_api_extra_env_vars" {

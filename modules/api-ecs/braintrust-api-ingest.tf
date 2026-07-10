@@ -100,9 +100,9 @@ resource "aws_appautoscaling_policy" "braintrust_api_ingest_cpu_target" {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
 
-    target_value       = var.braintrust_api_ingest_cpu_target_value
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
+    target_value       = var.braintrust_api_ingest_cpu_autoscaling.target_value
+    scale_in_cooldown  = var.braintrust_api_ingest_cpu_autoscaling.scale_in_cooldown
+    scale_out_cooldown = var.braintrust_api_ingest_cpu_autoscaling.scale_out_cooldown
   }
 }
 
@@ -130,9 +130,9 @@ resource "aws_appautoscaling_policy" "braintrust_api_ingest_event_loop_target" {
       }
     }
 
-    target_value       = var.braintrust_api_ingest_event_loop_utilization_target_value
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
+    target_value       = var.braintrust_api_ingest_event_loop_utilization_autoscaling.target_value
+    scale_in_cooldown  = var.braintrust_api_ingest_event_loop_utilization_autoscaling.scale_in_cooldown
+    scale_out_cooldown = var.braintrust_api_ingest_event_loop_utilization_autoscaling.scale_out_cooldown
   }
 }
 
@@ -145,27 +145,16 @@ resource "aws_appautoscaling_policy" "braintrust_api_ingest_event_loop_delay_ste
 
   step_scaling_policy_configuration {
     adjustment_type         = "PercentChangeInCapacity"
-    cooldown                = 60
+    cooldown                = var.braintrust_api_ingest_event_loop_delay_autoscaling.cooldown
     metric_aggregation_type = "Average"
 
-    # Alarm threshold is 100ms. Breach range (100, 200] scales out by 15%.
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      metric_interval_upper_bound = 100
-      scaling_adjustment          = 15
-    }
-
-    # Breach range (200, 400) scales out by 30%.
-    step_adjustment {
-      metric_interval_lower_bound = 100
-      metric_interval_upper_bound = 300
-      scaling_adjustment          = 30
-    }
-
-    # Breach range [400, +inf) scales out by 100%.
-    step_adjustment {
-      metric_interval_lower_bound = 300
-      scaling_adjustment          = 100
+    dynamic "step_adjustment" {
+      for_each = local.event_loop_delay_step_adjustments[local.braintrust_api_ingest_name]
+      content {
+        metric_interval_lower_bound = step_adjustment.value.lower_bound
+        metric_interval_upper_bound = step_adjustment.value.upper_bound
+        scaling_adjustment          = step_adjustment.value.scaling_adjustment
+      }
     }
   }
 }
@@ -173,14 +162,14 @@ resource "aws_appautoscaling_policy" "braintrust_api_ingest_event_loop_delay_ste
 resource "aws_cloudwatch_metric_alarm" "braintrust_api_ingest_event_loop_delay_high" {
   alarm_name          = "${var.deployment_name}-braintrust-api-ingest-event-loop-delay-high"
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 2
+  evaluation_periods  = var.braintrust_api_ingest_event_loop_delay_autoscaling.evaluation_periods
   metric_name         = "EventLoopDelayMeanMs"
   namespace           = "Braintrust/Api"
-  period              = 60
+  period              = var.braintrust_api_ingest_event_loop_delay_autoscaling.period
   statistic           = "Average"
-  threshold           = 100
+  threshold           = local.event_loop_delay_alarm_thresholds[local.braintrust_api_ingest_name]
   treat_missing_data  = "notBreaching"
-  alarm_description   = "Scale out braintrust-api-ingest when EventLoopDelayMeanMs exceeds 100ms."
+  alarm_description   = "Scale out braintrust-api-ingest when EventLoopDelayMeanMs exceeds ${local.event_loop_delay_alarm_thresholds[local.braintrust_api_ingest_name]}ms."
   alarm_actions       = [aws_appautoscaling_policy.braintrust_api_ingest_event_loop_delay_step.arn]
 
   dimensions = {
