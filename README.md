@@ -30,6 +30,20 @@ allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000
 
 `allowed_org_ids` is a comma-separated list of Braintrust Org IDs, not org names. Do not include spaces. You can find an org ID by hovering over the org name in the Braintrust UI. If you keep `braintrust_org_name` set to a specific org name for compatibility, that org is allowed by name today; include its Braintrust Org ID in `allowed_org_ids` for forward compatibility. `braintrust_org_name` remains supported for compatibility, but Braintrust plans to move toward ID-based configuration.
 
+### BTQL audit logging
+
+BTQL `query.read` audit logging is disabled by default. Enable it for specific Braintrust Org IDs with either strict or best-effort mode. The two modes are mutually exclusive.
+
+```hcl
+# Strict mode
+btql_audit_logs_strict_org_ids = ["00000000-0000-4000-8000-000000000001"]
+
+# Or best-effort mode
+btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
+```
+
+Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
+
 ## Useful scripts
 
 ### dump-logs.sh
