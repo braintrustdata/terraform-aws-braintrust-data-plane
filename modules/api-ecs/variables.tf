@@ -65,7 +65,7 @@ variable "braintrust_api_memory" {
 variable "braintrust_api_min_count" {
   type        = number
   description = "Minimum number of braintrust-api ECS tasks. Desired count is managed by Application Auto Scaling."
-  default     = 5
+  default     = 3
 
   validation {
     condition     = var.braintrust_api_min_count >= 1
@@ -149,7 +149,7 @@ variable "braintrust_api_event_loop_delay_autoscaling" {
 variable "braintrust_api_ingest_cpu" {
   type        = number
   description = "CPU units for the braintrust-api-ingest ECS task definition."
-  default     = 2048
+  default     = 1024
 }
 
 variable "braintrust_api_ingest_memory" {
@@ -161,7 +161,7 @@ variable "braintrust_api_ingest_memory" {
 variable "braintrust_api_ingest_min_count" {
   type        = number
   description = "Minimum number of braintrust-api-ingest ECS tasks. Desired count is managed by Application Auto Scaling."
-  default     = 10
+  default     = 6
 
   validation {
     condition     = var.braintrust_api_ingest_min_count >= 1
@@ -172,7 +172,7 @@ variable "braintrust_api_ingest_min_count" {
 variable "braintrust_api_ingest_max_count" {
   type        = number
   description = "Maximum number of braintrust-api-ingest ECS tasks."
-  default     = 200
+  default     = 100
 
   validation {
     condition     = var.braintrust_api_ingest_max_count >= var.braintrust_api_ingest_min_count
@@ -251,13 +251,13 @@ variable "braintrust_api_background_cpu" {
 variable "braintrust_api_background_memory" {
   type        = number
   description = "Memory (MiB) for the braintrust-api-background ECS task definition."
-  default     = 16384
+  default     = 8195
 }
 
 variable "braintrust_api_background_min_count" {
   type        = number
   description = "Minimum number of braintrust-api-background ECS tasks. Desired count is managed by Application Auto Scaling."
-  default     = 10
+  default     = 3
 
   validation {
     condition     = var.braintrust_api_background_min_count >= 1
