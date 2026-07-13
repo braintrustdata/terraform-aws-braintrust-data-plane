@@ -43,9 +43,7 @@ locals {
   enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
-  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
-  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? module.api_ecs[0].url_ssm_parameter_name : module.services[0].ai_proxy_url_ssm_parameter_name
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.services_common.gateway_url
   } : {}
