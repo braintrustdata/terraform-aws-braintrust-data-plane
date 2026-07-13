@@ -739,7 +739,7 @@ variable "braintrust_api_ingest_event_loop_delay_autoscaling" {
 variable "braintrust_api_background_cpu" {
   description = "CPU units for the braintrust-api-background ECS task definition."
   type        = number
-  default     = 2048
+  default     = 1024
 }
 
 variable "braintrust_api_background_memory" {
