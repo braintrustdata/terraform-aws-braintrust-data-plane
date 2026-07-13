@@ -698,7 +698,7 @@ variable "braintrust_api_ingest_max_count" {
 variable "braintrust_api_ingest_cpu_autoscaling" {
   description = "CPU target tracking autoscaling for the braintrust-api-ingest ECS service."
   type = object({
-    target_value       = optional(number, 30)
+    target_value       = optional(number, 50)
     scale_in_cooldown  = optional(number, 300)
     scale_out_cooldown = optional(number, 60)
   })
