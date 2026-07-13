@@ -251,7 +251,7 @@ variable "braintrust_api_background_cpu" {
 variable "braintrust_api_background_memory" {
   type        = number
   description = "Memory (MiB) for the braintrust-api-background ECS task definition."
-  default     = 8195
+  default     = 8192
 }
 
 variable "braintrust_api_background_min_count" {
