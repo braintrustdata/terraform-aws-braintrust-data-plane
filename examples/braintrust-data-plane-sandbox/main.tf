@@ -25,6 +25,12 @@ module "braintrust-data-plane" {
   # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
   allowed_org_ids = ""
 
+  # Optional BTQL query.read audit logging by Braintrust Org ID.
+  # Strict mode writes audit rows before returning query results.
+  # Best-effort mode writes audit rows asynchronously and logs failures.
+  # btql_audit_logs_strict_org_ids      = []
+  # btql_audit_logs_best_effort_org_ids = []
+
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
   # custom_tags = {
