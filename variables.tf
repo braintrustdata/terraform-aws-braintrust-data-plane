@@ -534,41 +534,14 @@ variable "braintrust_api_version_override" {
   }
 }
 
-variable "create_ecs_api" {
-  type        = bool
-  description = "Create the dedicated internal API ECS service infrastructure."
-  default     = false
-
-  validation {
-    condition     = !(var.create_ecs_api && var.use_deployment_mode_external_eks)
-    error_message = "create_ecs_api cannot be true when use_deployment_mode_external_eks is true."
-  }
-
-  validation {
-    condition     = !var.create_ecs_api || var.enable_brainstore
-    error_message = "create_ecs_api requires enable_brainstore."
-  }
-}
-
 variable "enable_ecs_api" {
   type        = bool
-  description = "Enable the ECS API as the active API target for Brainstore."
+  description = "Route traffic to the API ECS ALB instead of API Gateway and Lambdas. API ECS infra is always created for standard (non-external-EKS) deployments; this flag only controls traffic. Default false keeps Lambda as the active path while ECS stays warm for cutover."
   default     = false
 
   validation {
-    condition     = !var.enable_ecs_api || var.create_ecs_api
-    error_message = "enable_ecs_api requires create_ecs_api."
-  }
-}
-
-variable "enable_full_ecs_api" {
-  type        = bool
-  description = "Cutover switch for the new API ECS services. While false, the new braintrust-api services are created and kept warm but receive no traffic: CloudFront and Brainstore keep using API Gateway / the AI Proxy Lambda and the legacy api-ecs service. When true, CloudFront and Brainstore API traffic is routed to the ECS ALB and split across the braintrust-api, braintrust-api-ingest, and braintrust-api-background services."
-  default     = false
-
-  validation {
-    condition     = !var.enable_full_ecs_api || var.create_ecs_api
-    error_message = "enable_full_ecs_api requires create_ecs_api."
+    condition     = !var.enable_ecs_api || !var.use_deployment_mode_external_eks
+    error_message = "enable_ecs_api cannot be true when use_deployment_mode_external_eks is true."
   }
 }
 
@@ -850,67 +823,6 @@ variable "api_ecs_enable_execute_command" {
   description = "Enable ECS Exec for API ECS tasks."
   type        = bool
   default     = false
-}
-
-# Sizing for the retained legacy api-ecs service (modules/api-ecs/legacy-api-ecs.tf).
-# These keep their pre-migration names and defaults so existing deployments
-# (e.g. Prod-EU) that set them continue to apply with no change to the running
-# legacy service. They are wired to the module's legacy_api_ecs_* inputs. The new
-# braintrust-api* services are sized separately via the braintrust_api_* variables.
-variable "api_ecs_cpu" {
-  description = "CPU units for the retained legacy api-ecs task definition."
-  type        = number
-  default     = 2048
-}
-
-variable "api_ecs_memory" {
-  description = "Memory in MiB for the retained legacy api-ecs task definition."
-  type        = number
-  default     = 16384
-}
-
-variable "api_ecs_min_count" {
-  description = "Minimum number of retained legacy api-ecs tasks. Desired count is managed by Application Auto Scaling."
-  type        = number
-  default     = 3
-
-  validation {
-    condition     = var.api_ecs_min_count >= 1
-    error_message = "api_ecs_min_count must be at least 1."
-  }
-}
-
-variable "api_ecs_max_count" {
-  description = "Maximum number of retained legacy api-ecs tasks."
-  type        = number
-  default     = 64
-
-  validation {
-    condition     = var.api_ecs_max_count >= var.api_ecs_min_count
-    error_message = "api_ecs_max_count must be greater than or equal to api_ecs_min_count."
-  }
-}
-
-variable "api_ecs_cpu_target_value" {
-  description = "Target average CPU utilization percentage for retained legacy api-ecs autoscaling."
-  type        = number
-  default     = 40
-
-  validation {
-    condition     = var.api_ecs_cpu_target_value > 0 && var.api_ecs_cpu_target_value <= 100
-    error_message = "api_ecs_cpu_target_value must be between 1 and 100."
-  }
-}
-
-variable "api_ecs_memory_target_value" {
-  description = "Target average memory utilization percentage for retained legacy api-ecs autoscaling."
-  type        = number
-  default     = 50
-
-  validation {
-    condition     = var.api_ecs_memory_target_value > 0 && var.api_ecs_memory_target_value <= 100
-    error_message = "api_ecs_memory_target_value must be between 1 and 100."
-  }
 }
 
 variable "braintrust_api_url" {

@@ -37,31 +37,30 @@ locals {
     local.main_vpc_private_subnet_3_id
   ]
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks && var.create_ecs_api
+  create_ecs_api                             = !var.use_deployment_mode_external_eks
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  enable_full_ecs_api                        = local.create_ecs_api && var.enable_full_ecs_api
-  use_ecs_api_for_brainstore                 = local.enable_ecs_api || local.enable_full_ecs_api
   create_ai_gateway                          = var.create_ai_gateway
   enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = local.use_ecs_api_for_brainstore ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
 
   # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
   # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
   # version, changes the launch template, and triggers a rolling instance
-  # refresh. Legacy lambda mode passes just the bare name. one() keeps this
+  # refresh. Lambda mode passes just the bare name. one() keeps this
   # index-safe when api_ecs is absent.
   brainstore_ai_proxy_url_ssm_parameter = (
-    local.use_ecs_api_for_brainstore
+    local.enable_ecs_api
     ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # In full ECS API mode, use the global AI gateway origin domain for the AI proxy URL
-  api_ecs_ai_proxy_url = local.enable_full_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : module.services[0].ai_proxy_url
+  # When the ECS API is active, quarantine / in-VPC callers use the global AI
+  # gateway origin for proxy traffic instead of the AI Proxy Lambda.
+  api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : module.services[0].ai_proxy_url
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.services_common.gateway_url
   } : {}
@@ -378,13 +377,6 @@ module "api_ecs" {
   allowed_org_ids                                              = var.allowed_org_ids
   log_retention_days                                           = var.braintrust_api_log_retention_days
   enable_execute_command                                       = var.api_ecs_enable_execute_command
-  enable_full_ecs_api                                          = local.enable_full_ecs_api
-  legacy_api_ecs_cpu                                           = var.api_ecs_cpu
-  legacy_api_ecs_memory                                        = var.api_ecs_memory
-  legacy_api_ecs_min_count                                     = var.api_ecs_min_count
-  legacy_api_ecs_max_count                                     = var.api_ecs_max_count
-  legacy_api_ecs_cpu_target_value                              = var.api_ecs_cpu_target_value
-  legacy_api_ecs_memory_target_value                           = var.api_ecs_memory_target_value
   braintrust_api_cpu                                           = var.braintrust_api_cpu
   braintrust_api_memory                                        = var.braintrust_api_memory
   braintrust_api_min_count                                     = var.braintrust_api_min_count
@@ -456,23 +448,22 @@ module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name                  = var.deployment_name
-  custom_domain                    = var.custom_domain
-  custom_certificate_arn           = var.custom_certificate_arn
-  waf_acl_id                       = var.waf_acl_id
-  cloudfront_price_class           = var.cloudfront_price_class
-  cloudfront_origin_read_timeout   = var.cloudfront_origin_read_timeout
-  use_global_ai_proxy              = var.use_global_ai_proxy
-  use_global_ai_gateway_origin     = var.use_global_ai_gateway_origin
-  global_ai_gateway_origin_domain  = var.global_ai_gateway_origin_domain
-  ai_proxy_function_url            = module.services[0].ai_proxy_url
-  api_handler_function_arn         = module.services[0].api_handler_arn
-  enable_full_ecs_api              = local.enable_full_ecs_api
-  create_ecs_api_cloudfront_origin = local.create_ecs_api
-  api_ecs_alb_arn                  = local.create_ecs_api ? module.api_ecs[0].alb_arn : null
-  api_ecs_alb_domain               = local.create_ecs_api ? module.api_ecs[0].alb_domain : null
-  api_ecs_alb_https_enabled        = local.create_ecs_api ? module.api_ecs[0].alb_https_enabled : false
-  custom_tags                      = var.custom_tags
+  deployment_name                 = var.deployment_name
+  custom_domain                   = var.custom_domain
+  custom_certificate_arn          = var.custom_certificate_arn
+  waf_acl_id                      = var.waf_acl_id
+  cloudfront_price_class          = var.cloudfront_price_class
+  cloudfront_origin_read_timeout  = var.cloudfront_origin_read_timeout
+  use_global_ai_proxy             = var.use_global_ai_proxy
+  use_global_ai_gateway_origin    = var.use_global_ai_gateway_origin
+  global_ai_gateway_origin_domain = var.global_ai_gateway_origin_domain
+  ai_proxy_function_url           = module.services[0].ai_proxy_url
+  api_handler_function_arn        = module.services[0].api_handler_arn
+  enable_ecs_api                  = local.enable_ecs_api
+  api_ecs_alb_arn                 = module.api_ecs[0].alb_arn
+  api_ecs_alb_domain              = module.api_ecs[0].alb_domain
+  api_ecs_alb_https_enabled       = module.api_ecs[0].alb_https_enabled
+  custom_tags                     = var.custom_tags
 }
 
 module "services_common" {

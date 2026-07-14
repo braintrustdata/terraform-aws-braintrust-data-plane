@@ -67,10 +67,9 @@ resource "aws_ecs_service" "braintrust_api_background" {
     container_port   = 8000
   }
 
-  # The listener's default action lists this target group at weight 0, which
-  # associates it with the ALB so ECS will attach the service. Path rules are not
-  # required for that association and only exist once enable_full_ecs_api is true.
-  depends_on = [aws_lb_listener.api_ecs_http]
+  # Path rules associate this target group with the ALB, which ECS requires
+  # before CreateService will attach the service.
+  depends_on = [aws_lb_listener_rule.alb_path_routes]
 
   lifecycle {
     create_before_destroy = false

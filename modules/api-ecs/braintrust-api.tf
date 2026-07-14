@@ -67,9 +67,8 @@ resource "aws_ecs_service" "braintrust_api" {
     container_port   = 8000
   }
 
-  # The listener's default action associates this target group with the ALB,
-  # which ECS requires before it will attach the service. (See the association
-  # note on aws_lb_listener.api_ecs_http.)
+  # The listener default action associates this target group with the ALB,
+  # which ECS requires before CreateService will attach the service.
   depends_on = [aws_lb_listener.api_ecs_http]
 
   lifecycle {

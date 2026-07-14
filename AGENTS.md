@@ -66,7 +66,7 @@ The gateway internal ALB moved from `gateway-ecs` to `services-common`. Stacks t
 
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
-Mirrors `create_ecs_api` / `enable_ecs_api`:
+Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
 - **`create_ai_gateway`**: internal ALB, target group, listener, and gateway ECS service.
 - **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API. Requires `create_ai_gateway`.
 

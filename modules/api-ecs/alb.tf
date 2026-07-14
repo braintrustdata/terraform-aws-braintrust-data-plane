@@ -161,44 +161,11 @@ resource "aws_lb_listener" "api_ecs_http" {
   ssl_policy      = local.alb_https_enabled ? "ELBSecurityPolicy-TLS13-1-2-2021-06" : null
   certificate_arn = local.alb_https_enabled ? var.alb_certificate_arn : null
 
-  # The default action forwards across every target group as a weighted set.
-  # While enable_full_ecs_api is false, 100% of default (unmatched) traffic goes
-  # to the legacy api-ecs target group and the braintrust-api* groups get weight
-  # 0; flipping enable_full_ecs_api to true shifts that 100% to braintrust-api,
-  # and flipping it back is the rollback. The ingest/background groups always stay
-  # at weight 0 here -- they only receive traffic via the path rules in
-  # alb-path-routes.tf once cut over.
-  #
-  # Listing every target group in the action (even at weight 0) keeps them all
-  # associated with the load balancer, which is what lets the braintrust-api* ECS
-  # services attach to their target groups before any traffic is routed to them.
-  # Without the association, ECS CreateService fails with "target group ... does
-  # not have an associated load balancer". The services depend on this listener so
-  # the association exists before they are created. This resource also keeps its
-  # legacy address (api_ecs_http) so upgrades update it in place rather than
-  # destroying/recreating it, leaving port 80/443 always served.
+  # Unmatched traffic goes to braintrust-api. Ingest/background traffic is routed
+  # by the path rules in alb-path-routes.tf.
   default_action {
-    type = "forward"
-    forward {
-      target_group {
-        arn    = aws_lb_target_group.api_ecs.arn
-        weight = var.enable_full_ecs_api ? 0 : 100
-      }
-      target_group {
-        arn    = aws_lb_target_group.braintrust_api.arn
-        weight = var.enable_full_ecs_api ? 100 : 0
-      }
-      # This is a hack to allow these services to be created before the cutover from the legacy api-ecs service
-      # Target groups MUST be associated with a load balancer before the service is created.
-      target_group {
-        arn    = aws_lb_target_group.braintrust_api_ingest.arn
-        weight = 0
-      }
-      target_group {
-        arn    = aws_lb_target_group.braintrust_api_background.arn
-        weight = 0
-      }
-    }
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.braintrust_api.arn
   }
 }
 

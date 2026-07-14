@@ -117,11 +117,6 @@ locals {
     })
   }
 
-  legacy_api_env_vars = merge(local.merged_env_vars, {
-    CLOUDWATCH_METRICS_SERVICE_NAME    = "api-ecs"
-    CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
-  })
-
   api_container_depends_on = [
     for dep in [
       {

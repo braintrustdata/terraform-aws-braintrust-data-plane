@@ -10,20 +10,18 @@ locals {
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
   cloudfront_ProxyOrigin               = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
 
-  cloudfront_api_origin_id = var.enable_full_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_APIGatewayOrigin
+  cloudfront_api_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_APIGatewayOrigin
 
   cloudfront_proxy_origin_id = (
     var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : (
-      var.enable_full_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+      var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
     )
   )
 
-  cloudfront_function_origin_id = var.enable_full_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+  cloudfront_function_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
 }
 
 resource "aws_cloudfront_vpc_origin" "api_ecs" {
-  count = var.create_ecs_api_cloudfront_origin ? 1 : 0
-
   vpc_origin_endpoint_config {
     name                   = "${var.deployment_name}-api-ecs"
     arn                    = var.api_ecs_alb_arn
@@ -119,24 +117,21 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
-  dynamic "origin" {
-    for_each = var.create_ecs_api_cloudfront_origin ? [1] : []
-    content {
-      origin_id   = local.cloudfront_ApiEcsOrigin
-      domain_name = var.api_ecs_alb_domain
+  origin {
+    origin_id   = local.cloudfront_ApiEcsOrigin
+    domain_name = var.api_ecs_alb_domain
 
-      vpc_origin_config {
-        vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs[0].id
-        origin_keepalive_timeout = 60
-        origin_read_timeout      = var.cloudfront_origin_read_timeout
-      }
+    vpc_origin_config {
+      vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs.id
+      origin_keepalive_timeout = 60
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
+    }
 
-      dynamic "custom_header" {
-        for_each = var.custom_domain != null ? [1] : []
-        content {
-          name  = "X-CloudFront-Domain"
-          value = var.custom_domain
-        }
+    dynamic "custom_header" {
+      for_each = var.custom_domain != null ? [1] : []
+      content {
+        name  = "X-CloudFront-Domain"
+        value = var.custom_domain
       }
     }
   }
