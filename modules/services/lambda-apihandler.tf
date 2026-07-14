@@ -63,6 +63,14 @@ locals {
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
     BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
   } : {}
+  btql_audit_log_env_vars = merge(
+    length(var.btql_audit_logs_strict_org_ids) > 0 ? {
+      BTQL_AUDIT_LOGS_STRICT_ORG_IDS = join(",", var.btql_audit_logs_strict_org_ids)
+    } : {},
+    length(var.btql_audit_logs_best_effort_org_ids) > 0 ? {
+      BTQL_AUDIT_LOGS_BEST_EFFORT_ORG_IDS = join(",", var.btql_audit_logs_best_effort_org_ids)
+    } : {}
+  )
   # There env vars are specific to the API Handler. Don't add env vars here if you need them for the AI Proxy as well.
   api_handler_specific_env_vars = merge(
     {
@@ -83,7 +91,8 @@ locals {
     } : {},
     var.brainstore_enable_export ? {
       BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
-    } : {}
+    } : {},
+    local.btql_audit_log_env_vars
   )
 }
 

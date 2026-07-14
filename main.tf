@@ -230,6 +230,8 @@ module "services" {
   braintrust_org_name                        = var.braintrust_org_name
   primary_org_name                           = var.primary_org_name
   allowed_org_ids                            = var.allowed_org_ids
+  btql_audit_logs_strict_org_ids             = var.btql_audit_logs_strict_org_ids
+  btql_audit_logs_best_effort_org_ids        = var.btql_audit_logs_best_effort_org_ids
   api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   api_handler_memory_limit                   = var.api_handler_memory_limit
@@ -375,6 +377,8 @@ module "api_ecs" {
   braintrust_org_name                                          = var.braintrust_org_name
   primary_org_name                                             = var.primary_org_name
   allowed_org_ids                                              = var.allowed_org_ids
+  btql_audit_logs_strict_org_ids                               = var.btql_audit_logs_strict_org_ids
+  btql_audit_logs_best_effort_org_ids                          = var.btql_audit_logs_best_effort_org_ids
   log_retention_days                                           = var.braintrust_api_log_retention_days
   enable_execute_command                                       = var.api_ecs_enable_execute_command
   braintrust_api_cpu                                           = var.braintrust_api_cpu

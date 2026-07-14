@@ -24,6 +24,43 @@ variable "allowed_org_ids" {
   }
 }
 
+variable "btql_audit_logs_strict_org_ids" {
+  description = "Braintrust Org UUIDs for which BTQL query.read audit logging is enabled in strict mode. Strict mode writes audit rows before returning query results. Mutually exclusive with btql_audit_logs_best_effort_org_ids."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = length(var.btql_audit_logs_strict_org_ids) == length(distinct(var.btql_audit_logs_strict_org_ids))
+    error_message = "btql_audit_logs_strict_org_ids must not contain duplicate org UUIDs."
+  }
+
+  validation {
+    condition     = alltrue([for org_id in var.btql_audit_logs_strict_org_ids : can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$", org_id))])
+    error_message = "btql_audit_logs_strict_org_ids must contain only Braintrust Org UUIDs."
+  }
+}
+
+variable "btql_audit_logs_best_effort_org_ids" {
+  description = "Braintrust Org UUIDs for which BTQL query.read audit logging is enabled in best-effort mode. Best-effort mode writes audit rows asynchronously and logs failures. Mutually exclusive with btql_audit_logs_strict_org_ids."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = length(var.btql_audit_logs_strict_org_ids) == 0 || length(var.btql_audit_logs_best_effort_org_ids) == 0
+    error_message = "Set either btql_audit_logs_strict_org_ids or btql_audit_logs_best_effort_org_ids, not both."
+  }
+
+  validation {
+    condition     = length(var.btql_audit_logs_best_effort_org_ids) == length(distinct(var.btql_audit_logs_best_effort_org_ids))
+    error_message = "btql_audit_logs_best_effort_org_ids must not contain duplicate org UUIDs."
+  }
+
+  validation {
+    condition     = alltrue([for org_id in var.btql_audit_logs_best_effort_org_ids : can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$", org_id))])
+    error_message = "btql_audit_logs_best_effort_org_ids must contain only Braintrust Org UUIDs."
+  }
+}
+
 variable "deployment_name" {
   type        = string
   description = "Name of this deployment. Will be included in resource names"
