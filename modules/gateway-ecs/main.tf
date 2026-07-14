@@ -283,6 +283,28 @@ resource "aws_iam_role" "task" {
   }, local.common_tags)
 }
 
+resource "aws_iam_role_policy" "customer_assume_role" {
+  name = "${var.deployment_name}-gateway-customer-assume-role"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AssumeRoleInCustomerAccount"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "sts:ExternalId" = "bt:*"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_ecs_task_definition" "gateway" {
   family                   = "${var.deployment_name}-gateway"
   requires_compatibilities = ["FARGATE"]
