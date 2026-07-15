@@ -315,6 +315,7 @@ module "gateway_ecs" {
   target_cpu_utilization    = var.ai_gateway_target_cpu_utilization
   target_memory_utilization = var.ai_gateway_target_memory_utilization
   log_retention_days        = var.ai_gateway_log_retention_days
+  permissions_boundary_arn  = var.permissions_boundary_arn
   redis_host                = module.redis.redis_endpoint
   redis_port                = module.redis.redis_port
   redis_security_group_id   = module.redis.redis_security_group_id

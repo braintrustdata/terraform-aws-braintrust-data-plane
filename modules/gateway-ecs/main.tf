@@ -276,11 +276,34 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
 }
 
 resource "aws_iam_role" "task" {
-  name               = "${var.deployment_name}-gateway-task"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+  name                 = "${var.deployment_name}-gateway-task"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
+  permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-gateway-task"
   }, local.common_tags)
+}
+
+resource "aws_iam_role_policy" "customer_assume_role" {
+  name = "${var.deployment_name}-gateway-customer-assume-role"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AssumeRoleInCustomerAccount"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "sts:ExternalId" = "bt:*"
+          }
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_ecs_task_definition" "gateway" {
