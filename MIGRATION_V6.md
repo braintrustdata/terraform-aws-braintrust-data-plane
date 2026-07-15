@@ -19,7 +19,7 @@ These services have new variables that require consideration:
   - If for some reason you are locked onto a specific version of our services with `lambda_version_tag_override`, then you need to copy that here. 
 - `braintrust_api_min_count` / `braintrust_api_max_count`
   - The defaults are 3 and 50 which is sensible for nearly all but the most high traffic deployments
-- `braintrust_api_ingest_min_count / `braintrust_api_ingest_max_count`
+- `braintrust_api_ingest_min_count` / `braintrust_api_ingest_max_count`
   - The defaults are 6 and 200
 - `braintrust_api_background_min_count` / `braintrust_api_background_max_count`
   - The defaults are 3 and 50
