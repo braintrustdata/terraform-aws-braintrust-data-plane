@@ -276,8 +276,9 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
 }
 
 resource "aws_iam_role" "task" {
-  name               = "${var.deployment_name}-gateway-task"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+  name                 = "${var.deployment_name}-gateway-task"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
+  permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-gateway-task"
   }, local.common_tags)
