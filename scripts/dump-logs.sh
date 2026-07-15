@@ -7,14 +7,16 @@ ALL_SERVICES=(
   "brainstore"
   "AIProxy"
   "APIHandler"
-  "api-ecs"
+  "braintrust-api"
+  "braintrust-api-ingest"
+  "braintrust-api-background"
   "CatchupETL"
   "MigrateDatabaseFunction"
   "QuarantineWarmupFunction"
   "BillingCron"
   "AutomationCron"
 )
-SERVICES="APIHandler,api-ecs,brainstore"
+SERVICES="APIHandler,braintrust-api,braintrust-api-ingest,braintrust-api-background,brainstore"
 
 if [ -z "$1" ]; then
   echo "Usage: $0 <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]"
@@ -69,9 +71,9 @@ for svc in "${SELECTED_SERVICES[@]}"; do
   if [[ "$svc" == "brainstore" ]]; then
     LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/brainstore"
     LOG_FILE="logs-$DEPLOYMENT_NAME/brainstore.log"
-  elif [[ "$svc" == "api-ecs" ]]; then
-    LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/api-ecs"
-    LOG_FILE="logs-$DEPLOYMENT_NAME/api-ecs.log"
+  elif [[ "$svc" == "braintrust-api" || "$svc" == "braintrust-api-ingest" || "$svc" == "braintrust-api-background" ]]; then
+    LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/$svc"
+    LOG_FILE="logs-$DEPLOYMENT_NAME/$svc.log"
   else
     LOG_GROUP="/braintrust/$DEPLOYMENT_NAME/${DEPLOYMENT_NAME}-$svc"
     LOG_FILE="logs-$DEPLOYMENT_NAME/$svc.log"

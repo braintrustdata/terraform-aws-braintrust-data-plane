@@ -50,59 +50,291 @@ variable "api_version_override" {
   }
 }
 
-variable "cpu" {
+variable "braintrust_api_cpu" {
   type        = number
-  description = "CPU units for the API ECS task definition."
-  default     = 2048
+  description = "CPU units for the braintrust-api ECS task definition (user-interactive queries)."
+  default     = 1024
 }
 
-variable "memory" {
+variable "braintrust_api_memory" {
   type        = number
-  description = "Memory (MiB) for the API ECS task definition."
-  default     = 16384
+  description = "Memory (MiB) for the braintrust-api ECS task definition."
+  default     = 8192
 }
 
-variable "min_count" {
+variable "braintrust_api_min_count" {
   type        = number
-  description = "Minimum number of API ECS tasks. Desired count is managed by Application Auto Scaling."
+  description = "Minimum number of braintrust-api ECS tasks. Desired count is managed by Application Auto Scaling."
   default     = 3
 
   validation {
-    condition     = var.min_count >= 1
-    error_message = "min_count must be at least 1."
+    condition     = var.braintrust_api_min_count >= 1
+    error_message = "braintrust_api_min_count must be at least 1."
   }
 }
 
-variable "max_count" {
+variable "braintrust_api_max_count" {
   type        = number
-  description = "Maximum number of API ECS tasks."
-  default     = 64
-
-  validation {
-    condition     = var.max_count >= var.min_count
-    error_message = "max_count must be greater than or equal to min_count."
-  }
-}
-
-variable "cpu_target_value" {
-  type        = number
-  description = "Target average CPU utilization percentage for API ECS autoscaling."
-  default     = 40
-
-  validation {
-    condition     = var.cpu_target_value > 0 && var.cpu_target_value <= 100
-    error_message = "cpu_target_value must be between 1 and 100."
-  }
-}
-
-variable "memory_target_value" {
-  type        = number
-  description = "Target average memory utilization percentage for API ECS autoscaling."
+  description = "Maximum number of braintrust-api ECS tasks."
   default     = 50
 
   validation {
-    condition     = var.memory_target_value > 0 && var.memory_target_value <= 100
-    error_message = "memory_target_value must be between 1 and 100."
+    condition     = var.braintrust_api_max_count >= var.braintrust_api_min_count
+    error_message = "braintrust_api_max_count must be greater than or equal to braintrust_api_min_count."
+  }
+}
+
+variable "braintrust_api_cpu_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "CPU target tracking autoscaling for the braintrust-api ECS service."
+
+  validation {
+    condition     = var.braintrust_api_cpu_autoscaling.target_value > 0 && var.braintrust_api_cpu_autoscaling.target_value <= 100
+    error_message = "braintrust_api_cpu_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_event_loop_utilization_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api ECS service."
+
+  validation {
+    condition     = var.braintrust_api_event_loop_utilization_autoscaling.target_value > 0 && var.braintrust_api_event_loop_utilization_autoscaling.target_value <= 100
+    error_message = "braintrust_api_event_loop_utilization_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_event_loop_delay_autoscaling" {
+  type = object({
+    evaluation_periods = number
+    period             = number
+    cooldown           = number
+    steps = list(object({
+      threshold_ms       = number
+      scaling_adjustment = number
+    }))
+  })
+  description = "EventLoopDelayMeanMs step scaling autoscaling for the braintrust-api ECS service."
+
+  validation {
+    condition     = length(var.braintrust_api_event_loop_delay_autoscaling.steps) >= 1
+    error_message = "braintrust_api_event_loop_delay_autoscaling.steps must contain at least one step."
+  }
+
+  validation {
+    condition = alltrue([
+      for step in var.braintrust_api_event_loop_delay_autoscaling.steps :
+      step.threshold_ms > 0 && step.scaling_adjustment > 0
+    ])
+    error_message = "braintrust_api_event_loop_delay_autoscaling step threshold_ms and scaling_adjustment must be greater than 0."
+  }
+
+  validation {
+    condition = alltrue([
+      for idx in range(length(var.braintrust_api_event_loop_delay_autoscaling.steps) - 1) :
+      var.braintrust_api_event_loop_delay_autoscaling.steps[idx + 1].threshold_ms > var.braintrust_api_event_loop_delay_autoscaling.steps[idx].threshold_ms
+    ])
+    error_message = "braintrust_api_event_loop_delay_autoscaling.steps threshold_ms values must be strictly increasing."
+  }
+}
+
+variable "braintrust_api_ingest_cpu" {
+  type        = number
+  description = "CPU units for the braintrust-api-ingest ECS task definition."
+  default     = 1024
+}
+
+variable "braintrust_api_ingest_memory" {
+  type        = number
+  description = "Memory (MiB) for the braintrust-api-ingest ECS task definition."
+  default     = 8192
+}
+
+variable "braintrust_api_ingest_min_count" {
+  type        = number
+  description = "Minimum number of braintrust-api-ingest ECS tasks. Desired count is managed by Application Auto Scaling."
+  default     = 6
+
+  validation {
+    condition     = var.braintrust_api_ingest_min_count >= 1
+    error_message = "braintrust_api_ingest_min_count must be at least 1."
+  }
+}
+
+variable "braintrust_api_ingest_max_count" {
+  type        = number
+  description = "Maximum number of braintrust-api-ingest ECS tasks."
+  default     = 100
+
+  validation {
+    condition     = var.braintrust_api_ingest_max_count >= var.braintrust_api_ingest_min_count
+    error_message = "braintrust_api_ingest_max_count must be greater than or equal to braintrust_api_ingest_min_count."
+  }
+}
+
+variable "braintrust_api_ingest_cpu_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "CPU target tracking autoscaling for the braintrust-api-ingest ECS service."
+
+  validation {
+    condition     = var.braintrust_api_ingest_cpu_autoscaling.target_value > 0 && var.braintrust_api_ingest_cpu_autoscaling.target_value <= 100
+    error_message = "braintrust_api_ingest_cpu_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_ingest_event_loop_utilization_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-ingest ECS service."
+
+  validation {
+    condition     = var.braintrust_api_ingest_event_loop_utilization_autoscaling.target_value > 0 && var.braintrust_api_ingest_event_loop_utilization_autoscaling.target_value <= 100
+    error_message = "braintrust_api_ingest_event_loop_utilization_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_ingest_event_loop_delay_autoscaling" {
+  type = object({
+    evaluation_periods = number
+    period             = number
+    cooldown           = number
+    steps = list(object({
+      threshold_ms       = number
+      scaling_adjustment = number
+    }))
+  })
+  description = "EventLoopDelayMeanMs step scaling autoscaling for the braintrust-api-ingest ECS service."
+
+  validation {
+    condition     = length(var.braintrust_api_ingest_event_loop_delay_autoscaling.steps) >= 1
+    error_message = "braintrust_api_ingest_event_loop_delay_autoscaling.steps must contain at least one step."
+  }
+
+  validation {
+    condition = alltrue([
+      for step in var.braintrust_api_ingest_event_loop_delay_autoscaling.steps :
+      step.threshold_ms > 0 && step.scaling_adjustment > 0
+    ])
+    error_message = "braintrust_api_ingest_event_loop_delay_autoscaling step threshold_ms and scaling_adjustment must be greater than 0."
+  }
+
+  validation {
+    condition = alltrue([
+      for idx in range(length(var.braintrust_api_ingest_event_loop_delay_autoscaling.steps) - 1) :
+      var.braintrust_api_ingest_event_loop_delay_autoscaling.steps[idx + 1].threshold_ms > var.braintrust_api_ingest_event_loop_delay_autoscaling.steps[idx].threshold_ms
+    ])
+    error_message = "braintrust_api_ingest_event_loop_delay_autoscaling.steps threshold_ms values must be strictly increasing."
+  }
+}
+
+variable "braintrust_api_background_cpu" {
+  type        = number
+  description = "CPU units for the braintrust-api-background ECS task definition."
+  default     = 1024
+}
+
+variable "braintrust_api_background_memory" {
+  type        = number
+  description = "Memory (MiB) for the braintrust-api-background ECS task definition."
+  default     = 8192
+}
+
+variable "braintrust_api_background_min_count" {
+  type        = number
+  description = "Minimum number of braintrust-api-background ECS tasks. Desired count is managed by Application Auto Scaling."
+  default     = 3
+
+  validation {
+    condition     = var.braintrust_api_background_min_count >= 1
+    error_message = "braintrust_api_background_min_count must be at least 1."
+  }
+}
+
+variable "braintrust_api_background_max_count" {
+  type        = number
+  description = "Maximum number of braintrust-api-background ECS tasks."
+  default     = 50
+
+  validation {
+    condition     = var.braintrust_api_background_max_count >= var.braintrust_api_background_min_count
+    error_message = "braintrust_api_background_max_count must be greater than or equal to braintrust_api_background_min_count."
+  }
+}
+
+variable "braintrust_api_background_cpu_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "CPU target tracking autoscaling for the braintrust-api-background ECS service."
+
+  validation {
+    condition     = var.braintrust_api_background_cpu_autoscaling.target_value > 0 && var.braintrust_api_background_cpu_autoscaling.target_value <= 100
+    error_message = "braintrust_api_background_cpu_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_background_event_loop_utilization_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-background ECS service."
+
+  validation {
+    condition     = var.braintrust_api_background_event_loop_utilization_autoscaling.target_value > 0 && var.braintrust_api_background_event_loop_utilization_autoscaling.target_value <= 100
+    error_message = "braintrust_api_background_event_loop_utilization_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_background_event_loop_delay_autoscaling" {
+  type = object({
+    evaluation_periods = number
+    period             = number
+    cooldown           = number
+    steps = list(object({
+      threshold_ms       = number
+      scaling_adjustment = number
+    }))
+  })
+  description = "EventLoopDelayMeanMs step scaling autoscaling for the braintrust-api-background ECS service."
+
+  validation {
+    condition     = length(var.braintrust_api_background_event_loop_delay_autoscaling.steps) >= 1
+    error_message = "braintrust_api_background_event_loop_delay_autoscaling.steps must contain at least one step."
+  }
+
+  validation {
+    condition = alltrue([
+      for step in var.braintrust_api_background_event_loop_delay_autoscaling.steps :
+      step.threshold_ms > 0 && step.scaling_adjustment > 0
+    ])
+    error_message = "braintrust_api_background_event_loop_delay_autoscaling step threshold_ms and scaling_adjustment must be greater than 0."
+  }
+
+  validation {
+    condition = alltrue([
+      for idx in range(length(var.braintrust_api_background_event_loop_delay_autoscaling.steps) - 1) :
+      var.braintrust_api_background_event_loop_delay_autoscaling.steps[idx + 1].threshold_ms > var.braintrust_api_background_event_loop_delay_autoscaling.steps[idx].threshold_ms
+    ])
+    error_message = "braintrust_api_background_event_loop_delay_autoscaling.steps threshold_ms values must be strictly increasing."
   }
 }
 
@@ -370,7 +602,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "URL for the AI proxy function used by quarantine execution."
+  description = "AI proxy/Gateway URL used for quarantine execution."
 }
 
 
@@ -406,6 +638,23 @@ variable "authorized_cidr_blocks" {
   validation {
     condition     = alltrue([for cidr in var.authorized_cidr_blocks : can(cidrnetmask(cidr))])
     error_message = "authorized_cidr_blocks must contain valid CIDR blocks."
+  }
+}
+
+variable "alb_certificate_arn" {
+  type        = string
+  description = "Optional ACM certificate ARN for the API ECS ALB. When set together with alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80."
+  default     = null
+}
+
+variable "alb_custom_domain" {
+  type        = string
+  description = "Optional custom domain served by the API ECS ALB. Must be covered by alb_certificate_arn. When set together with alb_certificate_arn, the ALB serves HTTPS on port 443 and the API URL becomes https://<alb_custom_domain>."
+  default     = null
+
+  validation {
+    condition     = (var.alb_custom_domain == null) == (var.alb_certificate_arn == null)
+    error_message = "alb_custom_domain and alb_certificate_arn must both be set or both be null."
   }
 }
 

@@ -63,7 +63,7 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_cache_file_size      = local.brainstore_writer_cache_file_size
     skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
     brainstore_enable_export        = var.brainstore_enable_export
-    ai_proxy_url_ssm_parameter_name = var.ai_proxy_url_ssm_parameter_name
+    ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
   }))
 
   tags = merge({

@@ -3,9 +3,18 @@
 For the latest guidance, always refer to the official Braintrust documentation:
 
 - [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
+- [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
 
 This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
+
+## Major versions
+
+Always upgrade **one major version at a time**. For example, go from v4 → v5 → v6. Do not jump from v4 directly to v6.
+
+Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
+
+- [Migrating from v5 to v6](MIGRATION_V6.md)
 
 ## How to use this module
 
@@ -55,10 +64,14 @@ This script will dump the logs for the given deployment and services to the `log
 
 ./scripts/dump-logs.sh bt-sandbox
 Fetching logs for the last 60 minutes for APIHandler...
-Fetching logs for the last 60 minutes for api-ecs...
+Fetching logs for the last 60 minutes for braintrust-api...
+Fetching logs for the last 60 minutes for braintrust-api-ingest...
+Fetching logs for the last 60 minutes for braintrust-api-background...
 Fetching logs for the last 60 minutes for brainstore...
 ✅ Saved logs for brainstore to logs-bt-sandbox/brainstore.log
-✅ Saved logs for api-ecs to logs-bt-sandbox/api-ecs.log
+✅ Saved logs for braintrust-api to logs-bt-sandbox/braintrust-api.log
+✅ Saved logs for braintrust-api-ingest to logs-bt-sandbox/braintrust-api-ingest.log
+✅ Saved logs for braintrust-api-background to logs-bt-sandbox/braintrust-api-background.log
 ✅ Saved logs for APIHandler to logs-bt-sandbox/APIHandler.log
 ```
 

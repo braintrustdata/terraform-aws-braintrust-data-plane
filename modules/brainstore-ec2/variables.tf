@@ -167,9 +167,9 @@ variable "service_token_secret_key" {
   sensitive   = true
 }
 
-variable "ai_proxy_url_ssm_parameter_name" {
+variable "ai_proxy_url_ssm_parameter" {
   type        = string
-  description = "Name of the SSM parameter containing the URL Brainstore should use for BRAINSTORE_AI_PROXY_URL."
+  description = "Selector for the SSM parameter holding the URL Brainstore uses for BRAINSTORE_AI_PROXY_URL. Either a bare \"<name>\" or a version-pinned \"<name>:<version>\". When a version is pinned, it is baked into user_data so a URL change forces a rolling instance refresh."
 }
 
 variable "brainstore_s3_bucket_arn" {
