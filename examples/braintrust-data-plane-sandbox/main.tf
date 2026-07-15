@@ -15,10 +15,10 @@ module "braintrust-data-plane" {
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.
-  braintrust_org_name = "your-org-name"
+  braintrust_org_name = "Vignanker-sandbox"
 
   # Required when braintrust_org_name is "*", or when it is unset/empty.
-  primary_org_name = "your-org-name"
+  primary_org_name = "Vignanker-sandbox"
 
   # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
   # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
@@ -50,6 +50,7 @@ module "braintrust-data-plane" {
   postgres_max_storage_size = 500
 
   postgres_storage_type = "gp3"
+
   # RDS PostgreSQL only allows explicit gp3 IOPS/throughput when storage is >= 400 GiB.
   # Leave these unset so the 100 GiB sandbox instance uses gp3 baseline performance.
   postgres_storage_iops       = null
