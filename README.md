@@ -3,9 +3,18 @@
 For the latest guidance, always refer to the official Braintrust documentation:
 
 - [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
+- [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
 
 This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
+
+## Major versions
+
+Always upgrade **one major version at a time**. For example, go from v4 → v5 → v6. Do not jump from v4 directly to v6.
+
+Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
+
+- [Migrating from v5 to v6](MIGRATION_V6.md)
 
 ## How to use this module
 
