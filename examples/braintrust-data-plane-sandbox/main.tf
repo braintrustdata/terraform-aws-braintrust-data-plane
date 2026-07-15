@@ -47,9 +47,10 @@ module "braintrust-data-plane" {
 
   postgres_storage_type = "gp3"
 
-  # gp3 volumes under 400GB receive baseline performance (3000 IOPS, 125 MiB/s). These match the baseline.
-  postgres_storage_iops       = 3000
-  postgres_storage_throughput = 125
+  # RDS PostgreSQL only allows explicit gp3 IOPS/throughput when storage is >= 400 GiB.
+  # Leave these unset so the 100 GiB sandbox instance uses gp3 baseline performance.
+  postgres_storage_iops       = null
+  postgres_storage_throughput = null
 
   postgres_version                    = "15"
   postgres_auto_minor_version_upgrade = true
