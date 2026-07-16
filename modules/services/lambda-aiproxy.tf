@@ -57,6 +57,8 @@ resource "aws_lambda_function" "ai_proxy" {
   tags = local.common_tags
 }
 
+# With authorization_type = "NONE", the AWS provider adds the required public
+# Function URL invoke permissions during creation.
 resource "aws_lambda_function_url" "ai_proxy" {
   function_name      = aws_lambda_function.ai_proxy.function_name
   authorization_type = "NONE"
@@ -101,27 +103,6 @@ resource "aws_lambda_alias" "ai_proxy_live" {
   name             = "live"
   function_name    = aws_lambda_function.ai_proxy.function_name
   function_version = aws_lambda_function.ai_proxy.version
-}
-
-# Function URL auth model (by Nov 2026) requires both InvokeFunctionUrl and InvokeFunction
-resource "aws_lambda_permission" "ai_proxy" {
-  statement_id = "AllowFunctionURLInvoke"
-  action       = "lambda:InvokeFunctionUrl"
-
-  function_name          = aws_lambda_function.ai_proxy.function_name
-  qualifier              = aws_lambda_alias.ai_proxy_live.name
-  principal              = "*"
-  function_url_auth_type = "NONE"
-}
-
-resource "aws_lambda_permission" "ai_proxy_invoke" {
-  statement_id = "AllowFunctionInvoke"
-  action       = "lambda:InvokeFunction"
-
-  function_name            = aws_lambda_function.ai_proxy.function_name
-  qualifier                = aws_lambda_alias.ai_proxy_live.name
-  principal                = "*"
-  invoked_via_function_url = true
 }
 
 resource "aws_ssm_parameter" "ai_proxy_url" {
