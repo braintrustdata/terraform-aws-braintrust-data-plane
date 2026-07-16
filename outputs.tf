@@ -84,22 +84,27 @@ output "gateway_service_name" {
 }
 
 output "gateway_alb_dns_name" {
-  value       = local.create_ai_gateway ? module.services_common.gateway_alb_dns_name : null
+  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_dns_name : null
   description = "Internal DNS name of the private gateway ALB"
 }
 
 output "gateway_alb_arn" {
-  value       = local.create_ai_gateway ? module.services_common.gateway_alb_arn : null
+  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_arn : null
   description = "ARN of the private gateway ALB"
 }
 
+output "gateway_alb_subnet_ids" {
+  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_subnet_ids : null
+  description = "Subnet IDs attached to the private gateway ALB."
+}
+
 output "gateway_target_group_arn" {
-  value       = local.create_ai_gateway ? module.services_common.gateway_target_group_arn : null
+  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_target_group_arn : null
   description = "ARN of the gateway ALB target group"
 }
 
 output "gateway_url" {
-  value       = local.create_ai_gateway ? module.services_common.gateway_url : null
+  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_url : null
   description = "Private in-VPC gateway URL. Set enable_ai_gateway to wire GATEWAY_URL on api-ts services."
 }
 

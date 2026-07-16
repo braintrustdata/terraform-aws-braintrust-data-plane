@@ -1,15 +1,24 @@
 locals {
+  cloudfront_vpc_origin_excluded_zone_ids = [
+    "use1-az3",
+    "usw1-az2",
+    "apne1-az3",
+    "cac1-az3",
+  ]
+  pick_vpc_origin_safe_default_azs = var.create_vpc && var.use_private_ai_gateway_origin
+  default_availability_zone_names  = local.pick_vpc_origin_safe_default_azs ? data.aws_availability_zones.available_for_vpc_origin.names : data.aws_availability_zones.available.names
+
   # Lookup and choose an AZ if not provided
-  private_subnet_1_az = var.private_subnet_1_az != null ? var.private_subnet_1_az : data.aws_availability_zones.available.names[0]
-  private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : data.aws_availability_zones.available.names[1]
-  private_subnet_3_az = var.private_subnet_3_az != null ? var.private_subnet_3_az : data.aws_availability_zones.available.names[2]
-  public_subnet_1_az  = var.public_subnet_1_az != null ? var.public_subnet_1_az : data.aws_availability_zones.available.names[0]
+  private_subnet_1_az = var.private_subnet_1_az != null ? var.private_subnet_1_az : local.default_availability_zone_names[0]
+  private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : local.default_availability_zone_names[1]
+  private_subnet_3_az = var.private_subnet_3_az != null ? var.private_subnet_3_az : local.default_availability_zone_names[2]
+  public_subnet_1_az  = var.public_subnet_1_az != null ? var.public_subnet_1_az : local.default_availability_zone_names[0]
 
   # Lookup and choose an AZ if not provided for Quarantine VPC
-  quarantine_private_subnet_1_az = var.quarantine_private_subnet_1_az != null ? var.quarantine_private_subnet_1_az : data.aws_availability_zones.available.names[0]
-  quarantine_private_subnet_2_az = var.quarantine_private_subnet_2_az != null ? var.quarantine_private_subnet_2_az : data.aws_availability_zones.available.names[1]
-  quarantine_private_subnet_3_az = var.quarantine_private_subnet_3_az != null ? var.quarantine_private_subnet_3_az : data.aws_availability_zones.available.names[2]
-  quarantine_public_subnet_1_az  = var.quarantine_public_subnet_1_az != null ? var.quarantine_public_subnet_1_az : data.aws_availability_zones.available.names[0]
+  quarantine_private_subnet_1_az = var.quarantine_private_subnet_1_az != null ? var.quarantine_private_subnet_1_az : local.default_availability_zone_names[0]
+  quarantine_private_subnet_2_az = var.quarantine_private_subnet_2_az != null ? var.quarantine_private_subnet_2_az : local.default_availability_zone_names[1]
+  quarantine_private_subnet_3_az = var.quarantine_private_subnet_3_az != null ? var.quarantine_private_subnet_3_az : local.default_availability_zone_names[2]
+  quarantine_public_subnet_1_az  = var.quarantine_public_subnet_1_az != null ? var.quarantine_public_subnet_1_az : local.default_availability_zone_names[0]
 }
 
 variable "braintrust_org_name" {
@@ -1279,6 +1288,22 @@ variable "use_global_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev. Don't enable this unless instructed by Braintrust."
   type        = bool
   default     = false
+}
+
+variable "use_private_ai_gateway_origin" {
+  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
+    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true."
+  }
+
+  validation {
+    condition     = !var.use_private_ai_gateway_origin || var.create_ai_gateway
+    error_message = "use_private_ai_gateway_origin requires create_ai_gateway."
+  }
 }
 
 variable "global_ai_gateway_origin_domain" {

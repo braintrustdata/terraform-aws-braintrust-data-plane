@@ -11,11 +11,12 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 │   ├── database/            # RDS Postgres
 │   ├── ecs/                 # ECS cluster
 │   ├── elasticache/         # Redis (ElastiCache)
-│   ├── gateway-ecs/         # LLM Gateway
-│   ├── ingress/             # CloudFront + ALB
+│   ├── gateway-alb/         # Private gateway internal ALB (ALB / TG / listener)
+│   ├── gateway-ecs/         # LLM Gateway (ECS Fargate)
+│   ├── ingress/             # CloudFront + API Gateway
 │   ├── kms/                 # Encryption keys
 │   ├── services/            # Lambda and ECS services
-│   ├── services-common/     # Shared service config
+│   ├── services-common/     # Shared IAM, SGs, secrets (API/Brainstore/quarantine)
 │   ├── storage/             # S3 buckets
 │   ├── vpc/                 # VPC + subnets
 │   └── remote-support/      # Optional remote support access
@@ -62,12 +63,14 @@ Module changes must be applyable directly to live customer stacks without tear-d
 
 ### Private gateway ALB relocation
 
-The gateway internal ALB moved from `gateway-ecs` to `services-common`. Stacks that already applied the old layout will destroy/recreate gateway ALB resources (new DNS). No `moved` blocks: private gateway is not in production use yet. Gateway ECS tasks may recycle when the target group is replaced.
+The gateway internal ALB lives in `modules/gateway-alb` so callers can reference `GATEWAY_URL` without depending on `gateway-ecs` (see cycle notes in PR / Kevin’s design). It previously lived in `gateway-ecs`, then briefly in `services-common`. `moved` blocks in `moved_state.tf` migrate state from `services_common` → `gateway_alb` so existing stacks (e.g. prod-eu) do not destroy/recreate the ALB. Those moved blocks can be removed after all customers have applied once.
+
+Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
 
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
 Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
-- **`create_ai_gateway`**: internal ALB, target group, listener, and gateway ECS service.
+- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`).
 - **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API. Requires `create_ai_gateway`.
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.

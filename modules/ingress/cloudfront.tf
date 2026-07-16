@@ -12,9 +12,13 @@ locals {
 
   cloudfront_api_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_APIGatewayOrigin
 
+  # /v1/proxy origin priority: hosted global → private gateway VPC origin →
+  # ECS API ALB (when enable_ecs_api) → AI Proxy Lambda / Cloudflare.
   cloudfront_proxy_origin_id = (
     var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : (
-      var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+      local.enable_private_gateway_cloudfront_origin ? local.cloudfront_PrivateGatewayOrigin : (
+        var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+      )
     )
   )
 
@@ -132,6 +136,20 @@ resource "aws_cloudfront_distribution" "dataplane" {
       content {
         name  = "X-CloudFront-Domain"
         value = var.custom_domain
+      }
+    }
+  }
+
+  dynamic "origin" {
+    for_each = local.enable_private_gateway_cloudfront_origin ? [1] : []
+    content {
+      domain_name = var.gateway_alb_dns_name
+      origin_id   = local.cloudfront_PrivateGatewayOrigin
+
+      vpc_origin_config {
+        vpc_origin_id            = aws_cloudfront_vpc_origin.gateway[0].id
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+        origin_keepalive_timeout = 60
       }
     }
   }
