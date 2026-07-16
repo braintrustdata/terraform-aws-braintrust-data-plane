@@ -290,11 +290,9 @@ moved {
   to   = module.gateway_alb[0].aws_lb_listener.gateway_http
 }
 
-moved {
-  from = module.services_common.data.aws_ec2_managed_prefix_list.cloudfront_vpc_origin[0]
-  to   = module.gateway_alb[0].data.aws_ec2_managed_prefix_list.cloudfront_vpc_origin[0]
-}
-
+# Only relevant for stacks that applied an intermediate branch where the
+# CloudFront prefix-list ingress lived under services-common. No-op for
+# stacks that only ever tracked main (rule never existed there).
 moved {
   from = module.services_common.aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]

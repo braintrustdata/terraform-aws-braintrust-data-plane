@@ -74,13 +74,28 @@ locals {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id,
   ]
+  # Parallel name/zone_id lists from aws_availability_zones; used to filter
+  # create_vpc subnets without reading back unknown subnet IDs at plan time.
+  availability_zone_id_by_name = zipmap(
+    data.aws_availability_zones.available.names,
+    data.aws_availability_zones.available.zone_ids,
+  )
   enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
-  gateway_alb_subnet_ids = local.create_ai_gateway ? (
-    local.enable_private_ai_gateway_origin ? [
-      for subnet_id in local.main_vpc_private_subnet_ids :
-      subnet_id if !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private[subnet_id].availability_zone_id)
-    ] : local.main_vpc_private_subnet_ids
-  ) : []
+  # When routing CloudFront via a VPC origin, drop ALB (and gateway ECS) subnets
+  # in unsupported AZs. create_vpc path filters by known AZ locals; existing-VPC
+  # path looks up zone IDs from data.aws_subnet.private.
+  gateway_alb_subnet_ids = !local.create_ai_gateway ? [] : (
+    !local.enable_private_ai_gateway_origin ? local.main_vpc_private_subnet_ids : (
+      var.create_vpc ? compact([
+        contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_1_az]) ? null : local.main_vpc_private_subnet_1_id,
+        contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_2_az]) ? null : local.main_vpc_private_subnet_2_id,
+        contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_3_az]) ? null : local.main_vpc_private_subnet_3_id,
+        ]) : [
+        for subnet_id in local.main_vpc_private_subnet_ids :
+        subnet_id if !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private[subnet_id].availability_zone_id)
+      ]
+    )
+  )
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
     { for svc in local.gateway_lambda_env_services : svc => merge(
@@ -332,10 +347,12 @@ module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = local.create_ai_gateway ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  deployment_name = var.deployment_name
+  kms_key_arn     = local.kms_key_arn
+  vpc_id          = local.main_vpc_id
+  # Share ALB AZs so Fargate tasks are not placed in zones the ALB cannot serve
+  # (required when use_private_ai_gateway_origin filters unsupported AZs).
+  private_subnet_ids = local.gateway_alb_subnet_ids
   ecs_cluster_arn    = module.ecs[0].cluster_arn
   ecs_cluster_name   = module.ecs[0].cluster_name
   container_image = format(

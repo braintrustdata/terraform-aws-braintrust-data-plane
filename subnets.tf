@@ -1,8 +1,12 @@
+# Subnet AZ lookups for filtering CloudFront VPC-origin-unsupported zones.
+# Only needed for existing-VPC deploys (create_vpc=false), where subnet IDs are
+# known literals. create_vpc=true uses AZ name locals instead — looking up
+# module-created subnet IDs here would fail plan with "Invalid for_each".
 data "aws_subnet" "private" {
-  for_each = toset([
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id,
+  for_each = var.create_vpc ? toset([]) : toset([
+    var.existing_private_subnet_1_id,
+    var.existing_private_subnet_2_id,
+    var.existing_private_subnet_3_id,
   ])
 
   id = each.value
