@@ -514,7 +514,7 @@ module "ingress" {
   cloudfront_origin_read_timeout     = var.cloudfront_origin_read_timeout
   use_global_ai_proxy                = var.use_global_ai_proxy
   use_global_ai_gateway_origin       = var.use_global_ai_gateway_origin
-  use_private_ai_gateway_origin      = var.use_private_ai_gateway_origin
+  use_private_ai_gateway_origin      = local.enable_private_ai_gateway_origin
   global_ai_gateway_origin_domain    = var.global_ai_gateway_origin_domain
   gateway_alb_arn                    = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
   gateway_alb_dns_name               = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null

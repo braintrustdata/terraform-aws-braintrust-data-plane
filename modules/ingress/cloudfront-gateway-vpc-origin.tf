@@ -1,6 +1,9 @@
 locals {
-  cloudfront_PrivateGatewayOrigin          = "PrivateGatewayOrigin"
-  enable_private_gateway_cloudfront_origin = var.use_private_ai_gateway_origin && var.gateway_alb_arn != null && var.gateway_alb_dns_name != null
+  cloudfront_PrivateGatewayOrigin = "PrivateGatewayOrigin"
+  # Use the boolean flag only — do not gate on gateway_alb_arn/dns (unknown at
+  # plan on greenfield create_vpc applies). use_private_ai_gateway_origin already
+  # requires create_ai_gateway, so the ALB module is always present when this is true.
+  enable_private_gateway_cloudfront_origin = var.use_private_ai_gateway_origin
 }
 
 resource "aws_cloudfront_vpc_origin" "gateway" {
