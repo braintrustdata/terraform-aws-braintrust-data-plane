@@ -1,7 +1,7 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 module "braintrust-data-plane" {
-  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
+  source = "../.."
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
   ### This example is configured for sandbox/evaluation deployments with smaller
@@ -11,7 +11,7 @@ module "braintrust-data-plane" {
   # IMPORTANT: Each deployment in the same AWS account must have a unique name.
   # Use a short prefix + your name or identifier (max 18 characters).
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "bt-sandbox"
+  deployment_name = "evignanker-sb"
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.
