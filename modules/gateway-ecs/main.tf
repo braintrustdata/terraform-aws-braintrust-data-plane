@@ -351,7 +351,9 @@ resource "aws_ecs_service" "gateway" {
   enable_execute_command            = var.enable_execute_command
   health_check_grace_period_seconds = 60
   wait_for_steady_state             = true
-  sigint_rollback                   = true
+
+  # This causes instant rollbacks on first deploy. Must be off. (Same as api-ecs.)
+  sigint_rollback = false
 
   deployment_circuit_breaker {
     enable   = true
