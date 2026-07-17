@@ -211,6 +211,9 @@ locals {
           ]
         })
       }
+      "/brainstore/locks-snapshot" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
       "/broadcast-key" = {
         for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
       }
