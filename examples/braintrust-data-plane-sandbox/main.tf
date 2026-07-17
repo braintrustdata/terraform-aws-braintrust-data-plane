@@ -41,10 +41,10 @@ module "braintrust-data-plane" {
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
-  # custom_tags = {
-  #   Owner = "Your Name"
-  #   Team  = "Your Team"
-  # }
+  custom_tags = {
+    Owner = "Eugene Vignanker"
+    Team  = "Brainstore"
+  }
 
   ### Postgres configuration
   postgres_instance_type = "db.r8g.large"
@@ -183,4 +183,21 @@ module "braintrust-data-plane" {
   # (main and/or quarantine); does not modify customer-managed existing_* VPC endpoints.
   # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
   # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
+
+  braintrust_api_extra_env_vars = {
+    ALLOWED_SYSADMINS = "eugene.vignanker@braintrustdata.com"
+  }
+
+  service_extra_env_vars = {
+    APIHandler = {
+      ALLOWED_SYSADMINS = "eugene.vignanker@braintrustdata.com"
+    }
+
+    AIProxy                   = {}
+    AutomationCron            = {}
+    BillingCron               = {}
+    CatchupETL                = {}
+    MigrateDatabaseFunction   = {}
+    QuarantineWarmupFunction  = {}
+  }
 }
