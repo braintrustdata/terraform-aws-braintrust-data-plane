@@ -1,5 +1,9 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
+locals {
+  braintrust_build_tag = "bc7cc9a30126323dc436dc0f1e31271093d15c50"
+}
+
 module "braintrust-data-plane" {
   source = "../.."
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
@@ -71,6 +75,20 @@ module "braintrust-data-plane" {
   ### Brainstore configuration
   # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > Data Plane.
   brainstore_license_key = var.brainstore_license_key
+
+  # Pin this sandbox to a specific Braintrust build.
+  braintrust_api_version_override = local.braintrust_build_tag
+  brainstore_version_override     = local.braintrust_build_tag
+  lambda_version_tag_override     = local.braintrust_build_tag
+
+  # Keep ECS API capacity small for sandbox accounts. The module defaults are
+  # production-sized: 3 API + 6 ingest + 3 background Fargate tasks.
+  braintrust_api_min_count            = 1
+  braintrust_api_max_count            = 1
+  braintrust_api_ingest_min_count     = 1
+  braintrust_api_ingest_max_count     = 1
+  braintrust_api_background_min_count = 1
+  braintrust_api_background_max_count = 1
 
   # Single reader and writer, downsized for sandbox.
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
