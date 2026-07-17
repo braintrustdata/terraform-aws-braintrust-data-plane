@@ -41,10 +41,10 @@ module "braintrust-data-plane" {
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
-  # custom_tags = {
-  #   Owner = "Your Name"
-  #   Team  = "Your Team"
-  # }
+  custom_tags = {
+    Owner = "Eugene Vignanker"
+    Team  = "Brainstore"
+  }
 
   ### Postgres configuration
   postgres_instance_type = "db.r8g.large"
@@ -166,4 +166,21 @@ module "braintrust-data-plane" {
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+
+  braintrust_api_extra_env_vars = {
+    ALLOWED_SYSADMINS = "eugene.vignanker@braintrustdata.com"
+  }
+
+  service_extra_env_vars = {
+    APIHandler = {
+      ALLOWED_SYSADMINS = "eugene.vignanker@braintrustdata.com"
+    }
+
+    AIProxy                   = {}
+    AutomationCron            = {}
+    BillingCron               = {}
+    CatchupETL                = {}
+    MigrateDatabaseFunction   = {}
+    QuarantineWarmupFunction  = {}
+  }
 }
