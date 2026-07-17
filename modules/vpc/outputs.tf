@@ -42,3 +42,18 @@ output "default_security_group_id" {
   description = "The ID of the default security group that is automatically created for the VPC"
   value       = aws_vpc.vpc.default_security_group_id
 }
+
+output "sts_vpc_endpoint_id" {
+  description = "The ID of the STS interface VPC endpoint, or null when not created"
+  value       = one(aws_vpc_endpoint.sts[*].id)
+}
+
+output "ec2_vpc_endpoint_id" {
+  description = "The ID of the EC2 interface VPC endpoint, or null when not created"
+  value       = one(aws_vpc_endpoint.ec2[*].id)
+}
+
+output "logs_vpc_endpoint_id" {
+  description = "The ID of the CloudWatch Logs interface VPC endpoint, or null when not created"
+  value       = one(aws_vpc_endpoint.logs[*].id)
+}
