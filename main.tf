@@ -174,9 +174,10 @@ module "redis" {
     ),
     local.bastion_security_group,
   )
-  redis_instance_type = var.redis_instance_type
-  redis_version       = var.redis_version
-  custom_tags         = var.custom_tags
+  use_redis_replication_group = var.use_redis_replication_group
+  redis_instance_type         = var.redis_instance_type
+  redis_version               = var.redis_version
+  custom_tags                 = var.custom_tags
 }
 
 module "storage" {
@@ -207,8 +208,10 @@ module "services" {
   postgres_password = module.database.postgres_database_password
   postgres_host     = module.database.postgres_database_address
   postgres_port     = module.database.postgres_database_port
-  redis_host        = module.redis.redis_endpoint
-  redis_port        = module.redis.redis_port
+
+  use_redis_replication_group = var.use_redis_replication_group
+  redis_host                  = module.redis.redis_endpoint
+  redis_port                  = module.redis.redis_port
 
   brainstore_enabled              = var.enable_brainstore
   brainstore_default              = var.brainstore_default
