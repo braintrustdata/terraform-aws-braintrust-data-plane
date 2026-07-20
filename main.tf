@@ -59,8 +59,9 @@ locals {
   )
 
   # When the ECS API is active, quarantine / in-VPC callers use the global AI
-  # gateway origin for proxy traffic instead of the AI Proxy Lambda.
-  api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : module.services[0].ai_proxy_url
+  # gateway origin for proxy traffic instead of the AI Proxy Lambda. one() keeps
+  # this index-safe when services is absent (use_deployment_mode_external_eks).
+  api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : one(module.services[*].ai_proxy_url)
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.services_common.gateway_url
   } : {}
