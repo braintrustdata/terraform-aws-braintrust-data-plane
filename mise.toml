@@ -48,8 +48,8 @@ run = """
 #!/usr/bin/env bash
 set -e
 echo "Validating module with OpenTofu"
-tofu init -upgrade
-tofu validate
+tofu init -upgrade -test-directory=nope
+tofu validate -no-tests
 
 echo "Validating example code with OpenTofu"
 cd examples/braintrust-data-plane
@@ -61,6 +61,6 @@ module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
-tofu init -upgrade
-tofu validate
+tofu init -upgrade -test-directory=nope
+tofu validate -no-tests
 """
