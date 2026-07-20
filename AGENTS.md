@@ -63,7 +63,7 @@ Module changes must be applyable directly to live customer stacks without tear-d
 
 ### Private gateway ALB relocation
 
-The gateway internal ALB lives in `modules/gateway-alb` so callers can reference `GATEWAY_URL` without depending on `gateway-ecs` (see cycle notes in PR / Kevin’s design). It previously lived in `gateway-ecs`, then briefly in `services-common`. `moved` blocks in `moved_state.tf` migrate state from `services_common` → `gateway_alb` so existing stacks (e.g. prod-eu) do not destroy/recreate the ALB. Those moved blocks can be removed after all customers have applied once.
+The gateway internal ALB lives in `modules/gateway-alb` so callers can reference `GATEWAY_URL` without depending on `gateway-ecs`. Temporary `moved` blocks in `moved_state.tf` remount state from `services_common` → `gateway_alb` so upgrades do not destroy/recreate the ALB. Remove those moved blocks after all stacks have applied once.
 
 Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
 

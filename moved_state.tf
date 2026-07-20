@@ -254,7 +254,7 @@ moved {
 
 # Private gateway ALB moved from services-common -> gateway-alb.
 # Keeps GATEWAY_URL creatable without depending on gateway-ecs (cycle break).
-# Remove these after all customer stacks (e.g. prod-eu) have applied once.
+# Remove these after all stacks have applied once.
 moved {
   from = module.services_common.aws_security_group.gateway_alb[0]
   to   = module.gateway_alb[0].aws_security_group.gateway_alb
@@ -290,9 +290,7 @@ moved {
   to   = module.gateway_alb[0].aws_lb_listener.gateway_http
 }
 
-# Only relevant for stacks that applied an intermediate branch where the
-# CloudFront prefix-list ingress lived under services-common. No-op for
-# stacks that only ever tracked main (rule never existed there).
+# No-op if this ingress rule never existed under services-common.
 moved {
   from = module.services_common.aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
