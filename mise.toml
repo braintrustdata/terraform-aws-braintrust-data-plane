@@ -10,6 +10,15 @@ lint = ["terraform fmt -recursive", "tflint --recursive"]
 setup = ["pre-commit install", "tflint --init"]
 precommit = ["pre-commit run --all-files"]
 
+[tasks.test]
+description = "Run mocked Terraform plan smoke tests (no AWS credentials required)"
+run = """
+#!/usr/bin/env bash
+set -e
+terraform init -backend=false -upgrade
+terraform test
+"""
+
 [tasks.validate]
 description = "Validate the Terraform module and example code"
 run = """
