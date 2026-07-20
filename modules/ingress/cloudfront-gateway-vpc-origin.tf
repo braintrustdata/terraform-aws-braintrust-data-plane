@@ -24,5 +24,7 @@ resource "aws_cloudfront_vpc_origin" "gateway" {
 
   tags = merge({
     CloudFrontVpcOriginIngressRuleId = var.gateway_cloudfront_ingress_rule_id
+    # Post-apply ALB subnet fingerprint — see api_ecs VPC origin for rationale.
+    AlbSubnetsApplied = var.gateway_alb_subnets_applied
   }, local.common_tags)
 }

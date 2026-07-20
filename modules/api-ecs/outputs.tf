@@ -17,6 +17,11 @@ output "alb_arn" {
   value       = aws_lb.api_ecs.arn
 }
 
+output "alb_subnets_applied" {
+  description = "Sorted comma-joined subnet IDs actually attached to the API ECS ALB (after apply). Used to order CloudFront VPC origin create/update after ALB subnet shrinks."
+  value       = terraform_data.alb_subnets_applied.output
+}
+
 output "alb_dns_name" {
   description = "DNS name of the API ECS ALB."
   value       = aws_lb.api_ecs.dns_name

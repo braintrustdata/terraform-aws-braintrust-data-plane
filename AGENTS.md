@@ -75,6 +75,12 @@ Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.
 
+### CloudFront VPC origin unsupported AZs
+
+CloudFront rejects VPC origin create/update if the origin ALB spans an unsupported AZ (e.g. `use1-az3`), even when other ALB AZs are fine. This module filters ALB (+ matching ECS task) subnets to supported AZs for `ApiEcsOrigin` and private gateway origins.
+
+Existing stacks that already have ALBs in a banned AZ are fixed by an in-place ALB subnet shrink, then origin create. VPC origin resources tag `AlbSubnetsApplied` with a post-apply ALB subnet fingerprint so Terraform cannot race origin create ahead of that shrink (ARN/DNS alone do not change when subnets change).
+
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

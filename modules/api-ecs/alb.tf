@@ -83,6 +83,12 @@ resource "aws_lb" "api_ecs" {
   }, local.common_tags)
 }
 
+# Emits the ALB's applied subnet set so CloudFront VPC origins can depend on it.
+# ARN/DNS alone do not change when subnets shrink off a banned AZ.
+resource "terraform_data" "alb_subnets_applied" {
+  input = join(",", sort(tolist(aws_lb.api_ecs.subnets)))
+}
+
 resource "aws_lb_target_group" "braintrust_api" {
   name        = "${var.deployment_name}-api"
   port        = 8000
