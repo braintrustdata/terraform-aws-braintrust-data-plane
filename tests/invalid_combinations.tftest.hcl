@@ -8,11 +8,10 @@ mock_provider "aws" {
 mock_provider "random" {}
 
 variables {
-  braintrust_org_name                         = "test-org"
-  primary_org_name                            = "test-org"
-  deployment_name                             = "bt-test"
-  brainstore_license_key                      = "test-license"
-  DANGER_disable_database_deletion_protection = true
+  braintrust_org_name    = "test-org"
+  primary_org_name       = "test-org"
+  deployment_name        = "bt-test"
+  brainstore_license_key = "test-license"
 }
 
 run "rejects_ecs_api_with_external_eks" {

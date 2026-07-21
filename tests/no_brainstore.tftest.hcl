@@ -13,13 +13,12 @@ mock_provider "http" {
 }
 
 variables {
-  braintrust_org_name                         = "test-org"
-  primary_org_name                            = "test-org"
-  deployment_name                             = "bt-test"
-  brainstore_license_key                      = "test-license"
-  enable_brainstore                           = false
-  enable_quarantine_vpc                       = true
-  DANGER_disable_database_deletion_protection = true
+  braintrust_org_name    = "test-org"
+  primary_org_name       = "test-org"
+  deployment_name        = "bt-test"
+  brainstore_license_key = "test-license"
+  enable_brainstore      = false
+  enable_quarantine_vpc  = true
 }
 
 run "no_brainstore_plans" {
