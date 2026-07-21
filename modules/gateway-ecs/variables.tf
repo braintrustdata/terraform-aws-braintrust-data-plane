@@ -208,6 +208,11 @@ variable "braintrust_api_url" {
   default     = "https://api.braintrust.dev"
 }
 
+variable "use_redis_replication_group" {
+  type        = bool
+  description = "Sets COMPLETIONS_CACHE_REDIS_URL and AUTH_CACHE_REDIS_URL with the appropriate scheme (rediss:// for replication group, redis:// for legacy cluster)"
+}
+
 variable "redis_host" {
   type        = string
   description = "Redis endpoint host used by the gateway auth cache."

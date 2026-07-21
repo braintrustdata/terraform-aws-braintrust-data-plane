@@ -7,3 +7,8 @@ moved {
   from = aws_vpc_security_group_egress_rule.elasticache_allow_egress_all
   to   = aws_vpc_security_group_egress_rule.elasticache_allow_egress_all[0]
 }
+
+moved {
+  from = aws_elasticache_cluster.main
+  to   = aws_elasticache_cluster.main[0]
+}

@@ -3,7 +3,20 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
   elasticache_security_group_ids = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.elasticache[0].id]
-  redis_url                      = "redis://${aws_elasticache_cluster.main.cache_nodes[0].address}:${aws_elasticache_cluster.main.cache_nodes[0].port}"
+
+  create_redis_replication_group = var.use_redis_replication_group
+  create_legacy_redis_cluster    = !var.use_redis_replication_group
+
+  legacy_redis_endpoint = try(
+    "redis://${aws_elasticache_cluster.main[0].cache_nodes[0].address}:${aws_elasticache_cluster.main[0].cache_nodes[0].port}",
+    null
+  )
+  replication_group_endpoint = try(
+    "rediss://${aws_elasticache_replication_group.main[0].primary_endpoint_address}:6379",
+    null
+  )
+
+  redis_url = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
 }
 
 resource "aws_elasticache_subnet_group" "main" {
@@ -14,6 +27,8 @@ resource "aws_elasticache_subnet_group" "main" {
 }
 
 resource "aws_elasticache_cluster" "main" {
+  count = local.create_legacy_redis_cluster ? 1 : 0
+
   cluster_id         = "${var.deployment_name}-redis"
   engine             = "redis"
   node_type          = var.redis_instance_type
@@ -22,6 +37,28 @@ resource "aws_elasticache_cluster" "main" {
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = local.elasticache_security_group_ids
   tags               = local.common_tags
+}
+
+resource "aws_elasticache_replication_group" "main" {
+  count = local.create_redis_replication_group ? 1 : 0
+
+  replication_group_id = "${var.deployment_name}-redis-rg"
+  description          = "${var.deployment_name} redis"
+
+  engine         = "redis"
+  engine_version = var.redis_version
+  node_type      = var.redis_instance_type
+
+  num_cache_clusters = 1
+  port               = 6379
+
+  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  security_group_ids = local.elasticache_security_group_ids
+
+  transit_encryption_enabled = true
+  transit_encryption_mode    = "required"
+
+  tags = local.common_tags
 }
 
 resource "aws_secretsmanager_secret" "redis_url" {
