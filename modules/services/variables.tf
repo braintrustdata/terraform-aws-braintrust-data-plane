@@ -98,6 +98,11 @@ variable "postgres_port" {
   default     = 5432
 }
 
+variable "use_redis_replication_group" {
+  type        = bool
+  description = "Sets REDIS_URL with rediss:// scheme in api common env vars"
+}
+
 variable "redis_host" {
   type        = string
   description = "The host of the redis database"

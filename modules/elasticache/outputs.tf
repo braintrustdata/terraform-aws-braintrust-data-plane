@@ -1,15 +1,14 @@
 output "redis_endpoint" {
-  value       = aws_elasticache_cluster.main.cache_nodes[0].address
-  description = "Redis endpoint address"
+  value = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cache_nodes[0].address : aws_elasticache_replication_group.main[0].primary_endpoint_address
 }
 
 output "redis_port" {
-  value       = aws_elasticache_cluster.main.cache_nodes[0].port
+  value       = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cache_nodes[0].port : aws_elasticache_replication_group.main[0].port
   description = "Redis port"
 }
 
 output "redis_arn" {
-  value       = aws_elasticache_cluster.main.arn
+  value       = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].arn : aws_elasticache_replication_group.main[0].arn
   description = "Redis ARN"
 }
 

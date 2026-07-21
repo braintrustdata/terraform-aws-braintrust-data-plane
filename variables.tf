@@ -352,6 +352,12 @@ variable "DANGER_disable_database_deletion_protection" {
 }
 
 ## Redis
+variable "use_redis_replication_group" {
+  description = "Use an ElastiCache replication group instead of the legacy single-node ElastiCache cluster. Existing deployments should leave this false until following the documented Redis migration procedure."
+  type        = bool
+  default     = false
+}
+
 variable "redis_instance_type" {
   description = "Instance type for the Redis cluster"
   type        = string

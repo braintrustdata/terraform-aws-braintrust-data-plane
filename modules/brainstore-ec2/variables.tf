@@ -85,6 +85,11 @@ variable "database_port" {
   description = "The port of the database"
 }
 
+variable "use_redis_replication_group" {
+  type        = bool
+  description = "Sets BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI with the appropriate scheme (rediss:// for replication group, redis:// for legacy cluster)"
+}
+
 variable "redis_host" {
   type        = string
   description = "The hostname of the Redis instance"

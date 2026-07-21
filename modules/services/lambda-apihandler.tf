@@ -16,6 +16,9 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
+  redis_extra_env_vars = var.use_redis_replication_group ? {
+    REDIS_URL = "rediss://${var.redis_host}:${var.redis_port}"
+  } : {}
 
   # Shared between the AI Proxy and API Handler
   api_common_env_vars = merge({
@@ -58,7 +61,7 @@ locals {
 
     SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
     CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
-  }, local.url_security_env_vars)
+  }, local.url_security_env_vars, local.redis_extra_env_vars)
   api_fast_reader_env_vars = local.using_brainstore_fast_reader ? {
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
     BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
