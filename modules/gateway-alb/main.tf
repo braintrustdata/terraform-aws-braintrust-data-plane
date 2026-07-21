@@ -45,8 +45,9 @@ resource "aws_lb" "gateway" {
   subnets            = local.gateway_alb_subnet_ids
   security_groups    = [aws_security_group.gateway_alb.id]
 
-  client_keep_alive = var.alb_client_keep_alive
-  idle_timeout      = var.alb_idle_timeout
+  client_keep_alive          = var.alb_client_keep_alive
+  idle_timeout               = var.alb_idle_timeout
+  drop_invalid_header_fields = var.alb_drop_invalid_header_fields
 
   tags = merge({
     Name = "${var.deployment_name}-gateway"

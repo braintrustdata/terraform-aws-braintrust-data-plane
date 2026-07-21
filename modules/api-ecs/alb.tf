@@ -77,6 +77,7 @@ resource "aws_lb" "api_ecs" {
   enable_http2                     = true
   desync_mitigation_mode           = "defensive"
   enable_cross_zone_load_balancing = true
+  drop_invalid_header_fields       = var.alb_drop_invalid_header_fields
 
   tags = merge({
     Name = "${var.deployment_name}-api-ecs"

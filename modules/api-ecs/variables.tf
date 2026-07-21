@@ -658,6 +658,12 @@ variable "alb_custom_domain" {
   }
 }
 
+variable "alb_drop_invalid_header_fields" {
+  type        = bool
+  description = "Whether the API ECS ALB removes HTTP headers with invalid header names before routing requests."
+  default     = false
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources."
   type        = map(string)

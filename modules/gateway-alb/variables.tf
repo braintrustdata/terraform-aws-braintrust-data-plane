@@ -74,6 +74,12 @@ variable "alb_deregistration_delay" {
   }
 }
 
+variable "alb_drop_invalid_header_fields" {
+  type        = bool
+  description = "Whether the gateway ALB removes HTTP headers with invalid header names before routing requests."
+  default     = false
+}
+
 variable "custom_tags" {
   type        = map(string)
   description = "Tags to apply to created resources."

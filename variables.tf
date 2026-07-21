@@ -513,6 +513,12 @@ variable "ai_gateway_alb_deregistration_delay" {
   }
 }
 
+variable "ai_gateway_alb_drop_invalid_header_fields" {
+  description = "Whether the AI gateway ALB removes HTTP headers with invalid header names before routing requests."
+  type        = bool
+  default     = false
+}
+
 variable "ai_gateway_extra_env_vars" {
   description = "Extra environment variables for the gateway ECS container"
   type        = map(string)
@@ -860,6 +866,12 @@ variable "braintrust_api_alb_custom_domain" {
     condition     = (var.braintrust_api_alb_custom_domain == null) == (var.braintrust_api_alb_certificate_arn == null)
     error_message = "braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn must both be set or both be null."
   }
+}
+
+variable "braintrust_api_alb_drop_invalid_header_fields" {
+  description = "Whether the Braintrust API ALB removes HTTP headers with invalid header names before routing requests."
+  type        = bool
+  default     = false
 }
 
 variable "api_ecs_enable_execute_command" {

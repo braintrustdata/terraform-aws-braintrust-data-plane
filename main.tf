@@ -318,10 +318,11 @@ module "gateway_alb" {
     },
     var.ai_gateway_authorized_security_groups,
   )
-  alb_client_keep_alive    = var.ai_gateway_alb_client_keep_alive
-  alb_idle_timeout         = var.ai_gateway_alb_idle_timeout
-  alb_deregistration_delay = var.ai_gateway_alb_deregistration_delay
-  custom_tags              = var.custom_tags
+  alb_client_keep_alive          = var.ai_gateway_alb_client_keep_alive
+  alb_idle_timeout               = var.ai_gateway_alb_idle_timeout
+  alb_deregistration_delay       = var.ai_gateway_alb_deregistration_delay
+  alb_drop_invalid_header_fields = var.ai_gateway_alb_drop_invalid_header_fields
+  custom_tags                    = var.custom_tags
 }
 
 module "gateway_ecs" {
@@ -470,8 +471,9 @@ module "api_ecs" {
   )
   authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
 
-  alb_certificate_arn = var.braintrust_api_alb_certificate_arn
-  alb_custom_domain   = var.braintrust_api_alb_custom_domain
+  alb_certificate_arn            = var.braintrust_api_alb_certificate_arn
+  alb_custom_domain              = var.braintrust_api_alb_custom_domain
+  alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
