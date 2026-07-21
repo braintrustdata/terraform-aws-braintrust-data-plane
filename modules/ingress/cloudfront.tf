@@ -19,6 +19,49 @@ locals {
   )
 
   cloudfront_function_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+
+  # When CloudFront reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http even
+  # though the viewer connected to CloudFront over HTTPS. Add CloudFront-Forwarded-Proto so
+  # the API can recover the viewer protocol. Do not use this policy for HTTPS origins because
+  # forwarding the viewer Host header can make CloudFront validate the ALB certificate against
+  # the viewer hostname; the ALB already sets X-Forwarded-Proto=https in that case.
+  cloudfront_use_ecs_forwarded_proto_policy = var.enable_ecs_api && !var.api_ecs_alb_https_enabled
+  cloudfront_ecs_origin_request_policy_id = (
+    local.cloudfront_use_ecs_forwarded_proto_policy
+    ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto[0].id
+    : local.cloudfront_AllViewerExceptHostHeader
+  )
+  cloudfront_origin_request_policy_for_origin = {
+    (local.cloudfront_ApiEcsOrigin)     = local.cloudfront_ecs_origin_request_policy_id
+    (local.cloudfront_APIGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_AIProxyOrigin)    = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_CloudflareProxy)  = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_GatewayOrigin)    = local.cloudfront_AllViewerExceptHostHeader
+  }
+}
+
+# Forwards all viewer headers/cookies/query strings plus CloudFront-Forwarded-Proto. This is
+# safe only for the HTTP ECS origin; HTTPS origins must not forward the viewer Host header.
+resource "aws_cloudfront_origin_request_policy" "all_viewer_with_forwarded_proto" {
+  count = local.cloudfront_use_ecs_forwarded_proto_policy ? 1 : 0
+
+  name    = "${var.deployment_name}-all-viewer-with-forwarded-proto"
+  comment = "All viewer headers plus CloudFront-Forwarded-Proto (for HTTP ECS ALB origin)"
+
+  cookies_config {
+    cookie_behavior = "all"
+  }
+
+  headers_config {
+    header_behavior = "allViewerAndWhitelistCloudFront"
+    headers {
+      items = ["CloudFront-Forwarded-Proto"]
+    }
+  }
+
+  query_strings_config {
+    query_string_behavior = "all"
+  }
 }
 
 resource "aws_cloudfront_vpc_origin" "api_ecs" {
@@ -143,7 +186,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id          = local.cloudfront_CachingDisabled
-    origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
+    origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_api_origin_id]
   }
 
   dynamic "ordered_cache_behavior" {
@@ -156,7 +199,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
-      origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
+      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_proxy_origin_id]
     }
   }
 
@@ -174,7 +217,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
-      origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
+      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_function_origin_id]
     }
   }
 
