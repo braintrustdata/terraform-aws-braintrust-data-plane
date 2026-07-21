@@ -62,6 +62,7 @@ resource "aws_launch_template" "brainstore" {
     database_secret_arn         = var.database_secret_arn
     database_host               = var.database_host
     database_port               = var.database_port
+    redis_scheme                = var.use_redis_replication_group ? "rediss" : "redis"
     redis_host                  = var.redis_host
     redis_port                  = var.redis_port
     brainstore_port             = var.port

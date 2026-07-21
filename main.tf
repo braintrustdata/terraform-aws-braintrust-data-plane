@@ -538,6 +538,7 @@ module "brainstore" {
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
   database_secret_arn                   = module.database.postgres_database_secret_arn
+  use_redis_replication_group           = var.use_redis_replication_group
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port
   service_token_secret_key              = module.services_common.function_tools_secret_key
