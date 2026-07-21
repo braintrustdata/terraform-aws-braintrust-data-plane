@@ -19,6 +19,41 @@ locals {
   )
 
   cloudfront_function_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+
+  # Managed AllViewerExceptHostHeader does not add CloudFront-Forwarded-Proto. When CloudFront
+  # reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http, so MCP builds http://
+  # resource URLs. This policy adds CloudFront-Forwarded-Proto for ECS origins. It also
+  # forwards the viewer Host header, which is fine for ALB but breaks API Gateway — keep the
+  # managed policy for non-ECS origins.
+  cloudfront_origin_request_policy_for_origin = {
+    (local.cloudfront_ApiEcsOrigin)     = aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto.id
+    (local.cloudfront_APIGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_AIProxyOrigin)    = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_CloudflareProxy)  = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_GatewayOrigin)    = local.cloudfront_AllViewerExceptHostHeader
+  }
+}
+
+# Forwards all viewer headers/cookies/query strings plus CloudFront-Forwarded-Proto.
+# Prefer this over AllViewerExceptHostHeader only for ALB/ECS origins (see locals above).
+resource "aws_cloudfront_origin_request_policy" "all_viewer_with_forwarded_proto" {
+  name    = "${var.deployment_name}-all-viewer-with-forwarded-proto"
+  comment = "All viewer headers plus CloudFront-Forwarded-Proto (for ECS ALB origins)"
+
+  cookies_config {
+    cookie_behavior = "all"
+  }
+
+  headers_config {
+    header_behavior = "allViewerAndWhitelistCloudFront"
+    headers {
+      items = ["CloudFront-Forwarded-Proto"]
+    }
+  }
+
+  query_strings_config {
+    query_string_behavior = "all"
+  }
 }
 
 resource "aws_cloudfront_vpc_origin" "api_ecs" {
@@ -143,7 +178,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     viewer_protocol_policy = "redirect-to-https"
 
     cache_policy_id          = local.cloudfront_CachingDisabled
-    origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
+    origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_api_origin_id]
   }
 
   dynamic "ordered_cache_behavior" {
@@ -156,7 +191,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
-      origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
+      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_proxy_origin_id]
     }
   }
 
@@ -174,7 +209,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
-      origin_request_policy_id = local.cloudfront_AllViewerExceptHostHeader
+      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_function_origin_id]
     }
   }
 
