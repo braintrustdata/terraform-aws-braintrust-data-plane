@@ -21,14 +21,15 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
+  redis_scheme = var.use_redis_replication_group ? "rediss" : "redis"
   base_env_vars = merge({
     GATEWAY_ENV        = "production"
     GATEWAY_REGION     = data.aws_region.current.region
     BRAINTRUST_APP_URL = var.braintrust_app_url
     BRAINTRUST_API_URL = var.braintrust_api_url
 
-    COMPLETIONS_CACHE_REDIS_URL = "redis://${var.redis_host}:${var.redis_port}"
-    AUTH_CACHE_REDIS_URL        = "redis://${var.redis_host}:${var.redis_port}"
+    COMPLETIONS_CACHE_REDIS_URL = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
+    AUTH_CACHE_REDIS_URL        = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
     GATEWAY_JSON_LOGS           = "true"
     OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
     },
