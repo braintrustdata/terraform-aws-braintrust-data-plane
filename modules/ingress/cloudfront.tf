@@ -20,13 +20,19 @@ locals {
 
   cloudfront_function_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
 
-  # Managed AllViewerExceptHostHeader does not add CloudFront-Forwarded-Proto. When CloudFront
-  # reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http, so MCP builds http://
-  # resource URLs. This policy adds CloudFront-Forwarded-Proto for ECS origins. It also
-  # forwards the viewer Host header, which is fine for ALB but breaks API Gateway — keep the
-  # managed policy for non-ECS origins.
+  # When CloudFront reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http even
+  # though the viewer connected to CloudFront over HTTPS. Add CloudFront-Forwarded-Proto so
+  # the API can recover the viewer protocol. Do not use this policy for HTTPS origins because
+  # forwarding the viewer Host header can make CloudFront validate the ALB certificate against
+  # the viewer hostname; the ALB already sets X-Forwarded-Proto=https in that case.
+  cloudfront_use_ecs_forwarded_proto_policy = var.enable_ecs_api && !var.api_ecs_alb_https_enabled
+  cloudfront_ecs_origin_request_policy_id = (
+    local.cloudfront_use_ecs_forwarded_proto_policy
+    ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto[0].id
+    : local.cloudfront_AllViewerExceptHostHeader
+  )
   cloudfront_origin_request_policy_for_origin = {
-    (local.cloudfront_ApiEcsOrigin)     = aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto.id
+    (local.cloudfront_ApiEcsOrigin)     = local.cloudfront_ecs_origin_request_policy_id
     (local.cloudfront_APIGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_AIProxyOrigin)    = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_CloudflareProxy)  = local.cloudfront_AllViewerExceptHostHeader
@@ -34,11 +40,13 @@ locals {
   }
 }
 
-# Forwards all viewer headers/cookies/query strings plus CloudFront-Forwarded-Proto.
-# Prefer this over AllViewerExceptHostHeader only for ALB/ECS origins (see locals above).
+# Forwards all viewer headers/cookies/query strings plus CloudFront-Forwarded-Proto. This is
+# safe only for the HTTP ECS origin; HTTPS origins must not forward the viewer Host header.
 resource "aws_cloudfront_origin_request_policy" "all_viewer_with_forwarded_proto" {
+  count = local.cloudfront_use_ecs_forwarded_proto_policy ? 1 : 0
+
   name    = "${var.deployment_name}-all-viewer-with-forwarded-proto"
-  comment = "All viewer headers plus CloudFront-Forwarded-Proto (for ECS ALB origins)"
+  comment = "All viewer headers plus CloudFront-Forwarded-Proto (for HTTP ECS ALB origin)"
 
   cookies_config {
     cookie_behavior = "all"
