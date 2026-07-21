@@ -9,13 +9,12 @@ mock_provider "aws" {
 mock_provider "random" {}
 
 variables {
-  braintrust_org_name                         = "test-org"
-  primary_org_name                            = "test-org"
-  deployment_name                             = "bt-test"
-  brainstore_license_key                      = "test-license"
-  use_deployment_mode_external_eks            = true
-  enable_quarantine_vpc                       = true
-  DANGER_disable_database_deletion_protection = true
+  braintrust_org_name              = "test-org"
+  primary_org_name                 = "test-org"
+  deployment_name                  = "bt-test"
+  brainstore_license_key           = "test-license"
+  use_deployment_mode_external_eks = true
+  enable_quarantine_vpc            = true
 }
 
 run "external_eks_plans" {
