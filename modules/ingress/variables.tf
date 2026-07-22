@@ -33,6 +33,30 @@ variable "use_global_ai_gateway_origin" {
   default     = false
 }
 
+variable "use_private_ai_gateway_origin" {
+  description = "Whether to route /v1/proxy traffic to the private gateway ALB via a VPC origin"
+  type        = bool
+  default     = false
+}
+
+variable "gateway_alb_arn" {
+  description = "ARN of the internal gateway ALB for CloudFront VPC origin routing"
+  type        = string
+  default     = null
+}
+
+variable "gateway_alb_dns_name" {
+  description = "DNS name of the internal gateway ALB for CloudFront VPC origin routing"
+  type        = string
+  default     = null
+}
+
+variable "gateway_cloudfront_ingress_rule_id" {
+  description = "ID of the gateway ALB ingress rule for CloudFront VPC origins"
+  type        = string
+  default     = null
+}
+
 variable "global_ai_gateway_origin_domain" {
   description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled"
   type        = string

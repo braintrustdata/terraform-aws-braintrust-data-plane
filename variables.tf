@@ -1287,6 +1287,22 @@ variable "use_global_ai_gateway_origin" {
   default     = false
 }
 
+variable "use_private_ai_gateway_origin" {
+  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
+    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true."
+  }
+
+  validation {
+    condition     = !var.use_private_ai_gateway_origin || var.create_ai_gateway
+    error_message = "use_private_ai_gateway_origin requires create_ai_gateway."
+  }
+}
+
 variable "global_ai_gateway_origin_domain" {
   description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled. Don't change this unless instructed by Braintrust."
   type        = string
