@@ -720,6 +720,18 @@ locals {
       "/billing/telemetry/ingest" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/integrations/{integration}/execute" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "integration"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/brainstore/time_based_retention/status" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
