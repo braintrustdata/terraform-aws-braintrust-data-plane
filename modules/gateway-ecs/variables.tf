@@ -116,19 +116,19 @@ variable "log_retention_days" {
 
 variable "target_group_arn" {
   type        = string
-  description = "ARN of the gateway ALB target group created in services-common."
+  description = "ARN of the gateway ALB target group created in gateway-alb."
   nullable    = true
 }
 
 variable "alb_security_group_id" {
   type        = string
-  description = "Security group ID of the gateway ALB created in services-common."
+  description = "Security group ID of the gateway ALB created in gateway-alb."
   nullable    = true
 }
 
 variable "gateway_http_listener_arn" {
   type        = string
-  description = "ARN of the gateway ALB HTTP listener created in services-common; orders ECS registration after the listener exists."
+  description = "ARN of the gateway ALB HTTP listener created in gateway-alb; orders ECS registration after the listener exists."
   nullable    = true
 }
 

@@ -63,12 +63,18 @@ locals {
   # this index-safe when services is absent (use_deployment_mode_external_eks).
   api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : one(module.services[*].ai_proxy_url)
   gateway_env_vars = local.enable_ai_gateway ? {
-    GATEWAY_URL = module.services_common.gateway_url
+    GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
   # Only wire GATEWAY_URL into Lambdas that call the gateway. Do not merge into
   # MigrateDatabaseFunction or crons — that changes their env hash and re-runs
   # migrations or replaces unrelated functions on existing deployments.
   gateway_lambda_env_services = toset(["APIHandler", "AIProxy"])
+  main_vpc_private_subnet_ids = [
+    local.main_vpc_private_subnet_1_id,
+    local.main_vpc_private_subnet_2_id,
+    local.main_vpc_private_subnet_3_id,
+  ]
+  enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
     { for svc in local.gateway_lambda_env_services : svc => merge(
@@ -298,6 +304,28 @@ module "ecs" {
   custom_tags        = var.custom_tags
 }
 
+module "gateway_alb" {
+  source = "./modules/gateway-alb"
+  count  = local.create_ai_gateway ? 1 : 0
+
+  deployment_name                      = var.deployment_name
+  vpc_id                               = local.main_vpc_id
+  private_subnet_ids                   = local.main_vpc_private_subnet_ids
+  enable_cloudfront_vpc_origin_ingress = local.enable_private_ai_gateway_origin
+  authorized_security_groups = merge(
+    {
+      "API"        = module.services_common.api_security_group_id
+      "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    },
+    var.ai_gateway_authorized_security_groups,
+  )
+  alb_client_keep_alive          = var.ai_gateway_alb_client_keep_alive
+  alb_idle_timeout               = var.ai_gateway_alb_idle_timeout
+  alb_deregistration_delay       = var.ai_gateway_alb_deregistration_delay
+  alb_drop_invalid_header_fields = var.ai_gateway_alb_drop_invalid_header_fields
+  custom_tags                    = var.custom_tags
+}
+
 module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = local.create_ai_gateway ? 1 : 0
@@ -305,7 +333,7 @@ module "gateway_ecs" {
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
   vpc_id             = local.main_vpc_id
-  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  private_subnet_ids = local.main_vpc_private_subnet_ids
   ecs_cluster_arn    = module.ecs[0].cluster_arn
   ecs_cluster_name   = module.ecs[0].cluster_name
   container_image = format(
@@ -433,7 +461,7 @@ module "api_ecs" {
 
   # Networking
   vpc_id             = local.main_vpc_id
-  private_subnet_ids = [local.main_vpc_private_subnet_1_id, local.main_vpc_private_subnet_2_id, local.main_vpc_private_subnet_3_id]
+  private_subnet_ids = local.main_vpc_private_subnet_ids
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
@@ -443,8 +471,9 @@ module "api_ecs" {
   )
   authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
 
-  alb_certificate_arn = var.braintrust_api_alb_certificate_arn
-  alb_custom_domain   = var.braintrust_api_alb_custom_domain
+  alb_certificate_arn            = var.braintrust_api_alb_certificate_arn
+  alb_custom_domain              = var.braintrust_api_alb_custom_domain
+  alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
 
   kms_key_arn            = local.kms_key_arn
   ecs_cluster_arn        = module.ecs[0].cluster_arn
@@ -458,22 +487,26 @@ module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name                 = var.deployment_name
-  custom_domain                   = var.custom_domain
-  custom_certificate_arn          = var.custom_certificate_arn
-  waf_acl_id                      = var.waf_acl_id
-  cloudfront_price_class          = var.cloudfront_price_class
-  cloudfront_origin_read_timeout  = var.cloudfront_origin_read_timeout
-  use_global_ai_proxy             = var.use_global_ai_proxy
-  use_global_ai_gateway_origin    = var.use_global_ai_gateway_origin
-  global_ai_gateway_origin_domain = var.global_ai_gateway_origin_domain
-  ai_proxy_function_url           = module.services[0].ai_proxy_url
-  api_handler_function_arn        = module.services[0].api_handler_arn
-  enable_ecs_api                  = local.enable_ecs_api
-  api_ecs_alb_arn                 = module.api_ecs[0].alb_arn
-  api_ecs_alb_domain              = module.api_ecs[0].alb_domain
-  api_ecs_alb_https_enabled       = module.api_ecs[0].alb_https_enabled
-  custom_tags                     = var.custom_tags
+  deployment_name                    = var.deployment_name
+  custom_domain                      = var.custom_domain
+  custom_certificate_arn             = var.custom_certificate_arn
+  waf_acl_id                         = var.waf_acl_id
+  cloudfront_price_class             = var.cloudfront_price_class
+  cloudfront_origin_read_timeout     = var.cloudfront_origin_read_timeout
+  use_global_ai_proxy                = var.use_global_ai_proxy
+  use_global_ai_gateway_origin       = var.use_global_ai_gateway_origin
+  use_private_ai_gateway_origin      = local.enable_private_ai_gateway_origin
+  global_ai_gateway_origin_domain    = var.global_ai_gateway_origin_domain
+  gateway_alb_arn                    = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
+  gateway_alb_dns_name               = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
+  gateway_cloudfront_ingress_rule_id = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
+  ai_proxy_function_url              = module.services[0].ai_proxy_url
+  api_handler_function_arn           = module.services[0].api_handler_arn
+  enable_ecs_api                     = local.enable_ecs_api
+  api_ecs_alb_arn                    = module.api_ecs[0].alb_arn
+  api_ecs_alb_domain                 = module.api_ecs[0].alb_domain
+  api_ecs_alb_https_enabled          = module.api_ecs[0].alb_https_enabled
+  custom_tags                        = var.custom_tags
 }
 
 module "services_common" {
@@ -501,16 +534,6 @@ module "services_common" {
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
   enable_quarantine_vpc                     = var.enable_quarantine_vpc
   quarantine_vpc_id                         = local.quarantine_vpc_id
-  create_ai_gateway                         = local.create_ai_gateway
-  private_subnet_ids = [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id,
-  ]
-  ai_gateway_authorized_security_groups = var.ai_gateway_authorized_security_groups
-  ai_gateway_alb_client_keep_alive      = var.ai_gateway_alb_client_keep_alive
-  ai_gateway_alb_idle_timeout           = var.ai_gateway_alb_idle_timeout
-  ai_gateway_alb_deregistration_delay   = var.ai_gateway_alb_deregistration_delay
 }
 
 module "brainstore" {

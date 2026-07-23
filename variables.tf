@@ -513,6 +513,12 @@ variable "ai_gateway_alb_deregistration_delay" {
   }
 }
 
+variable "ai_gateway_alb_drop_invalid_header_fields" {
+  description = "Whether the AI gateway ALB removes HTTP headers with invalid header names before routing requests."
+  type        = bool
+  default     = false
+}
+
 variable "ai_gateway_extra_env_vars" {
   description = "Extra environment variables for the gateway ECS container"
   type        = map(string)
@@ -860,6 +866,12 @@ variable "braintrust_api_alb_custom_domain" {
     condition     = (var.braintrust_api_alb_custom_domain == null) == (var.braintrust_api_alb_certificate_arn == null)
     error_message = "braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn must both be set or both be null."
   }
+}
+
+variable "braintrust_api_alb_drop_invalid_header_fields" {
+  description = "Whether the Braintrust API ALB removes HTTP headers with invalid header names before routing requests."
+  type        = bool
+  default     = false
 }
 
 variable "api_ecs_enable_execute_command" {
@@ -1285,6 +1297,22 @@ variable "use_global_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev. Don't enable this unless instructed by Braintrust."
   type        = bool
   default     = false
+}
+
+variable "use_private_ai_gateway_origin" {
+  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
+    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true."
+  }
+
+  validation {
+    condition     = !var.use_private_ai_gateway_origin || var.create_ai_gateway
+    error_message = "use_private_ai_gateway_origin requires create_ai_gateway."
+  }
 }
 
 variable "global_ai_gateway_origin_domain" {

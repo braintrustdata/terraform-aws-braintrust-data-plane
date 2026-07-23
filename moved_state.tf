@@ -251,3 +251,47 @@ moved {
   from = module.services[0].aws_security_group_rule.quarantine_lambda_allow_egress_all[0]
   to   = module.services_common.aws_security_group_rule.quarantine_lambda_allow_egress_all[0]
 }
+
+# Private gateway ALB moved from services-common -> gateway-alb.
+# Keeps GATEWAY_URL creatable without depending on gateway-ecs (cycle break).
+# Remove these after all stacks have applied once.
+moved {
+  from = module.services_common.aws_security_group.gateway_alb[0]
+  to   = module.gateway_alb[0].aws_security_group.gateway_alb
+}
+
+moved {
+  from = module.services_common.aws_security_group_rule.gateway_alb_ingress_from_authorized_security_groups["API"]
+  to   = module.gateway_alb[0].aws_security_group_rule.gateway_alb_ingress_from_authorized_security_groups["API"]
+}
+
+moved {
+  from = module.services_common.aws_security_group_rule.gateway_alb_ingress_from_authorized_security_groups["Brainstore"]
+  to   = module.gateway_alb[0].aws_security_group_rule.gateway_alb_ingress_from_authorized_security_groups["Brainstore"]
+}
+
+moved {
+  from = module.services_common.aws_security_group_rule.gateway_alb_egress_all[0]
+  to   = module.gateway_alb[0].aws_security_group_rule.gateway_alb_egress_all
+}
+
+moved {
+  from = module.services_common.aws_lb.gateway[0]
+  to   = module.gateway_alb[0].aws_lb.gateway
+}
+
+moved {
+  from = module.services_common.aws_lb_target_group.gateway[0]
+  to   = module.gateway_alb[0].aws_lb_target_group.gateway
+}
+
+moved {
+  from = module.services_common.aws_lb_listener.gateway_http[0]
+  to   = module.gateway_alb[0].aws_lb_listener.gateway_http
+}
+
+# No-op if this ingress rule never existed under services-common.
+moved {
+  from = module.services_common.aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
+  to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
+}
