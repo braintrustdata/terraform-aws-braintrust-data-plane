@@ -127,6 +127,9 @@ DB_CREDS=$(aws secretsmanager get-secret-value --secret-id ${database_secret_arn
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
 
+# Get the fully-rendered Redis URL from Secrets Manager
+REDIS_URL=$(aws secretsmanager get-secret-value --secret-id ${redis_url_secret_arn} --query SecretString --output text)
+
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
 BRAINSTORE_VERBOSE=1
@@ -146,8 +149,8 @@ SERVICE_TOKEN_SECRET_KEY=${service_token_secret_key}
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
-BRAINSTORE_REDIS_URI=${redis_scheme}://${redis_host}:${redis_port}
-BRAINSTORE_XACT_MANAGER_URI=${redis_scheme}://${redis_host}:${redis_port}
+BRAINSTORE_REDIS_URI=$REDIS_URL
+BRAINSTORE_XACT_MANAGER_URI=$REDIS_URL
 BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 %{ if skip_pg_for_brainstore_objects != "" ~}
 BRAINSTORE_ASYNC_SCORING_OBJECTS=${skip_pg_for_brainstore_objects}

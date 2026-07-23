@@ -100,7 +100,14 @@ variable "postgres_port" {
 
 variable "use_redis_replication_group" {
   type        = bool
-  description = "Sets REDIS_URL with rediss:// scheme in api common env vars"
+  description = "When true, REDIS_URL is rendered with the rediss:// scheme and the auth token; otherwise a plaintext redis:// URL is used."
+}
+
+variable "redis_auth_token" {
+  type        = string
+  description = "Redis auth token, required when use_redis_replication_group is true. Null/empty for the legacy cluster."
+  default     = null
+  sensitive   = true
 }
 
 variable "redis_host" {
