@@ -12,11 +12,12 @@ locals {
     null
   )
   replication_group_endpoint = try(
-    "rediss://${aws_elasticache_replication_group.main[0].primary_endpoint_address}:6379",
+    "rediss://:${local.redis_auth_token}@${aws_elasticache_replication_group.main[0].primary_endpoint_address}:${aws_elasticache_replication_group.main[0].port}",
     null
   )
 
-  redis_url = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
+  redis_auth_token = local.create_redis_replication_group ? aws_secretsmanager_secret_version.auth_token[0].secret_string : null
+  redis_url        = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
 }
 
 resource "aws_elasticache_subnet_group" "main" {
@@ -57,6 +58,42 @@ resource "aws_elasticache_replication_group" "main" {
 
   transit_encryption_enabled = true
   transit_encryption_mode    = "required"
+
+  auth_token                 = local.redis_auth_token
+  auth_token_update_strategy = "ROTATE"
+
+  tags = local.common_tags
+}
+
+data "aws_secretsmanager_random_password" "auth_token" {
+  count = local.create_redis_replication_group ? 1 : 0
+
+  password_length     = 32
+  exclude_characters  = "\"'@/\\\\"
+  exclude_punctuation = true
+}
+
+resource "aws_secretsmanager_secret_version" "auth_token" {
+  count = local.create_redis_replication_group ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.auth_token[0].id
+  secret_string = data.aws_secretsmanager_random_password.auth_token[0].random_password
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+resource "aws_secretsmanager_secret" "auth_token" {
+  count = local.create_redis_replication_group ? 1 : 0
+
+  name_prefix = "${var.deployment_name}/RedisAuthToken-"
+  description = "Auth token for the Redis Elasticache replication group"
+  kms_key_id  = var.kms_key_arn
+
+  lifecycle {
+    ignore_changes = [name, name_prefix]
+  }
 
   tags = local.common_tags
 }

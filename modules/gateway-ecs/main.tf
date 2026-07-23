@@ -21,17 +21,14 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
-  redis_scheme = var.use_redis_replication_group ? "rediss" : "redis"
   base_env_vars = merge({
     GATEWAY_ENV        = "production"
     GATEWAY_REGION     = data.aws_region.current.region
     BRAINTRUST_APP_URL = var.braintrust_app_url
     BRAINTRUST_API_URL = var.braintrust_api_url
 
-    COMPLETIONS_CACHE_REDIS_URL = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
-    AUTH_CACHE_REDIS_URL        = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
-    GATEWAY_JSON_LOGS           = "true"
-    OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
+    GATEWAY_JSON_LOGS  = "true"
+    OTLP_HTTP_ENDPOINT = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
     },
     local.url_security_env_vars,
     local.observability_enabled ? {
@@ -62,6 +59,16 @@ locals {
       for key in sort(keys(local.merged_env_vars)) : {
         name  = key
         value = local.merged_env_vars[key]
+      }
+    ]
+    secrets = [
+      {
+        name      = "COMPLETIONS_CACHE_REDIS_URL"
+        valueFrom = var.redis_url_secret_arn
+      },
+      {
+        name      = "AUTH_CACHE_REDIS_URL"
+        valueFrom = var.redis_url_secret_arn
       }
     ]
     dependsOn = [
@@ -259,6 +266,36 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
           "secretsmanager:GetSecretValue",
         ]
         Resource = var.internal_observability_api_key_secret_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+        ]
+        Resource = var.kms_key_arn
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "task_execution_redis_secret" {
+  name = "${var.deployment_name}-gateway-task-exec-redis-secret"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+        ]
+        Resource = var.redis_url_secret_arn
       },
       {
         Effect = "Allow"

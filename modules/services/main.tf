@@ -53,7 +53,16 @@ locals {
     lambda => trimspace(data.http.lambda_versions[lambda].response_body)
   }
 
-  postgres_url                 = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
+  postgres_url = "postgres://${var.postgres_username}:${var.postgres_password}@${var.postgres_host}:${var.postgres_port}/postgres"
+
+  # Single source of truth for the Redis URL rendered into Lambda env vars.
+  # Replication groups require TLS (rediss://) and an auth token; the legacy
+  # cluster uses a plaintext connection with no token.
+  redis_url = (
+    var.use_redis_replication_group
+    ? "rediss://:${var.redis_auth_token}@${var.redis_host}:${var.redis_port}"
+    : "redis://${var.redis_host}:${var.redis_port}"
+  )
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
   brainstore_url               = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""

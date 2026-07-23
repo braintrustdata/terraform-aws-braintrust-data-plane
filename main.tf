@@ -217,6 +217,7 @@ module "services" {
   postgres_port     = module.database.postgres_database_port
 
   use_redis_replication_group = var.use_redis_replication_group
+  redis_auth_token            = module.redis.redis_auth_token
   redis_host                  = module.redis.redis_endpoint
   redis_port                  = module.redis.redis_port
 
@@ -339,31 +340,30 @@ module "gateway_ecs" {
     "public.ecr.aws/braintrust/gateway:%s",
     var.ai_gateway_version_override == null ? "prerelease" : var.ai_gateway_version_override
   )
-  cpu                         = var.ai_gateway_cpu
-  memory                      = var.ai_gateway_memory
-  cpu_architecture            = var.ai_gateway_cpu_architecture
-  min_capacity                = var.ai_gateway_min_capacity
-  max_capacity                = var.ai_gateway_max_capacity
-  target_cpu_utilization      = var.ai_gateway_target_cpu_utilization
-  target_memory_utilization   = var.ai_gateway_target_memory_utilization
-  log_retention_days          = var.ai_gateway_log_retention_days
-  permissions_boundary_arn    = var.permissions_boundary_arn
-  use_redis_replication_group = var.use_redis_replication_group
-  redis_host                  = module.redis.redis_endpoint
-  redis_port                  = module.redis.redis_port
-  redis_security_group_id     = module.redis.redis_security_group_id
-  target_group_arn            = module.gateway_alb[0].gateway_target_group_arn
-  alb_security_group_id       = module.gateway_alb[0].gateway_alb_security_group_id
-  gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
-  extra_env_vars              = var.ai_gateway_extra_env_vars
-  custom_tags                 = var.custom_tags
-  brainstore_license_key      = var.brainstore_license_key
-  enable_execute_command      = var.ai_gateway_enable_execute_command
-  braintrust_app_url          = var.ai_gateway_braintrust_app_url
-  braintrust_api_url          = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
-  unsafe_url_request_mode     = var.unsafe_url_request_mode
-  url_security_dns_servers    = var.url_security_dns_servers
-  url_security_allow_cidrs    = var.url_security_allow_cidrs
+  cpu                       = var.ai_gateway_cpu
+  memory                    = var.ai_gateway_memory
+  cpu_architecture          = var.ai_gateway_cpu_architecture
+  min_capacity              = var.ai_gateway_min_capacity
+  max_capacity              = var.ai_gateway_max_capacity
+  target_cpu_utilization    = var.ai_gateway_target_cpu_utilization
+  target_memory_utilization = var.ai_gateway_target_memory_utilization
+  log_retention_days        = var.ai_gateway_log_retention_days
+  permissions_boundary_arn  = var.permissions_boundary_arn
+  redis_url_secret_arn      = module.redis.redis_url_secret_arn
+  redis_port                = module.redis.redis_port
+  redis_security_group_id   = module.redis.redis_security_group_id
+  target_group_arn          = module.gateway_alb[0].gateway_target_group_arn
+  alb_security_group_id     = module.gateway_alb[0].gateway_alb_security_group_id
+  gateway_http_listener_arn = module.gateway_alb[0].gateway_http_listener_arn
+  extra_env_vars            = var.ai_gateway_extra_env_vars
+  custom_tags               = var.custom_tags
+  brainstore_license_key    = var.brainstore_license_key
+  enable_execute_command    = var.ai_gateway_enable_execute_command
+  braintrust_app_url        = var.ai_gateway_braintrust_app_url
+  braintrust_api_url        = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  unsafe_url_request_mode   = var.unsafe_url_request_mode
+  url_security_dns_servers  = var.url_security_dns_servers
+  url_security_allow_cidrs  = var.url_security_allow_cidrs
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -562,9 +562,7 @@ module "brainstore" {
   database_host                         = module.database.postgres_database_address
   database_port                         = module.database.postgres_database_port
   database_secret_arn                   = module.database.postgres_database_secret_arn
-  use_redis_replication_group           = var.use_redis_replication_group
-  redis_host                            = module.redis.redis_endpoint
-  redis_port                            = module.redis.redis_port
+  redis_url_secret_arn                  = module.redis.redis_url_secret_arn
   service_token_secret_arn              = module.services_common.function_tools_secret_arn
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   lambda_responses_s3_bucket_arn        = module.storage.lambda_responses_bucket_arn
