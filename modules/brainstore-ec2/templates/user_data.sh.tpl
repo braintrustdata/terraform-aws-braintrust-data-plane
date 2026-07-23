@@ -127,6 +127,12 @@ DB_CREDS=$(aws secretsmanager get-secret-value --secret-id ${database_secret_arn
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
 
+# Get the function tools secret used by Brainstore as SERVICE_TOKEN_SECRET_KEY from Secrets Manager
+if ! SERVICE_TOKEN_SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id ${service_token_secret_arn} --query SecretString --output text); then
+  echo "Failed to retrieve SERVICE_TOKEN_SECRET_KEY from Secrets Manager. Exiting with failure."
+  exit 1
+fi
+
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
 BRAINSTORE_VERBOSE=1
@@ -142,7 +148,7 @@ BRAINSTORE_CODE_BUNDLE_URI=s3://${code_bundle_bucket_id}
 BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
-SERVICE_TOKEN_SECRET_KEY=${service_token_secret_key}
+SERVICE_TOKEN_SECRET_KEY=$SERVICE_TOKEN_SECRET_KEY
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}

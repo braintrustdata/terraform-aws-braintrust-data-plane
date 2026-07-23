@@ -565,7 +565,7 @@ module "brainstore" {
   use_redis_replication_group           = var.use_redis_replication_group
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port
-  service_token_secret_key              = module.services_common.function_tools_secret_key
+  service_token_secret_arn              = module.services_common.function_tools_secret_arn
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   lambda_responses_s3_bucket_arn        = module.storage.lambda_responses_bucket_arn
   code_bundle_s3_bucket_arn             = module.storage.code_bundle_bucket_arn
