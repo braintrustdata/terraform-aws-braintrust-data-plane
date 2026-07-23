@@ -352,9 +352,9 @@ module "gateway_ecs" {
   redis_url_secret_arn      = module.redis.redis_url_secret_arn
   redis_port                = module.redis.redis_port
   redis_security_group_id   = module.redis.redis_security_group_id
-  target_group_arn          = module.services_common.gateway_target_group_arn
-  alb_security_group_id     = module.services_common.gateway_alb_security_group_id
-  gateway_http_listener_arn = module.services_common.gateway_http_listener_arn
+  target_group_arn          = module.gateway_alb[0].gateway_target_group_arn
+  alb_security_group_id     = module.gateway_alb[0].gateway_alb_security_group_id
+  gateway_http_listener_arn = module.gateway_alb[0].gateway_http_listener_arn
   extra_env_vars            = var.ai_gateway_extra_env_vars
   custom_tags               = var.custom_tags
   brainstore_license_key    = var.brainstore_license_key
@@ -563,7 +563,7 @@ module "brainstore" {
   database_port                         = module.database.postgres_database_port
   database_secret_arn                   = module.database.postgres_database_secret_arn
   redis_url_secret_arn                  = module.redis.redis_url_secret_arn
-  service_token_secret_key              = module.services_common.function_tools_secret_key
+  service_token_secret_arn              = module.services_common.function_tools_secret_arn
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   lambda_responses_s3_bucket_arn        = module.storage.lambda_responses_bucket_arn
   code_bundle_s3_bucket_arn             = module.storage.code_bundle_bucket_arn
