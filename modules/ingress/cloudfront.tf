@@ -88,7 +88,11 @@ resource "aws_cloudfront_vpc_origin" "api_ecs" {
     update = "30m"
   }
 
-  tags = local.common_tags
+  # AlbSubnetsApplied creates an edge on the post-apply ALB subnet fingerprint so
+  # origin create/update cannot race ahead of an ALB subnet shrink off a banned AZ.
+  tags = merge(local.common_tags, {
+    AlbSubnetsApplied = var.api_ecs_alb_subnets_applied
+  })
 }
 
 resource "aws_cloudfront_distribution" "dataplane" {

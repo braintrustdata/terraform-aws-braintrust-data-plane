@@ -74,7 +74,29 @@ locals {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id,
   ]
+  # Parallel name/zone_id lists from aws_availability_zones; used to filter
+  # create_vpc subnets without reading back unknown subnet IDs at plan time.
+  availability_zone_id_by_name = zipmap(
+    data.aws_availability_zones.available.names,
+    data.aws_availability_zones.available.zone_ids,
+  )
+  # Subnets in CloudFront VPC-origin-supported AZs. Used by any ALB that backs
+  # a CloudFront VPC origin (API ECS always; private gateway when enabled).
+  # create_vpc path filters by known AZ locals; existing-VPC path uses subnet data.
+  cloudfront_vpc_origin_safe_subnet_ids = var.create_vpc ? compact([
+    contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_1_az]) ? null : local.main_vpc_private_subnet_1_id,
+    contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_2_az]) ? null : local.main_vpc_private_subnet_2_id,
+    contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_3_az]) ? null : local.main_vpc_private_subnet_3_id,
+    ]) : [
+    for subnet_id in local.main_vpc_private_subnet_ids :
+    subnet_id if !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private[subnet_id].availability_zone_id)
+  ]
   enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
+  gateway_alb_subnet_ids = !local.create_ai_gateway ? [] : (
+    local.enable_private_ai_gateway_origin ? local.cloudfront_vpc_origin_safe_subnet_ids : local.main_vpc_private_subnet_ids
+  )
+  # ApiEcsOrigin is always created with ingress; keep API ECS ALB/tasks off banned AZs.
+  api_ecs_subnet_ids = local.create_ecs_api ? local.cloudfront_vpc_origin_safe_subnet_ids : []
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
     { for svc in local.gateway_lambda_env_services : svc => merge(
@@ -310,6 +332,7 @@ module "gateway_alb" {
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
+  gateway_alb_subnet_ids               = local.gateway_alb_subnet_ids
   enable_cloudfront_vpc_origin_ingress = local.enable_private_ai_gateway_origin
   authorized_security_groups = merge(
     {
@@ -329,10 +352,12 @@ module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = local.create_ai_gateway ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
+  deployment_name = var.deployment_name
+  kms_key_arn     = local.kms_key_arn
+  vpc_id          = local.main_vpc_id
+  # Keep gateway tasks in the same AZs as the ALB when private origin filtering
+  # drops unsupported zones (otherwise Fargate can place tasks the ALB cannot serve).
+  private_subnet_ids = local.gateway_alb_subnet_ids
   ecs_cluster_arn    = module.ecs[0].cluster_arn
   ecs_cluster_name   = module.ecs[0].cluster_name
   container_image = format(
@@ -459,9 +484,9 @@ module "api_ecs" {
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
   quarantine_proxy_url                = local.api_ecs_ai_proxy_url
 
-  # Networking
+  # Networking — CloudFront ApiEcsOrigin requires supported AZs only
   vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
+  private_subnet_ids = local.api_ecs_subnet_ids
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
@@ -500,13 +525,18 @@ module "ingress" {
   gateway_alb_arn                    = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
   gateway_alb_dns_name               = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
   gateway_cloudfront_ingress_rule_id = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
-  ai_proxy_function_url              = module.services[0].ai_proxy_url
-  api_handler_function_arn           = module.services[0].api_handler_arn
-  enable_ecs_api                     = local.enable_ecs_api
-  api_ecs_alb_arn                    = module.api_ecs[0].alb_arn
-  api_ecs_alb_domain                 = module.api_ecs[0].alb_domain
-  api_ecs_alb_https_enabled          = module.api_ecs[0].alb_https_enabled
-  custom_tags                        = var.custom_tags
+  # Fingerprint of ALB subnet membership *after* aws_lb apply. Referenced by VPC
+  # origin resources so Terraform cannot create/update an origin until the ALB
+  # has finished shrinking off any CloudFront-unsupported AZs.
+  gateway_alb_subnets_applied = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].alb_subnets_applied : null
+  ai_proxy_function_url       = module.services[0].ai_proxy_url
+  api_handler_function_arn    = module.services[0].api_handler_arn
+  enable_ecs_api              = local.enable_ecs_api
+  api_ecs_alb_arn             = module.api_ecs[0].alb_arn
+  api_ecs_alb_domain          = module.api_ecs[0].alb_domain
+  api_ecs_alb_https_enabled   = module.api_ecs[0].alb_https_enabled
+  api_ecs_alb_subnets_applied = module.api_ecs[0].alb_subnets_applied
+  custom_tags                 = var.custom_tags
 }
 
 module "services_common" {

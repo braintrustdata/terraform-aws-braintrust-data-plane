@@ -1,15 +1,31 @@
 locals {
+  # CloudFront VPC origins exclude specific AZs in a few regions. Source (as of
+  # 2026-07): https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-vpc-origins.html
+  # ("Supported AWS Regions for VPC origins"). eu-west-1 (prod-eu) has no AZ
+  # exceptions. This list is manually curated — if AWS adds exclusions, create
+  # of aws_cloudfront_vpc_origin fails with a ValidationException until updated.
+  cloudfront_vpc_origin_excluded_zone_ids = [
+    "use1-az3",  # us-east-1
+    "usw1-az2",  # us-west-1
+    "apne1-az3", # ap-northeast-1
+    "cac1-az3",  # ca-central-1
+  ]
+  # Greenfield VPCs: prefer supported AZs by default so ApiEcsOrigin / private
+  # gateway origins are creatable without a later ALB subnet shrink.
+  pick_vpc_origin_safe_default_azs = var.create_vpc
+  default_availability_zone_names  = local.pick_vpc_origin_safe_default_azs ? data.aws_availability_zones.available_for_vpc_origin.names : data.aws_availability_zones.available.names
+
   # Lookup and choose an AZ if not provided
-  private_subnet_1_az = var.private_subnet_1_az != null ? var.private_subnet_1_az : data.aws_availability_zones.available.names[0]
-  private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : data.aws_availability_zones.available.names[1]
-  private_subnet_3_az = var.private_subnet_3_az != null ? var.private_subnet_3_az : data.aws_availability_zones.available.names[2]
-  public_subnet_1_az  = var.public_subnet_1_az != null ? var.public_subnet_1_az : data.aws_availability_zones.available.names[0]
+  private_subnet_1_az = var.private_subnet_1_az != null ? var.private_subnet_1_az : local.default_availability_zone_names[0]
+  private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : local.default_availability_zone_names[1]
+  private_subnet_3_az = var.private_subnet_3_az != null ? var.private_subnet_3_az : local.default_availability_zone_names[2]
+  public_subnet_1_az  = var.public_subnet_1_az != null ? var.public_subnet_1_az : local.default_availability_zone_names[0]
 
   # Lookup and choose an AZ if not provided for Quarantine VPC
-  quarantine_private_subnet_1_az = var.quarantine_private_subnet_1_az != null ? var.quarantine_private_subnet_1_az : data.aws_availability_zones.available.names[0]
-  quarantine_private_subnet_2_az = var.quarantine_private_subnet_2_az != null ? var.quarantine_private_subnet_2_az : data.aws_availability_zones.available.names[1]
-  quarantine_private_subnet_3_az = var.quarantine_private_subnet_3_az != null ? var.quarantine_private_subnet_3_az : data.aws_availability_zones.available.names[2]
-  quarantine_public_subnet_1_az  = var.quarantine_public_subnet_1_az != null ? var.quarantine_public_subnet_1_az : data.aws_availability_zones.available.names[0]
+  quarantine_private_subnet_1_az = var.quarantine_private_subnet_1_az != null ? var.quarantine_private_subnet_1_az : local.default_availability_zone_names[0]
+  quarantine_private_subnet_2_az = var.quarantine_private_subnet_2_az != null ? var.quarantine_private_subnet_2_az : local.default_availability_zone_names[1]
+  quarantine_private_subnet_3_az = var.quarantine_private_subnet_3_az != null ? var.quarantine_private_subnet_3_az : local.default_availability_zone_names[2]
+  quarantine_public_subnet_1_az  = var.quarantine_public_subnet_1_az != null ? var.quarantine_public_subnet_1_az : local.default_availability_zone_names[0]
 }
 
 variable "braintrust_org_name" {
