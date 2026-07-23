@@ -121,9 +121,12 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = "secretsmanager:GetSecretValue"
-        Resource = var.database_secret_arn
+        Effect = "Allow"
+        Action = "secretsmanager:GetSecretValue"
+        Resource = [
+          var.database_secret_arn,
+          aws_secretsmanager_secret.function_tools_secret.arn
+        ]
       }
     ]
   })

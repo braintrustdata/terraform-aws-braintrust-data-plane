@@ -166,10 +166,9 @@ variable "internal_observability_region" {
   default     = "us5"
 }
 
-variable "service_token_secret_key" {
+variable "service_token_secret_arn" {
   type        = string
-  description = "The secret encryption key for SERVICE_TOKEN_SECRET_KEY. Typically this re-uses the function tools secret key."
-  sensitive   = true
+  description = "The ARN of the Secrets Manager secret containing SERVICE_TOKEN_SECRET_KEY."
 }
 
 variable "ai_proxy_url_ssm_parameter" {
