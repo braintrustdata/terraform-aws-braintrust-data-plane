@@ -75,6 +75,16 @@ Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.
 
+### Quarantine LLM proxy URL
+
+Quarantine UDFs get `QUARANTINE_PROXY_URL` from API ECS (via `getRuntimeEnv`). Do not point that at the private gateway ALB DNS (would require quarantine→main VPC access). Default selection:
+
+- `quarantine_proxy_url` override if set
+- else AI Proxy Lambda Function URL when `enable_ecs_api` is false
+- else hosted gateway when `use_global_ai_gateway_origin` is true
+- else `https://<custom_domain>/v1/proxy` (dataplane CloudFront hairpin; works with private gateway origin)
+
+Avoid feeding `module.ingress.api_url` into API ECS — that creates an `api_ecs → ingress → api_ecs` cycle. `custom_domain` is a known input and breaks the cycle.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 
