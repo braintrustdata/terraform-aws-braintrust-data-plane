@@ -1007,6 +1007,28 @@ variable "custom_domain" {
   default     = null
 }
 
+variable "quarantine_proxy_url" {
+  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls. When null, the module picks: AI Proxy Lambda URL (pre-ECS), hosted gateway /v1/proxy (use_global_ai_gateway_origin), or https://<custom_domain>/v1/proxy (recommended dataplane hairpin). Required when enable_ecs_api is true, use_global_ai_gateway_origin is false, and custom_domain is unset."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+  }
+
+  validation {
+    condition = (
+      !var.enable_ecs_api ||
+      var.use_deployment_mode_external_eks ||
+      var.use_global_ai_gateway_origin ||
+      var.custom_domain != null ||
+      var.quarantine_proxy_url != null
+    )
+    error_message = "When enable_ecs_api is true and use_global_ai_gateway_origin is false, set custom_domain (recommended) or quarantine_proxy_url so quarantine LLM traffic uses the dataplane /v1/proxy instead of the hosted gateway."
+  }
+}
+
 variable "custom_certificate_arn" {
   description = "ARN of the ACM certificate for the custom domain"
   type        = string
