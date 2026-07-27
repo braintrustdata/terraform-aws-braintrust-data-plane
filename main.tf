@@ -71,19 +71,18 @@ locals {
   )
 
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
-  # Prefer staying on the customer dataplane: CloudFront /v1/proxy via custom_domain
-  # (works with private gateway origin, ECS API origin, or legacy proxy). Hosted
-  # gateway is only used when use_global_ai_gateway_origin is set. Pre-ECS falls
-  # back to the AI Proxy Lambda Function URL. one() keeps this index-safe when
-  # services is absent (use_deployment_mode_external_eks). Avoid module.ingress
-  # api_url here — that creates an api_ecs ↔ ingress cycle.
+  # Pre-ECS: AI Proxy Lambda Function URL. Hosted gateway only when
+  # use_global_ai_gateway_origin. Otherwise leave empty so api-ts derives the
+  # dataplane /v1/proxy URL from the incoming request (CloudFront host) — avoids
+  # an api_ecs↔ingress cycle and does not require custom_domain. one() keeps this
+  # index-safe when services is absent (use_deployment_mode_external_eks).
   global_ai_gateway_proxy_url = "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy"
-  dataplane_public_proxy_url  = var.custom_domain != null ? "https://${var.custom_domain}/v1/proxy" : null
-  api_ecs_ai_proxy_url = coalesce(
-    var.quarantine_proxy_url,
-    local.enable_ecs_api ? null : one(module.services[*].ai_proxy_url),
-    var.use_global_ai_gateway_origin ? local.global_ai_gateway_proxy_url : null,
-    local.dataplane_public_proxy_url,
+  api_ecs_ai_proxy_url = (
+    var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
+      !local.enable_ecs_api ? one(module.services[*].ai_proxy_url) : (
+        var.use_global_ai_gateway_origin ? local.global_ai_gateway_proxy_url : ""
+      )
+    )
   )
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
