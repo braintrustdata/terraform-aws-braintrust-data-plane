@@ -26,6 +26,7 @@ output "postgres_database_username" {
 output "postgres_database_password" {
   value       = local.postgres_password
   description = "The password for the main Postgres database"
+  sensitive   = true
 }
 
 output "postgres_database_secret_arn" {
