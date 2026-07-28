@@ -4,10 +4,22 @@ module "kms" {
 
   deployment_name         = var.deployment_name
   additional_key_policies = var.additional_kms_key_policies
-  custom_tags             = var.custom_tags
+  custom_tags             = local.all_custom_tags
 }
 
 locals {
+  # AWS Partner Network (APN) resource tag identifying Braintrust as the partner
+  # for every resource this module deploys. This lets AWS provide and route
+  # support and billing questions related to the deployment. It is applied to
+  # all resources — including EC2 instances launched from the Brainstore ASGs,
+  # which flow it through custom_tags -> common_tags with propagate_at_launch.
+  # Merged after var.custom_tags so the partner identifier always wins and
+  # cannot be accidentally overridden by a caller-supplied tag of the same key.
+  apn_partner_tags = {
+    "aws-apn-id" = "pc:8ebp76p17b7i08cjqrxaoj0y8"
+  }
+  all_custom_tags = merge(var.custom_tags, local.apn_partner_tags)
+
   kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
   bastion_security_group = var.enable_braintrust_support_shell_access ? {
     "Remote Support Bastion" = module.remote_support[0].remote_support_security_group_id
@@ -101,7 +113,7 @@ module "main_vpc" {
   private_subnet_3_cidr     = cidrsubnet(var.vpc_cidr, 3, 3)
   private_subnet_3_az       = local.private_subnet_3_az
   enable_brainstore_ec2_ssm = var.enable_brainstore_ec2_ssm
-  custom_tags               = var.custom_tags
+  custom_tags               = local.all_custom_tags
 }
 
 module "quarantine_vpc" {
@@ -120,7 +132,7 @@ module "quarantine_vpc" {
   private_subnet_2_az   = local.quarantine_private_subnet_2_az
   private_subnet_3_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
   private_subnet_3_az   = local.quarantine_private_subnet_3_az
-  custom_tags           = var.custom_tags
+  custom_tags           = local.all_custom_tags
 }
 
 module "database" {
@@ -155,7 +167,7 @@ module "database" {
 
   kms_key_arn              = local.kms_key_arn
   permissions_boundary_arn = var.permissions_boundary_arn
-  custom_tags              = var.custom_tags
+  custom_tags              = local.all_custom_tags
 }
 
 module "redis" {
@@ -184,7 +196,7 @@ module "redis" {
   use_redis_replication_group = var.use_redis_replication_group
   redis_instance_type         = var.redis_instance_type
   redis_version               = var.redis_version
-  custom_tags                 = var.custom_tags
+  custom_tags                 = local.all_custom_tags
 }
 
 module "storage" {
@@ -197,7 +209,7 @@ module "storage" {
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
   enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
-  custom_tags                                    = var.custom_tags
+  custom_tags                                    = local.all_custom_tags
 }
 
 module "services" {
@@ -284,7 +296,7 @@ module "services" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  custom_tags                         = var.custom_tags
+  custom_tags                         = local.all_custom_tags
 
   # Observability
   internal_observability_api_key                = var.internal_observability_api_key
@@ -300,7 +312,7 @@ module "ecs" {
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
   container_insights = var.container_insights
-  custom_tags        = var.custom_tags
+  custom_tags        = local.all_custom_tags
 }
 
 module "gateway_alb" {
@@ -322,7 +334,7 @@ module "gateway_alb" {
   alb_idle_timeout               = var.ai_gateway_alb_idle_timeout
   alb_deregistration_delay       = var.ai_gateway_alb_deregistration_delay
   alb_drop_invalid_header_fields = var.ai_gateway_alb_drop_invalid_header_fields
-  custom_tags                    = var.custom_tags
+  custom_tags                    = local.all_custom_tags
 }
 
 module "gateway_ecs" {
@@ -356,7 +368,7 @@ module "gateway_ecs" {
   alb_security_group_id       = module.gateway_alb[0].gateway_alb_security_group_id
   gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
   extra_env_vars              = var.ai_gateway_extra_env_vars
-  custom_tags                 = var.custom_tags
+  custom_tags                 = local.all_custom_tags
   brainstore_license_key      = var.brainstore_license_key
   enable_execute_command      = var.ai_gateway_enable_execute_command
   braintrust_app_url          = var.ai_gateway_braintrust_app_url
@@ -480,7 +492,7 @@ module "api_ecs" {
   ecs_cluster_name       = module.ecs[0].cluster_name
   task_role_arn          = module.services_common.api_handler_role_arn
   task_security_group_id = module.services_common.api_security_group_id
-  custom_tags            = var.custom_tags
+  custom_tags            = local.all_custom_tags
 }
 
 module "ingress" {
@@ -506,7 +518,7 @@ module "ingress" {
   api_ecs_alb_arn                    = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                 = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled          = module.api_ecs[0].alb_https_enabled
-  custom_tags                        = var.custom_tags
+  custom_tags                        = local.all_custom_tags
 }
 
 module "services_common" {
@@ -529,7 +541,7 @@ module "services_common" {
   enable_eks_irsa                           = var.enable_eks_irsa
   enable_ecs                                = local.create_ecs_api
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
-  custom_tags                               = var.custom_tags
+  custom_tags                               = local.all_custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
   override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
   enable_quarantine_vpc                     = var.enable_quarantine_vpc
@@ -597,7 +609,7 @@ module "brainstore" {
 
   kms_key_arn                = local.kms_key_arn
   brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
-  custom_tags                = var.custom_tags
+  custom_tags                = local.all_custom_tags
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
