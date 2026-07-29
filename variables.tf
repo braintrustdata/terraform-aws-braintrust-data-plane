@@ -1008,7 +1008,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod hosted gateway or GCP-style manual URL). When null: AI Proxy Lambda URL if enable_ecs_api is false; hosted gateway /v1/proxy if use_global_ai_gateway_origin; else http://<gateway-alb>/v1/proxy when create_ai_gateway; else empty. Quarantine VPC needs peering/routes to reach the private gateway ALB (SG CIDR ingress is added when quarantine is enabled)."
+  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod hosted gateway or GCP-style manual URL). When null: AI Proxy Lambda URL if enable_ecs_api is false; hosted gateway /v1/proxy if use_global_ai_gateway_origin; else http://<gateway-alb>/v1/proxy when create_ai_gateway; else empty. With quarantine enabled, gateway ALB allows HTTP/80 from quarantine_vpc_cidr (and quarantine Lambda SG when module-managed VPCs are peered)."
   type        = string
   default     = null
 

@@ -336,13 +336,19 @@ module "gateway_alb" {
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
   enable_cloudfront_vpc_origin_ingress = local.enable_private_ai_gateway_origin
-  # CIDR (not SG ref): quarantine SG lives in another VPC; peering/routes still required.
+  # CIDR hole for quarantine → gateway ALB :80 (matches HTTP listener → :8080 TG).
+  # Required whenever quarantine is on; peering/routes make it reachable for
+  # module-managed VPCs (see quarantine-peering.tf).
   quarantine_vpc_cidr = var.enable_quarantine_vpc ? var.quarantine_vpc_cidr : null
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
       "Brainstore" = module.services_common.brainstore_instance_security_group_id
     },
+    # Cross-VPC SG ref needs active peering (managed VPCs only).
+    local.peer_quarantine_to_main ? {
+      "Quarantine" = module.services_common.quarantine_lambda_security_group_id
+    } : {},
     var.ai_gateway_authorized_security_groups,
   )
   alb_client_keep_alive          = var.ai_gateway_alb_client_keep_alive
@@ -350,6 +356,8 @@ module "gateway_alb" {
   alb_deregistration_delay       = var.ai_gateway_alb_deregistration_delay
   alb_drop_invalid_header_fields = var.ai_gateway_alb_drop_invalid_header_fields
   custom_tags                    = local.all_custom_tags
+
+  depends_on = [aws_vpc_peering_connection.quarantine_to_main]
 }
 
 module "gateway_ecs" {

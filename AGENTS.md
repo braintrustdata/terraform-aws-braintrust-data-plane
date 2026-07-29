@@ -94,12 +94,22 @@ Default selection:
   `create_ai_gateway` (cycle-safe; same hop model as hosted gateway origin)
 - else empty
 
-When quarantine is enabled and the private gateway ALB exists, Terraform adds
-CIDR ingress on the gateway ALB from `quarantine_vpc_cidr`. **Peering + routes
-between quarantine VPC and main VPC are still required** and are not created by
-this module yet — without them, quarantine cannot reach the internal ALB DNS.
-For `existing_quarantine_vpc_id`, set `quarantine_vpc_cidr` to the real CIDR so
-the SG rule matches.
+When quarantine is enabled and the private gateway ALB exists, Terraform opens
+the gateway ALB on **HTTP port 80** (listener → target :8080) to quarantine:
+
+- **CIDR ingress** from `quarantine_vpc_cidr` on the gateway ALB SG
+- **SG ingress** from the quarantine Lambda SG when both main and quarantine
+  VPCs are module-managed (cross-VPC SG ref requires peering)
+
+**Peering + private routes** between quarantine and main are created when
+`create_vpc` and the module creates the quarantine VPC (`enable_quarantine_vpc`
+without `existing_quarantine_vpc_id`): quarantine private RT → main CIDR and
+main private RT → quarantine CIDR via `aws_vpc_peering_connection` (same
+account, `auto_accept`).
+
+Not automated: `existing_vpc_id` and/or `existing_quarantine_vpc_id` — operators
+must peer and route those VPCs themselves. For existing quarantine VPCs, set
+`quarantine_vpc_cidr` to the real CIDR so the ALB CIDR rule matches.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

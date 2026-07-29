@@ -38,9 +38,9 @@ output "main_vpc_public_route_table_id" {
   description = "ID of the public route table in the main VPC (null when using existing VPC)"
 }
 
-output "main_vpc_private_route_table_id" {
-  value       = var.create_vpc ? module.main_vpc[0].private_route_table_id : null
-  description = "ID of the private route table in the main VPC (null when using existing VPC)"
+output "quarantine_to_main_peering_connection_id" {
+  value       = local.peer_quarantine_to_main ? aws_vpc_peering_connection.quarantine_to_main[0].id : null
+  description = "VPC peering connection ID between quarantine and main (null when using existing VPCs or quarantine disabled)"
 }
 
 output "brainstore_security_group_id" {
