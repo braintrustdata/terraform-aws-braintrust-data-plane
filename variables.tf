@@ -572,6 +572,17 @@ variable "url_security_allow_cidrs" {
   default     = ""
 }
 
+variable "braintrust_api_container_image_repository" {
+  type        = string
+  description = "Optional API ECS container image repository override. Defaults to public.ecr.aws/braintrust/standalone-api."
+  default     = null
+
+  validation {
+    condition     = var.braintrust_api_container_image_repository == null || trimspace(var.braintrust_api_container_image_repository) != ""
+    error_message = "braintrust_api_container_image_repository must be null or a non-empty string."
+  }
+}
+
 variable "braintrust_api_version_override" {
   type        = string
   description = "Optional API ECS image tag override. If unset, uses modules/api-ecs/VERSIONS.json."

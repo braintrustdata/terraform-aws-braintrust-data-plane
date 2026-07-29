@@ -23,7 +23,7 @@ resource "aws_security_group" "gateway_quarantine_privatelink_nlb" {
   count = local.create_quarantine_gateway_privatelink ? 1 : 0
 
   name        = "${var.deployment_name}-gw-q-pl-nlb"
-  description = "Security group for quarantine→gateway PrivateLink NLB"
+  description = "Security group for quarantine-to-gateway PrivateLink NLB"
   vpc_id      = local.main_vpc_id
 
   tags = merge({
