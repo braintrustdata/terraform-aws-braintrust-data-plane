@@ -602,7 +602,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, AI Proxy URL, hosted gateway /v1/proxy, or private gateway ALB /v1/proxy. Null/empty leaves the env unset for app-level fallbacks."
+  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, AI Proxy URL, hosted gateway /v1/proxy, or private gateway ALB /v1/proxy (when use_private_gateway_quarantine_proxy). Null/empty leaves the env unset for app-level fallbacks."
   default     = null
 }
 

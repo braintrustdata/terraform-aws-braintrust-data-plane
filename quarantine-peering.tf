@@ -1,9 +1,10 @@
-# Same-account peering so quarantine Lambdas can reach private main-VPC
-# services (notably the gateway ALB on :80). Only when both VPCs are created
-# by this module — existing VPC / existing quarantine require manual peering.
+# Same-account peering so quarantine Lambdas can reach the private gateway ALB
+# on :80. Only when use_private_gateway_quarantine_proxy is on and both VPCs
+# are created by this module — existing VPC / existing quarantine require
+# manual peering. Do not peer when quarantine uses a manual/SaaS hosted URL.
 
 locals {
-  peer_quarantine_to_main = local.create_quarantine_vpc && var.create_vpc
+  peer_quarantine_to_main = local.wire_quarantine_to_private_gateway && local.create_quarantine_vpc && var.create_vpc
 }
 
 resource "aws_vpc_peering_connection" "quarantine_to_main" {

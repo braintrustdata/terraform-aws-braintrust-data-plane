@@ -40,7 +40,7 @@ output "main_vpc_public_route_table_id" {
 
 output "quarantine_to_main_peering_connection_id" {
   value       = local.peer_quarantine_to_main ? aws_vpc_peering_connection.quarantine_to_main[0].id : null
-  description = "VPC peering connection ID between quarantine and main (null when using existing VPCs or quarantine disabled)"
+  description = "VPC peering connection ID between quarantine and main (null unless use_private_gateway_quarantine_proxy with module-managed VPCs)"
 }
 
 output "brainstore_security_group_id" {
@@ -140,7 +140,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS (override, AI Proxy Function URL, hosted gateway /v1/proxy, or private gateway ALB /v1/proxy)"
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, AI Proxy Function URL, hosted gateway /v1/proxy, or private gateway ALB /v1/proxy when use_private_gateway_quarantine_proxy)"
 }
 
 output "api_ecs_task_security_group_id" {

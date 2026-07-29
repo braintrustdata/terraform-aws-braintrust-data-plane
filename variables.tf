@@ -1008,13 +1008,24 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod hosted gateway or GCP-style manual URL). When null: AI Proxy Lambda URL if enable_ecs_api is false; hosted gateway /v1/proxy if use_global_ai_gateway_origin; else http://<gateway-alb>/v1/proxy when create_ai_gateway; else empty. With quarantine enabled, gateway ALB allows HTTP/80 from quarantine_vpc_cidr (and quarantine Lambda SG when module-managed VPCs are peered)."
+  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, see use_private_gateway_quarantine_proxy for how the URL is chosen."
   type        = string
   default     = null
 
   validation {
     condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
     error_message = "quarantine_proxy_url must be null or a non-empty URL."
+  }
+}
+
+variable "use_private_gateway_quarantine_proxy" {
+  description = "When true, auto-set QUARANTINE_PROXY_URL to http://<private-gateway-alb>/v1/proxy (unless quarantine_proxy_url is set) and open quarantine→gateway ALB reachability (CIDR/SG ingress + peering when module-managed). When false (default), do not wire to the private gateway ALB or open those holes — use quarantine_proxy_url if set, else legacy SaaS defaults (AI Proxy Function URL pre-ECS, else hosted gateway /v1/proxy). Requires create_ai_gateway. No private ALB wiring when use_global_ai_gateway_origin is true. Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
+    error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
   }
 }
 

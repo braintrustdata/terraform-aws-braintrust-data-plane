@@ -82,34 +82,52 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 `*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
 Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); call the
-private gateway ALB directly.
+private gateway ALB directly when opted in.
 
-Default selection:
+#### `use_private_gateway_quarantine_proxy` (default `false`)
 
-- `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API `/v1/proxy`,
-  or GCP-style manual URLs)
-- else AI Proxy Lambda Function URL when `enable_ecs_api` is false
-- else hosted gateway `/v1/proxy` when `use_global_ai_gateway_origin` is true
-- else `http://<gateway-alb>/v1/proxy` from `modules/gateway-alb` when
-  `create_ai_gateway` (cycle-safe; same hop model as hosted gateway origin)
-- else empty
+Opt-in switch for dataplane-local quarantine → private gateway ALB wiring.
+Default **false** so SaaS (including eu-prod's manual hosted URL) and
+existing stacks are unchanged until operators explicitly enable it.
 
-When quarantine is enabled and the private gateway ALB exists, Terraform opens
-the gateway ALB on **HTTP port 80** (listener → target :8080) to quarantine:
+- **`false`**: do **not** auto-set from the private gateway ALB; do **not**
+  open quarantine→gateway SG holes or auto-peer. Use `quarantine_proxy_url`
+  if set; otherwise legacy SaaS defaults (AI Proxy Function URL when
+  `enable_ecs_api` is false; else hosted gateway `/v1/proxy`).
+- **`true`**: requires `create_ai_gateway`. Sets
+  `QUARANTINE_PROXY_URL` to `http://<gateway-alb>/v1/proxy` (unless
+  override), opens gateway ALB HTTP/80 to quarantine, and peers
+  module-managed VPCs. No-ops the private ALB path when
+  `use_global_ai_gateway_origin` is true (hosted URL; no private holes).
+
+#### URL precedence
+
+1. `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API
+   `/v1/proxy`, or GCP-style manual URLs) — **always wins**
+2. else AI Proxy Lambda Function URL when `enable_ecs_api` is false
+3. else `http://<gateway-alb>/v1/proxy` when
+   `use_private_gateway_quarantine_proxy` and not
+   `use_global_ai_gateway_origin` (cycle-safe via `modules/gateway-alb`)
+4. else hosted gateway `/v1/proxy` (legacy SaaS / ECS default)
+
+#### Networking (only when `use_private_gateway_quarantine_proxy` wires to private ALB)
+
+When quarantine is enabled and wiring is on, Terraform opens the gateway ALB
+on **HTTP port 80** (listener → target :8080) to quarantine:
 
 - **CIDR ingress** from `quarantine_vpc_cidr` on the gateway ALB SG
 - **SG ingress** from the quarantine Lambda SG when both main and quarantine
   VPCs are module-managed (cross-VPC SG ref requires peering)
 
 **Peering + private routes** between quarantine and main are created when
-`create_vpc` and the module creates the quarantine VPC (`enable_quarantine_vpc`
-without `existing_quarantine_vpc_id`): quarantine private RT → main CIDR and
-main private RT → quarantine CIDR via `aws_vpc_peering_connection` (same
-account, `auto_accept`).
+wiring is on, `create_vpc`, and the module creates the quarantine VPC
+(`enable_quarantine_vpc` without `existing_quarantine_vpc_id`): quarantine
+private RT → main CIDR and main private RT → quarantine CIDR via
+`aws_vpc_peering_connection` (same account, `auto_accept`).
 
-Not automated: `existing_vpc_id` and/or `existing_quarantine_vpc_id` — operators
-must peer and route those VPCs themselves. For existing quarantine VPCs, set
-`quarantine_vpc_cidr` to the real CIDR so the ALB CIDR rule matches.
+Not automated: `existing_vpc_id` and/or `existing_quarantine_vpc_id` —
+operators must peer and route those VPCs themselves. For existing quarantine
+VPCs, set `quarantine_vpc_cidr` to the real CIDR so the ALB CIDR rule matches.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

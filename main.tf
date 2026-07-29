@@ -71,19 +71,25 @@ locals {
   )
 
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
-  # Precedence: explicit override → legacy AI Proxy Function URL (pre-ECS) →
-  # hosted gateway when use_global_ai_gateway_origin → private gateway ALB
-  # /v1/proxy when create_ai_gateway → empty. Uses gateway-alb outputs (cycle-safe
-  # vs api_ecs/ingress). Do not hairpin via API ECS ALB or CloudFront.
+  # Precedence: explicit quarantine_proxy_url override → AI Proxy Function URL
+  # (pre-ECS) → private gateway ALB /v1/proxy when
+  # use_private_gateway_quarantine_proxy (and not use_global) → else legacy
+  # SaaS hosted gateway /v1/proxy. Uses gateway-alb outputs (cycle-safe vs
+  # api_ecs/ingress). Do not hairpin via API ECS ALB or CloudFront.
   # one() keeps this index-safe when services is absent
   # (use_deployment_mode_external_eks).
   global_ai_gateway_proxy_url = "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy"
+  # Opt-in private-gateway wiring for quarantine (SG holes + peering + URL).
+  # Off when use_global_ai_gateway_origin (hosted URL; no private ALB holes).
+  wire_quarantine_to_private_gateway = (
+    var.use_private_gateway_quarantine_proxy &&
+    local.create_ai_gateway &&
+    !var.use_global_ai_gateway_origin
+  )
   api_ecs_quarantine_proxy_url = (
     var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
       !local.enable_ecs_api ? one(module.services[*].ai_proxy_url) : (
-        var.use_global_ai_gateway_origin ? local.global_ai_gateway_proxy_url : (
-          local.create_ai_gateway ? "${module.gateway_alb[0].gateway_url}/v1/proxy" : ""
-        )
+        local.wire_quarantine_to_private_gateway ? "${module.gateway_alb[0].gateway_url}/v1/proxy" : local.global_ai_gateway_proxy_url
       )
     )
   )
@@ -336,10 +342,9 @@ module "gateway_alb" {
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
   enable_cloudfront_vpc_origin_ingress = local.enable_private_ai_gateway_origin
-  # CIDR hole for quarantine → gateway ALB :80 (matches HTTP listener → :8080 TG).
-  # Required whenever quarantine is on; peering/routes make it reachable for
-  # module-managed VPCs (see quarantine-peering.tf).
-  quarantine_vpc_cidr = var.enable_quarantine_vpc ? var.quarantine_vpc_cidr : null
+  # CIDR hole for quarantine → gateway ALB :80 only when wiring quarantine
+  # proxy to the private gateway (see use_private_gateway_quarantine_proxy).
+  quarantine_vpc_cidr = local.wire_quarantine_to_private_gateway && var.enable_quarantine_vpc ? var.quarantine_vpc_cidr : null
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
