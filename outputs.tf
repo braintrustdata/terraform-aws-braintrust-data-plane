@@ -138,6 +138,11 @@ output "api_ecs_http_url" {
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
 }
 
+output "quarantine_proxy_url" {
+  value       = local.create_ecs_api ? module.api_ecs[0].quarantine_proxy_url : null
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (override, hosted gateway, AI Proxy Function URL, or internal API ALB /v1/proxy)"
+}
+
 output "api_ecs_task_security_group_id" {
   value       = local.create_ecs_api ? module.api_ecs[0].task_security_group_id : null
   description = "ID of the security group for API ECS tasks"

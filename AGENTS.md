@@ -77,16 +77,25 @@ Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step p
 
 ### Quarantine LLM proxy URL
 
-Quarantine UDFs get proxy base URLs from API `getRuntimeEnv`. Do not point
-`QUARANTINE_PROXY_URL` at the private gateway ALB DNS (would require
-quarantine→main VPC access). Default selection:
+Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
+`QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
+`*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
+header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
 
-- `quarantine_proxy_url` override if set
+Default selection:
+
+- `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API `/v1/proxy`)
 - else AI Proxy Lambda Function URL when `enable_ecs_api` is false
-- else hosted gateway when `use_global_ai_gateway_origin` is true
-- else leave `QUARANTINE_PROXY_URL` empty so api-ts derives
-  `https://<viewer-host>/v1/proxy` from the request (CloudFront host /
-  `X-CloudFront-Domain`) — dataplane hairpin without a Terraform cycle
+- else hosted gateway `/v1/proxy` when `use_global_ai_gateway_origin` is true
+- else `http(s)://<api-ecs-alb>/v1/proxy` computed **inside** `modules/api-ecs`
+  from its own ALB (Jeff path: quarantine → API → private gateway when
+  `GATEWAY_URL` is set; `parseUseGatewayHeader` defaults to gateway)
+
+That ALB URL needs no `gateway-alb`-style extract and no ingress edge. Quarantine
+VPC still cannot reach the internal ALB until peering + SG allow it — land URL
+wiring first, then quarantine→main connectivity. Prefer the API ALB hole over
+exposing the gateway ALB directly (narrower product surface matches existing
+`/v1/proxy` API semantics).
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

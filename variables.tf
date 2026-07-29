@@ -1008,7 +1008,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls. When null: AI Proxy Lambda URL if enable_ecs_api is false; hosted gateway /v1/proxy if use_global_ai_gateway_origin; otherwise empty so api-ts derives https://<request-host>/v1/proxy from CloudFront headers."
+  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls. When null: AI Proxy Lambda URL if enable_ecs_api is false; hosted gateway /v1/proxy if use_global_ai_gateway_origin; otherwise api-ecs uses its internal ALB http(s)://<alb>/v1/proxy (quarantine → API → private gateway when GATEWAY_URL is set). Quarantine VPC must be able to reach that ALB (peering/SG follow-up)."
   type        = string
   default     = null
 

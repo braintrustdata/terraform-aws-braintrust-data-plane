@@ -71,16 +71,18 @@ locals {
   )
 
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
-  # Pre-ECS: AI Proxy Lambda Function URL. Hosted gateway only when
-  # use_global_ai_gateway_origin. Otherwise leave empty so api-ts derives the
-  # dataplane /v1/proxy URL from the incoming request (CloudFront host) — avoids
-  # an api_ecs↔ingress cycle and does not require custom_domain. one() keeps this
-  # index-safe when services is absent (use_deployment_mode_external_eks).
+  # Prefer an explicit override. Pre-ECS keeps the AI Proxy Function URL.
+  # Hosted gateway only when use_global_ai_gateway_origin. Otherwise leave
+  # null so api-ecs derives http(s)://<api-ecs-alb>/v1/proxy from its own ALB
+  # (no CloudFront / ingress cycle; works for ALB-only and non-CF dataplanes).
+  # With GATEWAY_URL set, api-ts defaults those /v1/proxy calls to the private
+  # gateway. one() keeps this index-safe when services is absent
+  # (use_deployment_mode_external_eks).
   global_ai_gateway_proxy_url = "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy"
-  api_ecs_ai_proxy_url = (
+  api_ecs_quarantine_proxy_url = (
     var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
       !local.enable_ecs_api ? one(module.services[*].ai_proxy_url) : (
-        var.use_global_ai_gateway_origin ? local.global_ai_gateway_proxy_url : ""
+        var.use_global_ai_gateway_origin ? local.global_ai_gateway_proxy_url : null
       )
     )
   )
@@ -479,7 +481,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = local.api_ecs_ai_proxy_url
+  quarantine_proxy_url                = local.api_ecs_quarantine_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id

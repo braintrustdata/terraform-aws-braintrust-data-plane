@@ -602,7 +602,8 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "AI proxy/Gateway URL used for quarantine execution."
+  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls. When null, defaults to this module's ALB URL plus /v1/proxy so quarantine stays on the dataplane without a CloudFront hostname."
+  default     = null
 }
 
 
