@@ -193,10 +193,11 @@ module "redis" {
     ),
     local.bastion_security_group,
   )
-  use_redis_replication_group = var.use_redis_replication_group
-  redis_instance_type         = var.redis_instance_type
-  redis_version               = var.redis_version
-  custom_tags                 = local.all_custom_tags
+  use_redis_replication_group         = var.use_redis_replication_group
+  redis_rg_auth_token_update_strategy = var.redis_rg_auth_token_update_strategy
+  redis_instance_type                 = var.redis_instance_type
+  redis_version                       = var.redis_version
+  custom_tags                         = local.all_custom_tags
 }
 
 module "storage" {

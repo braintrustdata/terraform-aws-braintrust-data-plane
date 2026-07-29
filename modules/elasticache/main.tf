@@ -60,7 +60,7 @@ resource "aws_elasticache_replication_group" "main" {
   transit_encryption_mode    = "required"
 
   auth_token                 = local.redis_auth_token
-  auth_token_update_strategy = "ROTATE"
+  auth_token_update_strategy = var.redis_rg_auth_token_update_strategy
 
   tags = local.common_tags
 }
