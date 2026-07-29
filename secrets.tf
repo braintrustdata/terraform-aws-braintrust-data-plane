@@ -8,7 +8,7 @@ resource "aws_secretsmanager_secret" "internal_observability_api_key" {
   tags = merge({
     Name                     = "${var.deployment_name}-internal-observability-api-key"
     BraintrustDeploymentName = var.deployment_name
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_secretsmanager_secret_version" "internal_observability_api_key" {
