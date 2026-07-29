@@ -52,6 +52,12 @@ def main():
     with open(api_ecs_versions_path, "w") as f:
         json.dump({"api": version_tag}, f, indent=4)
 
+    # Write Gateway version to gateway-ecs/VERSIONS.json
+    print("Writing Gateway version to modules/gateway-ecs/VERSIONS.json...")
+    gateway_ecs_versions_path = f"{script_dir}/modules/gateway-ecs/VERSIONS.json"
+    os.makedirs(os.path.dirname(gateway_ecs_versions_path), exist_ok=True)
+    with open(gateway_ecs_versions_path, "w") as f:
+        json.dump({"gateway": version_tag}, f, indent=4)
 
 if __name__ == "__main__":
     main()

@@ -349,7 +349,7 @@ module "gateway_ecs" {
   ecs_cluster_name   = module.ecs[0].cluster_name
   container_image = format(
     "public.ecr.aws/braintrust/gateway:%s",
-    var.ai_gateway_version_override == null ? "prerelease" : var.ai_gateway_version_override
+    var.ai_gateway_version_override != null ? var.ai_gateway_version_override : jsondecode(file("${path.module}/modules/gateway-ecs/VERSIONS.json"))["gateway"]
   )
   cpu                         = var.ai_gateway_cpu
   memory                      = var.ai_gateway_memory
