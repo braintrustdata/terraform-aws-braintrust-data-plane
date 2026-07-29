@@ -408,7 +408,7 @@ variable "container_insights" {
 
 variable "ai_gateway_version_override" {
   type        = string
-  description = "Lock Gateway on a specific version. Don't set this unless instructed by Braintrust."
+  description = "Optional Gateway image tag override. If unset, uses modules/gateway-ecs/VERSIONS.json. Don't set this unless instructed by Braintrust."
   default     = null
 
   validation {
