@@ -128,7 +128,10 @@ DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
 
 # Get the fully-rendered Redis URL from Secrets Manager
-REDIS_URL=$(aws secretsmanager get-secret-value --secret-id ${redis_url_secret_arn} --query SecretString --output text)
+if ! REDIS_URL=$(aws secretsmanager get-secret-value --secret-id ${redis_url_secret_arn} --query SecretString --output text); then
+  echo "Failed to retrieve REDIS_URL from Secrets Manager. Exiting with failure."
+  exit 1
+fi
 # Get the function tools secret used by Brainstore as SERVICE_TOKEN_SECRET_KEY from Secrets Manager
 if ! SERVICE_TOKEN_SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id ${service_token_secret_arn} --query SecretString --output text); then
   echo "Failed to retrieve SERVICE_TOKEN_SECRET_KEY from Secrets Manager. Exiting with failure."
