@@ -38,9 +38,14 @@ output "main_vpc_public_route_table_id" {
   description = "ID of the public route table in the main VPC (null when using existing VPC)"
 }
 
-output "quarantine_to_main_peering_connection_id" {
-  value       = local.peer_quarantine_to_main ? aws_vpc_peering_connection.quarantine_to_main[0].id : null
-  description = "VPC peering connection ID between quarantine and main (null unless use_private_gateway_quarantine_proxy with module-managed VPCs)"
+output "quarantine_gateway_privatelink_service_name" {
+  value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
+  description = "VPC endpoint service name for quarantine→private gateway PrivateLink (null unless use_private_gateway_quarantine_proxy with module-managed VPCs). Use this to attach a manual interface endpoint when using existing_vpc / existing_quarantine_vpc_id."
+}
+
+output "quarantine_gateway_privatelink_endpoint_dns_name" {
+  value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name : null
+  description = "DNS name of the quarantine VPC endpoint to the private gateway (null unless PrivateLink consumer is created)"
 }
 
 output "brainstore_security_group_id" {
@@ -140,7 +145,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, AI Proxy Function URL, hosted gateway /v1/proxy, or private gateway ALB /v1/proxy when use_private_gateway_quarantine_proxy)"
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, AI Proxy Function URL, hosted gateway /v1/proxy, or PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy)"
 }
 
 output "api_ecs_task_security_group_id" {

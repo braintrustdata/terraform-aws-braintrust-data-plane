@@ -1019,7 +1019,7 @@ variable "quarantine_proxy_url" {
 }
 
 variable "use_private_gateway_quarantine_proxy" {
-  description = "When true, auto-set QUARANTINE_PROXY_URL to http://<private-gateway-alb>/v1/proxy (unless quarantine_proxy_url is set) and open quarantine→gateway ALB reachability (CIDR/SG ingress + peering when module-managed). When false (default), do not wire to the private gateway ALB or open those holes — use quarantine_proxy_url if set, else legacy SaaS defaults (AI Proxy Function URL pre-ECS, else hosted gateway /v1/proxy). Requires create_ai_gateway. No private ALB wiring when use_global_ai_gateway_origin is true. Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway."
+  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else legacy SaaS defaults (AI Proxy Function URL pre-ECS, else hosted gateway /v1/proxy). Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true. Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
   type        = bool
   default     = false
 

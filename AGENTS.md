@@ -81,53 +81,63 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 `QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
 `*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
-Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); call the
-private gateway ALB directly when opted in.
+Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
+peer the quarantine VPC to main for this path. Prefer PrivateLink to the
+private gateway when opted in.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 
-Opt-in switch for dataplane-local quarantine → private gateway ALB wiring.
+Opt-in switch for dataplane-local quarantine → private gateway wiring via
+**PrivateLink** (interim and preferred endgame vs VPC peering).
 Default **false** so SaaS (including eu-prod's manual hosted URL) and
 existing stacks are unchanged until operators explicitly enable it.
 
-- **`false`**: do **not** auto-set from the private gateway ALB; do **not**
-  open quarantine→gateway SG holes or auto-peer. Use `quarantine_proxy_url`
+- **`false`**: do **not** auto-set from PrivateLink / private gateway; do
+  **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
   if set; otherwise legacy SaaS defaults (AI Proxy Function URL when
   `enable_ecs_api` is false; else hosted gateway `/v1/proxy`).
-- **`true`**: requires `create_ai_gateway`. Sets
-  `QUARANTINE_PROXY_URL` to `http://<gateway-alb>/v1/proxy` (unless
-  override), opens gateway ALB HTTP/80 to quarantine, and peers
-  module-managed VPCs. No-ops the private ALB path when
-  `use_global_ai_gateway_origin` is true (hosted URL; no private holes).
+- **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
+  quarantine VPC are both enabled, creates PrivateLink and sets
+  `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
+  No-ops PrivateLink when `use_global_ai_gateway_origin` is true (hosted
+  URL). Adds an internal NLB (extra cost) in front of the gateway ALB.
 
 #### URL precedence
 
 1. `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API
    `/v1/proxy`, or GCP-style manual URLs) — **always wins**
 2. else AI Proxy Lambda Function URL when `enable_ecs_api` is false
-3. else `http://<gateway-alb>/v1/proxy` when
-   `use_private_gateway_quarantine_proxy` and not
-   `use_global_ai_gateway_origin` (cycle-safe via `modules/gateway-alb`)
+3. else `http://<vpce-dns>/v1/proxy` when
+   `use_private_gateway_quarantine_proxy` wires PrivateLink (module-managed
+   VPCs; not `use_global_ai_gateway_origin`)
 4. else hosted gateway `/v1/proxy` (legacy SaaS / ECS default)
 
-#### Networking (only when `use_private_gateway_quarantine_proxy` wires to private ALB)
+#### Networking (PrivateLink; only when the flag wires to private gateway)
 
-When quarantine is enabled and wiring is on, Terraform opens the gateway ALB
-on **HTTP port 80** (listener → target :8080) to quarantine:
+Clones the Netflix NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
 
-- **CIDR ingress** from `quarantine_vpc_cidr` on the gateway ALB SG
-- **SG ingress** from the quarantine Lambda SG when both main and quarantine
-  VPCs are module-managed (cross-VPC SG ref requires peering)
+1. **Provider (main VPC)**: internal multi-AZ NLB → target group
+   `target_type = "alb"` attached to the gateway ALB → TCP **80** listener →
+   `aws_vpc_endpoint_service` with `acceptance_required = false`
+   (same-account). Gateway ALB SG allows HTTP from the NLB SG only —
+   quarantine does **not** talk to the ALB directly.
+2. **Consumer (quarantine VPC)**: interface VPC endpoint in quarantine
+   private subnets; endpoint SG allows the quarantine Lambda SG on **:80**.
+3. **URL**: `http://<vpce-dns>/v1/proxy` (VPCE DNS, not gateway ALB DNS).
 
-**Peering + private routes** between quarantine and main are created when
-wiring is on, `create_vpc`, and the module creates the quarantine VPC
-(`enable_quarantine_vpc` without `existing_quarantine_vpc_id`): quarantine
-private RT → main CIDR and main private RT → quarantine CIDR via
-`aws_vpc_peering_connection` (same account, `auto_accept`).
-
+Automated only for **module-managed** main + quarantine VPCs
+(`create_vpc` and `enable_quarantine_vpc` without `existing_quarantine_vpc_id`).
 Not automated: `existing_vpc_id` and/or `existing_quarantine_vpc_id` —
-operators must peer and route those VPCs themselves. For existing quarantine
-VPCs, set `quarantine_vpc_cidr` to the real CIDR so the ALB CIDR rule matches.
+create an interface endpoint to
+`quarantine_gateway_privatelink_service_name` (when the provider side exists
+in a module-managed stack, or stand up equivalent NLB/service yourself) and
+set `quarantine_proxy_url` to `http://<your-vpce-dns>/v1/proxy`.
+
+**Cost / AZ notes**: PrivateLink adds an internal NLB (hourly + LCU) plus
+interface endpoint hourly/GB charges. Place NLB and VPCE ENIs across the
+same AZs as the gateway ALB subnets so the endpoint service is available in
+those AZs; mismatched AZ coverage can yield unresolved or unhealthy
+endpoints.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

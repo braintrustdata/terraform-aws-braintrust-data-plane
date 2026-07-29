@@ -123,10 +123,10 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # Opt in to wire quarantine UDF LLM calls to the private gateway ALB
-  # (/v1/proxy) and open quarantine→gateway SG/peering. Default false keeps
-  # SaaS hosted-gateway / manual quarantine_proxy_url behavior.
-  # Requires create_ai_gateway.
+  # Opt in to wire quarantine UDF LLM calls to the private gateway via
+  # PrivateLink (NLB→ALB + VPC endpoint) at http://<vpce-dns>/v1/proxy.
+  # Default false keeps SaaS hosted-gateway / manual quarantine_proxy_url.
+  # Requires create_ai_gateway; auto-wires only with create_vpc + module quarantine.
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 
