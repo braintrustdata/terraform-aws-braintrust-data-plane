@@ -139,8 +139,8 @@ output "api_ecs_http_url" {
 }
 
 output "quarantine_proxy_url" {
-  value       = local.create_ecs_api ? module.api_ecs[0].quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS (override, hosted gateway, AI Proxy Function URL, or internal API ALB /v1/proxy)"
+  value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (override, AI Proxy Function URL, hosted gateway /v1/proxy, or private gateway ALB /v1/proxy)"
 }
 
 output "api_ecs_task_security_group_id" {

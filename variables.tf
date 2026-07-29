@@ -201,7 +201,7 @@ variable "enable_quarantine_vpc" {
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"
-  description = "CIDR block for the Quarantined VPC (only used when creating a new quarantine VPC)"
+  description = "CIDR block for the Quarantined VPC. Used when creating a new quarantine VPC, and as the gateway ALB ingress source when quarantine + private gateway are enabled (set to the real CIDR when using existing_quarantine_vpc_id)."
 }
 
 # Existing Quarantine VPC variables (when provided, uses existing VPC instead of creating one)
@@ -1008,7 +1008,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls. When null: AI Proxy Lambda URL if enable_ecs_api is false; hosted gateway /v1/proxy if use_global_ai_gateway_origin; otherwise api-ecs uses its internal ALB http(s)://<alb>/v1/proxy (quarantine → API → private gateway when GATEWAY_URL is set). Quarantine VPC must be able to reach that ALB (peering/SG follow-up)."
+  description = "Override QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod hosted gateway or GCP-style manual URL). When null: AI Proxy Lambda URL if enable_ecs_api is false; hosted gateway /v1/proxy if use_global_ai_gateway_origin; else http://<gateway-alb>/v1/proxy when create_ai_gateway; else empty. Quarantine VPC needs peering/routes to reach the private gateway ALB (SG CIDR ingress is added when quarantine is enabled)."
   type        = string
   default     = null
 

@@ -81,21 +81,25 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 `QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
 `*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
+Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); call the
+private gateway ALB directly.
 
 Default selection:
 
-- `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API `/v1/proxy`)
+- `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API `/v1/proxy`,
+  or GCP-style manual URLs)
 - else AI Proxy Lambda Function URL when `enable_ecs_api` is false
 - else hosted gateway `/v1/proxy` when `use_global_ai_gateway_origin` is true
-- else `http(s)://<api-ecs-alb>/v1/proxy` computed **inside** `modules/api-ecs`
-  from its own ALB (Jeff path: quarantine → API → private gateway when
-  `GATEWAY_URL` is set; `parseUseGatewayHeader` defaults to gateway)
+- else `http://<gateway-alb>/v1/proxy` from `modules/gateway-alb` when
+  `create_ai_gateway` (cycle-safe; same hop model as hosted gateway origin)
+- else empty
 
-That ALB URL needs no `gateway-alb`-style extract and no ingress edge. Quarantine
-VPC still cannot reach the internal ALB until peering + SG allow it — land URL
-wiring first, then quarantine→main connectivity. Prefer the API ALB hole over
-exposing the gateway ALB directly (narrower product surface matches existing
-`/v1/proxy` API semantics).
+When quarantine is enabled and the private gateway ALB exists, Terraform adds
+CIDR ingress on the gateway ALB from `quarantine_vpc_cidr`. **Peering + routes
+between quarantine VPC and main VPC are still required** and are not created by
+this module yet — without them, quarantine cannot reach the internal ALB DNS.
+For `existing_quarantine_vpc_id`, set `quarantine_vpc_cidr` to the real CIDR so
+the SG rule matches.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

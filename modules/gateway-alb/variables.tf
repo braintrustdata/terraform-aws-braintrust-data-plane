@@ -41,6 +41,17 @@ variable "enable_cloudfront_vpc_origin_ingress" {
   default     = false
 }
 
+variable "quarantine_vpc_cidr" {
+  type        = string
+  description = "When set, allow HTTP from this CIDR to the gateway ALB (quarantine VPC → private gateway). Peering/routes must exist separately. For existing quarantine VPCs, set this to the real quarantine CIDR."
+  default     = null
+
+  validation {
+    condition     = var.quarantine_vpc_cidr == null || var.quarantine_vpc_cidr != ""
+    error_message = "quarantine_vpc_cidr must be null or a non-empty CIDR."
+  }
+}
+
 variable "alb_client_keep_alive" {
   type        = number
   description = "Client keep-alive duration in seconds for the gateway ALB."

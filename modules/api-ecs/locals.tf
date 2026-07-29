@@ -15,9 +15,8 @@ locals {
   alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
   alb_listener_port = local.alb_https_enabled ? 443 : 80
   api_ecs_url       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
-  # Null means "use this ALB /v1/proxy" — avoids baking module.ingress.api_url
-  # into task env (Terraform cycle with CloudFront) and stays valid for ALB-only ingress.
-  quarantine_proxy_url     = var.quarantine_proxy_url != null ? var.quarantine_proxy_url : "${local.api_ecs_url}/v1/proxy"
+  # Root module resolves override / AI Proxy / hosted / private gateway ALB; empty when unset.
+  quarantine_proxy_url     = var.quarantine_proxy_url != null ? var.quarantine_proxy_url : ""
   unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
   url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
   url_security_allow_cidrs = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)

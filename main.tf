@@ -71,18 +71,19 @@ locals {
   )
 
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
-  # Prefer an explicit override. Pre-ECS keeps the AI Proxy Function URL.
-  # Hosted gateway only when use_global_ai_gateway_origin. Otherwise leave
-  # null so api-ecs derives http(s)://<api-ecs-alb>/v1/proxy from its own ALB
-  # (no CloudFront / ingress cycle; works for ALB-only and non-CF dataplanes).
-  # With GATEWAY_URL set, api-ts defaults those /v1/proxy calls to the private
-  # gateway. one() keeps this index-safe when services is absent
+  # Precedence: explicit override → legacy AI Proxy Function URL (pre-ECS) →
+  # hosted gateway when use_global_ai_gateway_origin → private gateway ALB
+  # /v1/proxy when create_ai_gateway → empty. Uses gateway-alb outputs (cycle-safe
+  # vs api_ecs/ingress). Do not hairpin via API ECS ALB or CloudFront.
+  # one() keeps this index-safe when services is absent
   # (use_deployment_mode_external_eks).
   global_ai_gateway_proxy_url = "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy"
   api_ecs_quarantine_proxy_url = (
     var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
       !local.enable_ecs_api ? one(module.services[*].ai_proxy_url) : (
-        var.use_global_ai_gateway_origin ? local.global_ai_gateway_proxy_url : null
+        var.use_global_ai_gateway_origin ? local.global_ai_gateway_proxy_url : (
+          local.create_ai_gateway ? "${module.gateway_alb[0].gateway_url}/v1/proxy" : ""
+        )
       )
     )
   )
@@ -335,6 +336,8 @@ module "gateway_alb" {
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
   enable_cloudfront_vpc_origin_ingress = local.enable_private_ai_gateway_origin
+  # CIDR (not SG ref): quarantine SG lives in another VPC; peering/routes still required.
+  quarantine_vpc_cidr = var.enable_quarantine_vpc ? var.quarantine_vpc_cidr : null
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
