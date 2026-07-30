@@ -571,6 +571,7 @@ module "gateway_ecs" {
 
   # Observability
   internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
+  internal_observability_api_key_secret_version = local.internal_observability_api_key_secret_version
   internal_observability_enabled                = local.create_internal_observability_secret
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region
@@ -705,6 +706,8 @@ module "api_ecs" {
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
   internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
+  internal_observability_api_key_secret_version = local.internal_observability_api_key_secret_version
+  internal_observability_enabled                = local.create_internal_observability_secret
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
