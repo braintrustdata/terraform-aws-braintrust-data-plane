@@ -307,7 +307,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = local.create_ai_gateway || local.create_ecs_api ? 1 : 0
+  count  = local.create_ai_gateway || local.create_ecs_api || local.create_loop_runtime ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -518,7 +518,13 @@ module "ingress" {
   api_ecs_alb_arn                    = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                 = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled          = module.api_ecs[0].alb_https_enabled
-  custom_tags                        = local.all_custom_tags
+
+  enable_loop_runtime                     = local.create_loop_runtime
+  loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null
+  loop_runtime_alb_dns_name               = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_dns_name : null
+  loop_runtime_cloudfront_ingress_rule_id = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_cloudfront_vpc_origin_ingress_rule_id : null
+
+  custom_tags = local.all_custom_tags
 }
 
 module "services_common" {
