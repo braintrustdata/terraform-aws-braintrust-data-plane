@@ -1,7 +1,8 @@
 locals {
-  # Loop runtime requires the ECS API data plane (Brainstore + api-ecs). It is
-  # fronted by the shared CloudFront distribution at /loop/runtime*.
-  create_loop_runtime = local.create_ecs_api && var.enable_loop_runtime
+  # Loop runtime requires the ECS API data plane and Brainstore (it reads
+  # module.brainstore[0] for the reader URL / SG). It is fronted by the shared
+  # CloudFront distribution at /loop/runtime*.
+  create_loop_runtime = local.create_ecs_api && var.enable_brainstore && var.enable_loop_runtime
 
   loop_runtime_version = (
     var.loop_runtime_version_override != null

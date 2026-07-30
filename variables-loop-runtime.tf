@@ -1,7 +1,12 @@
 variable "enable_loop_runtime" {
   type        = bool
-  description = "Deploy the dedicated Loop runtime ECS/Fargate service (hosted Loop) and its MicroVM sandbox. Requires the ECS API data plane."
+  description = "Deploy the dedicated Loop runtime ECS/Fargate service (hosted Loop) and its MicroVM sandbox. Requires the ECS API data plane and Brainstore."
   default     = false
+
+  validation {
+    condition     = !var.enable_loop_runtime || var.enable_brainstore
+    error_message = "enable_loop_runtime requires enable_brainstore = true (the Loop runtime reads from Brainstore)."
+  }
 }
 
 variable "loop_runtime_version_override" {

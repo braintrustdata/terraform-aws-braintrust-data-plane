@@ -490,6 +490,27 @@ resource "aws_iam_role_policy" "ecs_tags_read_access" {
   })
 }
 
+# ECS Exec needs SSM messages channels on the task role; only granted when Exec is enabled.
+resource "aws_iam_role_policy" "execute_command" {
+  count = var.enable_execute_command ? 1 : 0
+
+  name = "LoopRuntimeExecuteCommand"
+  role = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel",
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
 # Sandbox-supplied IAM (MicroVM lifecycle, network connectors, optional PassRole).
 resource "aws_iam_role_policy" "sandbox" {
   name   = "LoopRuntimeSandbox"

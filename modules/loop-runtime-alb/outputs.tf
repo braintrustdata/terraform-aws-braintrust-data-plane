@@ -24,7 +24,7 @@ output "loop_runtime_http_listener_arn" {
 }
 
 output "loop_runtime_url" {
-  description = "Private in-VPC Loop runtime URL for LOOP_RUNTIME_URL on api-ts services"
+  description = "Internal in-VPC URL of the Loop runtime ALB (informational; external traffic reaches it directly via the CloudFront /loop/runtime* behavior, not through the API)."
   value       = "http://${aws_lb.loop_runtime.dns_name}:${local.loop_runtime_container_port}"
 }
 
