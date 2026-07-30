@@ -48,14 +48,16 @@ resource "aws_launch_template" "brainstore_automation_writer" {
     lambda_responses_bucket_id      = local.lambda_responses_bucket_id
     code_bundle_bucket_id           = local.code_bundle_bucket_id
     brainstore_locks_s3_path        = trimprefix(var.locks_s3_path, "/")
-    brainstore_license_key          = var.license_key
+    license_key_secret_arn                        = var.license_key_secret_arn
+    license_key_secret_version                    = var.license_key_secret_version
     brainstore_version_override     = var.version_override == null ? "" : var.version_override
     brainstore_release_version      = local.brainstore_release_version
     monitoring_telemetry            = var.monitoring_telemetry
     is_dedicated_reader_node        = "false"
     is_dedicated_writer_node        = "true"
     extra_env_vars                  = merge(local.brainstore_default_env_vars, local.brainstore_automation_writer_extra_env_vars)
-    internal_observability_api_key  = var.internal_observability_api_key
+    internal_observability_api_key_secret_arn     = var.internal_observability_api_key_secret_arn
+    internal_observability_api_key_secret_version = var.internal_observability_api_key_secret_version
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
     datadog_agent_container_logs    = module.datadog_agent_telemetry["automation_writer"].container_logs

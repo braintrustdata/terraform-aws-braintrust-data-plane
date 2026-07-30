@@ -124,13 +124,15 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
         {
           Effect = "Allow"
           Action = "secretsmanager:GetSecretValue"
-          Resource = concat(
+          Resource = compact(concat(
             [
               var.database_secret_arn,
-              aws_secretsmanager_secret.function_tools_secret.arn
+              aws_secretsmanager_secret.function_tools_secret.arn,
+              var.brainstore_license_key_secret_arn,
+              var.internal_observability_api_key_secret_arn,
             ],
-            var.brainstore_custom_ca_bundle_secret_arn == null ? [] : [var.brainstore_custom_ca_bundle_secret_arn]
-          )
+            var.brainstore_custom_ca_bundle_secret_arn == null ? [] : [var.brainstore_custom_ca_bundle_secret_arn],
+          ))
         }
       ],
       var.brainstore_custom_ca_bundle_kms_key_arn == null ? [] : [
