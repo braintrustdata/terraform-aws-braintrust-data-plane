@@ -42,13 +42,16 @@ locals {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
     } : {},
   )
-  license_key_enabled = trimspace(var.brainstore_license_key_secret_arn) != ""
+  # Use the plan-known enable flag (not the computed secret ARN) so count/for_each stay known during plan.
+  license_key_enabled = var.brainstore_license_key_enabled
   merged_env_vars     = merge(local.base_env_vars, var.extra_env_vars)
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id (empty json-key = full secret string).
   gateway_secrets = concat(
     local.license_key_enabled ? [
       {
         name      = "BRAINSTORE_LICENSE_KEY"
-        valueFrom = var.brainstore_license_key_secret_arn
+        valueFrom = "${var.brainstore_license_key_secret_arn}::AWSCURRENT:${var.brainstore_license_key_secret_version}"
       }
     ] : [],
   )

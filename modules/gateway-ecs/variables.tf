@@ -239,9 +239,21 @@ variable "custom_tags" {
   default     = {}
 }
 
+variable "brainstore_license_key_enabled" {
+  type        = bool
+  description = "Whether to inject BRAINSTORE_LICENSE_KEY from Secrets Manager. Must be a plan-known boolean (do not derive from the secret ARN)."
+  default     = false
+}
+
 variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "ARN of the Secrets Manager secret containing the Brainstore license key. Empty skips injecting BRAINSTORE_LICENSE_KEY."
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key."
+  default     = ""
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "Version ID of the license key secret. Included in the task definition so rotating the key forces a new revision and service rollout."
   default     = ""
 }
 
