@@ -200,9 +200,11 @@ resource "aws_iam_role_policy" "microvm_execution" {
         Resource = "arn:${local.partition}:logs:${local.region}:*:log-group:${aws_cloudwatch_log_group.microvm_image.name}"
       },
       {
-        Effect   = "Allow"
-        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = aws_cloudwatch_log_group.microvm_image.arn
+        Effect = "Allow"
+        Action = ["logs:CreateLogStream", "logs:PutLogEvents"]
+        # Stream actions operate on log-stream ARNs beneath the group. TF's
+        # log-group .arn has no ":*" suffix (unlike CFN's GetAtt), so append it.
+        Resource = "${aws_cloudwatch_log_group.microvm_image.arn}:*"
       }
     ]
   })

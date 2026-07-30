@@ -7,6 +7,11 @@ variable "enable_loop_runtime" {
     condition     = !var.enable_loop_runtime || var.enable_brainstore
     error_message = "enable_loop_runtime requires enable_brainstore = true (the Loop runtime reads from Brainstore)."
   }
+
+  validation {
+    condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
+    error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true (the Loop runtime requires the in-VPC ECS API data plane)."
+  }
 }
 
 variable "loop_runtime_version_override" {
