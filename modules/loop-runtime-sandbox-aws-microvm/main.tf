@@ -218,6 +218,11 @@ resource "aws_iam_role_policy" "microvm_execution" {
 resource "aws_cloudformation_stack" "microvm_image" {
   name = "${var.deployment_name}-loop-runtime-microvm-image"
 
+  # The image build assumes microvm_image_build to fetch the artifact and write
+  # logs; without this the stack can start before the role's inline policy is
+  # attached, so the build assumes an unprivileged role and fails on first apply.
+  depends_on = [aws_iam_role_policy.microvm_image_build]
+
   template_body = <<-YAML
     AWSTemplateFormatVersion: "2010-09-09"
     Resources:
