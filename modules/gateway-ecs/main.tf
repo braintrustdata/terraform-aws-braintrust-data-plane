@@ -3,13 +3,16 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name           = "gateway"
-  container_port           = 8080
-  observability_enabled    = var.internal_observability_enabled
-  gateway_version_tag      = element(reverse(split(":", var.container_image)), 0)
-  unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
-  url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
-  url_security_allow_cidrs = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  container_name        = "gateway"
+  container_port        = 8080
+  observability_enabled = var.internal_observability_enabled
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id (empty json-key = full secret string).
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}::AWSCURRENT:${var.internal_observability_api_key_secret_version}"
+  gateway_version_tag              = element(reverse(split(":", var.container_image)), 0)
+  unsafe_url_request_mode          = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
+  url_security_dns_servers         = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
+  url_security_allow_cidrs         = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
   url_security_env_vars = merge(
     local.unsafe_url_request_mode != "" ? {
       BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
@@ -144,7 +147,7 @@ locals {
         secrets = [
           {
             name      = "DD_API_KEY"
-            valueFrom = var.internal_observability_api_key_secret_arn
+            valueFrom = local.observability_api_key_value_from
           }
         ]
         healthCheck = {

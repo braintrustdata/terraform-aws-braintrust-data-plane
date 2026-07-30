@@ -138,6 +138,12 @@ variable "internal_observability_api_key_secret_arn" {
   default     = ""
 }
 
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Included in the task definition so rotating the key forces a new revision and service rollout."
+  default     = ""
+}
+
 variable "internal_observability_enabled" {
   type        = bool
   description = "Whether to enable internal Datadog observability for gateway ECS."
