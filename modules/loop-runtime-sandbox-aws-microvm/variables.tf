@@ -3,6 +3,12 @@ variable "deployment_name" {
   description = "Name of this deployment. Will be included in resource names."
 }
 
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to the MicroVM build/execution roles."
+  default     = null
+}
+
 variable "microvm_version_tag" {
   type        = string
   description = "Version tag of the published MicroVM guest artifact (resolves the content-addressed key via the version-<tag> pointer)."

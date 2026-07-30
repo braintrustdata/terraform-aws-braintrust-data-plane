@@ -37,8 +37,9 @@ module "loop_runtime_sandbox_aws_microvm" {
   source = "./modules/loop-runtime-sandbox-aws-microvm"
   count  = local.create_loop_runtime ? 1 : 0
 
-  deployment_name     = var.deployment_name
-  microvm_version_tag = local.loop_runtime_version
+  deployment_name          = var.deployment_name
+  permissions_boundary_arn = var.permissions_boundary_arn
+  microvm_version_tag      = local.loop_runtime_version
 
   microvm_minimum_memory_mib            = var.loop_runtime_microvm_minimum_memory_mib
   microvm_max_idle_duration_seconds     = var.loop_runtime_microvm_max_idle_duration_seconds

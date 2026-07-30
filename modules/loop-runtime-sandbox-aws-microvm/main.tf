@@ -133,8 +133,9 @@ data "aws_iam_policy_document" "microvm_build_assume_role" {
 }
 
 resource "aws_iam_role" "microvm_image_build" {
-  name               = "${var.deployment_name}-loop-runtime-microvm-build"
-  assume_role_policy = data.aws_iam_policy_document.microvm_build_assume_role.json
+  name                 = "${var.deployment_name}-loop-runtime-microvm-build"
+  assume_role_policy   = data.aws_iam_policy_document.microvm_build_assume_role.json
+  permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-microvm-build"
   }, local.common_tags)
@@ -177,9 +178,10 @@ data "aws_iam_policy_document" "microvm_execution_assume_role" {
 }
 
 resource "aws_iam_role" "microvm_execution" {
-  count              = var.enable_microvm_runtime_logs ? 1 : 0
-  name               = "${var.deployment_name}-loop-runtime-microvm-exec"
-  assume_role_policy = data.aws_iam_policy_document.microvm_execution_assume_role[0].json
+  count                = var.enable_microvm_runtime_logs ? 1 : 0
+  name                 = "${var.deployment_name}-loop-runtime-microvm-exec"
+  assume_role_policy   = data.aws_iam_policy_document.microvm_execution_assume_role[0].json
+  permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-microvm-exec"
   }, local.common_tags)
