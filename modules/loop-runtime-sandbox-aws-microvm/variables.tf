@@ -20,12 +20,6 @@ variable "artifact_key_prefix" {
   default     = "microvm/loop-runtime"
 }
 
-variable "microvm_code_artifact_s3_uri" {
-  type        = string
-  description = "Explicit s3:// URI of the MicroVM guest artifact. Overrides version-pointer resolution when set."
-  default     = null
-}
-
 variable "microvm_minimum_memory_mib" {
   type        = number
   description = "Minimum memory (MiB) provisioned for sandbox MicroVMs."

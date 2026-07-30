@@ -4,7 +4,6 @@ locals {
   }, var.custom_tags)
 
   loop_runtime_container_port = 4001
-  loop_runtime_alb_subnet_ids = length(var.loop_runtime_alb_subnet_ids) > 0 ? var.loop_runtime_alb_subnet_ids : var.private_subnet_ids
 }
 
 resource "aws_security_group" "loop_runtime_alb" {
@@ -42,7 +41,7 @@ resource "aws_lb" "loop_runtime" {
   name               = "${var.deployment_name}-loop-runtime"
   internal           = true
   load_balancer_type = "application"
-  subnets            = local.loop_runtime_alb_subnet_ids
+  subnets            = var.private_subnet_ids
   security_groups    = [aws_security_group.loop_runtime_alb.id]
 
   client_keep_alive          = var.alb_client_keep_alive

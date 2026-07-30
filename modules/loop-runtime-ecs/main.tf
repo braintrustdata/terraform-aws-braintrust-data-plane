@@ -443,6 +443,26 @@ resource "aws_iam_role_policy" "code_bundle_access" {
   })
 }
 
+# The Brainstore and code-bundle buckets are encrypted with kms_key_arn, so
+# SSE-KMS reads/writes need key access in addition to the S3 grants above.
+resource "aws_iam_role_policy" "kms_access" {
+  name = "LoopRuntimeKmsAccess"
+  role = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
+      Resource = var.kms_key_arn
+      Condition = {
+        StringEquals = {
+          "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "cloudwatch_metrics_access" {
   name = "LoopRuntimeCloudWatchMetricsAccess"
   role = aws_iam_role.task.id

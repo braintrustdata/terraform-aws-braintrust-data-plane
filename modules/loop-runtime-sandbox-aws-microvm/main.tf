@@ -24,12 +24,8 @@ locals {
 
   # Resolve the content-addressed artifact key from the published version pointer
   # (same convention as modules/services lambda zips).
-  artifact_key = trimspace(data.http.microvm_artifact_version.response_body)
-  code_artifact_uri = (
-    var.microvm_code_artifact_s3_uri != null && trimspace(var.microvm_code_artifact_s3_uri) != ""
-    ? trimspace(var.microvm_code_artifact_s3_uri)
-    : "s3://${local.artifact_bucket_name}/${local.artifact_key}"
-  )
+  artifact_key      = trimspace(data.http.microvm_artifact_version.response_body)
+  code_artifact_uri = "s3://${local.artifact_bucket_name}/${local.artifact_key}"
 
   image_arn = aws_cloudformation_stack.microvm_image.outputs["ImageArn"]
 
@@ -53,13 +49,10 @@ locals {
         Resource = local.image_arn
       },
       {
-        Sid    = "LoopRuntimeMicrovmNetworkConnectors"
-        Effect = "Allow"
-        Action = ["lambda:PassNetworkConnector"]
-        Resource = [
-          "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:ALL_INGRESS",
-          "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:INTERNET_EGRESS",
-        ]
+        Sid      = "LoopRuntimeMicrovmNetworkConnectors"
+        Effect   = "Allow"
+        Action   = ["lambda:PassNetworkConnector"]
+        Resource = distinct(concat(local.ingress_connector_arns, local.egress_connector_arns))
       },
       ], var.enable_microvm_runtime_logs ? [
       {

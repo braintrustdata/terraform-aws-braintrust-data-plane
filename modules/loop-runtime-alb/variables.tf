@@ -10,22 +10,11 @@ variable "vpc_id" {
 
 variable "private_subnet_ids" {
   type        = list(string)
-  description = "Private subnet IDs used when loop_runtime_alb_subnet_ids is empty."
+  description = "Private subnet IDs for the Loop runtime internal ALB."
 
   validation {
     condition     = length(var.private_subnet_ids) >= 2 && length(distinct(var.private_subnet_ids)) == length(var.private_subnet_ids)
     error_message = "private_subnet_ids must contain at least 2 unique subnet IDs."
-  }
-}
-
-variable "loop_runtime_alb_subnet_ids" {
-  type        = list(string)
-  description = "Subnet IDs for the Loop runtime internal ALB. Defaults to private_subnet_ids when empty."
-  default     = []
-
-  validation {
-    condition     = length(var.loop_runtime_alb_subnet_ids) == 0 || (length(var.loop_runtime_alb_subnet_ids) >= 2 && length(distinct(var.loop_runtime_alb_subnet_ids)) == length(var.loop_runtime_alb_subnet_ids))
-    error_message = "loop_runtime_alb_subnet_ids must contain at least 2 unique subnet IDs when set."
   }
 }
 
