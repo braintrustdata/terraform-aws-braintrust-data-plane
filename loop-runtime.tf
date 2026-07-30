@@ -99,6 +99,11 @@ module "loop_runtime_ecs" {
   ai_proxy_url          = local.api_ecs_ai_proxy_url
   braintrust_api_url    = module.ingress[0].api_url
 
+  # Shared Brainstore WAL format + lock prefix — must match the API/Brainstore writers.
+  brainstore_locks_s3_path       = var.brainstore_locks_s3_path
+  brainstore_wal_footer_version  = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects = var.skip_pg_for_brainstore_objects
+
   brainstore_license_key = var.brainstore_license_key
   monitoring_telemetry   = var.monitoring_telemetry
 

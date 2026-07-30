@@ -10,6 +10,24 @@ locals {
   brainstore_s3_bucket     = var.brainstore_s3_bucket_name
   use_object_store_locks   = var.brainstore_object_store_locks
 
+  # Normalize like modules/brainstore-ec2 so Loop uses the deployment's shared
+  # lock prefix (the writers must acquire locks from the same S3 namespace).
+  locks_s3_path = trimprefix(var.brainstore_locks_s3_path, "/")
+
+  # Match the API/Brainstore writers' WAL format so the shared realtime WAL stays
+  # readable by every writer (same derivation as modules/api-ecs & modules/services).
+  brainstore_wal_env = merge(
+    var.brainstore_wal_footer_version != "" ? {
+      BRAINSTORE_WAL_FOOTER_VERSION = var.brainstore_wal_footer_version
+    } : {},
+    var.skip_pg_for_brainstore_objects != "" ? {
+      SKIP_PG_FOR_BRAINSTORE_OBJECTS = var.skip_pg_for_brainstore_objects
+    } : {},
+    (var.brainstore_wal_footer_version != "" || var.skip_pg_for_brainstore_objects != "") ? {
+      BRAINSTORE_WAL_USE_EFFICIENT_FORMAT = "true"
+    } : {},
+  )
+
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes
   # from var.sandbox_env_vars so this module stays sandbox-agnostic.
@@ -37,8 +55,9 @@ locals {
       AWS_REGION                         = data.aws_region.current.region
     },
     local.use_object_store_locks ? {
-      BRAINSTORE_LOCKS_URI = "s3://${local.brainstore_s3_bucket}/brainstore/locks"
+      BRAINSTORE_LOCKS_URI = "s3://${local.brainstore_s3_bucket}/${local.locks_s3_path}"
     } : {},
+    local.brainstore_wal_env,
     trimspace(var.allowed_org_ids) != "" ? {
       ALLOWED_ORG_IDS = var.allowed_org_ids
     } : {},
@@ -404,14 +423,14 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
           {
             Effect   = "Allow"
             Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-            Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/locks/*"]
+            Resource = ["${var.brainstore_s3_bucket_arn}/${local.locks_s3_path}/*"]
           },
           {
             Effect   = "Allow"
             Action   = ["s3:ListBucket"]
             Resource = [var.brainstore_s3_bucket_arn]
             Condition = {
-              StringLike = { "s3:prefix" = ["brainstore/locks/*"] }
+              StringLike = { "s3:prefix" = ["${local.locks_s3_path}/*"] }
             }
           },
         ] : stmt if local.use_object_store_locks

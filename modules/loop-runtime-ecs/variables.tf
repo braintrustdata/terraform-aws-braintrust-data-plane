@@ -216,6 +216,24 @@ variable "brainstore_object_store_locks" {
   default     = true
 }
 
+variable "brainstore_locks_s3_path" {
+  type        = string
+  description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI. Must match the deployment's Brainstore nodes so lock namespaces overlap."
+  default     = "/locks"
+}
+
+variable "brainstore_wal_footer_version" {
+  type        = string
+  description = "WAL footer version for the shared realtime WAL. Must match the API/Brainstore writers. Empty leaves it unset."
+  default     = ""
+}
+
+variable "skip_pg_for_brainstore_objects" {
+  type        = string
+  description = "SKIP_PG_FOR_BRAINSTORE_OBJECTS setting; also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT. Must match the API writers. Empty disables."
+  default     = ""
+}
+
 variable "brainstore_reader_url" {
   type        = string
   description = "URL of the Brainstore reader (LOOP_RUNTIME_BRAINSTORE_READER_URL)."
