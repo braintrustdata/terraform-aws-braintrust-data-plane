@@ -169,7 +169,7 @@ variable "extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
   }
 }
 
@@ -239,10 +239,10 @@ variable "custom_tags" {
   default     = {}
 }
 
-variable "brainstore_license_key" {
+variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "License key for the Brainstore instance. Used for telemetry authorization."
-  default     = null
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key. Empty skips injecting BRAINSTORE_LICENSE_KEY."
+  default     = ""
 }
 
 variable "cpu_architecture" {

@@ -42,10 +42,16 @@ locals {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
     } : {},
   )
-  plain_license_env_var = var.brainstore_license_key == null ? {} : {
-    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-  }
-  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  license_key_enabled = trimspace(var.brainstore_license_key_secret_arn) != ""
+  merged_env_vars     = merge(local.base_env_vars, var.extra_env_vars)
+  gateway_secrets = concat(
+    local.license_key_enabled ? [
+      {
+        name      = "BRAINSTORE_LICENSE_KEY"
+        valueFrom = var.brainstore_license_key_secret_arn
+      }
+    ] : [],
+  )
 
   gateway_container_definition = {
     name      = local.container_name
@@ -64,6 +70,7 @@ locals {
         value = local.merged_env_vars[key]
       }
     ]
+    secrets = local.gateway_secrets
     dependsOn = [
       for dep in [
         {
@@ -244,10 +251,10 @@ resource "aws_iam_role_policy_attachment" "task_execution_default" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-resource "aws_iam_role_policy" "task_execution_observability_secrets" {
-  count = local.observability_enabled ? 1 : 0
+resource "aws_iam_role_policy" "task_execution_secrets" {
+  count = local.observability_enabled || local.license_key_enabled ? 1 : 0
 
-  name = "${var.deployment_name}-gateway-task-exec-observability-secrets"
+  name = "${var.deployment_name}-gateway-task-exec-secrets"
   role = aws_iam_role.task_execution.id
 
   policy = jsonencode({
@@ -258,7 +265,10 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
         Action = [
           "secretsmanager:GetSecretValue",
         ]
-        Resource = var.internal_observability_api_key_secret_arn
+        Resource = compact([
+          local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
+          local.license_key_enabled ? var.brainstore_license_key_secret_arn : "",
+        ])
       },
       {
         Effect = "Allow"

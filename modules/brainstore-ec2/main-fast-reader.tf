@@ -36,35 +36,37 @@ resource "aws_launch_template" "brainstore_fast_reader" {
   }
 
   user_data = base64gzip(templatefile("${path.module}/templates/user_data.sh.tpl", {
-    aws_region                      = data.aws_region.current.region
-    deployment_name                 = var.deployment_name
-    database_secret_arn             = var.database_secret_arn
-    database_host                   = var.database_host
-    database_port                   = var.database_port
-    redis_scheme                    = var.use_redis_replication_group ? "rediss" : "redis"
-    redis_host                      = var.redis_host
-    redis_port                      = var.redis_port
-    brainstore_port                 = var.port
-    brainstore_s3_bucket            = local.brainstore_s3_bucket_id
-    lambda_responses_bucket_id      = local.lambda_responses_bucket_id
-    code_bundle_bucket_id           = local.code_bundle_bucket_id
-    brainstore_locks_s3_path        = trimprefix(var.locks_s3_path, "/")
-    brainstore_license_key          = var.license_key
-    brainstore_version_override     = var.version_override == null ? "" : var.version_override
-    brainstore_release_version      = local.brainstore_release_version
-    monitoring_telemetry            = var.monitoring_telemetry
-    is_dedicated_reader_node        = "true"
-    is_dedicated_writer_node        = "false"
-    extra_env_vars                  = var.extra_env_vars_fast_reader
-    internal_observability_api_key  = var.internal_observability_api_key
-    internal_observability_env_name = var.internal_observability_env_name
-    internal_observability_region   = var.internal_observability_region
-    service_token_secret_arn        = var.service_token_secret_arn
-    custom_post_install_script      = var.custom_post_install_script
-    brainstore_cache_file_size      = local.brainstore_fast_reader_cache_file_size
-    skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-    brainstore_enable_export        = var.brainstore_enable_export
-    ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
+    aws_region                                    = data.aws_region.current.region
+    deployment_name                               = var.deployment_name
+    database_secret_arn                           = var.database_secret_arn
+    database_host                                 = var.database_host
+    database_port                                 = var.database_port
+    redis_scheme                                  = var.use_redis_replication_group ? "rediss" : "redis"
+    redis_host                                    = var.redis_host
+    redis_port                                    = var.redis_port
+    brainstore_port                               = var.port
+    brainstore_s3_bucket                          = local.brainstore_s3_bucket_id
+    lambda_responses_bucket_id                    = local.lambda_responses_bucket_id
+    code_bundle_bucket_id                         = local.code_bundle_bucket_id
+    brainstore_locks_s3_path                      = trimprefix(var.locks_s3_path, "/")
+    license_key_secret_arn                        = var.license_key_secret_arn
+    license_key_secret_version                    = var.license_key_secret_version
+    brainstore_version_override                   = var.version_override == null ? "" : var.version_override
+    brainstore_release_version                    = local.brainstore_release_version
+    monitoring_telemetry                          = var.monitoring_telemetry
+    is_dedicated_reader_node                      = "true"
+    is_dedicated_writer_node                      = "false"
+    extra_env_vars                                = var.extra_env_vars_fast_reader
+    internal_observability_api_key_secret_arn     = var.internal_observability_api_key_secret_arn
+    internal_observability_api_key_secret_version = var.internal_observability_api_key_secret_version
+    internal_observability_env_name               = var.internal_observability_env_name
+    internal_observability_region                 = var.internal_observability_region
+    service_token_secret_arn                      = var.service_token_secret_arn
+    custom_post_install_script                    = var.custom_post_install_script
+    brainstore_cache_file_size                    = local.brainstore_fast_reader_cache_file_size
+    skip_pg_for_brainstore_objects                = var.skip_pg_for_brainstore_objects
+    brainstore_enable_export                      = var.brainstore_enable_export
+    ai_proxy_url_ssm_parameter                    = var.ai_proxy_url_ssm_parameter
   }))
 
   tags = merge({

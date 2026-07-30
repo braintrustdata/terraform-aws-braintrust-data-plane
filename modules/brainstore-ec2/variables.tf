@@ -9,13 +9,18 @@ variable "instance_type" {
   default     = "c8gd.4xlarge"
 }
 
-variable "license_key" {
+variable "license_key_secret_arn" {
   type        = string
-  description = "The license key for the Brainstore"
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key."
   validation {
-    condition     = var.license_key != null && length(var.license_key) > 0
-    error_message = "The license key cannot be empty."
+    condition     = var.license_key_secret_arn != null && length(var.license_key_secret_arn) > 0
+    error_message = "The license key secret ARN cannot be empty."
   }
+}
+
+variable "license_key_secret_version" {
+  type        = string
+  description = "Version ID of the license key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
 }
 
 variable "instance_count" {
@@ -148,9 +153,15 @@ variable "monitoring_telemetry" {
   }
 }
 
-variable "internal_observability_api_key" {
+variable "internal_observability_api_key_secret_arn" {
   type        = string
-  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  description = "ARN of the Secrets Manager secret containing the Datadog API key. Empty disables the Datadog agent on Brainstore instances."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
   default     = ""
 }
 

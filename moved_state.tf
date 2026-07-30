@@ -295,3 +295,10 @@ moved {
   from = module.services_common.aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
 }
+
+# Gateway task-exec secrets policy generalized beyond observability-only.
+# No-op when observability was never enabled (resource absent from state).
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.task_execution_observability_secrets[0]
+  to   = module.gateway_ecs[0].aws_iam_role_policy.task_execution_secrets[0]
+}

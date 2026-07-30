@@ -123,10 +123,12 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
       {
         Effect = "Allow"
         Action = "secretsmanager:GetSecretValue"
-        Resource = [
+        Resource = compact([
           var.database_secret_arn,
-          aws_secretsmanager_secret.function_tools_secret.arn
-        ]
+          aws_secretsmanager_secret.function_tools_secret.arn,
+          var.brainstore_license_key_secret_arn,
+          var.internal_observability_api_key_secret_arn,
+        ])
       }
     ]
   })

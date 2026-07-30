@@ -1111,6 +1111,7 @@ variable "brainstore_license_key" {
   type        = string
   description = "The license key for the Brainstore instance"
   default     = null
+  sensitive   = true
 }
 
 variable "brainstore_version_override" {
@@ -1261,6 +1262,7 @@ variable "internal_observability_api_key" {
   type        = string
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = ""
+  sensitive   = true
 }
 
 variable "internal_observability_env_name" {
