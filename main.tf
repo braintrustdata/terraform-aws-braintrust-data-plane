@@ -60,7 +60,7 @@ locals {
   create_internal_observability_secret = local.enable_internal_observability && (
     local.create_ecs_api || local.create_ai_gateway || local.create_brainstore_ec2
   )
-  brainstore_license_key_provided = trimspace(nonsensitive(coalesce(var.brainstore_license_key, ""))) != ""
+  brainstore_license_key_provided = var.brainstore_license_key == null ? false : trimspace(nonsensitive(var.brainstore_license_key)) != ""
   # Stored in Secrets Manager so Brainstore user_data / gateway task defs never embed the key.
   create_brainstore_license_secret = local.brainstore_license_key_provided && (
     local.create_brainstore_ec2 || local.create_ai_gateway
