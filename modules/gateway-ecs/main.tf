@@ -56,7 +56,8 @@ locals {
   license_key_enabled = var.brainstore_license_key_enabled
   merged_env_vars     = merge(local.base_env_vars, var.extra_env_vars)
   # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
-  # Format: arn:...:secret:name:json-key:version-stage:version-id (empty json-key = full secret string).
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
   gateway_secrets = concat(
     local.license_key_enabled ? [
       {
