@@ -30,6 +30,9 @@ module "braintrust-data-plane" {
   # btql_audit_logs_strict_org_ids      = []
   # btql_audit_logs_best_effort_org_ids = []
 
+  # The optional Loop runtime is disabled by default.
+  enable_loop_runtime = false
+
   ### Postgres configuration
   # Changing this will incur a short downtime.
   postgres_instance_type = "db.r8g.2xlarge"

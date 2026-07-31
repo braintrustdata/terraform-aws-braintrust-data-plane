@@ -40,6 +40,9 @@ module "braintrust-data-plane" {
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
+  # Loop runtime is not supported with external EKS deployments.
+  enable_loop_runtime = false
+
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles
   #enable_eks_pod_identity = true
