@@ -100,7 +100,8 @@ Tool versions are managed via `mise.toml`:
 mise install        # Install terraform, tflint, uv, pre-commit
 mise run setup      # Install pre-commit hooks, init tflint
 mise run lint       # terraform fmt + tflint
-mise run validate   # terraform init + validate (module + production example)
+mise run validate   # terraform init + validate (module + examples)
+mise run test       # terraform test (plan-mode; catches bugs validate cannot)
 ```
 
-Pre-commit hooks and `tflint` run automatically on commit. Run `mise run lint` to check before committing.
+Pre-commit hooks and `tflint` run automatically on commit. Run `mise run lint` to check before committing. Note that `validate` treats input variables as unknown and will not catch plan-time expression bugs (e.g. `coalesce(null, "")`); use `mise run test` for that class of coverage.
