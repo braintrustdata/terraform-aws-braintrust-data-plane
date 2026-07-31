@@ -56,9 +56,10 @@ resource "aws_elasticache_replication_group" "main" {
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = local.elasticache_security_group_ids
 
+  at_rest_encryption_enabled = true
   transit_encryption_enabled = true
   transit_encryption_mode    = "required"
-
+  kms_key_id                 = var.kms_key_arn
   auth_token                 = local.redis_auth_token
   auth_token_update_strategy = var.redis_rg_auth_token_update_strategy
 
