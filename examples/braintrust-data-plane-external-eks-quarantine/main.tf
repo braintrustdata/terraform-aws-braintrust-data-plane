@@ -32,7 +32,9 @@ module "braintrust-data-plane" {
   # for forward compatibility.
   allowed_org_ids = ""
 
-  # Brainstore license key (required)
+  # Optional in external-EKS mode (Brainstore EC2 is not created). Defaults to
+  # null; only needed if you also enable create_ai_gateway (gateway telemetry).
+  # CI validates this example with the key unset to cover that null path.
   brainstore_license_key = var.brainstore_license_key
 
   # Enable external EKS deployment mode

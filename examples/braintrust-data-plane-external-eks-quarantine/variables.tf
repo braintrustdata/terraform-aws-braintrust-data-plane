@@ -1,6 +1,6 @@
 variable "brainstore_license_key" {
-  description = "The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > Data Plane."
+  description = "Optional. Only needed if you enable create_ai_gateway in external-EKS mode (Brainstore EC2 is not created)."
   type        = string
-  # Note: For actual deployments, set this via environment variable or terraform.tfvars
-  # For testing: TF_VAR_brainstore_license_key=dummy terraform validate
+  default     = null
+  sensitive   = true
 }

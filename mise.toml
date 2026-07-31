@@ -14,44 +14,68 @@ precommit = ["pre-commit run --all-files"]
 description = "Validate the Terraform module and example code"
 run = """
 #!/usr/bin/env bash
-set -e
-echo "Validating module"
-terraform init -upgrade
-terraform validate
+set -euo pipefail
 
-echo "Validating example code"
-cd examples/braintrust-data-plane
-# Override the module source to point to the local module.
-# '*_override.tf' is a lesser known native terraform feature
-trap 'rm -f main_override.tf' EXIT
-cat <<EOF> main_override.tf
+validate_example() {
+  local example_dir="$1"
+  local label="$2"
+  echo "Validating ${label}"
+  (
+    cd "${example_dir}"
+    # Override the module source to point to the local module.
+    # '*_override.tf' is a lesser known native terraform feature
+    trap 'rm -f main_override.tf' EXIT
+    cat <<EOF > main_override.tf
 module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
+    terraform init -upgrade
+    terraform validate
+  )
+}
+
+echo "Validating module"
 terraform init -upgrade
 terraform validate
+
+validate_example "examples/braintrust-data-plane" "production example"
+# External-EKS leaves brainstore_license_key unset (root default null). This
+# guards the null-safe license detection path against coalesce-style regressions.
+validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
 """
 
 [tasks.validate-tofu]
 description = "Validate the Terraform module and example code using OpenTofu"
 run = """
 #!/usr/bin/env bash
-set -e
-echo "Validating module with OpenTofu"
-tofu init -upgrade
-tofu validate
+set -euo pipefail
 
-echo "Validating example code with OpenTofu"
-cd examples/braintrust-data-plane
-# Override the module source to point to the local module.
-# '*_override.tf' is a lesser known native terraform feature
-trap 'rm -f main_override.tf' EXIT
-cat <<EOF> main_override.tf
+validate_example() {
+  local example_dir="$1"
+  local label="$2"
+  echo "Validating ${label} with OpenTofu"
+  (
+    cd "${example_dir}"
+    # Override the module source to point to the local module.
+    # '*_override.tf' is a lesser known native terraform feature
+    trap 'rm -f main_override.tf' EXIT
+    cat <<EOF > main_override.tf
 module "braintrust-data-plane" {
   source = "../../"
 }
 EOF
+    tofu init -upgrade
+    tofu validate
+  )
+}
+
+echo "Validating module with OpenTofu"
 tofu init -upgrade
 tofu validate
+
+validate_example "examples/braintrust-data-plane" "production example"
+# External-EKS leaves brainstore_license_key unset (root default null). This
+# guards the null-safe license detection path against coalesce-style regressions.
+validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
 """
