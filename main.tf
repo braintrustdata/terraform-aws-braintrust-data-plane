@@ -638,4 +638,8 @@ module "brainstore" {
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
   locks_s3_path              = var.brainstore_locks_s3_path
+
+  # Ensure brainstore IAM GetSecretValue grants (license / observability / etc.)
+  # are applied before launch templates that fetch those secrets in user_data.
+  depends_on = [module.services_common]
 }

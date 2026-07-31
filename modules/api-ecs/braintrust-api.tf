@@ -18,6 +18,9 @@ resource "aws_ecs_task_definition" "braintrust_api" {
 
   container_definitions = local.api_container_definitions[local.braintrust_api_name]
 
+  # Ensure GetSecretValue is granted before a revision that references secrets is registered.
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
+
   tags = merge({
     Name = "${var.deployment_name}-${local.braintrust_api_name}"
   }, local.common_tags)
@@ -69,7 +72,11 @@ resource "aws_ecs_service" "braintrust_api" {
 
   # The listener default action associates this target group with the ALB,
   # which ECS requires before CreateService will attach the service.
-  depends_on = [aws_lb_listener.api_ecs_http]
+  # Also wait for task-exec secret IAM before rolling tasks that resolve secrets.
+  depends_on = [
+    aws_lb_listener.api_ecs_http,
+    aws_iam_role_policy.task_execution_secrets,
+  ]
 
   lifecycle {
     create_before_destroy = false

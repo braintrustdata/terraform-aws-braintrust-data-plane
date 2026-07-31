@@ -338,6 +338,9 @@ resource "aws_ecs_task_definition" "gateway" {
 
   container_definitions = jsonencode(concat([local.gateway_container_definition], local.observability_sidecars))
 
+  # Ensure GetSecretValue is granted before a revision that references secrets is registered.
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
+
   tags = merge({
     Name = "${var.deployment_name}-gateway"
   }, local.common_tags)
@@ -388,7 +391,12 @@ resource "aws_ecs_service" "gateway" {
     container_port   = local.container_port
   }
 
-  depends_on = [terraform_data.gateway_http_listener]
+  # Wait for listener readiness and for task-exec secret IAM before rolling tasks
+  # that resolve BRAINSTORE_LICENSE_KEY / DD_API_KEY from Secrets Manager.
+  depends_on = [
+    terraform_data.gateway_http_listener,
+    aws_iam_role_policy.task_execution_secrets,
+  ]
 
   lifecycle {
     ignore_changes = [desired_count]
