@@ -39,6 +39,16 @@ allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000
 
 `allowed_org_ids` is a comma-separated list of Braintrust Org IDs, not org names. Do not include spaces. You can find an org ID by hovering over the org name in the Braintrust UI. If you keep `braintrust_org_name` set to a specific org name for compatibility, that org is allowed by name today; include its Braintrust Org ID in `allowed_org_ids` for forward compatibility. `braintrust_org_name` remains supported for compatibility, but Braintrust plans to move toward ID-based configuration.
 
+### Elasticache for Redis resources
+
+This module supports both `aws_elasticache_cluster` (legacy) and `aws_elasticache_replication_group` resource for deploying Elasticache for Redis. The default deploys `aws_elasticache_cluster` to prevent accidental resource replacement on existing deployments. Stronger security defaults are available with `aws_elasticache_replication_group`.
+
+Encryption in transit and at rest, as well as auth token support, are available by setting `use_redis_replication_group` to `true` in the module invocation. **This is safe for new deployments.** Setting `use_redis_replication_group` to `true` on an existing deployment will replace the `aws_elasticache_cluster` with an `aws_elasticache_replication_group`. This should be considered a downtime event.
+
+#### Redis auth token management
+
+When the `use_redis_replication_group` is initially deployed, a random auth token is generated and stored in AWS Secrets Manager. The initial auth token strategy is `SET`; the new token is immediately enforced. If the auth token needs to be rotated, set `redis_rg_auth_token_update_strategy` to `ROTATE` in the module invocation, deploy, and rotate the token. Once the token is rotated, set `redis_rg_auth_token_update_strategy` back to `SET` to enforce the new token.
+
 ### BTQL audit logging
 
 BTQL `query.read` audit logging is disabled by default. Enable it for specific Braintrust Org IDs with either strict or best-effort mode. The two modes are mutually exclusive.
