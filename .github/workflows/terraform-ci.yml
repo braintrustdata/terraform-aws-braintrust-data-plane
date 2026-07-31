@@ -32,3 +32,6 @@ jobs:
 
       - name: Run tests with Terraform
         run: mise run test
+
+      - name: Run tests with OpenTofu
+        run: mise run test-tofu
