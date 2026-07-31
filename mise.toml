@@ -40,8 +40,10 @@ terraform init -upgrade
 terraform validate
 
 validate_example "examples/braintrust-data-plane" "production example"
-# External-EKS leaves brainstore_license_key unset (root default null). This
-# guards the null-safe license detection path against coalesce-style regressions.
+# External-EKS leaves brainstore_license_key unset (null default). `validate`
+# catches syntax/type/reference mistakes on that wiring; it does NOT evaluate
+# locals, so it cannot catch coalesce-on-null style bugs. Plan-mode coverage
+# for that is tracked in the follow-up terraform test PR.
 validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
 """
 
@@ -75,7 +77,9 @@ tofu init -upgrade
 tofu validate
 
 validate_example "examples/braintrust-data-plane" "production example"
-# External-EKS leaves brainstore_license_key unset (root default null). This
-# guards the null-safe license detection path against coalesce-style regressions.
+# External-EKS leaves brainstore_license_key unset (null default). `validate`
+# catches syntax/type/reference mistakes on that wiring; it does NOT evaluate
+# locals, so it cannot catch coalesce-on-null style bugs. Plan-mode coverage
+# for that is tracked in the follow-up terraform test PR.
 validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
 """

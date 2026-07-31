@@ -34,7 +34,10 @@ module "braintrust-data-plane" {
 
   # Optional in external-EKS mode (Brainstore EC2 is not created). Defaults to
   # null; only needed if you also enable create_ai_gateway (gateway telemetry).
-  # CI validates this example with the key unset to cover that null path.
+  # CI runs `validate` on this example with the key unset (null default),
+  # exercising null-default wiring for syntax/type/reference errors. Note:
+  # `validate` does NOT catch eval-time errors (e.g. coalesce-on-null) — a
+  # `terraform test` (command=plan) guard for that is tracked separately.
   brainstore_license_key = var.brainstore_license_key
 
   # Enable external EKS deployment mode
