@@ -92,13 +92,18 @@ locals {
     data.aws_availability_zones.available.names,
     data.aws_availability_zones.available.zone_ids,
   )
+  # lookup() so a mistyped/out-of-region AZ name fails closed (omit subnet) instead
+  # of a cryptic Invalid index; precondition below still requires ≥2 supported subnets.
+  private_subnet_1_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_1_az, null)
+  private_subnet_2_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_2_az, null)
+  private_subnet_3_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_3_az, null)
   # Subnets in CloudFront VPC-origin-supported AZs. Used by any ALB that backs
   # a CloudFront VPC origin (API ECS always; private gateway when enabled).
   # create_vpc path filters by known AZ locals; existing-VPC path uses subnet data.
   cloudfront_vpc_origin_safe_subnet_ids = var.create_vpc ? compact([
-    contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_1_az]) ? null : local.main_vpc_private_subnet_1_id,
-    contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_2_az]) ? null : local.main_vpc_private_subnet_2_id,
-    contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.availability_zone_id_by_name[local.private_subnet_3_az]) ? null : local.main_vpc_private_subnet_3_id,
+    local.private_subnet_1_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_1_zone_id) ? null : local.main_vpc_private_subnet_1_id,
+    local.private_subnet_2_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_2_zone_id) ? null : local.main_vpc_private_subnet_2_id,
+    local.private_subnet_3_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_3_zone_id) ? null : local.main_vpc_private_subnet_3_id,
     ]) : [
     for subnet_id in local.main_vpc_private_subnet_ids :
     subnet_id if !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private[subnet_id].availability_zone_id)
