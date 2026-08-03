@@ -2,9 +2,9 @@
 # private gateway ALB without VPC peering.
 #
 # Provider (main VPC): internal NLB → target_type=alb (gateway ALB) → VPC
-# endpoint service (acceptance_required=false for same-account).
-# Consumer (quarantine VPC): interface VPC endpoint → QUARANTINE_PROXY_URL
-# uses http://<vpce-dns>/v1/proxy.
+# endpoint service (acceptance_required=false for same-account) + allowed
+# principal for this account root. Consumer (quarantine VPC): interface VPC
+# endpoint → QUARANTINE_PROXY_URL uses http://<vpce-dns>/v1/proxy.
 #
 # Only when use_private_gateway_quarantine_proxy wires to the private gateway
 # and both VPCs are module-managed (create_vpc + module quarantine). Existing
@@ -28,7 +28,7 @@ resource "aws_security_group" "gateway_quarantine_privatelink_nlb" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl-nlb"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 # No broad 0.0.0.0/0 :80 ingress on the NLB SG. PrivateLink consumer traffic is
@@ -48,7 +48,7 @@ resource "aws_vpc_security_group_egress_rule" "gateway_quarantine_privatelink_nl
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl-nlb-to-alb"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "gateway_alb_from_quarantine_privatelink_nlb" {
@@ -63,7 +63,7 @@ resource "aws_vpc_security_group_ingress_rule" "gateway_alb_from_quarantine_priv
 
   tags = merge({
     Name = "${var.deployment_name}-gateway-alb-from-gw-q-pl-nlb"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_lb" "gateway_quarantine_privatelink" {
@@ -79,7 +79,7 @@ resource "aws_lb" "gateway_quarantine_privatelink" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_lb_target_group" "gateway_quarantine_privatelink_alb" {
@@ -100,7 +100,7 @@ resource "aws_lb_target_group" "gateway_quarantine_privatelink_alb" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl-alb"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_lb_target_group_attachment" "gateway_quarantine_privatelink_alb" {
@@ -132,7 +132,16 @@ resource "aws_vpc_endpoint_service" "gateway_quarantine" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
+}
+
+# Same-account consumers still need an allowed principal; acceptance_required=false
+# only skips manual acceptance after discoverability is granted.
+resource "aws_vpc_endpoint_service_allowed_principal" "gateway_quarantine_current_account" {
+  count = local.create_quarantine_gateway_privatelink ? 1 : 0
+
+  vpc_endpoint_service_id = aws_vpc_endpoint_service.gateway_quarantine[0].id
+  principal_arn           = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
 }
 
 resource "aws_security_group" "quarantine_gateway_privatelink_endpoint" {
@@ -144,7 +153,7 @@ resource "aws_security_group" "quarantine_gateway_privatelink_endpoint" {
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl-vpce"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "quarantine_gateway_privatelink_endpoint_http" {
@@ -159,7 +168,7 @@ resource "aws_vpc_security_group_ingress_rule" "quarantine_gateway_privatelink_e
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl-vpce-http"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_vpc_security_group_egress_rule" "quarantine_gateway_privatelink_endpoint_all" {
@@ -172,7 +181,7 @@ resource "aws_vpc_security_group_egress_rule" "quarantine_gateway_privatelink_en
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl-vpce-egress"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
 
 resource "aws_vpc_endpoint" "quarantine_gateway" {
@@ -189,7 +198,10 @@ resource "aws_vpc_endpoint" "quarantine_gateway" {
   ]
   security_group_ids = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
 
+  # Ensure the account root is allow-listed before the consumer VPCE is created.
+  depends_on = [aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account]
+
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl"
-  }, var.custom_tags)
+  }, local.all_custom_tags)
 }
