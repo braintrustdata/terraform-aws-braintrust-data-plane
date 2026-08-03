@@ -632,8 +632,32 @@ variable "url_security_allow_cidrs" {
 
 variable "extra_env_vars" {
   type        = map(string)
-  description = "Extra environment variables to inject into the API ECS container."
+  description = "Extra non-secret environment variables to inject into the API ECS container. Use extra_secrets for Secrets Manager ARNs."
   default     = {}
+
+  validation {
+    condition = length(setintersection(keys(var.extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in extra_env_vars. Use extra_secrets (ARN valueFrom) instead."
+  }
+}
+
+variable "extra_secrets" {
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  description = "Extra ECS secrets for the API containers (name + Secrets Manager valueFrom ARN, optionally ARN:::version-id)."
+  default     = []
 }
 
 variable "authorized_security_groups" {

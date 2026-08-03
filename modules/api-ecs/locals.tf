@@ -115,6 +115,30 @@ locals {
 
   merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
+  # Strip optional :json-key:version-stage:version-id from ECS valueFrom for IAM Resources.
+  extra_secret_arns = [
+    for s in var.extra_secrets : regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom)
+  ]
+
+  builtin_secrets = [
+    {
+      name      = "FUNCTION_SECRET_KEY"
+      valueFrom = var.function_tools_secret_arn
+    },
+    {
+      name      = "PG_URL"
+      valueFrom = var.database_url_secret_arn
+    },
+    {
+      name      = "REDIS_URL"
+      valueFrom = var.redis_url_secret_arn
+    },
+    {
+      name      = "SERVICE_TOKEN_SECRET_KEY"
+      valueFrom = var.function_tools_secret_arn
+    }
+  ]
+
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
   api_log_group_names = {
@@ -158,24 +182,7 @@ locals {
         protocol      = "tcp"
       }
     ]
-    secrets = [
-      {
-        name      = "FUNCTION_SECRET_KEY"
-        valueFrom = var.function_tools_secret_arn
-      },
-      {
-        name      = "PG_URL"
-        valueFrom = var.database_url_secret_arn
-      },
-      {
-        name      = "REDIS_URL"
-        valueFrom = var.redis_url_secret_arn
-      },
-      {
-        name      = "SERVICE_TOKEN_SECRET_KEY"
-        valueFrom = var.function_tools_secret_arn
-      }
-    ]
+    secrets = concat(local.builtin_secrets, var.extra_secrets)
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval    = 30
