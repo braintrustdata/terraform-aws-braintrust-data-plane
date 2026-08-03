@@ -143,6 +143,30 @@ locals {
 
   merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
 
+  # Strip optional :json-key:version-stage:version-id from ECS valueFrom for IAM Resources.
+  extra_secret_arns = [
+    for s in var.extra_secrets : regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom)
+  ]
+
+  builtin_secrets = [
+    {
+      name      = "FUNCTION_SECRET_KEY"
+      valueFrom = var.function_tools_secret_arn
+    },
+    {
+      name      = "PG_URL"
+      valueFrom = var.database_url_secret_arn
+    },
+    {
+      name      = "REDIS_URL"
+      valueFrom = var.redis_url_secret_arn
+    },
+    {
+      name      = "SERVICE_TOKEN_SECRET_KEY"
+      valueFrom = var.function_tools_secret_arn
+    }
+  ]
+
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
   api_log_group_names = {
@@ -189,30 +213,14 @@ locals {
       }
     ]
     secrets = concat(
-      [
-        {
-          name      = "FUNCTION_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
-        },
-        {
-          name      = "PG_URL"
-          valueFrom = var.database_url_secret_arn
-        },
-        {
-          name      = "REDIS_URL"
-          valueFrom = var.redis_url_secret_arn
-        },
-        {
-          name      = "SERVICE_TOKEN_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
-        }
-      ],
+      local.builtin_secrets,
       var.custom_ca_bundle_secret_arn == null ? [] : [
         {
           name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
           valueFrom = var.custom_ca_bundle_secret_arn
         }
       ],
+      var.extra_secrets,
     )
     healthCheck = {
       command = [
