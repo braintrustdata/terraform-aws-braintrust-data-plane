@@ -31,20 +31,10 @@ resource "aws_security_group" "gateway_quarantine_privatelink_nlb" {
   }, var.custom_tags)
 }
 
-resource "aws_vpc_security_group_ingress_rule" "gateway_quarantine_privatelink_nlb_http" {
-  count = local.create_quarantine_gateway_privatelink ? 1 : 0
-
-  security_group_id = aws_security_group.gateway_quarantine_privatelink_nlb[0].id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 80
-  to_port           = 80
-  ip_protocol       = "tcp"
-  description       = "Allow HTTP from PrivateLink endpoint consumers."
-
-  tags = merge({
-    Name = "${var.deployment_name}-gw-q-pl-nlb-http"
-  }, var.custom_tags)
-}
+# No broad 0.0.0.0/0 :80 ingress on the NLB SG. PrivateLink consumer traffic is
+# admitted because enforce_security_group_inbound_rules_on_private_link_traffic
+# is "off" on the NLB (AWS endpoint-service pattern; consumer source IPs are not
+# usefully matchable via NLB SG rules). Egress below still scopes NLB→ALB to :80.
 
 resource "aws_vpc_security_group_egress_rule" "gateway_quarantine_privatelink_nlb_to_alb" {
   count = local.create_quarantine_gateway_privatelink ? 1 : 0
@@ -79,10 +69,11 @@ resource "aws_vpc_security_group_ingress_rule" "gateway_alb_from_quarantine_priv
 resource "aws_lb" "gateway_quarantine_privatelink" {
   count = local.create_quarantine_gateway_privatelink ? 1 : 0
 
-  name                                                         = "${var.deployment_name}-gw-q-pl"
-  internal                                                     = true
-  load_balancer_type                                           = "network"
-  security_groups                                              = [aws_security_group.gateway_quarantine_privatelink_nlb[0].id]
+  name               = "${var.deployment_name}-gw-q-pl"
+  internal           = true
+  load_balancer_type = "network"
+  security_groups    = [aws_security_group.gateway_quarantine_privatelink_nlb[0].id]
+  # PrivateLink traffic bypasses NLB SG evaluation; see comment above the NLB SG.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
   subnets                                                      = local.main_vpc_private_subnet_ids
 

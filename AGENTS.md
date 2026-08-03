@@ -124,6 +124,10 @@ Clones the Netflix NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
 2. **Consumer (quarantine VPC)**: interface VPC endpoint in quarantine
    private subnets; endpoint SG allows the quarantine Lambda SG on **:80**.
 3. **URL**: `http://<vpce-dns>/v1/proxy` (VPCE DNS, not gateway ALB DNS).
+   Plain HTTP on this hop is intentional: traffic stays inside AWS PrivateLink
+   (quarantine VPCE → NLB → gateway ALB) and never crosses the public internet.
+   TLS would require certs on the private ALB/NLB path without a customer DNS
+   name; HTTP matches the private-ALB pattern used elsewhere in this module.
 
 Automated only for **module-managed** main + quarantine VPCs
 (`create_vpc` and `enable_quarantine_vpc` without `existing_quarantine_vpc_id`).

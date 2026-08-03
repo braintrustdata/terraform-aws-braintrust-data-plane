@@ -415,9 +415,8 @@ module "api_ecs" {
   source = "./modules/api-ecs"
   count  = local.create_ecs_api ? 1 : 0
 
-  deployment_name            = var.deployment_name
-  container_image_repository = var.braintrust_api_container_image_repository != null ? var.braintrust_api_container_image_repository : "public.ecr.aws/braintrust/standalone-api"
-  api_version_override       = var.braintrust_api_version_override
+  deployment_name      = var.deployment_name
+  api_version_override = var.braintrust_api_version_override
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry

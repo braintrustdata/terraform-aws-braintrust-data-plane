@@ -62,7 +62,7 @@ output "http_url" {
 }
 
 output "quarantine_proxy_url" {
-  description = "Effective QUARANTINE_PROXY_URL baked into API ECS task env."
+  description = "Effective QUARANTINE_PROXY_URL on API ECS when set; null when the env var is omitted."
   value       = local.quarantine_proxy_url
 }
 

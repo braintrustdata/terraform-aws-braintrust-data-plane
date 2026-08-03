@@ -38,6 +38,11 @@ output "main_vpc_public_route_table_id" {
   description = "ID of the public route table in the main VPC (null when using existing VPC)"
 }
 
+output "main_vpc_private_route_table_id" {
+  value       = var.create_vpc ? module.main_vpc[0].private_route_table_id : null
+  description = "ID of the private route table in the main VPC (null when using existing VPC)"
+}
+
 output "quarantine_gateway_privatelink_service_name" {
   value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
   description = "VPC endpoint service name for quarantine→private gateway PrivateLink (null unless use_private_gateway_quarantine_proxy with module-managed VPCs). Use this to attach a manual interface endpoint when using existing_vpc / existing_quarantine_vpc_id."
