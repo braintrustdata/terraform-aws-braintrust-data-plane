@@ -201,7 +201,7 @@ variable "enable_quarantine_vpc" {
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"
-  description = "CIDR block for the Quarantined VPC. Used when creating a new quarantine VPC, and as the gateway ALB ingress source when quarantine + private gateway are enabled (set to the real CIDR when using existing_quarantine_vpc_id)."
+  description = "CIDR block for the Quarantined VPC. Used when creating a new quarantine VPC. When using existing_quarantine_vpc_id, set this to the real quarantine CIDR for documentation/ops clarity; PrivateLink quarantine→gateway does not open the gateway ALB to this CIDR (NLB SG only)."
 }
 
 # Existing Quarantine VPC variables (when provided, uses existing VPC instead of creating one)
