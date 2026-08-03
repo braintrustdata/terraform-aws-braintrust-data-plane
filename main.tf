@@ -383,6 +383,7 @@ module "gateway_ecs" {
   alb_security_group_id                 = module.gateway_alb[0].gateway_alb_security_group_id
   gateway_http_listener_arn             = module.gateway_alb[0].gateway_http_listener_arn
   extra_env_vars                        = var.ai_gateway_extra_env_vars
+  extra_secrets                         = var.ai_gateway_extra_secrets
   custom_tags                           = local.all_custom_tags
   brainstore_license_key_enabled        = local.create_brainstore_license_secret
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
@@ -477,6 +478,7 @@ module "api_ecs" {
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
   extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars)
+  extra_secrets                                                = var.braintrust_api_extra_secrets
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc

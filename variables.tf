@@ -520,14 +520,33 @@ variable "ai_gateway_alb_drop_invalid_header_fields" {
 }
 
 variable "ai_gateway_extra_env_vars" {
-  description = "Extra environment variables for the gateway ECS container"
+  description = "Extra non-secret environment variables for the gateway ECS container. Do not put secret values here — use ai_gateway_extra_secrets with Secrets Manager ARNs."
   type        = map(string)
   default     = {}
 
   validation {
-    condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key."
+    condition = length(setintersection(keys(var.ai_gateway_extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in ai_gateway_extra_env_vars. Use ai_gateway_extra_secrets (ARN valueFrom) for consumer secrets, or brainstore_license_key for the Brainstore license."
   }
+}
+
+variable "ai_gateway_extra_secrets" {
+  description = "Extra ECS secrets for the gateway container. Each entry is injected via Secrets Manager (name + valueFrom ARN, optionally ARN:::version-id). Never pass secret_string values here."
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
 }
 
 variable "ai_gateway_cpu_architecture" {
@@ -834,9 +853,33 @@ variable "braintrust_api_background_event_loop_delay_autoscaling" {
 }
 
 variable "braintrust_api_extra_env_vars" {
-  description = "Extra environment variables for the API ECS container."
+  description = "Extra non-secret environment variables for the API ECS container. Do not put secret values here — use braintrust_api_extra_secrets with Secrets Manager ARNs."
   type        = map(string)
   default     = {}
+
+  validation {
+    condition = length(setintersection(keys(var.braintrust_api_extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in braintrust_api_extra_env_vars. Use braintrust_api_extra_secrets (ARN valueFrom) instead."
+  }
+}
+
+variable "braintrust_api_extra_secrets" {
+  description = "Extra ECS secrets for the API ECS containers. Each entry is injected via Secrets Manager (name + valueFrom ARN, optionally ARN:::version-id). Never pass secret_string values here."
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
 }
 
 variable "braintrust_api_authorized_security_groups" {

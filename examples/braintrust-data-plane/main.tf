@@ -145,6 +145,25 @@ module "braintrust-data-plane" {
   #   AutomationCron           = {}
   # }
 
+  # Non-secret env only. Put Secrets Manager ARNs in *_extra_secrets — never secret_string.
+  # ai_gateway_extra_env_vars = {
+  #   NATIVE_INFERENCE_ENVIRONMENT = "eu"
+  # }
+  # ai_gateway_extra_secrets = [
+  #   {
+  #     name      = "NATIVE_INFERENCE_SECRET_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:native-inference"
+  #     # Or pin a version to force an ECS rollout on rotate:
+  #     # valueFrom = "arn:aws:secretsmanager:...:secret:native-inference:::01234567-89ab-cdef-0123-456789abcdef"
+  #   }
+  # ]
+  # braintrust_api_extra_secrets = [
+  #   {
+  #     name      = "LAUNCHDARKLY_SDK_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:launchdarkly"
+  #   }
+  # ]
+
 
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
