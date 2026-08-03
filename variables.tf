@@ -578,7 +578,7 @@ variable "braintrust_api_container_image_repository" {
   default     = null
 
   validation {
-    condition     = var.braintrust_api_container_image_repository == null || trimspace(var.braintrust_api_container_image_repository) != ""
+    condition     = var.braintrust_api_container_image_repository == null ? true : trimspace(var.braintrust_api_container_image_repository) != ""
     error_message = "braintrust_api_container_image_repository must be null or a non-empty string."
   }
 }
