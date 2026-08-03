@@ -109,6 +109,10 @@ resource "aws_lb_target_group_attachment" "gateway_quarantine_privatelink_alb" {
   target_group_arn = aws_lb_target_group.gateway_quarantine_privatelink_alb[0].arn
   target_id        = module.gateway_alb[0].gateway_alb_arn
   port             = 80
+
+  # ALB must have a listener before NLB alb-target registration (same ordering
+  # concern as gateway-ecs waiting on the HTTP listener).
+  depends_on = [module.gateway_alb]
 }
 
 resource "aws_lb_listener" "gateway_quarantine_privatelink_http" {
