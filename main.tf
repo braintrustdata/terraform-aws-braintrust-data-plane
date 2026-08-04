@@ -394,6 +394,7 @@ module "api_ecs" {
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
+  brainstore_license_key                        = var.brainstore_license_key
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region

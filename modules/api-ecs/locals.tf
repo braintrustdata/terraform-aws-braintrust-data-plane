@@ -108,7 +108,17 @@ locals {
     } : {},
   )
 
-  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
+  # The license key authorizes the API's OTLP metrics export to Braintrust's
+  # telemetry endpoint. Without it the exporter is never constructed, so the
+  # per-project usage metrics (api.log_data.*) never leave the data plane, even
+  # when monitoring_telemetry includes "metrics".
+  plain_license_env_var = var.brainstore_license_key == null ? {} : {
+    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
+  }
+
+  # extra_env_vars is merged last so deployments that already set
+  # BRAINSTORE_LICENSE_KEY there keep working unchanged.
+  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
 
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 

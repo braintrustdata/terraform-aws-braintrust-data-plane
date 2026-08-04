@@ -696,3 +696,9 @@ variable "task_security_group_id" {
   type        = string
   description = "Security group ID to attach to API ECS tasks."
 }
+
+variable "brainstore_license_key" {
+  type        = string
+  description = "License key for the Brainstore instance. Used for telemetry authorization."
+  default     = null
+}
