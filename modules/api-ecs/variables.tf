@@ -622,6 +622,11 @@ variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the API ECS container."
   default     = {}
+
+  validation {
+    condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+  }
 }
 
 variable "brainstore_license_key" {
