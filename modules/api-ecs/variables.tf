@@ -624,6 +624,12 @@ variable "extra_env_vars" {
   default     = {}
 }
 
+variable "brainstore_license_key" {
+  type        = string
+  description = "License key for the Brainstore instance. Passed to the API container for telemetry authorization and status/metrics reporting."
+  default     = null
+}
+
 variable "authorized_security_groups" {
   type        = map(string)
   description = "Map of security group names to IDs authorized to access the API ECS ALB."

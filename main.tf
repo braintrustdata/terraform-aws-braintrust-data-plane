@@ -414,6 +414,7 @@ module "api_ecs" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
   brainstore_enable_export        = var.brainstore_enable_export
+  brainstore_license_key          = var.brainstore_license_key
 
   # Storage
   code_bundle_bucket = module.storage.code_bundle_bucket_id
