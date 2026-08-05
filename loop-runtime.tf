@@ -26,8 +26,7 @@ module "loop_runtime_alb" {
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
   enable_cloudfront_vpc_origin_ingress = true
   authorized_security_groups = {
-    "API"        = module.services_common.api_security_group_id
-    "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    "API" = module.services_common.api_security_group_id
   }
   alb_deregistration_delay = var.loop_runtime_alb_deregistration_delay
   custom_tags              = local.all_custom_tags

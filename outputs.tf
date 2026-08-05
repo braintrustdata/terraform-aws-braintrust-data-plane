@@ -143,6 +143,16 @@ output "api_ecs_task_security_group_id" {
   description = "ID of the security group for API ECS tasks"
 }
 
+output "loop_runtime_url" {
+  value       = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_url : null
+  description = "Private in-VPC URL of the Loop runtime ALB"
+}
+
+output "loop_runtime_microvm_image_arn" {
+  value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
+  description = "ARN of the Loop runtime sandbox MicroVM image"
+}
+
 output "postgres_database_identifier" {
   value       = module.database.postgres_database_identifier
   description = "Identifier of the main Braintrust Postgres database"
