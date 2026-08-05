@@ -57,6 +57,12 @@ variable "gateway_cloudfront_ingress_rule_id" {
   default     = null
 }
 
+variable "gateway_alb_subnets_applied" {
+  description = "Fingerprint of gateway ALB subnet membership after aws_lb apply. VPC origin resources reference this so origin create waits for ALB subnet shrinks."
+  type        = string
+  default     = null
+}
+
 variable "global_ai_gateway_origin_domain" {
   description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled"
   type        = string
@@ -92,6 +98,11 @@ variable "api_ecs_alb_domain" {
 variable "api_ecs_alb_https_enabled" {
   description = "Whether the API ECS ALB serves HTTPS. When true, CloudFront connects to the ALB origin over HTTPS; otherwise it connects over HTTP."
   type        = bool
+}
+
+variable "api_ecs_alb_subnets_applied" {
+  description = "Fingerprint of API ECS ALB subnet membership after aws_lb apply. VPC origin resources reference this so origin create waits for ALB subnet shrinks."
+  type        = string
 }
 
 variable "cloudfront_price_class" {

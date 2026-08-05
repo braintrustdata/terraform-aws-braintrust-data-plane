@@ -37,3 +37,8 @@ output "gateway_alb_subnet_ids" {
   description = "Subnet IDs attached to the private gateway ALB."
   value       = local.gateway_alb_subnet_ids
 }
+
+output "alb_subnets_applied" {
+  description = "Sorted comma-joined subnet IDs actually attached to the gateway ALB (after apply). Used to order CloudFront VPC origin create/update after ALB subnet shrinks."
+  value       = terraform_data.alb_subnets_applied.output
+}
