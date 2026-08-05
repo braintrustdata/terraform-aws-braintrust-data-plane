@@ -17,7 +17,7 @@ locals {
     } : {}
   )
   redis_extra_env_vars = var.use_redis_replication_group ? {
-    REDIS_URL = "rediss://${var.redis_host}:${var.redis_port}"
+    REDIS_URL = local.redis_url
   } : {}
 
   # Shared between the AI Proxy and API Handler

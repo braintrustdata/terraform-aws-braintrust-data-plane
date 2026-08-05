@@ -35,7 +35,7 @@ resource "aws_lambda_function" "automation_cron" {
       PG_URL                                    = local.postgres_url
       REDIS_HOST                                = var.redis_host
       REDIS_PORT                                = var.redis_port
-      REDIS_URL                                 = "redis://${var.redis_host}:${var.redis_port}"
+      REDIS_URL                                 = local.redis_url
       BRAINSTORE_ENABLED                        = var.brainstore_enabled
       BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = var.brainstore_etl_batch_size
       BRAINSTORE_BACKFILL_ENABLE_NONHISTORICAL  = var.brainstore_default
