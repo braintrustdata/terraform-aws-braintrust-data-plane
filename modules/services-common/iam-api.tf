@@ -133,8 +133,14 @@ resource "aws_iam_policy" "api_handler_policy" {
           }
         },
         {
-          Sid    = "S3Access"
-          Action = "s3:*"
+          Sid = "S3Access"
+          Action = [
+            "s3:AbortMultipartUpload",
+            "s3:Get*",
+            "s3:PutObject*",
+            "s3:List*",
+            "s3:DeleteObject*"
+          ]
           Effect = "Allow"
           Resource = concat([
             var.lambda_responses_s3_bucket_arn,
