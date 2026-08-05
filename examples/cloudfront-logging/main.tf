@@ -11,7 +11,8 @@ module "braintrust-data-plane" {
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime = false
+  enable_loop_runtime              = false
+  loop_runtime_sandbox_egress_mode = "internet"
 
   # Optional URL-security inputs are shown in examples/braintrust-data-plane/main.tf.
 }

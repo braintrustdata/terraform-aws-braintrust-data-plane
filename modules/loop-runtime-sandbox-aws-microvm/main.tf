@@ -20,7 +20,13 @@ locals {
   managed_ingress_connector_arn = "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:ALL_INGRESS"
   managed_egress_connector_arn  = "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:INTERNET_EGRESS"
   ingress_connector_arns        = length(var.ingress_network_connector_arns) > 0 ? var.ingress_network_connector_arns : [local.managed_ingress_connector_arn]
-  egress_connector_arns         = length(var.egress_network_connector_arns) > 0 ? var.egress_network_connector_arns : [local.managed_egress_connector_arn]
+
+  # Match CloudFormation's fail-closed behavior: only the exact value
+  # "internet" permits public Internet egress from sandbox MicroVMs.
+  use_restricted_egress = var.sandbox_egress_mode != "internet"
+  egress_connector_arns = local.use_restricted_egress ? [
+    aws_cloudformation_stack.restricted_egress_connector[0].outputs["NetworkConnectorArn"]
+  ] : [local.managed_egress_connector_arn]
 
   # Resolve the content-addressed artifact key from the published version pointer
   # (same convention as modules/services lambda zips).
@@ -130,6 +136,188 @@ data "aws_iam_policy_document" "microvm_build_assume_role" {
       identifiers = ["lambda.amazonaws.com"]
     }
   }
+}
+
+data "aws_iam_policy_document" "network_connector_operator_assume_role" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_availability_zones" "available" {
+  count = local.use_restricted_egress ? 1 : 0
+  state = "available"
+}
+
+resource "aws_vpc" "restricted_egress" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  cidr_block           = "10.255.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-runtime-restricted-egress"
+  }, local.common_tags)
+}
+
+resource "aws_route_table" "restricted_egress" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  vpc_id = aws_vpc.restricted_egress[0].id
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-runtime-restricted-egress"
+  }, local.common_tags)
+}
+
+resource "aws_subnet" "restricted_egress" {
+  count = local.use_restricted_egress ? 3 : 0
+
+  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
+  cidr_block              = "10.255.${count.index + 1}.0/24"
+  map_public_ip_on_launch = false
+  vpc_id                  = aws_vpc.restricted_egress[0].id
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-runtime-restricted-egress-subnet-${count.index + 1}"
+  }, local.common_tags)
+}
+
+resource "aws_route_table_association" "restricted_egress" {
+  count = local.use_restricted_egress ? 3 : 0
+
+  route_table_id = aws_route_table.restricted_egress[0].id
+  subnet_id      = aws_subnet.restricted_egress[count.index].id
+}
+
+resource "aws_route53_resolver_firewall_domain_list" "restricted_egress" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  domains = ["*"]
+  name    = "bt-loop-${var.deployment_name}-dns-domains"
+  tags    = local.common_tags
+}
+
+resource "aws_route53_resolver_firewall_rule_group" "restricted_egress" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  name = "bt-loop-${var.deployment_name}-dns-rules"
+  tags = local.common_tags
+}
+
+resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  action                  = "BLOCK"
+  block_response          = "NXDOMAIN"
+  firewall_domain_list_id = aws_route53_resolver_firewall_domain_list.restricted_egress[0].id
+  firewall_rule_group_id  = aws_route53_resolver_firewall_rule_group.restricted_egress[0].id
+  name                    = "bt-loop-${var.deployment_name}-dns-block-all"
+  priority                = 100
+}
+
+resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egress" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  depends_on = [aws_route53_resolver_firewall_rule.restricted_egress]
+
+  firewall_rule_group_id = aws_route53_resolver_firewall_rule_group.restricted_egress[0].id
+  name                   = "bt-loop-${var.deployment_name}-dns-assoc"
+  priority               = 101
+  vpc_id                 = aws_vpc.restricted_egress[0].id
+  tags                   = local.common_tags
+}
+
+resource "aws_security_group" "restricted_egress" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  description = "Security group for restricted Loop runtime sandbox egress"
+  egress      = []
+  name        = "${var.deployment_name}-loop-runtime-restricted-egress"
+  vpc_id      = aws_vpc.restricted_egress[0].id
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-runtime-restricted-egress"
+  }, local.common_tags)
+}
+
+resource "aws_iam_role" "network_connector_operator" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  name                 = "${var.deployment_name}-loop-runtime-network-connector"
+  assume_role_policy   = data.aws_iam_policy_document.network_connector_operator_assume_role[0].json
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-runtime-network-connector"
+  }, local.common_tags)
+}
+
+resource "aws_iam_role_policy_attachment" "network_connector_operator" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  role       = aws_iam_role.network_connector_operator[0].name
+  policy_arn = "arn:${local.partition}:iam::aws:policy/AWSLambdaNetworkConnectorOperatorPolicy"
+}
+
+# AWS provider v6 does not expose AWS::Lambda::NetworkConnector. Keep this
+# isolated CloudFormation stack alongside the existing MicroVM image stack,
+# while Terraform manages the surrounding network and IAM resources.
+resource "aws_cloudformation_stack" "restricted_egress_connector" {
+  count = local.use_restricted_egress ? 1 : 0
+
+  name = "${var.deployment_name}-loop-runtime-restricted-egress-connector"
+
+  depends_on = [
+    aws_iam_role_policy_attachment.network_connector_operator,
+    aws_route53_resolver_firewall_rule_group_association.restricted_egress,
+  ]
+
+  parameters = {
+    ConnectorName   = "bt-loop-${var.deployment_name}-restricted-egress"
+    OperatorRoleArn = aws_iam_role.network_connector_operator[0].arn
+    SecurityGroupId = aws_security_group.restricted_egress[0].id
+    SubnetIds       = join(",", aws_subnet.restricted_egress[*].id)
+  }
+
+  template_body = <<-YAML
+    AWSTemplateFormatVersion: "2010-09-09"
+    Parameters:
+      ConnectorName:
+        Type: String
+      OperatorRoleArn:
+        Type: String
+      SecurityGroupId:
+        Type: String
+      SubnetIds:
+        Type: CommaDelimitedList
+    Resources:
+      RestrictedEgressConnector:
+        Type: AWS::Lambda::NetworkConnector
+        Properties:
+          Name: !Ref ConnectorName
+          OperatorRole: !Ref OperatorRoleArn
+          Configuration:
+            VpcEgressConfiguration:
+              AssociatedComputeResourceTypes:
+                - MicroVm
+              NetworkProtocol: IPv4
+              SecurityGroupIds:
+                - !Ref SecurityGroupId
+              SubnetIds: !Ref SubnetIds
+    Outputs:
+      NetworkConnectorArn:
+        Value: !GetAtt RestrictedEgressConnector.Arn
+  YAML
+
+  tags = local.common_tags
 }
 
 resource "aws_iam_role" "microvm_image_build" {

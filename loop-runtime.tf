@@ -46,6 +46,7 @@ module "loop_runtime_sandbox_aws_microvm" {
   microvm_maximum_duration_seconds      = var.loop_runtime_microvm_maximum_duration_seconds
   microvm_auth_token_expiration_minutes = var.loop_runtime_microvm_auth_token_expiration_minutes
   enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
+  sandbox_egress_mode                   = var.loop_runtime_sandbox_egress_mode
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags

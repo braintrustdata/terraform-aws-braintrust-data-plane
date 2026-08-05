@@ -93,10 +93,10 @@ variable "ingress_network_connector_arns" {
   default     = []
 }
 
-variable "egress_network_connector_arns" {
-  type        = list(string)
-  description = "Egress network connector ARNs used at RunMicrovm time. Defaults to the AWS-managed INTERNET_EGRESS connector."
-  default     = []
+variable "sandbox_egress_mode" {
+  type        = string
+  description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector."
+  default     = "internet"
 }
 
 variable "enable_microvm_runtime_logs" {

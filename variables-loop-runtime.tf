@@ -127,3 +127,9 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   description = "Export Loop runtime MicroVM stdout/stderr to CloudWatch (can include sandbox output)."
   default     = false
 }
+
+variable "loop_runtime_sandbox_egress_mode" {
+  type        = string
+  description = "Outbound-network mode for Loop runtime sandbox MicroVMs. Exactly \"internet\" uses AWS-managed Internet egress; any other value uses a restricted connector with no outbound network access."
+  default     = "internet"
+}
