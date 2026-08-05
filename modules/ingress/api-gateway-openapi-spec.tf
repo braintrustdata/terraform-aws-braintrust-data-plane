@@ -717,6 +717,9 @@ locals {
       "/billing/refresh" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/plan-capabilities/refresh" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/billing/telemetry/ingest" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
