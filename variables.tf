@@ -837,6 +837,11 @@ variable "braintrust_api_extra_env_vars" {
   description = "Extra environment variables for the API ECS container."
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key."
+  }
 }
 
 variable "braintrust_api_authorized_security_groups" {
