@@ -36,12 +36,12 @@ locals {
     : local.cloudfront_AllViewerExceptHostHeader
   )
   cloudfront_origin_request_policy_for_origin = {
-    (local.cloudfront_ApiEcsOrigin)          = local.cloudfront_ecs_origin_request_policy_id
-    (local.cloudfront_APIGatewayOrigin)      = local.cloudfront_AllViewerExceptHostHeader
-    (local.cloudfront_AIProxyOrigin)         = local.cloudfront_AllViewerExceptHostHeader
-    (local.cloudfront_CloudflareProxy)       = local.cloudfront_AllViewerExceptHostHeader
-    (local.cloudfront_GatewayOrigin)         = local.cloudfront_AllViewerExceptHostHeader
-    (local.cloudfront_PrivateGatewayOrigin)  = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_ApiEcsOrigin)         = local.cloudfront_ecs_origin_request_policy_id
+    (local.cloudfront_APIGatewayOrigin)     = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_AIProxyOrigin)        = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_CloudflareProxy)      = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_GatewayOrigin)        = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_PrivateGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
   }
 }
 
