@@ -87,6 +87,25 @@ variable "brainstore_enable_export" {
   default     = false
 }
 
+variable "s3_export_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the API handler and Brainstore roles may assume for S3 export (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted.
+    Decision (reversible): wildcards are allowed so customers can use naming-convention patterns; we can tighten to exact ARNs later if needed.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.s3_export_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "s3_export_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}
+
 variable "enable_brainstore_ec2_ssm" {
   description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
   type        = bool

@@ -144,7 +144,7 @@ resource "aws_iam_role_policy" "brainstore_export_assume_role" {
       {
         Action   = "sts:AssumeRole"
         Effect   = "Allow"
-        Resource = "*"
+        Resource = length(var.s3_export_assume_role_arns) > 0 ? var.s3_export_assume_role_arns : ["*"]
         Condition = {
           StringLike = {
             "sts:ExternalId" = "bt:*"
