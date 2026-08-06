@@ -104,16 +104,18 @@ module "main_vpc" {
   vpc_name        = "main"
   vpc_cidr        = var.vpc_cidr
 
-  public_subnet_1_cidr      = cidrsubnet(var.vpc_cidr, 3, 0)
-  public_subnet_1_az        = local.public_subnet_1_az
-  private_subnet_1_cidr     = cidrsubnet(var.vpc_cidr, 3, 1)
-  private_subnet_1_az       = local.private_subnet_1_az
-  private_subnet_2_cidr     = cidrsubnet(var.vpc_cidr, 3, 2)
-  private_subnet_2_az       = local.private_subnet_2_az
-  private_subnet_3_cidr     = cidrsubnet(var.vpc_cidr, 3, 3)
-  private_subnet_3_az       = local.private_subnet_3_az
-  enable_brainstore_ec2_ssm = var.enable_brainstore_ec2_ssm
-  custom_tags               = local.all_custom_tags
+  public_subnet_1_cidr                 = cidrsubnet(var.vpc_cidr, 3, 0)
+  public_subnet_1_az                   = local.public_subnet_1_az
+  private_subnet_1_cidr                = cidrsubnet(var.vpc_cidr, 3, 1)
+  private_subnet_1_az                  = local.private_subnet_1_az
+  private_subnet_2_cidr                = cidrsubnet(var.vpc_cidr, 3, 2)
+  private_subnet_2_az                  = local.private_subnet_2_az
+  private_subnet_3_cidr                = cidrsubnet(var.vpc_cidr, 3, 3)
+  private_subnet_3_az                  = local.private_subnet_3_az
+  enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
+  s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
+  s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
+  custom_tags                          = local.all_custom_tags
 }
 
 module "quarantine_vpc" {
@@ -124,15 +126,17 @@ module "quarantine_vpc" {
   vpc_name        = "quarantine"
   vpc_cidr        = var.quarantine_vpc_cidr
 
-  public_subnet_1_cidr  = cidrsubnet(var.quarantine_vpc_cidr, 3, 0)
-  public_subnet_1_az    = local.quarantine_public_subnet_1_az
-  private_subnet_1_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 1)
-  private_subnet_1_az   = local.quarantine_private_subnet_1_az
-  private_subnet_2_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 2)
-  private_subnet_2_az   = local.quarantine_private_subnet_2_az
-  private_subnet_3_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
-  private_subnet_3_az   = local.quarantine_private_subnet_3_az
-  custom_tags           = local.all_custom_tags
+  public_subnet_1_cidr                 = cidrsubnet(var.quarantine_vpc_cidr, 3, 0)
+  public_subnet_1_az                   = local.quarantine_public_subnet_1_az
+  private_subnet_1_cidr                = cidrsubnet(var.quarantine_vpc_cidr, 3, 1)
+  private_subnet_1_az                  = local.quarantine_private_subnet_1_az
+  private_subnet_2_cidr                = cidrsubnet(var.quarantine_vpc_cidr, 3, 2)
+  private_subnet_2_az                  = local.quarantine_private_subnet_2_az
+  private_subnet_3_cidr                = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
+  private_subnet_3_az                  = local.quarantine_private_subnet_3_az
+  s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
+  s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
+  custom_tags                          = local.all_custom_tags
 }
 
 module "database" {

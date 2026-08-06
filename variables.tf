@@ -1187,7 +1187,7 @@ variable "s3_export_assume_role_arns" {
   validation {
     condition = alltrue([
       for arn in var.s3_export_assume_role_arns :
-      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+      can(regex("^arn:aws:iam::(\*|[0-9]{12}):role/.+$", arn))
     ])
     error_message = "s3_export_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
   }
@@ -1207,9 +1207,60 @@ variable "ai_gateway_bedrock_assume_role_arns" {
   validation {
     condition = alltrue([
       for arn in var.ai_gateway_bedrock_assume_role_arns :
-      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+      can(regex("^arn:aws:iam::(\*|[0-9]{12}):role/.+$", arn))
     ])
     error_message = "ai_gateway_bedrock_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_org_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
+    When non-empty, takes precedence over s3_vpc_endpoint_resource_account_ids.
+    When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway (Brainstore, code bundles, lambda responses, and export).
+    Listed orgs should include this dataplane account's organization. Terraform also always allows
+    aws:ResourceAccount for the current account so module-owned buckets keep working.
+    When restricted, the policy also allows GetObject to the regional ECR starport layer bucket and
+    the amazoncloudwatch-agent bucket (required for image pulls and Brainstore user-data).
+
+    Only applies when create_vpc is true (module-managed VPC endpoints).
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for org_id in var.s3_vpc_endpoint_resource_org_ids :
+      can(regex("^o-[a-z0-9]{10,32}$", org_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_org_ids entries must be AWS Organization IDs of the form o-<10-32 lowercase alphanumeric characters>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_account_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
+    Used only when s3_vpc_endpoint_resource_org_ids is empty; ignored when org IDs are set.
+    When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway. List additional accounts that
+    should be reachable (e.g. export destinations); the current AWS account is always included
+    automatically. When restricted, the policy also allows GetObject to the regional ECR starport
+    layer bucket and the amazoncloudwatch-agent bucket.
+
+    Only applies when create_vpc is true (module-managed VPC endpoints).
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for account_id in var.s3_vpc_endpoint_resource_account_ids :
+      can(regex("^[0-9]{12}$", account_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_account_ids entries must be 12-digit AWS account IDs."
   }
 }
 
