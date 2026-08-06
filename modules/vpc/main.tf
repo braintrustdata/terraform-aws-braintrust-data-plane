@@ -11,18 +11,27 @@ locals {
     "ec2messages" : "com.amazonaws.${data.aws_region.current.region}.ec2messages",
   }
 
-  s3_vpc_endpoint_restrict_by_org     = length(var.s3_vpc_endpoint_resource_org_ids) > 0
-  s3_vpc_endpoint_restrict_by_account = !local.s3_vpc_endpoint_restrict_by_org && length(var.s3_vpc_endpoint_resource_account_ids) > 0
-  s3_vpc_endpoint_restricted          = local.s3_vpc_endpoint_restrict_by_org || local.s3_vpc_endpoint_restrict_by_account
+  s3_vpc_endpoint_has_org_ids     = length(var.s3_vpc_endpoint_resource_org_ids) > 0
+  s3_vpc_endpoint_has_account_ids = length(var.s3_vpc_endpoint_resource_account_ids) > 0
+  s3_vpc_endpoint_restricted      = local.s3_vpc_endpoint_has_org_ids || local.s3_vpc_endpoint_has_account_ids
 
-  # Always include this account so module-owned buckets keep working.
+  # Always include this account so module-owned buckets keep working (org and/or account mode).
   s3_vpc_endpoint_account_ids = distinct(concat(
     var.s3_vpc_endpoint_resource_account_ids,
     [data.aws_caller_identity.current.account_id]
   ))
 
-  s3_vpc_endpoint_customer_statements = (
-    local.s3_vpc_endpoint_restrict_by_org ? [
+  # Org and account allowlists compose (union of Allows), so cross-org export destinations
+  # can be allowlisted by account even when org IDs are also set.
+  s3_vpc_endpoint_customer_statements = !local.s3_vpc_endpoint_restricted ? [
+    {
+      Effect    = "Allow"
+      Action    = ["s3:*"]
+      Principal = "*"
+      Resource  = ["*"]
+    }
+    ] : concat(
+    local.s3_vpc_endpoint_has_org_ids ? [
       {
         Sid       = "AllowS3InAllowedOrganizations"
         Effect    = "Allow"
@@ -34,21 +43,9 @@ locals {
             "aws:ResourceOrgID" = var.s3_vpc_endpoint_resource_org_ids
           }
         }
-      },
-      # Safety net: module buckets live in this account even if org list is wrong.
-      {
-        Sid       = "AllowS3InCurrentAccount"
-        Effect    = "Allow"
-        Action    = ["s3:*"]
-        Principal = "*"
-        Resource  = ["*"]
-        Condition = {
-          StringEquals = {
-            "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
-          }
-        }
       }
-      ] : local.s3_vpc_endpoint_restrict_by_account ? [
+    ] : [],
+    [
       {
         Sid       = "AllowS3InAllowedAccounts"
         Effect    = "Allow"
@@ -61,16 +58,13 @@ locals {
           }
         }
       }
-      ] : [
-      {
-        Effect    = "Allow"
-        Action    = ["s3:*"]
-        Principal = "*"
-        Resource  = ["*"]
-      }
-  ])
+    ]
+  )
 
-  # Amazon-owned buckets required when the endpoint is restricted (ECR layers + CW agent .deb).
+  # Amazon-owned buckets needed when restricted:
+  # - ECR starport: private ECR layer pulls (defaults use public.ecr.aws over NAT/CloudFront;
+  #   this covers private ECR / custom container_image overrides).
+  # - CloudWatch agent: Brainstore user-data .deb from s3.amazonaws.com/amazoncloudwatch-agent/...
   s3_vpc_endpoint_aws_service_statements = local.s3_vpc_endpoint_restricted ? [
     {
       Sid       = "AllowECRStarportLayerBucket"

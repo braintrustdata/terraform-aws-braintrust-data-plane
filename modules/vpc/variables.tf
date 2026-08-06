@@ -69,7 +69,7 @@ variable "s3_vpc_endpoint_resource_org_ids" {
   type        = list(string)
   description = <<-EOT
     Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
-    When non-empty, takes precedence over s3_vpc_endpoint_resource_account_ids.
+    Composes with s3_vpc_endpoint_resource_account_ids (union of Allow statements).
     When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
   EOT
   default     = []
@@ -87,9 +87,9 @@ variable "s3_vpc_endpoint_resource_account_ids" {
   type        = list(string)
   description = <<-EOT
     Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
-    Used only when s3_vpc_endpoint_resource_org_ids is empty; ignored when org IDs are set.
+    Composes with s3_vpc_endpoint_resource_org_ids (union of Allow statements).
     When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
-    The current AWS account is always included automatically when this restriction is active.
+    The current AWS account is always included automatically when either restriction list is non-empty.
   EOT
   default     = []
 
