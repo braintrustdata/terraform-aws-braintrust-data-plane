@@ -296,7 +296,7 @@ resource "aws_iam_role_policy" "customer_assume_role" {
         Sid      = "AssumeRoleInCustomerAccount"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
-        Resource = "*"
+        Resource = length(var.bedrock_assume_role_arns) > 0 ? var.bedrock_assume_role_arns : ["*"]
         Condition = {
           StringLike = {
             "sts:ExternalId" = "bt:*"

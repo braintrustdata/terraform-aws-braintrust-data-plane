@@ -161,6 +161,9 @@ module "braintrust-data-plane" {
   #   "arn:aws:iam::*:role/braintrust-export-*",
   # ]
 
+  # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+
   ### Braintrust Remote Support
 
   # Enable sharing of Cloudwatch logs with Braintrust staff
