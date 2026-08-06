@@ -1267,14 +1267,16 @@ variable "s3_vpc_endpoint_resource_org_ids" {
   type        = list(string)
   description = <<-EOT
     Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
-    When non-empty, takes precedence over s3_vpc_endpoint_resource_account_ids.
+    Composes with s3_vpc_endpoint_resource_account_ids (union of Allow statements) so you can allow an
+    org and also specific accounts (e.g. cross-org export destinations).
     When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
 
     Restricting the endpoint applies to all S3 access via the gateway (Brainstore, code bundles, lambda responses, and export).
-    Listed orgs should include this dataplane account's organization. Terraform also always allows
-    aws:ResourceAccount for the current account so module-owned buckets keep working.
-    When restricted, the policy also allows GetObject to the regional ECR starport layer bucket and
-    the amazoncloudwatch-agent bucket (required for image pulls and Brainstore user-data).
+    The current AWS account is always allowed via aws:ResourceAccount when either list is non-empty.
+    When restricted, the policy also allows GetObject to:
+      - the regional ECR starport layer bucket (private ECR image layers; defaults use public.ecr.aws)
+      - the amazoncloudwatch-agent bucket (Brainstore user-data .deb install)
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
 
     Only applies when create_vpc is true (module-managed VPC endpoints).
   EOT
@@ -1293,13 +1295,14 @@ variable "s3_vpc_endpoint_resource_account_ids" {
   type        = list(string)
   description = <<-EOT
     Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
-    Used only when s3_vpc_endpoint_resource_org_ids is empty; ignored when org IDs are set.
+    Composes with s3_vpc_endpoint_resource_org_ids (union of Allow statements).
     When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
 
     Restricting the endpoint applies to all S3 access via the gateway. List additional accounts that
     should be reachable (e.g. export destinations); the current AWS account is always included
-    automatically. When restricted, the policy also allows GetObject to the regional ECR starport
-    layer bucket and the amazoncloudwatch-agent bucket.
+    automatically when either restriction list is non-empty. When restricted, the policy also allows
+    GetObject to the regional ECR starport layer bucket and the amazoncloudwatch-agent bucket.
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
 
     Only applies when create_vpc is true (module-managed VPC endpoints).
   EOT
