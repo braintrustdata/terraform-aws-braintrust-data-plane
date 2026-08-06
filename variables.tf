@@ -1193,6 +1193,27 @@ variable "s3_export_assume_role_arns" {
   }
 }
 
+variable "bedrock_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the AI Gateway task role may assume for Bedrock AssumeRole auth (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
+      ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+    Decision (reversible): wildcards are allowed so customers can use naming-convention patterns; we can tighten to exact ARNs later if needed.
+    Only applies when create_ai_gateway is true.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.bedrock_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "bedrock_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}
+
 variable "brainstore_s3_bucket_retention_days" {
   type        = number
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
