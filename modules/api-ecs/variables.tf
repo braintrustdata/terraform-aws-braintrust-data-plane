@@ -602,7 +602,8 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "AI proxy/Gateway URL used for quarantine execution."
+  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, AI Proxy URL, hosted gateway /v1/proxy, or PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy). Null or blank omits the env var so api-ts getRuntimeEnv falls back to the caller proxy URL."
+  default     = null
 }
 
 

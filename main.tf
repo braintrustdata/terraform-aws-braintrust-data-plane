@@ -70,10 +70,36 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # When the ECS API is active, quarantine / in-VPC callers use the global AI
-  # gateway origin for proxy traffic instead of the AI Proxy Lambda. one() keeps
-  # this index-safe when services is absent (use_deployment_mode_external_eks).
-  api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : one(module.services[*].ai_proxy_url)
+  # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
+  # Precedence: explicit quarantine_proxy_url override → AI Proxy Function URL
+  # (pre-ECS) → PrivateLink VPC endpoint /v1/proxy when
+  # use_private_gateway_quarantine_proxy (and not use_global) with
+  # module-managed VPCs → else legacy SaaS hosted gateway /v1/proxy.
+  # Do not hairpin via API ECS ALB or CloudFront; do not use gateway ALB DNS
+  # from quarantine (no peering — reach via VPCE only).
+  # one() keeps this index-safe when services is absent
+  # (use_deployment_mode_external_eks).
+  global_ai_gateway_proxy_url = "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy"
+  # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
+  # Off when use_global_ai_gateway_origin (hosted URL; no PrivateLink).
+  wire_quarantine_to_private_gateway = (
+    var.use_private_gateway_quarantine_proxy &&
+    local.create_ai_gateway &&
+    !var.use_global_ai_gateway_origin
+  )
+  quarantine_gateway_privatelink_proxy_url = try(
+    "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
+    null
+  )
+  api_ecs_quarantine_proxy_url = (
+    var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
+      !local.enable_ecs_api ? one(module.services[*].ai_proxy_url) : (
+        local.quarantine_gateway_privatelink_proxy_url != null
+        ? local.quarantine_gateway_privatelink_proxy_url
+        : local.global_ai_gateway_proxy_url
+      )
+    )
+  )
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
@@ -470,7 +496,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = local.api_ecs_ai_proxy_url
+  quarantine_proxy_url                = local.api_ecs_quarantine_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id

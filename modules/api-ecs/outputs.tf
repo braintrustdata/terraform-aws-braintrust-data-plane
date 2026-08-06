@@ -61,6 +61,11 @@ output "http_url" {
   value       = local.api_ecs_url
 }
 
+output "quarantine_proxy_url" {
+  description = "Effective QUARANTINE_PROXY_URL on API ECS when set; null when the env var is omitted."
+  value       = local.quarantine_proxy_url
+}
+
 output "url_ssm_parameter_name" {
   description = "Name of the SSM parameter containing the API ECS URL."
   value       = aws_ssm_parameter.api_url.name
