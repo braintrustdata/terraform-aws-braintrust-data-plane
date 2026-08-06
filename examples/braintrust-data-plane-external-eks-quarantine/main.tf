@@ -129,4 +129,10 @@ module "braintrust-data-plane" {
   # s3_additional_allowed_origins                  = ["https://app.example.com"]
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: restrict S3 VPC gateway endpoint (org IDs win over account IDs; empty = unrestricted).
+  # Current account is always allowed. When restricted, ECR starport + CloudWatch agent GetObject
+  # exceptions are added automatically. Only applies when create_vpc is true.
+  # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
+  # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
 }
