@@ -1174,6 +1174,60 @@ variable "brainstore_enable_export" {
   default     = false
 }
 
+variable "s3_vpc_endpoint_resource_org_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
+    Composes with s3_vpc_endpoint_resource_account_ids (union of Allow statements) so you can allow an
+    org and also specific accounts (e.g. cross-org export destinations).
+    When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway (Brainstore, code bundles, lambda responses, and export).
+    The current AWS account is always allowed via aws:ResourceAccount when either list is non-empty.
+    When restricted, the policy also allows GetObject to:
+      - the regional ECR starport layer bucket (private ECR image layers; defaults use public.ecr.aws)
+      - the amazoncloudwatch-agent bucket (Brainstore user-data .deb install)
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
+
+    Only applies when create_vpc is true (module-managed VPC endpoints).
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for org_id in var.s3_vpc_endpoint_resource_org_ids :
+      can(regex("^o-[a-z0-9]{10,32}$", org_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_org_ids entries must be AWS Organization IDs of the form o-<10-32 lowercase alphanumeric characters>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_account_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
+    Composes with s3_vpc_endpoint_resource_org_ids (union of Allow statements).
+    When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway. List additional accounts that
+    should be reachable (e.g. export destinations); the current AWS account is always included
+    automatically when either restriction list is non-empty. When restricted, the policy also allows
+    GetObject to the regional ECR starport layer bucket and the amazoncloudwatch-agent bucket.
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
+
+    Only applies when create_vpc is true (module-managed VPC endpoints).
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for account_id in var.s3_vpc_endpoint_resource_account_ids :
+      can(regex("^[0-9]{12}$", account_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_account_ids entries must be 12-digit AWS account IDs."
+  }
+}
+
 variable "brainstore_s3_bucket_retention_days" {
   type        = number
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
