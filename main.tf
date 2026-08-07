@@ -535,6 +535,7 @@ module "services_common" {
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   brainstore_enable_export                  = var.brainstore_enable_export
+  s3_export_assume_role_arns                = var.s3_export_assume_role_arns
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = var.existing_eks_cluster_arn
   eks_namespace                             = var.eks_namespace
