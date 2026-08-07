@@ -1200,7 +1200,6 @@ variable "bedrock_assume_role_arns" {
     When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
     When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
       ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
-    Decision (reversible): wildcards are allowed so customers can use naming-convention patterns; we can tighten to exact ARNs later if needed.
     Only applies when create_ai_gateway is true.
   EOT
   default     = []
