@@ -123,6 +123,10 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
+  # Quarantine LLM proxy: with enable_ecs_api, defaults to CloudFront hairpin
+  # https://<custom_domain|cloudfront>/v1/proxy. Override for hosted gateway etc.
+  # quarantine_proxy_url = null
+
   # Optional URL-security controls for externally supplied outbound HTTP URLs.
   # Leave unset to use the application default mode of "warn".
   # unsafe_url_request_mode  = "reject"

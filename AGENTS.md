@@ -11,6 +11,8 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 │   ├── database/            # RDS Postgres
 │   ├── ecs/                 # ECS cluster
 │   ├── elasticache/         # Redis (ElastiCache)
+│   ├── api-ecs-alb/         # API ECS internal ALB (cycle break vs api-ecs tasks)
+│   ├── api-ecs/             # API ECS Fargate services (tasks)
 │   ├── gateway-alb/         # Private gateway internal ALB (ALB / TG / listener)
 │   ├── gateway-ecs/         # LLM Gateway (ECS Fargate)
 │   ├── ingress/             # CloudFront + API Gateway
@@ -66,6 +68,21 @@ Module changes must be applyable directly to live customer stacks without tear-d
 The gateway internal ALB lives in `modules/gateway-alb` so callers can reference `GATEWAY_URL` without depending on `gateway-ecs`. Temporary `moved` blocks in `moved_state.tf` remount state from `services_common` → `gateway_alb` so upgrades do not destroy/recreate the ALB. Remove those moved blocks after all stacks have applied once.
 
 Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
+
+### API ECS ALB relocation
+
+The API ECS internal ALB lives in `modules/api-ecs-alb` so CloudFront (`ingress`) can depend on the ALB while API ECS tasks (`api-ecs`) can depend on `ingress.api_url` for `QUARANTINE_PROXY_URL` without a Terraform cycle. Temporary `moved` blocks in `moved_state.tf` remount state from `api_ecs` → `api_ecs_alb`. Remove those moved blocks after all stacks have applied once.
+
+### Quarantine LLM proxy URL
+
+Quarantine UDFs get `QUARANTINE_PROXY_URL` baked by Terraform (full URL; no app Host-header derivation). Do **not** hairpin via the internal API ECS ALB DNS.
+
+Precedence:
+
+1. `quarantine_proxy_url` override if set (e.g. hosted gateway) — always wins
+2. else AI Proxy Lambda Function URL when `enable_ecs_api` is false
+3. else CloudFront hairpin `https://<custom_domain|cloudfront-domain>/v1/proxy` when `enable_ecs_api` (prefer `custom_domain`; else `ingress.api_url`)
+4. else hosted gateway `/v1/proxy`
 
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 

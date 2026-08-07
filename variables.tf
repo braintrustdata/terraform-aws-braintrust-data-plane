@@ -1012,6 +1012,17 @@ variable "custom_domain" {
   default     = null
 }
 
+variable "quarantine_proxy_url" {
+  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. hosted gateway). Always wins over auto-selection. When null and enable_ecs_api is true, defaults to CloudFront hairpin https://<custom_domain|cloudfront>/v1/proxy; pre-ECS uses the AI Proxy Function URL; otherwise hosted gateway /v1/proxy."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+  }
+}
+
 variable "custom_certificate_arn" {
   description = "ARN of the ACM certificate for the custom domain"
   type        = string
