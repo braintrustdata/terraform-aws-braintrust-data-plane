@@ -1181,7 +1181,6 @@ variable "s3_export_assume_role_arns" {
     When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility with arbitrary export destinations.
     When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
       ["arn:aws:iam::123456789012:role/customer-export-role", "arn:aws:iam::*:role/braintrust-export-*"]
-    Decision (reversible): wildcards are allowed so customers can use naming-convention patterns; we can tighten to exact ARNs later if needed.
   EOT
   default     = []
 

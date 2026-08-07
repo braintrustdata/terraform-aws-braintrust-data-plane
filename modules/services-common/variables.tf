@@ -93,7 +93,6 @@ variable "s3_export_assume_role_arns" {
     Optional allowlist of IAM role ARNs that the API handler and Brainstore roles may assume for S3 export (sts:AssumeRole with ExternalId bt:*).
     When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
     When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted.
-    Decision (reversible): wildcards are allowed so customers can use naming-convention patterns; we can tighten to exact ARNs later if needed.
   EOT
   default     = []
 
