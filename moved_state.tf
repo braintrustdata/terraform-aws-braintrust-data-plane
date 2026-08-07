@@ -295,3 +295,136 @@ moved {
   from = module.services_common.aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
 }
+
+# API ECS ALB moved from api-ecs -> api-ecs-alb so QUARANTINE_PROXY_URL can
+# reference CloudFront (ingress.api_url) without a Terraform cycle.
+# Remove these after all stacks have applied once.
+moved {
+  from = module.api_ecs[0].aws_security_group.alb
+  to   = module.api_ecs_alb[0].aws_security_group.alb
+}
+
+moved {
+  from = module.api_ecs[0].aws_security_group_rule.alb_ingress_http_from_authorized_security_groups["API"]
+  to   = module.api_ecs_alb[0].aws_security_group_rule.alb_ingress_http_from_authorized_security_groups["API"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_security_group_rule.alb_ingress_http_from_authorized_security_groups["Brainstore"]
+  to   = module.api_ecs_alb[0].aws_security_group_rule.alb_ingress_http_from_authorized_security_groups["Brainstore"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront
+  to   = module.api_ecs_alb[0].aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront
+}
+
+moved {
+  from = module.api_ecs[0].aws_security_group_rule.alb_egress_all
+  to   = module.api_ecs_alb[0].aws_security_group_rule.alb_egress_all
+}
+
+moved {
+  from = module.api_ecs[0].aws_security_group_rule.task_ingress_from_alb
+  to   = module.api_ecs_alb[0].aws_security_group_rule.task_ingress_from_alb
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb.api_ecs
+  to   = module.api_ecs_alb[0].aws_lb.api_ecs
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_target_group.braintrust_api
+  to   = module.api_ecs_alb[0].aws_lb_target_group.braintrust_api
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_target_group.braintrust_api_ingest
+  to   = module.api_ecs_alb[0].aws_lb_target_group.braintrust_api_ingest
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_target_group.braintrust_api_background
+  to   = module.api_ecs_alb[0].aws_lb_target_group.braintrust_api_background
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener.api_ecs_http
+  to   = module.api_ecs_alb[0].aws_lb_listener.api_ecs_http
+}
+
+moved {
+  from = module.api_ecs[0].aws_ssm_parameter.api_url
+  to   = module.api_ecs_alb[0].aws_ssm_parameter.api_url
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["1"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["1"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["2"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["2"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["3"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["3"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["4"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["4"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["5"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["5"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["6"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["6"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["7"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["7"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["8"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["8"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["9"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["9"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["10"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["10"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["11"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["11"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["12"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["12"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["13"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["13"]
+}
+
+moved {
+  from = module.api_ecs[0].aws_lb_listener_rule.alb_path_routes["14"]
+  to   = module.api_ecs_alb[0].aws_lb_listener_rule.alb_path_routes["14"]
+}

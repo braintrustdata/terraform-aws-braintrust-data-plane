@@ -62,14 +62,14 @@ resource "aws_ecs_service" "braintrust_api" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.braintrust_api.arn
+    target_group_arn = var.target_group_arns.braintrust_api
     container_name   = "api"
     container_port   = 8000
   }
 
   # The listener default action associates this target group with the ALB,
   # which ECS requires before CreateService will attach the service.
-  depends_on = [aws_lb_listener.api_ecs_http]
+  depends_on = [terraform_data.alb_listener_ready]
 
   lifecycle {
     create_before_destroy = false
