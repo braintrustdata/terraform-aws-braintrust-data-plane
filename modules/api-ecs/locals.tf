@@ -1,6 +1,11 @@
 locals {
-  api_version_tag       = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
-  observability_enabled = var.internal_observability_api_key_secret_arn != ""
+  api_version_tag = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
+  # Use the plan-known enable flag (not the computed secret ARN) so container/IAM shape stays known during plan.
+  observability_enabled = var.internal_observability_enabled
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}:::${var.internal_observability_api_key_secret_version}"
 
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
@@ -205,7 +210,7 @@ locals {
       secretOptions = [
         {
           name      = "apikey"
-          valueFrom = var.internal_observability_api_key_secret_arn
+          valueFrom = local.observability_api_key_value_from
         }
       ]
       }) : jsonencode({
@@ -301,7 +306,7 @@ locals {
           secrets = [
             {
               name      = "DD_API_KEY"
-              valueFrom = var.internal_observability_api_key_secret_arn
+              valueFrom = local.observability_api_key_value_from
             }
           ]
           healthCheck = {

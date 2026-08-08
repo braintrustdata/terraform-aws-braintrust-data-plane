@@ -17,3 +17,23 @@ resource "aws_secretsmanager_secret_version" "internal_observability_api_key" {
   secret_id     = aws_secretsmanager_secret.internal_observability_api_key[0].id
   secret_string = var.internal_observability_api_key
 }
+
+resource "aws_secretsmanager_secret" "brainstore_license_key" {
+  count = local.create_brainstore_license_secret ? 1 : 0
+
+  name                    = "${var.deployment_name}/brainstore/license-key"
+  recovery_window_in_days = 0
+  kms_key_id              = local.kms_key_arn
+
+  tags = merge({
+    Name                     = "${var.deployment_name}-brainstore-license-key"
+    BraintrustDeploymentName = var.deployment_name
+  }, local.all_custom_tags)
+}
+
+resource "aws_secretsmanager_secret_version" "brainstore_license_key" {
+  count = local.create_brainstore_license_secret ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.brainstore_license_key[0].id
+  secret_string = var.brainstore_license_key
+}

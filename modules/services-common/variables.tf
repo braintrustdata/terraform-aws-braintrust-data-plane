@@ -23,6 +23,18 @@ variable "database_secret_arn" {
   description = "The ARN of the secret containing database credentials"
 }
 
+variable "brainstore_license_key_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key. Empty when unused."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the Datadog API key. Empty when unused."
+  default     = ""
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"

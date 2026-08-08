@@ -138,6 +138,12 @@ variable "internal_observability_api_key_secret_arn" {
   default     = ""
 }
 
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Included in the task definition so rotating the key forces a new revision and service rollout."
+  default     = ""
+}
+
 variable "internal_observability_enabled" {
   type        = bool
   description = "Whether to enable internal Datadog observability for gateway ECS."
@@ -169,7 +175,7 @@ variable "extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
   }
 }
 
@@ -239,10 +245,22 @@ variable "custom_tags" {
   default     = {}
 }
 
-variable "brainstore_license_key" {
+variable "brainstore_license_key_enabled" {
+  type        = bool
+  description = "Whether to inject BRAINSTORE_LICENSE_KEY from Secrets Manager. Must be a plan-known boolean (do not derive from the secret ARN)."
+  default     = false
+}
+
+variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "License key for the Brainstore instance. Used for telemetry authorization."
-  default     = null
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key."
+  default     = ""
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "Version ID of the license key secret. Included in the task definition so rotating the key forces a new revision and service rollout."
+  default     = ""
 }
 
 variable "cpu_architecture" {
