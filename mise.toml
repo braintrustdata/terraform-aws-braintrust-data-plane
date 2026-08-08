@@ -42,8 +42,8 @@ terraform validate
 validate_example "examples/braintrust-data-plane" "production example"
 # External-EKS leaves brainstore_license_key unset (null default). `validate`
 # catches syntax/type/reference mistakes on that wiring; it does NOT evaluate
-# locals, so it cannot catch coalesce-on-null style bugs. Plan-mode coverage
-# for that is tracked in the follow-up terraform test PR.
+# locals, so it cannot catch coalesce-on-null. Plan-time null evaluation is
+# covered by `mise run test` (terraform test), not validate.
 validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
 """
 
@@ -79,7 +79,27 @@ tofu validate
 validate_example "examples/braintrust-data-plane" "production example"
 # External-EKS leaves brainstore_license_key unset (null default). `validate`
 # catches syntax/type/reference mistakes on that wiring; it does NOT evaluate
-# locals, so it cannot catch coalesce-on-null style bugs. Plan-mode coverage
-# for that is tracked in the follow-up terraform test PR.
+# locals, so it cannot catch coalesce-on-null. Plan-time null evaluation is
+# covered by `mise run test-tofu` (tofu test), not validate.
 validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
+"""
+
+[tasks.test]
+description = "Run terraform test (plan-mode coverage that validate cannot provide)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Running terraform test"
+terraform init -upgrade
+terraform test
+"""
+
+[tasks.test-tofu]
+description = "Run OpenTofu test (plan-mode coverage that validate cannot provide)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Running OpenTofu test"
+tofu init -upgrade
+tofu test
 """
