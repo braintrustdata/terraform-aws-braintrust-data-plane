@@ -376,6 +376,7 @@ module "gateway_ecs" {
   unsafe_url_request_mode     = var.unsafe_url_request_mode
   url_security_dns_servers    = var.url_security_dns_servers
   url_security_allow_cidrs    = var.url_security_allow_cidrs
+  bedrock_assume_role_arns    = var.ai_gateway_bedrock_assume_role_arns
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
