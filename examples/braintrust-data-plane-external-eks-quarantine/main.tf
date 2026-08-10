@@ -104,6 +104,9 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
+  # Quarantine LLM proxy override (ECS hairpin N/A for external EKS mode).
+  # quarantine_proxy_url = null
+
   # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
   # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
   # unsafe_url_request_mode = "warn"

@@ -62,14 +62,14 @@ resource "aws_ecs_service" "braintrust_api_background" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.braintrust_api_background.arn
+    target_group_arn = var.target_group_arns.braintrust_api_background
     container_name   = "api"
     container_port   = 8000
   }
 
   # Path rules associate this target group with the ALB, which ECS requires
   # before CreateService will attach the service.
-  depends_on = [aws_lb_listener_rule.alb_path_routes]
+  depends_on = [terraform_data.alb_path_rules_ready]
 
   lifecycle {
     create_before_destroy = false

@@ -119,23 +119,28 @@ output "api_ecs_service_name" {
 }
 
 output "api_ecs_alb_arn" {
-  value       = local.create_ecs_api ? module.api_ecs[0].alb_arn : null
+  value       = local.create_ecs_api ? module.api_ecs_alb[0].alb_arn : null
   description = "ARN of the private API ECS ALB"
 }
 
 output "api_ecs_target_group_arn" {
-  value       = local.create_ecs_api ? module.api_ecs[0].target_group_arn : null
+  value       = local.create_ecs_api ? module.api_ecs_alb[0].target_group_arn : null
   description = "ARN of the API ECS ALB target group"
 }
 
 output "api_ecs_alb_security_group_id" {
-  value       = local.create_ecs_api ? module.api_ecs[0].alb_security_group_id : null
+  value       = local.create_ecs_api ? module.api_ecs_alb[0].alb_security_group_id : null
   description = "ID of the security group attached to the private API ECS ALB"
 }
 
 output "api_ecs_http_url" {
-  value       = local.create_ecs_api ? module.api_ecs[0].http_url : null
+  value       = local.create_ecs_api ? module.api_ecs_alb[0].http_url : null
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
+}
+
+output "quarantine_proxy_url" {
+  value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (override, AI Proxy Function URL, CloudFront hairpin /v1/proxy, or hosted gateway /v1/proxy)"
 }
 
 output "api_ecs_task_security_group_id" {
