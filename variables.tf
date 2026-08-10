@@ -837,6 +837,11 @@ variable "braintrust_api_extra_env_vars" {
   description = "Extra environment variables for the API ECS container."
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key."
+  }
 }
 
 variable "braintrust_api_authorized_security_groups" {
@@ -1167,6 +1172,45 @@ variable "brainstore_enable_export" {
   type        = bool
   description = "Enable Brainstore-based export and migrate progress state of existing export automations. Sets BRAINSTORE_EXPORT_MIGRATION_ENABLED on the API handler Lambda and BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED on Brainstore writer nodes."
   default     = false
+}
+
+variable "s3_export_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the API handler and Brainstore roles may assume for S3 export (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility with arbitrary export destinations.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
+      ["arn:aws:iam::123456789012:role/customer-export-role", "arn:aws:iam::*:role/braintrust-export-*"]
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.s3_export_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "s3_export_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}
+
+variable "ai_gateway_bedrock_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the AI Gateway task role may assume for Bedrock AssumeRole auth (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
+      ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+    Only applies when create_ai_gateway is true.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.ai_gateway_bedrock_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "ai_gateway_bedrock_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
 }
 
 variable "brainstore_s3_bucket_retention_days" {

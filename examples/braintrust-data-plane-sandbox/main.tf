@@ -117,4 +117,13 @@ module "braintrust-data-plane" {
   # s3_additional_allowed_origins                  = ["https://app.example.com"]
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # s3_export_assume_role_arns = [
+  #   "arn:aws:iam::123456789012:role/customer-export-role",
+  #   "arn:aws:iam::*:role/braintrust-export-*",
+  # ]
+
+  # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
 }

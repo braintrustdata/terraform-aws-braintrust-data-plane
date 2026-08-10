@@ -376,6 +376,7 @@ module "gateway_ecs" {
   unsafe_url_request_mode     = var.unsafe_url_request_mode
   url_security_dns_servers    = var.url_security_dns_servers
   url_security_allow_cidrs    = var.url_security_allow_cidrs
+  bedrock_assume_role_arns    = var.ai_gateway_bedrock_assume_role_arns
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -414,6 +415,7 @@ module "api_ecs" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
   brainstore_enable_export        = var.brainstore_enable_export
+  brainstore_license_key          = var.brainstore_license_key
 
   # Storage
   code_bundle_bucket = module.storage.code_bundle_bucket_id
@@ -540,6 +542,7 @@ module "services_common" {
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   brainstore_enable_export                  = var.brainstore_enable_export
+  s3_export_assume_role_arns                = var.s3_export_assume_role_arns
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = var.existing_eks_cluster_arn
   eks_namespace                             = var.eks_namespace
