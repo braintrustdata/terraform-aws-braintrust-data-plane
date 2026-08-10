@@ -86,12 +86,11 @@ resource "aws_security_group" "instance_connect_endpoint" {
   description = "Security group for EC2 Instance Connect Endpoint"
   vpc_id      = var.vpc_id
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.bastion_allowed_cidrs
-  }
+  # No ingress rules are required. Traffic to the EC2 Instance Connect Endpoint
+  # originates from the AWS-managed EC2 Instance Connect Endpoint Service and is
+  # allowed regardless of the endpoint security group's inbound rules. Access is
+  # controlled by IAM (ec2-instance-connect:OpenTunnel), not by security groups.
+  # See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/eice-security-groups.html
 
   egress {
     from_port   = 22
