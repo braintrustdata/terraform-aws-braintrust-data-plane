@@ -1174,6 +1174,25 @@ variable "brainstore_enable_export" {
   default     = false
 }
 
+variable "s3_export_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the API handler and Brainstore roles may assume for S3 export (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility with arbitrary export destinations.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
+      ["arn:aws:iam::123456789012:role/customer-export-role", "arn:aws:iam::*:role/braintrust-export-*"]
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.s3_export_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "s3_export_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}
+
 variable "brainstore_s3_bucket_retention_days" {
   type        = number
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
