@@ -77,10 +77,14 @@ locals {
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
-  # Only wire GATEWAY_URL into Lambdas that call the gateway. Do not merge into
-  # MigrateDatabaseFunction or crons — that changes their env hash and re-runs
-  # migrations or replaces unrelated functions on existing deployments.
-  gateway_lambda_env_services = toset(["APIHandler", "AIProxy"])
+  # Only wire per-deployment backend URLs into Lambdas that call them. Do not
+  # merge into MigrateDatabaseFunction or crons — that changes their env hash
+  # and re-runs migrations or replaces unrelated functions on existing
+  # deployments.
+  lambda_env_services = toset(["APIHandler", "AIProxy"])
+  loop_runtime_lambda_env_vars = local.create_loop_runtime ? {
+    LOOP_RUNTIME_URL = module.loop_runtime_alb[0].loop_runtime_url
+  } : {}
   main_vpc_private_subnet_ids = [
     local.main_vpc_private_subnet_1_id,
     local.main_vpc_private_subnet_2_id,
@@ -89,9 +93,10 @@ locals {
   enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
-    { for svc in local.gateway_lambda_env_services : svc => merge(
+    { for svc in local.lambda_env_services : svc => merge(
       lookup(var.service_extra_env_vars, svc, {}),
       local.gateway_env_vars,
+      local.loop_runtime_lambda_env_vars,
     ) }
   )
 }
@@ -307,7 +312,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = local.create_ai_gateway || local.create_ecs_api ? 1 : 0
+  count  = local.create_ai_gateway || local.create_ecs_api || local.create_loop_runtime ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -520,7 +525,13 @@ module "ingress" {
   api_ecs_alb_arn                    = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                 = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled          = module.api_ecs[0].alb_https_enabled
-  custom_tags                        = local.all_custom_tags
+
+  enable_loop_runtime                     = local.create_loop_runtime
+  loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null
+  loop_runtime_alb_dns_name               = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_dns_name : null
+  loop_runtime_cloudfront_ingress_rule_id = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_cloudfront_vpc_origin_ingress_rule_id : null
+
+  custom_tags = local.all_custom_tags
 }
 
 module "services_common" {
