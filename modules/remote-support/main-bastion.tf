@@ -91,6 +91,14 @@ resource "aws_security_group" "instance_connect_endpoint" {
   # allowed regardless of the endpoint security group's inbound rules. Access is
   # controlled by IAM (ec2-instance-connect:OpenTunnel), not by security groups.
   # See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/eice-security-groups.html
+  #
+  # This is set to an explicit empty list rather than omitted so that Terraform
+  # revokes any pre-existing ingress rule (e.g. the previous 0.0.0.0/0 SSH rule)
+  # on upgraded deployments. Simply omitting the `ingress` argument would leave
+  # existing managed rules in place, because the AWS provider treats ingress/
+  # egress as attributes-as-blocks where absence is not a removal directive. See
+  # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group#removing-all-ingress-and-egress-rules
+  ingress = []
 
   egress {
     from_port   = 22
