@@ -66,6 +66,14 @@ variable "loop_runtime_log_retention_days" {
   type        = number
   description = "CloudWatch log retention days for Loop runtime container logs."
   default     = 14
+
+  validation {
+    condition = contains([
+      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.loop_runtime_log_retention_days)
+    error_message = "loop_runtime_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
 }
 
 variable "loop_runtime_enable_execute_command" {
