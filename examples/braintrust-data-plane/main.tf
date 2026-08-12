@@ -121,7 +121,7 @@ module "braintrust-data-plane" {
   # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
   # VPC Flow Logs (disabled by default; only applied to VPCs this module creates).
-  # Useful for network auditing / HIPAA compliance. Configure the main and quarantine VPCs separately.
+  # Configure the main and quarantine VPCs separately.
   #
   # Option A - write to your own S3 bucket:
   # main_vpc_flow_log = {
