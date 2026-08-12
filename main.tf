@@ -70,9 +70,10 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # When the ECS API is active, quarantine / in-VPC callers use the global AI
-  # gateway origin for proxy traffic instead of the AI Proxy Lambda. one() keeps
-  # this index-safe when services is absent (use_deployment_mode_external_eks).
+  # Quarantine uses the self-hosted AI Proxy Lambda Function URL.
+  quarantine_ai_proxy_url = one(module.services[*].ai_proxy_url)
+
+  # When the ECS API is active, Loop Runtime uses the braintrust-hosted AI gateway.
   api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : one(module.services[*].ai_proxy_url)
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
@@ -482,7 +483,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = local.api_ecs_ai_proxy_url
+  quarantine_proxy_url                = local.quarantine_ai_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id
