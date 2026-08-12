@@ -96,7 +96,7 @@ module "loop_runtime_ecs" {
   code_bundle_bucket_arn    = module.storage.code_bundle_bucket_arn
 
   brainstore_reader_url = local.loop_runtime_brainstore_reader_url
-  ai_proxy_url          = local.self_hosted_ai_proxy_url
+  ai_proxy_url          = local.api_ecs_ai_proxy_url
   braintrust_api_url    = module.ingress[0].api_url
 
   # Shared Brainstore WAL format + lock prefix — must match the API/Brainstore writers.
