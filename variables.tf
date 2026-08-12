@@ -265,6 +265,49 @@ variable "quarantine_public_subnet_1_az" {
   description = "Availability zone for the public subnet. Leave blank to choose the first available zone"
 }
 
+# VPC Flow Logs (only applied to VPCs this module creates)
+variable "main_vpc_flow_log" {
+  description = <<-EOT
+    VPC Flow Logs configuration for the main VPC. Only applied when create_vpc is true.
+    Disabled by default. When enabled, a destination is required:
+      - destination_type = "s3": set destination_arn to your S3 bucket ARN, or leave it null to have
+        the module create a dedicated S3 bucket.
+      - destination_type = "cloud-watch-logs": set destination_arn to your CloudWatch log group ARN, or
+        leave it null to have the module create one.
+    traffic_type may be ALL, ACCEPT, or REJECT.
+  EOT
+  type = object({
+    enabled                  = optional(bool, false)
+    traffic_type             = optional(string, "ALL")
+    destination_type         = optional(string, "s3")
+    destination_arn          = optional(string, null)
+    max_aggregation_interval = optional(number, 600)
+    log_format               = optional(string, null)
+    retention_in_days        = optional(number, 365)
+    kms_key_arn              = optional(string, null)
+  })
+  default = {}
+}
+
+variable "quarantine_vpc_flow_log" {
+  description = <<-EOT
+    VPC Flow Logs configuration for the quarantine VPC. Only applied when the quarantine VPC is created
+    by this module (enable_quarantine_vpc is true and no existing_quarantine_vpc_id is provided).
+    Same shape and behavior as main_vpc_flow_log.
+  EOT
+  type = object({
+    enabled                  = optional(bool, false)
+    traffic_type             = optional(string, "ALL")
+    destination_type         = optional(string, "s3")
+    destination_arn          = optional(string, null)
+    max_aggregation_interval = optional(number, 600)
+    log_format               = optional(string, null)
+    retention_in_days        = optional(number, 365)
+    kms_key_arn              = optional(string, null)
+  })
+  default = {}
+}
+
 
 ## Database
 variable "postgres_instance_type" {

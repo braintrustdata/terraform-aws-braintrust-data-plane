@@ -158,6 +158,7 @@ module "main_vpc" {
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
   custom_tags                          = local.all_custom_tags
+  flow_log                             = var.main_vpc_flow_log
 }
 
 module "quarantine_vpc" {
@@ -179,6 +180,7 @@ module "quarantine_vpc" {
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
   custom_tags                          = local.all_custom_tags
+  flow_log                             = var.quarantine_vpc_flow_log
 }
 
 module "database" {

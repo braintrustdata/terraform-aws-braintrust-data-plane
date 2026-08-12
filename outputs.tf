@@ -53,6 +53,16 @@ output "quarantine_gateway_privatelink_endpoint_dns_name" {
   description = "DNS name of the quarantine VPC endpoint to the private gateway (null unless PrivateLink consumer is created)"
 }
 
+output "main_vpc_flow_log_s3_bucket_arn" {
+  value       = var.create_vpc ? module.main_vpc[0].flow_log_s3_bucket_arn : null
+  description = "ARN of the module-managed S3 bucket for main VPC Flow Logs (null unless the module created one)"
+}
+
+output "quarantine_vpc_flow_log_s3_bucket_arn" {
+  value       = local.create_quarantine_vpc ? module.quarantine_vpc[0].flow_log_s3_bucket_arn : null
+  description = "ARN of the module-managed S3 bucket for quarantine VPC Flow Logs (null unless the module created one)"
+}
+
 output "brainstore_security_group_id" {
   value       = module.services_common.brainstore_instance_security_group_id
   description = "ID of the security group for the Brainstore instances"
