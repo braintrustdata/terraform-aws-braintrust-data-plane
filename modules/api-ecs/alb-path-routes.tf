@@ -1,5 +1,4 @@
-# ALB path routing (evaluated top-to-bottom; list order = rule priority).
-# Unmatched requests fall through to the listener default action → braintrust-api.
+# ALB path routing (evaluated by ascending priority; unmatched → braintrust-api).
 #
 # Each route requires:
 #   - path:         path pattern to match
@@ -7,6 +6,10 @@
 #
 # Optional:
 #   - method: HTTP method to match (e.g. "POST"); omit to match any method
+#
+# for_each keys are stable METHOD:path strings so adding or reordering routes
+# does not reshuffle keys and force listener-rule replace. Priorities still
+# follow list order (idx + 1).
 
 locals {
   alb_path_routes = [
@@ -31,7 +34,7 @@ locals {
 
   alb_path_listener_rules = {
     for idx, route in local.alb_path_routes :
-    tostring(idx + 1) => merge(
+    "${try(route.method, "ANY")}:${route.path}" => merge(
       { method = null },
       route,
       { priority = idx + 1 },
