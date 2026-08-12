@@ -119,6 +119,8 @@ module "main_vpc" {
   private_subnet_3_az       = local.private_subnet_3_az
   enable_brainstore_ec2_ssm = var.enable_brainstore_ec2_ssm
   custom_tags               = local.all_custom_tags
+
+  flow_log = var.main_vpc_flow_log
 }
 
 module "quarantine_vpc" {
@@ -138,6 +140,8 @@ module "quarantine_vpc" {
   private_subnet_3_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
   private_subnet_3_az   = local.quarantine_private_subnet_3_az
   custom_tags           = local.all_custom_tags
+
+  flow_log = var.quarantine_vpc_flow_log
 }
 
 module "database" {

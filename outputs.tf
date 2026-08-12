@@ -43,6 +43,16 @@ output "main_vpc_private_route_table_id" {
   description = "ID of the private route table in the main VPC (null when using existing VPC)"
 }
 
+output "main_vpc_flow_log_s3_bucket_arn" {
+  value       = var.create_vpc ? module.main_vpc[0].flow_log_s3_bucket_arn : null
+  description = "ARN of the module-managed S3 bucket for main VPC Flow Logs (null unless the module created one)"
+}
+
+output "quarantine_vpc_flow_log_s3_bucket_arn" {
+  value       = local.create_quarantine_vpc ? module.quarantine_vpc[0].flow_log_s3_bucket_arn : null
+  description = "ARN of the module-managed S3 bucket for quarantine VPC Flow Logs (null unless the module created one)"
+}
+
 output "brainstore_security_group_id" {
   value       = var.enable_brainstore ? module.services_common.brainstore_instance_security_group_id : null
   description = "ID of the security group for the Brainstore instances"
