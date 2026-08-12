@@ -168,7 +168,7 @@ data "aws_iam_policy_document" "flow_log_bucket" {
 
     principals {
       type        = "Service"
-      identifiers = ["delivery.amazonaws.com"]
+      identifiers = ["delivery.logs.amazonaws.com"]
     }
 
     condition {
@@ -196,7 +196,7 @@ data "aws_iam_policy_document" "flow_log_bucket" {
 
     principals {
       type        = "Service"
-      identifiers = ["delivery.amazonaws.com"]
+      identifiers = ["delivery.logs.amazonaws.com"]
     }
 
     condition {
