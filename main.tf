@@ -78,10 +78,12 @@ locals {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
   # Only wire per-deployment backend URLs into Lambdas that call them. Do not
-  # merge into MigrateDatabaseFunction or crons — that changes their env hash
-  # and re-runs migrations or replaces unrelated functions on existing
-  # deployments.
-  lambda_env_services = toset(["APIHandler", "AIProxy"])
+  # merge GATEWAY_URL into MigrateDatabaseFunction or crons — that changes their
+  # env hash and re-runs migrations or replaces unrelated functions.
+  # AutomationCron gets LOOP_RUNTIME_URL only (not GATEWAY_URL): ECS disables
+  # in-process automation cron, so windowed Loop automations run in that Lambda.
+  lambda_env_services              = toset(["APIHandler", "AIProxy"])
+  loop_runtime_lambda_env_services = toset(["AutomationCron"])
   loop_runtime_lambda_env_vars = local.create_loop_runtime ? {
     LOOP_RUNTIME_URL = module.loop_runtime_alb[0].loop_runtime_url
   } : {}
@@ -97,7 +99,11 @@ locals {
       lookup(var.service_extra_env_vars, svc, {}),
       local.gateway_env_vars,
       local.loop_runtime_lambda_env_vars,
-    ) }
+    ) },
+    { for svc in local.loop_runtime_lambda_env_services : svc => merge(
+      lookup(var.service_extra_env_vars, svc, {}),
+      local.loop_runtime_lambda_env_vars,
+    ) },
   )
 }
 
@@ -463,7 +469,7 @@ module "api_ecs" {
   unsafe_url_request_mode                                      = var.unsafe_url_request_mode
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
-  extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars)
+  extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars)
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
