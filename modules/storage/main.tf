@@ -21,4 +21,13 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+
+  s3_server_access_logging_enabled = var.s3_server_access_logging_bucket != null && var.s3_server_access_logging_bucket != ""
+  s3_server_access_logging_prefix  = var.s3_server_access_logging_prefix != null ? var.s3_server_access_logging_prefix : "${var.deployment_name}/"
+
+  s3_server_access_logging_buckets = {
+    brainstore       = aws_s3_bucket.brainstore.id
+    code-bundle      = aws_s3_bucket.code_bundle_bucket.id
+    lambda-responses = aws_s3_bucket.lambda_responses_bucket.id
+  }
 }

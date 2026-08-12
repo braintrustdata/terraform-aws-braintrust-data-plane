@@ -123,6 +123,14 @@ module "braintrust-data-plane" {
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
 
+  # Opt-in: S3 server access logging for the brainstore, code-bundle, and
+  # lambda-responses buckets. Logs are written to a bucket you own in the same
+  # account and region. The destination bucket must grant s3:PutObject to
+  # logging.s3.amazonaws.com and use SSE-S3 (AES256) default encryption, not SSE-KMS.
+  # See the module README "S3 Server Access Logging" section for the required bucket policy.
+  # s3_server_access_logging_bucket = "your-audit-logs-bucket"
+  # s3_server_access_logging_prefix = "braintrust/"
+
   # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # s3_export_assume_role_arns = [
   #   "arn:aws:iam::123456789012:role/customer-export-role",

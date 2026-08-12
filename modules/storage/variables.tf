@@ -39,6 +39,23 @@ variable "enable_s3_bucket_abac" {
   default     = false
 }
 
+variable "s3_server_access_logging_bucket" {
+  description = "Name of an existing S3 bucket that receives server access logs from the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable logging. The destination bucket must be in the same AWS account and region, must not have Object Lock, and must grant s3:PutObject to logging.s3.amazonaws.com. Default encryption must be SSE-S3 (AES256), not SSE-KMS."
+  type        = string
+  default     = null
+}
+
+variable "s3_server_access_logging_prefix" {
+  description = "Key prefix for S3 server access logs. Defaults to '<deployment_name>/' when logging is enabled. Per-bucket suffixes (brainstore/, code-bundle/, lambda-responses/) are appended. Must be empty or end with '/'."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.s3_server_access_logging_prefix == null ? true : (var.s3_server_access_logging_prefix == "" || endswith(var.s3_server_access_logging_prefix, "/"))
+    error_message = "s3_server_access_logging_prefix must be empty or end with '/'."
+  }
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

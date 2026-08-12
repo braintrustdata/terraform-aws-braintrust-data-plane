@@ -114,6 +114,68 @@ If you need to enable CloudFront standard access logging, you can configure it i
 
 See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
 
+### S3 Server Access Logging
+
+S3 server access logging is disabled by default. Enable it to deliver access logs from the brainstore, code-bundle, and lambda-responses buckets to an S3 bucket you own. This is commonly used for audit and compliance requirements.
+
+```hcl
+s3_server_access_logging_bucket = "your-audit-logs-bucket"
+# Optional. Defaults to "<deployment_name>/". Per-bucket suffixes are appended.
+# s3_server_access_logging_prefix = "braintrust/"
+```
+
+The destination bucket must:
+
+- Be in the same AWS account and region as the data plane
+- Not have Object Lock or Requester Pays enabled
+- Use SSE-S3 (AES256) default encryption. SSE-KMS prevents Amazon S3 from delivering logs you can decrypt
+- Grant `s3:PutObject` to the `logging.s3.amazonaws.com` service principal
+
+Restrict access to the destination bucket. Access logs can include object keys and requester information.
+
+Attach a bucket policy like the following to the destination bucket. Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names. The `Resource` prefix must match `s3_server_access_logging_prefix` (default `<deployment_name>/`). Any `Deny` statements on the destination bucket must not block log delivery.
+
+```hcl
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "s3_server_access_logs" {
+  statement {
+    sid    = "S3ServerAccessLogsPolicy"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["logging.s3.amazonaws.com"]
+    }
+
+    actions   = ["s3:PutObject"]
+    resources = ["arn:aws:s3:::your-audit-logs-bucket/braintrust/*"]
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values = [
+        "arn:aws:s3:::${module.braintrust-data-plane.brainstore_s3_bucket_name}",
+        "arn:aws:s3:::${module.braintrust-data-plane.code_bundle_s3_bucket_name}",
+        "arn:aws:s3:::${module.braintrust-data-plane.lambda_responses_s3_bucket_name}",
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+```
+
+Logs are written with a date-partitioned key format:
+
+`<prefix><bucket-role>/<SourceAccountId>/<SourceRegion>/<SourceBucket>/<YYYY>/<MM>/<DD>/...`
+
+For example, `braintrust/brainstore/<account>/<region>/<bucket>/2026/08/12/...`. First log delivery can take a few hours after you enable logging.
+
 ### Using an Existing VPC
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
