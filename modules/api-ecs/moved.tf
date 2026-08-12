@@ -1,5 +1,6 @@
 # Preserve existing listener-rule state across the for_each key rename so upgrades
 # update in place instead of destroy/recreate (which can briefly misroute traffic).
+# Priorities stay at the historical 1..N values; only the for_each keys change.
 # Remove these moved blocks after all stacks have applied once.
 moved {
   from = aws_lb_listener_rule.alb_path_routes["1"]
