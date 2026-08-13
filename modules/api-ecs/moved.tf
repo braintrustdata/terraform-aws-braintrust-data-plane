@@ -9,7 +9,7 @@ moved {
 }
 moved {
   from = aws_lb_listener_rule.alb_path_routes["2"]
-  to   = aws_lb_listener_rule.alb_path_routes["POST:/otel/v1/traces"]
+  to   = aws_lb_listener_rule.alb_path_routes["POST:/otel/v1/*"]
 }
 moved {
   from = aws_lb_listener_rule.alb_path_routes["3"]
@@ -58,4 +58,8 @@ moved {
 moved {
   from = aws_lb_listener_rule.alb_path_routes["14"]
   to   = aws_lb_listener_rule.alb_path_routes["ANY:/v1/proxy/responses"]
+}
+moved {
+  from = aws_lb_listener_rule.alb_path_routes["15"]
+  to   = aws_lb_listener_rule.alb_path_routes["POST:/logs3/overflow"]
 }

@@ -327,6 +327,11 @@ locals {
           consumes = ["application/json", "application/x-protobuf"]
         })
       }
+      "/otel/v1/logs" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_method, {
+          consumes = ["application/json", "application/x-protobuf"]
+        })
+      }
       "/ping" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
