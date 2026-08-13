@@ -9,7 +9,7 @@ v6 moves the primary APIHandler and AIProxy workloads from Lambda onto ECS. This
 APIHandler and AIProxy now run as ECS services alongside the existing Lambdas. The ECS API is split into three services for different workload types:
 
 - `braintrust-api` — general API traffic
-- `braintrust-api-ingest` — ingestion paths (`/logs3`, `/otel/v1/traces`, `/otel/v1/logs`)
+- `braintrust-api-ingest` — ingestion paths (`/logs3`, `/logs3/overflow`, `/otel/v1/traces`, `/otel/v1/logs`)
 - `braintrust-api-background` — background paths (evals, function invoke, proxy)
 
 These services have new variables that require consideration:
