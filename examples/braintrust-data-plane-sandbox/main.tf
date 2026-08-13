@@ -58,6 +58,11 @@ module "braintrust-data-plane" {
   postgres_version                    = "15"
   postgres_auto_minor_version_upgrade = true
 
+  # Daily window (UTC) for automated RDS backups (hh24:mi-hh24:mi) and weekly maintenance
+  # window (ddd:hh24:mi-ddd:hh24:mi). Defaults shown; override to shift the schedule.
+  # postgres_backup_window      = "00:00-00:30"
+  # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
+
   # Disable deletion protection so `terraform destroy` works without manual intervention.
   # Do NOT set this in production.
   DANGER_disable_database_deletion_protection = true
