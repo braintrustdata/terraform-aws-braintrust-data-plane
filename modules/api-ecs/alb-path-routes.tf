@@ -12,7 +12,7 @@ locals {
   alb_path_routes = [
     # braintrust-api-ingest
     { path = "/logs3", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
-    { path = "/otel/v1/traces", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/otel/v1/*", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/attachment", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/attachment/status", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
 
@@ -27,6 +27,7 @@ locals {
     { path = "/automation/logs/trigger", method = "POST", target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/chat/completions", target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/responses", target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/logs3/overflow", method = "POST", target_group = aws_lb_target_group.braintrust_api_ingest.arn },
   ]
 
   alb_path_listener_rules = {
