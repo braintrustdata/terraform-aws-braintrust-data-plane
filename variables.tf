@@ -996,7 +996,7 @@ variable "enable_s3_bucket_abac" {
 }
 
 variable "s3_server_access_logging" {
-  description = "Opt-in. Configure S3 server access logging for the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable (default). The destination bucket must be in the same AWS account and region as this deployment, must not have Object Lock, and must grant s3:PutObject to logging.s3.amazonaws.com. Default encryption must be SSE-S3 (AES256), not SSE-KMS. Useful for audit and compliance requirements."
+  description = "Opt-in. Configure S3 server access logging for the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable (default). Attach the destination bucket policy that grants s3:PutObject to logging.s3.amazonaws.com before setting this variable. The destination bucket must be in the same AWS account and region as this deployment, must not have Object Lock, and must use SSE-S3 (AES256) default encryption, not SSE-KMS. Useful for audit and compliance requirements."
   type = object({
     bucket = string
     prefix = optional(string)

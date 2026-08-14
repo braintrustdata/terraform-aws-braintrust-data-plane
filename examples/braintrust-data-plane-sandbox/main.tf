@@ -124,10 +124,10 @@ module "braintrust-data-plane" {
   # s3_lambda_responses_additional_allowed_origins = []
 
   # Opt-in: S3 server access logging for the brainstore, code-bundle, and
-  # lambda-responses buckets. Logs are written to a bucket you own in the same
-  # account and region. The destination bucket must grant s3:PutObject to
-  # logging.s3.amazonaws.com and use SSE-S3 (AES256) default encryption, not SSE-KMS.
-  # See the module README "S3 Server Access Logging" section for the required bucket policy.
+  # lambda-responses buckets. Attach the destination bucket policy (grant
+  # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination
+  # must use SSE-S3 (AES256), not SSE-KMS. See the module README "S3 Server
+  # Access Logging" section for the required order and policy.
   # s3_server_access_logging = {
   #   bucket = "your-audit-logs-bucket"
   #   prefix = "braintrust/"

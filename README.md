@@ -118,6 +118,13 @@ See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory f
 
 S3 server access logging is disabled by default. Enable it to deliver access logs from the brainstore, code-bundle, and lambda-responses buckets to an S3 bucket you own. This is commonly used for audit and compliance requirements.
 
+Enable logging in this order. The destination policy must already be in place before you set `s3_server_access_logging`; this module only configures the source buckets and cannot depend on a policy you manage outside it.
+
+1. Create the destination bucket (same AWS account and region as the data plane). It must not have Object Lock or Requester Pays enabled, and default encryption must be SSE-S3 (AES256). SSE-KMS prevents Amazon S3 from delivering logs you can decrypt.
+2. Deploy the data plane (or use an existing deployment) so the source bucket name outputs are available.
+3. Attach a bucket policy on the destination bucket that grants `s3:PutObject` to `logging.s3.amazonaws.com` (see below). Restrict access to the destination bucket; access logs can include object keys and requester information.
+4. Only after that policy is applied, set `s3_server_access_logging` and apply again:
+
 ```hcl
 s3_server_access_logging = {
   bucket = "your-audit-logs-bucket"
@@ -126,16 +133,7 @@ s3_server_access_logging = {
 }
 ```
 
-The destination bucket must:
-
-- Be in the same AWS account and region as the data plane
-- Not have Object Lock or Requester Pays enabled
-- Use SSE-S3 (AES256) default encryption. SSE-KMS prevents Amazon S3 from delivering logs you can decrypt
-- Grant `s3:PutObject` to the `logging.s3.amazonaws.com` service principal
-
-Restrict access to the destination bucket. Access logs can include object keys and requester information.
-
-Attach a bucket policy like the following to the destination bucket. Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names. The `Resource` prefix must match `s3_server_access_logging.prefix` (default `<deployment_name>/`). Any `Deny` statements on the destination bucket must not block log delivery.
+Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names in the destination policy. The `Resource` prefix must match `s3_server_access_logging.prefix` (default `<deployment_name>/`). Any `Deny` statements on the destination bucket must not block log delivery.
 
 ```hcl
 data "aws_caller_identity" "current" {}
@@ -169,6 +167,11 @@ data "aws_iam_policy_document" "s3_server_access_logs" {
       values   = [data.aws_caller_identity.current.account_id]
     }
   }
+}
+
+resource "aws_s3_bucket_policy" "s3_server_access_logs" {
+  bucket = "your-audit-logs-bucket"
+  policy = data.aws_iam_policy_document.s3_server_access_logs.json
 }
 ```
 
