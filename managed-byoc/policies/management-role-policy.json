@@ -10,7 +10,6 @@
         "application-autoscaling:*",
         "autoscaling-plans:*",
         "autoscaling:*",
-        "cloudformation:*",
         "cloudfront:*",
         "cloudwatch:*",
         "dynamodb:*",
@@ -39,6 +38,19 @@
         "ssm:*",
         "support:*",
         "wafv2:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowCloudFormationStacks",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStacks",
+        "cloudformation:GetTemplate",
+        "cloudformation:UpdateStack"
       ],
       "Resource": "*"
     },
