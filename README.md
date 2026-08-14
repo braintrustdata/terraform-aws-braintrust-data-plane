@@ -28,12 +28,6 @@ If you're using a brand new AWS account for your Braintrust data plane you will 
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
 
-The `monitoring_contract` output is the versioned interface for
-`terraform-aws-braintrust-data-plane-cloudwatch`. Passing it directly to that
-module allows Terraform to order AWS-native monitoring resources after their
-data-plane dependencies without separately discovering newly-created customer
-resources.
-
 ### Organization access configuration
 
 Prefer ID-based organization access for new deployments:
