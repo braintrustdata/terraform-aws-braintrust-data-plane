@@ -123,17 +123,16 @@ Enable logging in this order. The destination policy must already be in place be
 1. Create the destination bucket (same AWS account and region as the data plane). It must not have Object Lock or Requester Pays enabled, and default encryption must be SSE-S3 (AES256). SSE-KMS prevents Amazon S3 from delivering logs you can decrypt.
 2. Deploy the data plane (or use an existing deployment) so the source bucket name outputs are available.
 3. Attach a bucket policy on the destination bucket that grants `s3:PutObject` to `logging.s3.amazonaws.com` (see below). Restrict access to the destination bucket; access logs can include object keys and requester information.
-4. Only after that policy is applied, set `s3_server_access_logging` and apply again:
+4. Only after that policy is applied, set `s3_server_access_logging` and apply again. Use the same prefix as the destination policy `Resource` path (`braintrust/` in the example below). If you omit `prefix`, the module defaults to `<deployment_name>/`, and the policy path must match that instead. Per-bucket suffixes (`brainstore/`, `code-bundle/`, `lambda-responses/`) are appended under the prefix; `braintrust/*` already covers them, so no extra policy statements are needed.
 
 ```hcl
 s3_server_access_logging = {
   bucket = "your-audit-logs-bucket"
-  # Optional. Defaults to "<deployment_name>/". Per-bucket suffixes are appended.
-  # prefix = "braintrust/"
+  prefix = "braintrust/"
 }
 ```
 
-Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names in the destination policy. The `Resource` prefix must match `s3_server_access_logging.prefix` (default `<deployment_name>/`). Any `Deny` statements on the destination bucket must not block log delivery.
+Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names in the destination policy. The `Resource` prefix must match `s3_server_access_logging.prefix` (default `<deployment_name>/` when omitted). Any `Deny` statements on the destination bucket must not block log delivery.
 
 ```hcl
 data "aws_caller_identity" "current" {}
