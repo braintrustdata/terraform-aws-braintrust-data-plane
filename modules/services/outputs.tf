@@ -8,6 +8,32 @@ output "api_handler_arn" {
   value       = aws_lambda_function.api_handler.arn
 }
 
+output "monitoring_functions" {
+  description = "Core Lambda functions keyed by stable logical role for monitoring integrations."
+  value = {
+    api-handler = {
+      function_name   = aws_lambda_function.api_handler.function_name
+      timeout_seconds = aws_lambda_function.api_handler.timeout
+    }
+    ai-proxy = {
+      function_name   = aws_lambda_function.ai_proxy.function_name
+      timeout_seconds = aws_lambda_function.ai_proxy.timeout
+    }
+    billing-cron = {
+      function_name   = aws_lambda_function.billing_cron.function_name
+      timeout_seconds = aws_lambda_function.billing_cron.timeout
+    }
+    automation-cron = {
+      function_name   = aws_lambda_function.automation_cron.function_name
+      timeout_seconds = aws_lambda_function.automation_cron.timeout
+    }
+    catchup-etl = {
+      function_name   = aws_lambda_function.catchup_etl.function_name
+      timeout_seconds = aws_lambda_function.catchup_etl.timeout
+    }
+  }
+}
+
 output "ai_proxy_arn" {
   description = "The ARN of the AI proxy lambda function"
   value       = aws_lambda_function.ai_proxy.arn

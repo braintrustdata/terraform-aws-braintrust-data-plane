@@ -193,6 +193,65 @@ output "cloudfront_distribution_hosted_zone_id" {
   description = "The hosted zone ID of the cloudfront distribution"
 }
 
+output "monitoring_contract" {
+  description = "Versioned resource identifiers and capabilities consumed by terraform-aws-braintrust-data-plane-cloudwatch."
+  value = {
+    version = 1
+
+    rds = {
+      identifier               = module.database.postgres_database_identifier
+      allocated_storage_gib    = module.database.postgres_allocated_storage_gib
+      provisioned_iops         = module.database.postgres_provisioned_iops
+      provisioned_iops_enabled = var.postgres_storage_iops > 0
+    }
+
+    elasticache = module.redis.monitoring_target
+
+    lambda = {
+      enabled   = !var.use_deployment_mode_external_eks
+      functions = !var.use_deployment_mode_external_eks ? module.services[0].monitoring_functions : {}
+    }
+
+    api_gateway = {
+      enabled = !var.use_deployment_mode_external_eks
+      name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
+      stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
+    }
+
+    brainstore = {
+      enabled        = var.enable_brainstore && !var.use_deployment_mode_external_eks
+      s3_bucket_name = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+      targets        = var.enable_brainstore && !var.use_deployment_mode_external_eks ? module.brainstore[0].monitoring_targets : {}
+    }
+
+    cloudfront = {
+      enabled         = !var.use_deployment_mode_external_eks
+      distribution_id = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_id : null
+    }
+
+    ecs = {
+      enabled      = length(module.ecs) > 0
+      cluster_name = length(module.ecs) > 0 ? module.ecs[0].cluster_name : null
+      services = merge(
+        local.create_ecs_api ? {
+          api-ecs = {
+            service_name  = module.api_ecs[0].service_name
+            lb_arn_suffix = module.api_ecs[0].alb_arn_suffix
+            tg_arn_suffix = module.api_ecs[0].target_group_arn_suffix
+          }
+        } : {},
+        local.create_ai_gateway ? {
+          gateway = {
+            service_name  = module.gateway_ecs[0].service_name
+            lb_arn_suffix = module.gateway_alb[0].gateway_alb_arn_suffix
+            tg_arn_suffix = module.gateway_alb[0].gateway_target_group_arn_suffix
+          }
+        } : {},
+      )
+    }
+  }
+}
+
 output "kms_key_arn" {
   value       = local.kms_key_arn
   description = "ARN of the KMS key used to encrypt Braintrust resources"
