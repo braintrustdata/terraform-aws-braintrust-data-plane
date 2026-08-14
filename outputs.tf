@@ -202,7 +202,7 @@ output "monitoring_contract" {
       identifier               = module.database.postgres_database_identifier
       allocated_storage_gib    = module.database.postgres_allocated_storage_gib
       provisioned_iops         = module.database.postgres_provisioned_iops
-      provisioned_iops_enabled = var.postgres_storage_iops > 0
+      provisioned_iops_enabled = var.postgres_storage_iops == null ? false : var.postgres_storage_iops > 0
     }
 
     elasticache = module.redis.monitoring_target
