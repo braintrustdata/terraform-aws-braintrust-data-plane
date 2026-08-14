@@ -261,3 +261,21 @@ variable "enable_execute_command" {
   description = "Enable ECS Exec on the gateway service."
   default     = false
 }
+
+variable "bedrock_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the gateway task role may assume for Bedrock AssumeRole auth (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.bedrock_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "bedrock_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}

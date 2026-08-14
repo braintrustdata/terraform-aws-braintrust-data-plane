@@ -8,6 +8,7 @@ locals {
   cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
+  cloudfront_LoopRuntimeOrigin         = "LoopRuntimeOrigin"
   cloudfront_ProxyOrigin               = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
 
   cloudfront_api_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_APIGatewayOrigin
@@ -42,6 +43,7 @@ locals {
     (local.cloudfront_CloudflareProxy)      = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_GatewayOrigin)        = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_PrivateGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_LoopRuntimeOrigin)    = local.cloudfront_AllViewerExceptHostHeader
   }
 }
 
@@ -198,6 +200,20 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
+  dynamic "origin" {
+    for_each = var.enable_loop_runtime ? [1] : []
+    content {
+      domain_name = var.loop_runtime_alb_dns_name
+      origin_id   = local.cloudfront_LoopRuntimeOrigin
+
+      vpc_origin_config {
+        vpc_origin_id            = aws_cloudfront_vpc_origin.loop_runtime[0].id
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+        origin_keepalive_timeout = 60
+      }
+    }
+  }
+
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
@@ -237,6 +253,20 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
       cache_policy_id          = local.cloudfront_CachingDisabled
       origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_function_origin_id]
+    }
+  }
+
+  dynamic "ordered_cache_behavior" {
+    for_each = var.enable_loop_runtime ? toset(["/loop/runtime", "/loop/runtime/*"]) : toset([])
+    content {
+      path_pattern           = ordered_cache_behavior.value
+      allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods         = ["GET", "HEAD", "OPTIONS"]
+      target_origin_id       = local.cloudfront_LoopRuntimeOrigin
+      viewer_protocol_policy = "redirect-to-https"
+
+      cache_policy_id          = local.cloudfront_CachingDisabled
+      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_LoopRuntimeOrigin]
     }
   }
 

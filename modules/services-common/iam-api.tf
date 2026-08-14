@@ -162,7 +162,7 @@ resource "aws_iam_policy" "api_handler_policy" {
           Sid      = "AssumeRoleInCustomerAccountForS3Export"
           Action   = "sts:AssumeRole"
           Effect   = "Allow"
-          Resource = "*"
+          Resource = length(var.s3_export_assume_role_arns) > 0 ? var.s3_export_assume_role_arns : ["*"]
           Condition = {
             StringLike = {
               "sts:ExternalId" = "bt:*"

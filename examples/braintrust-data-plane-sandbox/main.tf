@@ -31,6 +31,10 @@ module "braintrust-data-plane" {
   # btql_audit_logs_strict_org_ids      = []
   # btql_audit_logs_best_effort_org_ids = []
 
+  # The optional Loop runtime is disabled by default.
+  enable_loop_runtime              = false
+  loop_runtime_sandbox_egress_mode = "internet"
+
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
   # custom_tags = {
@@ -53,6 +57,11 @@ module "braintrust-data-plane" {
 
   postgres_version                    = "15"
   postgres_auto_minor_version_upgrade = true
+
+  # Daily window (UTC) for automated RDS backups (hh24:mi-hh24:mi) and weekly maintenance
+  # window (ddd:hh24:mi-ddd:hh24:mi). Defaults shown; override to shift the schedule.
+  # postgres_backup_window      = "00:00-00:30"
+  # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
 
   # Disable deletion protection so `terraform destroy` works without manual intervention.
   # Do NOT set this in production.
@@ -118,4 +127,13 @@ module "braintrust-data-plane" {
   # s3_additional_allowed_origins                  = ["https://app.example.com"]
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # s3_export_assume_role_arns = [
+  #   "arn:aws:iam::123456789012:role/customer-export-role",
+  #   "arn:aws:iam::*:role/braintrust-export-*",
+  # ]
+
+  # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
 }

@@ -96,6 +96,18 @@ variable "backup_retention_period" {
   default     = 14
 }
 
+variable "backup_window" {
+  description = "The daily time range (in UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi."
+  type        = string
+  default     = "00:00-00:30"
+}
+
+variable "maintenance_window" {
+  description = "The weekly time range (in UTC) during which system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi. Default is Mon 08:00-11:00 UTC (12am-3am PST)."
+  type        = string
+  default     = "Mon:08:00-Mon:11:00"
+}
+
 variable "DANGER_disable_deletion_protection" {
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
   type        = bool

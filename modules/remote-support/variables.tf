@@ -15,12 +15,6 @@ variable "enable_braintrust_support_shell_access" {
   default     = false
 }
 
-variable "bastion_allowed_cidrs" {
-  description = "List of CIDRs that are allowed to access the bastion host"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
 variable "vpc_id" {
   description = "ID of the VPC where the bastion host will be deployed"
   type        = string

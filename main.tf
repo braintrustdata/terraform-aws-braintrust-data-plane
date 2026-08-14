@@ -100,13 +100,22 @@ locals {
       )
     )
   )
+
+  # When the ECS API is active, Loop Runtime uses the braintrust-hosted AI gateway.
+  api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : one(module.services[*].ai_proxy_url)
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
-  # Only wire GATEWAY_URL into Lambdas that call the gateway. Do not merge into
-  # MigrateDatabaseFunction or crons — that changes their env hash and re-runs
-  # migrations or replaces unrelated functions on existing deployments.
-  gateway_lambda_env_services = toset(["APIHandler", "AIProxy"])
+  # Only wire per-deployment backend URLs into Lambdas that call them. Do not
+  # merge GATEWAY_URL into MigrateDatabaseFunction or crons — that changes their
+  # env hash and re-runs migrations or replaces unrelated functions.
+  # AutomationCron gets LOOP_RUNTIME_URL only (not GATEWAY_URL): ECS disables
+  # in-process automation cron, so windowed Loop automations run in that Lambda.
+  lambda_env_services              = toset(["APIHandler", "AIProxy"])
+  loop_runtime_lambda_env_services = toset(["AutomationCron"])
+  loop_runtime_lambda_env_vars = local.create_loop_runtime ? {
+    LOOP_RUNTIME_URL = module.loop_runtime_alb[0].loop_runtime_url
+  } : {}
   main_vpc_private_subnet_ids = [
     local.main_vpc_private_subnet_1_id,
     local.main_vpc_private_subnet_2_id,
@@ -115,10 +124,15 @@ locals {
   enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
-    { for svc in local.gateway_lambda_env_services : svc => merge(
+    { for svc in local.lambda_env_services : svc => merge(
       lookup(var.service_extra_env_vars, svc, {}),
       local.gateway_env_vars,
-    ) }
+      local.loop_runtime_lambda_env_vars,
+    ) },
+    { for svc in local.loop_runtime_lambda_env_services : svc => merge(
+      lookup(var.service_extra_env_vars, svc, {}),
+      local.loop_runtime_lambda_env_vars,
+    ) },
   )
 }
 
@@ -189,6 +203,8 @@ module "database" {
   postgres_storage_throughput        = var.postgres_storage_throughput
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   backup_retention_period            = var.postgres_backup_retention_period
+  backup_window                      = var.postgres_backup_window
+  maintenance_window                 = var.postgres_maintenance_window
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
   kms_key_arn              = local.kms_key_arn
@@ -333,7 +349,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = local.create_ai_gateway || local.create_ecs_api ? 1 : 0
+  count  = local.create_ai_gateway || local.create_ecs_api || local.create_loop_runtime ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -402,6 +418,7 @@ module "gateway_ecs" {
   unsafe_url_request_mode     = var.unsafe_url_request_mode
   url_security_dns_servers    = var.url_security_dns_servers
   url_security_allow_cidrs    = var.url_security_allow_cidrs
+  bedrock_assume_role_arns    = var.ai_gateway_bedrock_assume_role_arns
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -440,6 +457,7 @@ module "api_ecs" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
   brainstore_enable_export        = var.brainstore_enable_export
+  brainstore_license_key          = var.brainstore_license_key
 
   # Storage
   code_bundle_bucket = module.storage.code_bundle_bucket_id
@@ -482,7 +500,7 @@ module "api_ecs" {
   unsafe_url_request_mode                                      = var.unsafe_url_request_mode
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
-  extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars)
+  extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars)
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -544,7 +562,13 @@ module "ingress" {
   api_ecs_alb_arn                    = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                 = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled          = module.api_ecs[0].alb_https_enabled
-  custom_tags                        = local.all_custom_tags
+
+  enable_loop_runtime                     = local.create_loop_runtime
+  loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null
+  loop_runtime_alb_dns_name               = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_dns_name : null
+  loop_runtime_cloudfront_ingress_rule_id = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_cloudfront_vpc_origin_ingress_rule_id : null
+
+  custom_tags = local.all_custom_tags
 }
 
 module "services_common" {
@@ -560,6 +584,7 @@ module "services_common" {
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   brainstore_enable_export                  = var.brainstore_enable_export
+  s3_export_assume_role_arns                = var.s3_export_assume_role_arns
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = var.existing_eks_cluster_arn
   eks_namespace                             = var.eks_namespace

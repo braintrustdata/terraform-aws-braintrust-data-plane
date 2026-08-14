@@ -30,6 +30,10 @@ module "braintrust-data-plane" {
   # btql_audit_logs_strict_org_ids      = []
   # btql_audit_logs_best_effort_org_ids = []
 
+  # The optional Loop runtime is disabled by default.
+  enable_loop_runtime              = false
+  loop_runtime_sandbox_egress_mode = "internet"
+
   ### Postgres configuration
   # Changing this will incur a short downtime.
   postgres_instance_type = "db.r8g.2xlarge"
@@ -62,6 +66,13 @@ module "braintrust-data-plane" {
   # Multi-AZ RDS instance. Enabling increases cost but provides higher availability.
   # Recommended for critical production environments. Doubles the cost of the RDS instance.
   # postgres_multi_az                     = false
+
+  # Daily window (UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi.
+  # postgres_backup_window = "00:00-00:30"
+
+  # Weekly window (UTC) during which RDS system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi.
+  # Default is Mon 08:00-11:00 UTC (12am-3am PST).
+  # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
 
   ### Brainstore configuration
   # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
@@ -162,6 +173,14 @@ module "braintrust-data-plane" {
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
 
+  # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # s3_export_assume_role_arns = [
+  #   "arn:aws:iam::123456789012:role/customer-export-role",
+  #   "arn:aws:iam::*:role/braintrust-export-*",
+  # ]
+
+  # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
 
   ### Braintrust Remote Support
 
