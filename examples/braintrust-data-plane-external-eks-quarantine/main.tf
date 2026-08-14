@@ -146,8 +146,10 @@ module "braintrust-data-plane" {
   # account and region. The destination bucket must grant s3:PutObject to
   # logging.s3.amazonaws.com and use SSE-S3 (AES256) default encryption, not SSE-KMS.
   # See the module README "S3 Server Access Logging" section for the required bucket policy.
-  # s3_server_access_logging_bucket = "your-audit-logs-bucket"
-  # s3_server_access_logging_prefix = "braintrust/"
+  # s3_server_access_logging = {
+  #   bucket = "your-audit-logs-bucket"
+  #   prefix = "braintrust/"
+  # }
 
   # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # s3_export_assume_role_arns = [

@@ -995,20 +995,23 @@ variable "enable_s3_bucket_abac" {
   default     = false
 }
 
-variable "s3_server_access_logging_bucket" {
-  description = "Opt-in. Name of an existing S3 bucket that receives server access logs from the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable logging (default). The destination bucket must be in the same AWS account and region as this deployment, must not have Object Lock, and must grant s3:PutObject to logging.s3.amazonaws.com. Default encryption must be SSE-S3 (AES256), not SSE-KMS. Useful for audit and compliance requirements."
-  type        = string
-  default     = null
-}
-
-variable "s3_server_access_logging_prefix" {
-  description = "Key prefix for S3 server access logs. Defaults to '<deployment_name>/' when logging is enabled. Per-bucket suffixes (brainstore/, code-bundle/, lambda-responses/) are appended. Must be empty or end with '/'."
-  type        = string
-  default     = null
+variable "s3_server_access_logging" {
+  description = "Opt-in. Configure S3 server access logging for the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable (default). The destination bucket must be in the same AWS account and region as this deployment, must not have Object Lock, and must grant s3:PutObject to logging.s3.amazonaws.com. Default encryption must be SSE-S3 (AES256), not SSE-KMS. Useful for audit and compliance requirements."
+  type = object({
+    bucket = string
+    prefix = optional(string)
+  })
+  default = null
 
   validation {
-    condition     = var.s3_server_access_logging_prefix == null ? true : (var.s3_server_access_logging_prefix == "" || endswith(var.s3_server_access_logging_prefix, "/"))
-    error_message = "s3_server_access_logging_prefix must be empty or end with '/'."
+    condition = var.s3_server_access_logging == null ? true : (
+      length(var.s3_server_access_logging.bucket) > 0 && (
+        var.s3_server_access_logging.prefix == null ||
+        var.s3_server_access_logging.prefix == "" ||
+        endswith(var.s3_server_access_logging.prefix, "/")
+      )
+    )
+    error_message = "s3_server_access_logging.bucket must be non-empty; prefix must be null, empty, or end with '/'."
   }
 }
 

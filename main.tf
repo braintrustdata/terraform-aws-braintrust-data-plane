@@ -223,8 +223,7 @@ module "storage" {
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
   enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
-  s3_server_access_logging_bucket                = var.s3_server_access_logging_bucket
-  s3_server_access_logging_prefix                = var.s3_server_access_logging_prefix
+  s3_server_access_logging                       = var.s3_server_access_logging
   custom_tags                                    = local.all_custom_tags
 }
 

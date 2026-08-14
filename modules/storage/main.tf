@@ -22,8 +22,14 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  s3_server_access_logging_enabled = var.s3_server_access_logging_bucket != null && var.s3_server_access_logging_bucket != ""
-  s3_server_access_logging_prefix  = var.s3_server_access_logging_prefix != null ? var.s3_server_access_logging_prefix : "${var.deployment_name}/"
+  # Object presence is known at plan time even when .bucket is unknown until apply
+  # (e.g. destination bucket created in the same configuration).
+  s3_server_access_logging_enabled = var.s3_server_access_logging != null
+  s3_server_access_logging_prefix = (
+    var.s3_server_access_logging != null && var.s3_server_access_logging.prefix != null
+    ? var.s3_server_access_logging.prefix
+    : "${var.deployment_name}/"
+  )
 
   s3_server_access_logging_buckets = {
     brainstore       = aws_s3_bucket.brainstore.id

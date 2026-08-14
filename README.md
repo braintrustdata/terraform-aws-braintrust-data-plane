@@ -119,9 +119,11 @@ See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory f
 S3 server access logging is disabled by default. Enable it to deliver access logs from the brainstore, code-bundle, and lambda-responses buckets to an S3 bucket you own. This is commonly used for audit and compliance requirements.
 
 ```hcl
-s3_server_access_logging_bucket = "your-audit-logs-bucket"
-# Optional. Defaults to "<deployment_name>/". Per-bucket suffixes are appended.
-# s3_server_access_logging_prefix = "braintrust/"
+s3_server_access_logging = {
+  bucket = "your-audit-logs-bucket"
+  # Optional. Defaults to "<deployment_name>/". Per-bucket suffixes are appended.
+  # prefix = "braintrust/"
+}
 ```
 
 The destination bucket must:
@@ -133,7 +135,7 @@ The destination bucket must:
 
 Restrict access to the destination bucket. Access logs can include object keys and requester information.
 
-Attach a bucket policy like the following to the destination bucket. Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names. The `Resource` prefix must match `s3_server_access_logging_prefix` (default `<deployment_name>/`). Any `Deny` statements on the destination bucket must not block log delivery.
+Attach a bucket policy like the following to the destination bucket. Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names. The `Resource` prefix must match `s3_server_access_logging.prefix` (default `<deployment_name>/`). Any `Deny` statements on the destination bucket must not block log delivery.
 
 ```hcl
 data "aws_caller_identity" "current" {}
