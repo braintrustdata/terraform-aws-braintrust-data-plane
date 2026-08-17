@@ -131,4 +131,11 @@ module "braintrust-data-plane" {
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+
+  ### Optional Rust ingest ALB weighted canary (ECS API only; default off)
+  # create_rust_api_ingest                     = false
+  # rust_api_ingest_traffic_weight             = 0
+  # rust_api_ingest_container_image_repository = "ACCOUNT.dkr.ecr.REGION.amazonaws.com/braintrust-api-rust-ingest"
+  # rust_api_ingest_version_override           = "vX.Y.Z"
+  # rust_api_ingest_health_check_path          = "/"
 }

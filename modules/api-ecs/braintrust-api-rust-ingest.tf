@@ -16,6 +16,8 @@ locals {
   })
 
   # Canary v1: awslogs only. Datadog sidecars can follow once the image/pipeline is stable.
+  # Override container healthCheck so it matches rust_api_ingest_health_check_path
+  # (api_container_base always probes /).
   rust_api_ingest_container_definitions = jsonencode([
     merge(local.api_container_base, {
       name  = "api"
@@ -27,6 +29,13 @@ locals {
           awslogs-region        = data.aws_region.current.region
           awslogs-stream-prefix = local.braintrust_api_rust_ingest_name
         }
+      }
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8000${var.rust_api_ingest_health_check_path} || exit 1"]
+        interval    = 30
+        retries     = 3
+        startPeriod = 10
+        timeout     = 5
       }
       environment = [
         for key in sort(keys(local.rust_api_ingest_env_vars)) : {

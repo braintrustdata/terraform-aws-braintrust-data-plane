@@ -121,6 +121,19 @@ module "braintrust-data-plane" {
   # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
 
+  ### Optional Rust ingest ALB weighted canary (ECS API only; default off)
+  # Stand up a parallel Rust ingest service and dial traffic with
+  # rust_api_ingest_traffic_weight (0-100; TypeScript gets the remainder).
+  # create_rust_api_ingest                     = false
+  # rust_api_ingest_traffic_weight             = 0
+  # rust_api_ingest_container_image_repository = "ACCOUNT.dkr.ecr.REGION.amazonaws.com/braintrust-api-rust-ingest"
+  # rust_api_ingest_version_override           = "vX.Y.Z"
+  # rust_api_ingest_cpu                        = 1024
+  # rust_api_ingest_memory                     = 8192
+  # rust_api_ingest_min_count                  = 2
+  # rust_api_ingest_max_count                  = 50
+  # rust_api_ingest_health_check_path          = "/"
+
   ### Advanced configuration
 
   # The maximum number of concurrent executions to reserve and constrain Braintrust lambdas to.

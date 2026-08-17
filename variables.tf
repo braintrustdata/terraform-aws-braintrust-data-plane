@@ -778,7 +778,7 @@ variable "rust_api_ingest_version_override" {
   default     = null
 
   validation {
-    condition     = var.rust_api_ingest_version_override == null || trimspace(var.rust_api_ingest_version_override) != ""
+    condition     = var.rust_api_ingest_version_override == null ? true : trimspace(var.rust_api_ingest_version_override) != ""
     error_message = "rust_api_ingest_version_override must be null or a non-empty string."
   }
 }
