@@ -740,6 +740,100 @@ variable "braintrust_api_ingest_cpu_autoscaling" {
   default = {}
 }
 
+variable "create_rust_api_ingest" {
+  description = <<-EOT
+    Create the optional Rust ingest ECS service and include it in weighted ALB
+    forwards for ingest paths (/logs3, /otel/v1/*, /attachment*, /logs3/overflow).
+    Dial traffic with rust_api_ingest_traffic_weight (0 = stand up with no traffic).
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "rust_api_ingest_traffic_weight" {
+  description = "Percent of ingest ALB traffic (0-100) sent to Rust when create_rust_api_ingest is true. TypeScript receives the remainder. Default 0."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.rust_api_ingest_traffic_weight >= 0 && var.rust_api_ingest_traffic_weight <= 100
+    error_message = "rust_api_ingest_traffic_weight must be between 0 and 100."
+  }
+}
+
+variable "rust_api_ingest_container_image_repository" {
+  description = "Container image repository for Rust ingest. Required when create_rust_api_ingest is true."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.create_rust_api_ingest || trimspace(var.rust_api_ingest_container_image_repository) != ""
+    error_message = "rust_api_ingest_container_image_repository is required when create_rust_api_ingest is true."
+  }
+}
+
+variable "rust_api_ingest_version_override" {
+  description = "Rust ingest image tag. Required when create_rust_api_ingest is true unless VERSIONS.json has api_rust_ingest."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.rust_api_ingest_version_override == null || trimspace(var.rust_api_ingest_version_override) != ""
+    error_message = "rust_api_ingest_version_override must be null or a non-empty string."
+  }
+}
+
+variable "rust_api_ingest_cpu" {
+  description = "CPU units for the braintrust-api-rust-ingest ECS task definition."
+  type        = number
+  default     = 1024
+}
+
+variable "rust_api_ingest_memory" {
+  description = "Memory (MiB) for the braintrust-api-rust-ingest ECS task definition."
+  type        = number
+  default     = 8192
+}
+
+variable "rust_api_ingest_min_count" {
+  description = "Minimum number of braintrust-api-rust-ingest ECS tasks."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.rust_api_ingest_min_count >= 1
+    error_message = "rust_api_ingest_min_count must be at least 1."
+  }
+}
+
+variable "rust_api_ingest_max_count" {
+  description = "Maximum number of braintrust-api-rust-ingest ECS tasks."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.rust_api_ingest_max_count >= var.rust_api_ingest_min_count
+    error_message = "rust_api_ingest_max_count must be greater than or equal to rust_api_ingest_min_count."
+  }
+}
+
+variable "rust_api_ingest_cpu_autoscaling" {
+  description = "CPU target tracking autoscaling for the braintrust-api-rust-ingest ECS service."
+  type = object({
+    target_value       = optional(number, 50)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
+
+  default = {}
+}
+
+variable "rust_api_ingest_health_check_path" {
+  description = "Health check path for the Rust ingest target group."
+  type        = string
+  default     = "/"
+}
+
 variable "braintrust_api_ingest_event_loop_utilization_autoscaling" {
   description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-ingest ECS service."
   type = object({

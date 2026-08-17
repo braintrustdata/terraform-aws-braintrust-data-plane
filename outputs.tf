@@ -133,6 +133,11 @@ output "api_ecs_alb_security_group_id" {
   description = "ID of the security group attached to the private API ECS ALB"
 }
 
+output "api_ecs_rust_ingest_service_name" {
+  description = "Name of the optional Rust ingest ECS service, if create_rust_api_ingest is enabled."
+  value       = local.create_ecs_api && var.create_rust_api_ingest ? module.api_ecs[0].service_names.braintrust_api_rust_ingest : null
+}
+
 output "api_ecs_http_url" {
   value       = local.create_ecs_api ? module.api_ecs[0].http_url : null
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"

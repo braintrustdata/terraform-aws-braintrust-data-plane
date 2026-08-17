@@ -67,6 +67,12 @@ The gateway internal ALB lives in `modules/gateway-alb` so callers can reference
 
 Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
 
+### Optional Rust ingest canary: `create_rust_api_ingest`
+
+When `create_rust_api_ingest = true`, the api-ecs module creates a parallel Rust ingest ECS service + target group and adds it to weighted ALB forwards for `/logs3`, `/otel/v1/*`, `/attachment*`, and `/logs3/overflow`. Dial traffic with `rust_api_ingest_traffic_weight` (0–100; TypeScript gets the remainder). Default weight is `0` so you can stand up Rust with no traffic. Rollback = set weight back to `0`. Cutover = weight `100` (or later point paths at Rust only).
+
+Requires `rust_api_ingest_container_image_repository` and either `rust_api_ingest_version_override` or `modules/api-ecs/VERSIONS.json` key `api_rust_ingest`.
+
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
 Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
