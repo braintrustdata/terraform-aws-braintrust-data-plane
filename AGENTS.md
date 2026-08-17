@@ -67,9 +67,15 @@ The gateway internal ALB lives in `modules/gateway-alb` so callers can reference
 
 Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
 
-### Optional Rust ingest canary: `create_rust_api_ingest`
+### Optional Rust ingest: `create_rust_api_ingest` vs `enable_rust_api_ingest`
 
-When `create_rust_api_ingest = true`, the api-ecs module creates a parallel Rust ingest ECS service + target group and adds it to weighted ALB forwards for `/logs3`, `/otel/v1/*`, `/attachment*`, and `/logs3/overflow`. Dial traffic with `rust_api_ingest_traffic_weight` (0–100; TypeScript gets the remainder). Default weight is `0` so you can stand up Rust with no traffic. Rollback = set weight back to `0`. Cutover = weight `100` (or later point paths at Rust only).
+Similar two-step pattern to the private gateway:
+
+- **`create_rust_api_ingest`**: parallel Rust ingest ECS service + target group.
+- **`enable_rust_api_ingest`**: point ingest ALB paths (`/logs3`, `/otel/v1/*`, `/attachment*`, `/logs3/overflow`) at Rust only. Requires `create_rust_api_ingest`.
+- **`rust_api_ingest_traffic_weight`**: optional % canary while `create=true` and `enable=false` (TypeScript gets the remainder). Ignored when `enable=true`. Default `0` (stand up with no traffic).
+
+Customer cutover: `create=true, enable=false` → apply → `enable=true` → apply. Greenfield can set both true in one apply. Braintrust soak can dial weight before enable.
 
 Requires `rust_api_ingest_container_image_repository` and either `rust_api_ingest_version_override` or `modules/api-ecs/VERSIONS.json` key `api_rust_ingest`.
 

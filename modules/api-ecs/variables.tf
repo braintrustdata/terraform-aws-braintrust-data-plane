@@ -148,13 +148,24 @@ variable "braintrust_api_event_loop_delay_autoscaling" {
 
 variable "create_rust_api_ingest" {
   type        = bool
-  description = "Create the optional Rust ingest ECS service and include it in weighted ALB forwards for ingest paths. Use rust_api_ingest_traffic_weight to dial traffic (0 = stand up with no traffic)."
+  description = "Create the optional Rust ingest ECS service + target group. Ingest paths stay on TypeScript until enable_rust_api_ingest (or a canary weight). Default false."
   default     = false
+}
+
+variable "enable_rust_api_ingest" {
+  type        = bool
+  description = "Point ingest ALB paths at the Rust target group only. Requires create_rust_api_ingest. When true, rust_api_ingest_traffic_weight is ignored."
+  default     = false
+
+  validation {
+    condition     = !var.enable_rust_api_ingest || var.create_rust_api_ingest
+    error_message = "enable_rust_api_ingest requires create_rust_api_ingest."
+  }
 }
 
 variable "rust_api_ingest_traffic_weight" {
   type        = number
-  description = "Percent of ingest ALB traffic (0-100) sent to Rust when create_rust_api_ingest is true. TypeScript receives the remainder. Ignored when create_rust_api_ingest is false."
+  description = "Percent of ingest ALB traffic (0-100) sent to Rust while create_rust_api_ingest is true and enable_rust_api_ingest is false. Ignored when create is false or enable is true."
   default     = 0
 
   validation {

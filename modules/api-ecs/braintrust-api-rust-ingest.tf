@@ -1,6 +1,7 @@
-# Optional Rust ingest service for ALB weighted % canaries.
-# When create_rust_api_ingest is true, ingest path rules weighted-forward
-# across the TypeScript and Rust target groups (see alb-path-routes.tf).
+# Optional Rust ingest service.
+# create_rust_api_ingest stands up the service + TG.
+# enable_rust_api_ingest (or rust_api_ingest_traffic_weight while canarying)
+# controls ALB ingest path forwarding — see alb-path-routes.tf.
 
 locals {
   braintrust_api_rust_ingest_name = "braintrust-api-rust-ingest"

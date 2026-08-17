@@ -458,6 +458,7 @@ module "api_ecs" {
   braintrust_api_ingest_event_loop_utilization_autoscaling     = var.braintrust_api_ingest_event_loop_utilization_autoscaling
   braintrust_api_ingest_event_loop_delay_autoscaling           = var.braintrust_api_ingest_event_loop_delay_autoscaling
   create_rust_api_ingest                                       = var.create_rust_api_ingest
+  enable_rust_api_ingest                                       = var.enable_rust_api_ingest
   rust_api_ingest_traffic_weight                               = var.rust_api_ingest_traffic_weight
   rust_api_ingest_container_image_repository                   = var.rust_api_ingest_container_image_repository
   rust_api_ingest_version_override                             = var.rust_api_ingest_version_override

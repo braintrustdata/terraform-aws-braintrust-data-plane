@@ -1,31 +1,42 @@
 # ALB path routing (evaluated by priority; lower number wins).
 # Unmatched requests fall through to the listener default action → braintrust-api.
 #
-# When create_rust_api_ingest is true, ingest path rules use a weighted forward
-# across the TypeScript and Rust target groups (rust_api_ingest_traffic_weight).
+# Ingest paths (/logs3, /otel/v1/*, /attachment*, /logs3/overflow):
+# - create_rust_api_ingest=false: TypeScript only
+# - create=true, enable=false: weighted TS/Rust (rust_api_ingest_traffic_weight)
+# - create=true, enable=true: Rust only (weight ignored)
 # Non-ingest routes are unchanged.
 
 locals {
-  rust_api_ingest_traffic_weight = var.create_rust_api_ingest ? var.rust_api_ingest_traffic_weight : 0
+  rust_api_ingest_enabled = var.create_rust_api_ingest && var.enable_rust_api_ingest
+  rust_api_ingest_canary  = var.create_rust_api_ingest && !var.enable_rust_api_ingest
+
+  rust_api_ingest_traffic_weight = local.rust_api_ingest_canary ? var.rust_api_ingest_traffic_weight : 0
   ts_api_ingest_traffic_weight   = 100 - local.rust_api_ingest_traffic_weight
 
-  ingest_target_groups = var.create_rust_api_ingest ? [
-    {
-      arn    = aws_lb_target_group.braintrust_api_ingest.arn
-      weight = local.ts_api_ingest_traffic_weight
-    },
-    {
-      arn    = aws_lb_target_group.braintrust_api_rust_ingest[0].arn
-      weight = local.rust_api_ingest_traffic_weight
-    },
-    ] : [
-    {
-      arn = aws_lb_target_group.braintrust_api_ingest.arn
-    },
-  ]
+  ingest_target_groups = (
+    local.rust_api_ingest_enabled ? [
+      {
+        arn = aws_lb_target_group.braintrust_api_rust_ingest[0].arn
+      },
+      ] : local.rust_api_ingest_canary ? [
+      {
+        arn    = aws_lb_target_group.braintrust_api_ingest.arn
+        weight = local.ts_api_ingest_traffic_weight
+      },
+      {
+        arn    = aws_lb_target_group.braintrust_api_rust_ingest[0].arn
+        weight = local.rust_api_ingest_traffic_weight
+      },
+      ] : [
+      {
+        arn = aws_lb_target_group.braintrust_api_ingest.arn
+      },
+    ]
+  )
 
   alb_path_routes = [
-    # braintrust-api-ingest (weighted TS/Rust when create_rust_api_ingest)
+    # braintrust-api-ingest (TS / weighted canary / Rust-only — see locals above)
     { path = "/logs3", method = "POST", target_groups = local.ingest_target_groups },
     { path = "/otel/v1/*", method = "POST", target_groups = local.ingest_target_groups },
     { path = "/attachment", method = "POST", target_groups = local.ingest_target_groups },
