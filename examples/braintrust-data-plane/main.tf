@@ -123,11 +123,9 @@ module "braintrust-data-plane" {
 
   ### Optional Rust ingest (ECS API only; default off)
   # Two-step cutover: create=true, enable=false, apply; then enable=true.
-  # Greenfield can set both true in one apply. Optional % canary while create
-  # is true and enable is false via rust_api_ingest_traffic_weight.
+  # Greenfield can set both true in one apply.
   # create_rust_api_ingest                     = false
   # enable_rust_api_ingest                     = false
-  # rust_api_ingest_traffic_weight             = 0
   # rust_api_ingest_container_image_repository = "ACCOUNT.dkr.ecr.REGION.amazonaws.com/braintrust-api-rust-ingest"
   # rust_api_ingest_version_override           = "vX.Y.Z"
   # rust_api_ingest_cpu                        = 1024

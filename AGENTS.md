@@ -73,9 +73,8 @@ Similar two-step pattern to the private gateway:
 
 - **`create_rust_api_ingest`**: parallel Rust ingest ECS service + target group.
 - **`enable_rust_api_ingest`**: point ingest ALB paths (`/logs3`, `/otel/v1/*`, `/attachment*`, `/logs3/overflow`) at Rust only. Requires `create_rust_api_ingest`.
-- **`rust_api_ingest_traffic_weight`**: optional % canary while `create=true` and `enable=false` (TypeScript gets the remainder). Ignored when `enable=true`. Default `0` (stand up with no traffic).
 
-Customer cutover: `create=true, enable=false` → apply → `enable=true` → apply. Greenfield can set both true in one apply. Braintrust soak can dial weight before enable.
+Use `create_rust_api_ingest = true` with `enable_rust_api_ingest = false` for a two-step prod cutover (stand up Rust while ingest stays on TypeScript). Set both true for single-apply wiring on greenfield deployments.
 
 Requires `rust_api_ingest_container_image_repository` and either `rust_api_ingest_version_override` or `modules/api-ecs/VERSIONS.json` key `api_rust_ingest`.
 

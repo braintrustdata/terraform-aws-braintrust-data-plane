@@ -155,7 +155,6 @@ module "braintrust-data-plane" {
   # Two-step: create=true, enable=false, apply; then enable=true.
   # create_rust_api_ingest                     = false
   # enable_rust_api_ingest                     = false
-  # rust_api_ingest_traffic_weight             = 0
   # rust_api_ingest_container_image_repository = "ACCOUNT.dkr.ecr.REGION.amazonaws.com/braintrust-api-rust-ingest"
   # rust_api_ingest_version_override           = "vX.Y.Z"
   # rust_api_ingest_health_check_path          = "/"
