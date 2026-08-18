@@ -1073,6 +1073,24 @@ variable "cloudfront_origin_read_timeout" {
   }
 }
 
+variable "cloudfront_minimum_protocol_version" {
+  description = "Minimum TLS protocol version that CloudFront uses for HTTPS connections from viewers. Requires custom_certificate_arn to be set (CloudFront cannot set a minimum protocol version on the default certificate). When unset with a custom certificate, defaults to TLSv1.3_2025. Lower this (e.g. to TLSv1.2_2021) to support clients that cannot negotiate TLS 1.3. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/secure-connections-supported-viewer-protocols-ciphers.html"
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.cloudfront_minimum_protocol_version == null ? true : contains([
+      "TLSv1", "TLSv1_2016", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.3_2025"
+    ], var.cloudfront_minimum_protocol_version)
+    error_message = "cloudfront_minimum_protocol_version must be one of: TLSv1, TLSv1_2016, TLSv1.1_2016, TLSv1.2_2018, TLSv1.2_2019, TLSv1.2_2021, TLSv1.3_2025."
+  }
+
+  validation {
+    condition     = var.cloudfront_minimum_protocol_version == null || var.custom_certificate_arn != null
+    error_message = "cloudfront_minimum_protocol_version can only be set when custom_certificate_arn is provided. CloudFront rejects a minimum protocol version on the default certificate."
+  }
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
