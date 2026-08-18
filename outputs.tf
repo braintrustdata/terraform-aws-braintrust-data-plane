@@ -234,14 +234,14 @@ output "monitoring_contract" {
       cluster_name = length(module.ecs) > 0 ? module.ecs[0].cluster_name : null
       services = merge(
         local.create_ecs_api ? {
-          api-ecs = {
-            service_name  = module.api_ecs[0].service_name
-            lb_arn_suffix = module.api_ecs[0].alb_arn_suffix
-            tg_arn_suffix = module.api_ecs[0].target_group_arn_suffix
-          }
+          for role, target in module.api_ecs[0].monitoring_targets : role => merge(
+            target,
+            { lb_arn_suffix = module.api_ecs[0].alb_arn_suffix },
+          )
         } : {},
         local.create_ai_gateway ? {
           gateway = {
+            alarm_group   = "gateway"
             service_name  = module.gateway_ecs[0].service_name
             lb_arn_suffix = module.gateway_alb[0].gateway_alb_arn_suffix
             tg_arn_suffix = module.gateway_alb[0].gateway_target_group_arn_suffix

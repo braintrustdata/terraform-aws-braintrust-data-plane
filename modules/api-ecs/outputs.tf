@@ -12,6 +12,27 @@ output "service_names" {
   }
 }
 
+output "monitoring_targets" {
+  description = "API ECS service and target group identifiers keyed by stable role for monitoring integrations."
+  value = {
+    api = {
+      alarm_group   = "api-ecs"
+      service_name  = aws_ecs_service.braintrust_api.name
+      tg_arn_suffix = aws_lb_target_group.braintrust_api.arn_suffix
+    }
+    api-ingest = {
+      alarm_group   = "api-ecs"
+      service_name  = aws_ecs_service.braintrust_api_ingest.name
+      tg_arn_suffix = aws_lb_target_group.braintrust_api_ingest.arn_suffix
+    }
+    api-background = {
+      alarm_group   = "api-ecs"
+      service_name  = aws_ecs_service.braintrust_api_background.name
+      tg_arn_suffix = aws_lb_target_group.braintrust_api_background.arn_suffix
+    }
+  }
+}
+
 output "alb_arn" {
   description = "ARN of the API ECS ALB."
   value       = aws_lb.api_ecs.arn
