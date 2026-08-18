@@ -15,7 +15,7 @@ output "service_names" {
 output "monitoring_targets" {
   description = "API ECS service and target group identifiers keyed by stable role for monitoring integrations."
   value = {
-    api = {
+    api-ecs = {
       alarm_group   = "api-ecs"
       service_name  = aws_ecs_service.braintrust_api.name
       tg_arn_suffix = aws_lb_target_group.braintrust_api.arn_suffix
