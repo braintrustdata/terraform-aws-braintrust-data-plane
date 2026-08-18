@@ -275,7 +275,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     acm_certificate_arn            = var.custom_certificate_arn
 
     # These can only be set if cloudfront_default_certificate is false
-    minimum_protocol_version = var.custom_certificate_arn != null ? var.cloudfront_minimum_protocol_version : null
+    minimum_protocol_version = var.custom_certificate_arn != null ? coalesce(var.cloudfront_minimum_protocol_version, "TLSv1.3_2025") : null
     ssl_support_method       = var.custom_certificate_arn != null ? "sni-only" : null
   }
 
