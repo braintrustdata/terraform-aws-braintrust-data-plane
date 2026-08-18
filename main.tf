@@ -504,12 +504,13 @@ module "api_ecs" {
   alb_custom_domain              = var.braintrust_api_alb_custom_domain
   alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
 
-  kms_key_arn            = local.kms_key_arn
-  ecs_cluster_arn        = module.ecs[0].cluster_arn
-  ecs_cluster_name       = module.ecs[0].cluster_name
-  task_role_arn          = module.services_common.api_handler_role_arn
-  task_security_group_id = module.services_common.api_security_group_id
-  custom_tags            = local.all_custom_tags
+  kms_key_arn              = local.kms_key_arn
+  permissions_boundary_arn = var.permissions_boundary_arn
+  ecs_cluster_arn          = module.ecs[0].cluster_arn
+  ecs_cluster_name         = module.ecs[0].cluster_name
+  task_role_arn            = module.services_common.api_handler_role_arn
+  task_security_group_id   = module.services_common.api_security_group_id
+  custom_tags              = local.all_custom_tags
 }
 
 module "ingress" {

@@ -8,6 +8,12 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt API ECS resources that support customer-managed KMS keys."
 }
 
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
+  default     = null
+}
+
 variable "vpc_id" {
   type        = string
   description = "VPC ID where ECS resources are deployed."
