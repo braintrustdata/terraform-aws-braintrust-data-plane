@@ -105,6 +105,12 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
+  # Minimum TLS protocol version CloudFront negotiates with viewers. Requires
+  # custom_certificate_arn to be set (Terraform errors otherwise) and is
+  # distribution-wide. Lower this (e.g. to "TLSv1.2_2021") only if you have clients
+  # that cannot negotiate TLS 1.3.
+  # cloudfront_minimum_protocol_version = "TLSv1.2_2021"
+
   # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
   # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
   # unsafe_url_request_mode = "warn"
@@ -122,6 +128,16 @@ module "braintrust-data-plane" {
   # s3_additional_allowed_origins                  = ["https://app.example.com"]
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: S3 server access logging for the brainstore, code-bundle, and
+  # lambda-responses buckets. Attach the destination bucket policy (grant
+  # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination
+  # must use SSE-S3 (AES256), not SSE-KMS. See the module README "S3 Server
+  # Access Logging" section for the required order and policy.
+  # s3_server_access_logging = {
+  #   bucket = "your-audit-logs-bucket"
+  #   prefix = "braintrust/"
+  # }
 
   # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # s3_export_assume_role_arns = [

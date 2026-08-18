@@ -53,6 +53,16 @@ output "brainstore_s3_bucket_name" {
   description = "Name of the Brainstore S3 bucket"
 }
 
+output "code_bundle_s3_bucket_name" {
+  value       = module.storage.code_bundle_bucket_id
+  description = "Name of the code bundle S3 bucket"
+}
+
+output "lambda_responses_s3_bucket_name" {
+  value       = module.storage.lambda_responses_bucket_id
+  description = "Name of the lambda responses S3 bucket"
+}
+
 output "rds_security_group_id" {
   value       = module.database.rds_security_group_id
   description = "ID of the security group for the RDS instance"
