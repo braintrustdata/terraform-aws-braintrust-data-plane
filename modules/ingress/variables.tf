@@ -135,6 +135,19 @@ variable "cloudfront_origin_read_timeout" {
   }
 }
 
+variable "cloudfront_minimum_protocol_version" {
+  description = "Minimum TLS protocol version that CloudFront uses for HTTPS connections from viewers. Only applied when a custom certificate is provided. Lower this (e.g. to TLSv1.2_2021) to support clients that cannot negotiate TLS 1.3."
+  type        = string
+  default     = "TLSv1.3_2025"
+
+  validation {
+    condition = contains([
+      "TLSv1", "TLSv1_2016", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.3_2025"
+    ], var.cloudfront_minimum_protocol_version)
+    error_message = "cloudfront_minimum_protocol_version must be one of: TLSv1, TLSv1_2016, TLSv1.1_2016, TLSv1.2_2018, TLSv1.2_2019, TLSv1.2_2021, TLSv1.3_2025."
+  }
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

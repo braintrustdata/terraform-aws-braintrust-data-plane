@@ -1073,6 +1073,19 @@ variable "cloudfront_origin_read_timeout" {
   }
 }
 
+variable "cloudfront_minimum_protocol_version" {
+  description = "Minimum TLS protocol version that CloudFront uses for HTTPS connections from viewers. Only applied when custom_certificate_arn is set. Lower this (e.g. to TLSv1.2_2021) to support clients that cannot negotiate TLS 1.3. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/secure-connections-supported-viewer-protocols-ciphers.html"
+  type        = string
+  default     = "TLSv1.3_2025"
+
+  validation {
+    condition = contains([
+      "TLSv1", "TLSv1_2016", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.3_2025"
+    ], var.cloudfront_minimum_protocol_version)
+    error_message = "cloudfront_minimum_protocol_version must be one of: TLSv1, TLSv1_2016, TLSv1.1_2016, TLSv1.2_2018, TLSv1.2_2019, TLSv1.2_2021, TLSv1.3_2025."
+  }
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
