@@ -134,6 +134,13 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
+  ### CloudFront TLS configuration
+  # Minimum TLS protocol version CloudFront negotiates with viewers. Only applied
+  # when custom_certificate_arn is set. It is distribution-wide (there is no
+  # per-path TLS floor), so lowering it relaxes TLS for all paths. Lower this
+  # (e.g. to "TLSv1.2_2021") only if you have clients that cannot negotiate TLS 1.3.
+  # cloudfront_minimum_protocol_version = "TLSv1.3_2025"
+
   # Optional URL-security controls for externally supplied outbound HTTP URLs.
   # Leave unset to use the application default mode of "warn".
   # unsafe_url_request_mode  = "reject"
