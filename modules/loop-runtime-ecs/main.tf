@@ -121,6 +121,10 @@ locals {
     linuxParameters = {
       initProcessEnabled = true
       capabilities = {
+        # AWS stores drop=["ALL"] as {add=[], drop=["ALL"]}. Omitting add makes
+        # container_definitions never match state, so every plan ForceNew-replaces
+        # the task definition (and rolls Loop on unrelated gateway releases).
+        add  = []
         drop = ["ALL"]
       }
     }
