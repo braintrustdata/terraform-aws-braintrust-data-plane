@@ -136,8 +136,7 @@ module "braintrust-data-plane" {
 
   ### CloudFront TLS configuration
   # Minimum TLS protocol version CloudFront negotiates with viewers. Only applied
-  # when custom_certificate_arn is set. It is distribution-wide (there is no
-  # per-path TLS floor), so lowering it relaxes TLS for all paths. Lower this
+  # when custom_certificate_arn is set, and it is distribution-wide. Lower this
   # (e.g. to "TLSv1.2_2021") only if you have clients that cannot negotiate TLS 1.3.
   # cloudfront_minimum_protocol_version = "TLSv1.3_2025"
 
