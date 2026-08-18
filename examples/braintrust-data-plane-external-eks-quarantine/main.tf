@@ -157,5 +157,5 @@ module "braintrust-data-plane" {
   # enable_rust_api_ingest                     = false
   # rust_api_ingest_container_image_repository = "ACCOUNT.dkr.ecr.REGION.amazonaws.com/braintrust-api-rust-ingest"
   # rust_api_ingest_version_override           = "vX.Y.Z"
-  # rust_api_ingest_health_check_path          = "/"
+  # rust_api_ingest_health_check_path          = "/health/liveness"
 }

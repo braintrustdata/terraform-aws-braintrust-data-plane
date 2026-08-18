@@ -246,8 +246,8 @@ variable "rust_api_ingest_cpu_autoscaling" {
 
 variable "rust_api_ingest_health_check_path" {
   type        = string
-  description = "Health check path for the Rust ingest target group."
-  default     = "/"
+  description = "Health check path for the Rust ingest target group and container (api-rs default: /health/liveness)."
+  default     = "/health/liveness"
 }
 
 variable "braintrust_api_ingest_cpu" {

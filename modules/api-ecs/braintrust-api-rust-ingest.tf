@@ -14,15 +14,22 @@ locals {
   rust_api_ingest_env_vars = merge(local.merged_env_vars, {
     CLOUDWATCH_METRICS_SERVICE_NAME    = local.braintrust_api_rust_ingest_name
     CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
+    API_RS_PORT                        = "8100"
   })
 
-  # Canary v1: awslogs only. Datadog sidecars can follow once the image/pipeline is stable.
-  # Override container healthCheck so it matches rust_api_ingest_health_check_path
-  # (api_container_base always probes /).
+  # api-rs (public.ecr.aws/braintrust/api-next) listens on 8100 with /health/liveness.
+  # Override portMappings + healthCheck from api_container_base (TS defaults to 8000 /).
   rust_api_ingest_container_definitions = jsonencode([
     merge(local.api_container_base, {
       name  = "api"
       image = "${var.rust_api_ingest_container_image_repository}:${coalesce(local.rust_api_ingest_version_tag, "unset")}"
+      portMappings = [
+        {
+          containerPort = 8100
+          hostPort      = 8100
+          protocol      = "tcp"
+        }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -32,7 +39,7 @@ locals {
         }
       }
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8000${var.rust_api_ingest_health_check_path} || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:8100${var.rust_api_ingest_health_check_path} || exit 1"]
         interval    = 30
         retries     = 3
         startPeriod = 10
@@ -65,7 +72,7 @@ resource "aws_lb_target_group" "braintrust_api_rust_ingest" {
 
   # Max 32 chars: deployment_name <= 18 + "-api-rs-ing".
   name        = "${var.deployment_name}-api-rs-ing"
-  port        = 8000
+  port        = 8100
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = var.vpc_id
@@ -160,7 +167,7 @@ resource "aws_ecs_service" "braintrust_api_rust_ingest" {
   load_balancer {
     target_group_arn = aws_lb_target_group.braintrust_api_rust_ingest[0].arn
     container_name   = "api"
-    container_port   = 8000
+    container_port   = 8100
   }
 
   depends_on = [aws_lb_listener_rule.alb_path_routes]

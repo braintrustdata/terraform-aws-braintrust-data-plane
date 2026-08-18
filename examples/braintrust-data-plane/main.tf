@@ -132,7 +132,7 @@ module "braintrust-data-plane" {
   # rust_api_ingest_memory                     = 8192
   # rust_api_ingest_min_count                  = 2
   # rust_api_ingest_max_count                  = 50
-  # rust_api_ingest_health_check_path          = "/"
+  # rust_api_ingest_health_check_path          = "/health/liveness"
 
   ### Advanced configuration
 
