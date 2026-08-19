@@ -61,6 +61,15 @@ Module changes must be applyable directly to live customer stacks without tear-d
 - Avoid env-only changes on Lambdas that do not need them — e.g. do not merge shared env into `MigrateDatabaseFunction` or crons, because that publishes a new Lambda version and re-invokes migrations.
 - Prefer state moves and in-place updates over replace; if a resource must be replaced, document why and whether downtime is expected.
 
+### Review the inverse of every `count` / `for_each`
+
+Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
+
+- Mentally apply `true → false`. Terraform will destroy the resource in the same apply that stops referencing it.
+- If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
+- Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
+- `create_*` flags own resource lifetime; `enable_*` flags own routing.
+
 ### Private gateway ALB relocation
 
 The gateway internal ALB lives in `modules/gateway-alb` so callers can reference `GATEWAY_URL` without depending on `gateway-ecs`. Temporary `moved` blocks in `moved_state.tf` remount state from `services_common` → `gateway_alb` so upgrades do not destroy/recreate the ALB. Remove those moved blocks after all stacks have applied once.
@@ -74,7 +83,6 @@ Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself
 - **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API. Requires `create_ai_gateway`.
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.
-
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 
