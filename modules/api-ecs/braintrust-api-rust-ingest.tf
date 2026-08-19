@@ -11,11 +11,51 @@ locals {
     : try(jsondecode(file("${path.module}/VERSIONS.json"))["api_rust_ingest"], null)
   )
 
-  rust_api_ingest_env_vars = merge(local.merged_env_vars, {
+  # api-rs embeds Brainstore storage and needs direct URIs (same pattern as
+  # brainstore EC2 / loop-runtime / dataplane-loadtest api-next). TS merged_env
+  # only has BRAINSTORE_URL + BRAINSTORE_REALTIME_WAL_BUCKET, which is not enough.
+  rust_api_ingest_brainstore_env_vars = merge(
+    {
+      API_RS_HOST        = "0.0.0.0"
+      API_RS_PORT        = "8100"
+      BRAINSTORE_VERBOSE = "1"
+    },
+    var.brainstore_s3_bucket_name != null && var.brainstore_s3_bucket_name != "" ? {
+      BRAINSTORE_INDEX_URI        = "s3://${var.brainstore_s3_bucket_name}/brainstore/index"
+      BRAINSTORE_LOCKS_URI        = "s3://${var.brainstore_s3_bucket_name}/${trimprefix(var.brainstore_locks_s3_path, "/")}"
+      BRAINSTORE_REALTIME_WAL_URI = "s3://${var.brainstore_s3_bucket_name}/brainstore/wal"
+    } : {},
+    {
+      BRAINSTORE_CODE_BUNDLE_URI    = "s3://${var.code_bundle_bucket}"
+      BRAINSTORE_RESPONSE_CACHE_URI = "s3://${var.response_bucket}/brainstore-cache"
+    },
+  )
+
+  rust_api_ingest_env_vars = merge(local.merged_env_vars, local.rust_api_ingest_brainstore_env_vars, {
     CLOUDWATCH_METRICS_SERVICE_NAME    = local.braintrust_api_rust_ingest_name
     CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
-    API_RS_PORT                        = "8100"
   })
+
+  # Explicit Brainstore storage secrets (PG/Redis). api-rs can also alias PG_URL /
+  # REDIS_URL, but loadtest and brainstore nodes set these names directly.
+  rust_api_ingest_secrets = concat(local.api_container_base.secrets, [
+    {
+      name      = "BRAINSTORE_METADATA_URI"
+      valueFrom = var.database_url_secret_arn
+    },
+    {
+      name      = "BRAINSTORE_WAL_URI"
+      valueFrom = var.database_url_secret_arn
+    },
+    {
+      name      = "BRAINSTORE_XACT_MANAGER_URI"
+      valueFrom = var.redis_url_secret_arn
+    },
+    {
+      name      = "BRAINSTORE_REDIS_URI"
+      valueFrom = var.redis_url_secret_arn
+    },
+  ])
 
   # api-rs (public.ecr.aws/braintrust/api-next) listens on 8100 with /health/liveness.
   # Override portMappings + healthCheck from api_container_base (TS defaults to 8000 /).
@@ -45,6 +85,7 @@ locals {
         startPeriod = 10
         timeout     = 5
       }
+      secrets = local.rust_api_ingest_secrets
       environment = [
         for key in sort(keys(local.rust_api_ingest_env_vars)) : {
           name  = key
@@ -131,6 +172,10 @@ resource "aws_ecs_task_definition" "braintrust_api_rust_ingest" {
     precondition {
       condition     = trimspace(var.rust_api_ingest_container_image_repository) != ""
       error_message = "create_rust_api_ingest requires rust_api_ingest_container_image_repository."
+    }
+    precondition {
+      condition     = try(trimspace(var.brainstore_s3_bucket_name), "") != ""
+      error_message = "create_rust_api_ingest requires brainstore_s3_bucket_name (BRAINSTORE_INDEX_URI)."
     }
   }
 }

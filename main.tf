@@ -424,6 +424,7 @@ module "api_ecs" {
   brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
   brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
   brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
+  brainstore_locks_s3_path        = var.brainstore_locks_s3_path
   brainstore_port                 = module.brainstore[0].port
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version

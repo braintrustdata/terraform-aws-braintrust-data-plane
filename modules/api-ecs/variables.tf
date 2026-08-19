@@ -568,6 +568,12 @@ variable "brainstore_s3_bucket_name" {
   default     = null
 }
 
+variable "brainstore_locks_s3_path" {
+  type        = string
+  description = "S3 path prefix under the Brainstore bucket for Rust ingest BRAINSTORE_LOCKS_URI. Must match Brainstore nodes (root brainstore_locks_s3_path)."
+  default     = "/locks"
+}
+
 variable "brainstore_port" {
   type        = number
   description = "Brainstore port."
