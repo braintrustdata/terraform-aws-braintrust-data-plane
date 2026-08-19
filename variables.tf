@@ -388,6 +388,11 @@ variable "redis_authorized_security_groups" {
   default     = {}
 }
 
+variable "redis_apply_immediately" {
+  description = "Apply Redis changes immediately instead of during the maintenance window"
+  type        = bool
+  default     = false
+}
 ## Services
 
 variable "create_ai_gateway" {

@@ -36,6 +36,7 @@ resource "aws_elasticache_cluster" "main" {
   engine_version     = var.redis_version
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = local.elasticache_security_group_ids
+  apply_immediately  = var.apply_immediately
   tags               = local.common_tags
 }
 
@@ -45,9 +46,10 @@ resource "aws_elasticache_replication_group" "main" {
   replication_group_id = "${var.deployment_name}-redis-rg"
   description          = "${var.deployment_name} redis"
 
-  engine         = "redis"
-  engine_version = var.redis_version
-  node_type      = var.redis_instance_type
+  engine            = "redis"
+  engine_version    = var.redis_version
+  node_type         = var.redis_instance_type
+  apply_immediately = var.apply_immediately
 
   num_cache_clusters = 1
   port               = 6379

@@ -210,6 +210,7 @@ module "redis" {
   use_redis_replication_group = var.use_redis_replication_group
   redis_instance_type         = var.redis_instance_type
   redis_version               = var.redis_version
+  apply_immediately           = var.redis_apply_immediately
   custom_tags                 = local.all_custom_tags
 }
 
