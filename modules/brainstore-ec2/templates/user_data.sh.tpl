@@ -2,6 +2,15 @@
 
 # Help prevent immediate failure of apt commands if another background process is holding the lock
 echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
+# Add retries
+echo 'Acquire::Retries "5";' >> /etc/apt/apt.conf.d/99apt-lock-retry
+
+if ! apt-get update; then
+  echo "apt-get update failed; clearing lists and retrying..." >&2
+  rm -rf /var/lib/apt/lists/*
+  apt-get clean
+  apt-get update
+fi
 
 # Mount the local SSD if it exists
 apt-get install -y nvme-cli mdadm
@@ -57,7 +66,6 @@ cat <<EOF > /etc/docker/daemon.json
   }
 }
 EOF
-apt-get update
 apt-get install -y docker.io jq earlyoom dstat
 systemctl start docker
 systemctl enable docker
