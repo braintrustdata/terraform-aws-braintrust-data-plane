@@ -268,6 +268,9 @@ locals {
       "/insert-functions" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
+      "/validate-functions" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/logs" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
