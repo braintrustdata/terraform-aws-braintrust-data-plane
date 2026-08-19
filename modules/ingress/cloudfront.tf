@@ -30,10 +30,11 @@ locals {
   # the API can recover the viewer protocol. Do not use this policy for HTTPS origins because
   # forwarding the viewer Host header can make CloudFront validate the ALB certificate against
   # the viewer hostname; the ALB already sets X-Forwarded-Proto=https in that case.
+  # The policy resource is always created; this flag only controls whether it is attached.
   cloudfront_use_ecs_forwarded_proto_policy = var.enable_ecs_api && !var.api_ecs_alb_https_enabled
   cloudfront_ecs_origin_request_policy_id = (
     local.cloudfront_use_ecs_forwarded_proto_policy
-    ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto[0].id
+    ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto.id
     : local.cloudfront_AllViewerExceptHostHeader
   )
   cloudfront_origin_request_policy_for_origin = {
@@ -49,9 +50,13 @@ locals {
 
 # Forwards all viewer headers/cookies/query strings plus CloudFront-Forwarded-Proto. This is
 # safe only for the HTTP ECS origin; HTTPS origins must not forward the viewer Host header.
+#
+# Always created (not gated on enable_ecs_api or ALB HTTPS). CloudFront rejects deleting an
+# origin request policy while a distribution still references it, and distribution updates
+# deploy asynchronously. Gating this resource caused enable_ecs_api rollback (true → false)
+# to fail: Terraform detached the policy and deleted it in the same apply, before CloudFront
+# finished deploying. Keep the policy and only attach it when routing to the HTTP ECS origin.
 resource "aws_cloudfront_origin_request_policy" "all_viewer_with_forwarded_proto" {
-  count = local.cloudfront_use_ecs_forwarded_proto_policy ? 1 : 0
-
   name    = "${var.deployment_name}-all-viewer-with-forwarded-proto"
   comment = "All viewer headers plus CloudFront-Forwarded-Proto (for HTTP ECS ALB origin)"
 
