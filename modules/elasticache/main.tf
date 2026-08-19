@@ -4,8 +4,8 @@ locals {
   }, var.custom_tags)
   elasticache_security_group_ids = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.elasticache[0].id]
 
-  create_redis_replication_group = var.use_redis_replication_group
-  create_legacy_redis_cluster    = !var.use_redis_replication_group
+  create_redis_replication_group = var.use_redis_replication_group || var.engine == "valkey"
+  create_legacy_redis_cluster    = !var.use_redis_replication_group && var.engine != "valkey"
 
   engine_version = var.engine == "valkey" ? var.valkey_engine_version : var.redis_version
 
@@ -20,16 +20,26 @@ locals {
 
   redis_url = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
 }
-
 resource "aws_elasticache_subnet_group" "main" {
   name        = "${var.deployment_name}-elasticache-subnet-group"
-  description = "Subnet group for Braintrust elasticache"
+  description = "Subnet group for Braintrust ElastiCache Redis/Valkey"
   subnet_ids  = var.subnet_ids
   tags        = local.common_tags
 }
 
+resource "terraform_data" "validate_engine_topology" {
+  count = var.engine == "valkey" && !var.use_redis_replication_group ? 1 : 0
+
+  lifecycle {
+    precondition {
+      condition     = var.engine != "valkey" || var.use_redis_replication_group
+      error_message = "Valkey requires use_redis_replication_group = true because the legacy aws_elasticache_cluster resource supports Redis only. Set use_redis_replication_group = true before selecting elasticache_engine = \"valkey\"."
+    }
+  }
+}
+
 resource "aws_elasticache_cluster" "main" {
-  count = local.create_legacy_redis_cluster ? 1 : 0
+  count = local.create_legacy_redis_cluster && var.engine != "valkey" ? 1 : 0
 
   cluster_id         = "${var.deployment_name}-redis"
   engine             = var.engine
@@ -54,8 +64,9 @@ resource "aws_elasticache_replication_group" "main" {
   num_cache_clusters = var.num_cache_clusters
   port               = 6379
 
-  # Automatic failover requires at least one replica. Only enable when the
-  # topology actually has a standby node (active/passive with 2+ clusters).
+  # A replica-backed group should use Multi-AZ placement and automatic
+  # failover so a primary or Availability Zone failure can promote a replica.
+  multi_az_enabled           = var.num_cache_clusters >= 2
   automatic_failover_enabled = var.num_cache_clusters >= 2
 
   subnet_group_name  = aws_elasticache_subnet_group.main.name
@@ -68,8 +79,9 @@ resource "aws_elasticache_replication_group" "main" {
 }
 
 resource "aws_secretsmanager_secret" "redis_url" {
+  # Keep this compatibility name for both Redis and Valkey deployments.
   name_prefix = "${var.deployment_name}/RedisUrl-"
-  description = "Redis URL for the Braintrust ElastiCache cluster"
+  description = "Redis-compatible Redis/Valkey URL for the Braintrust ElastiCache cluster"
   kms_key_id  = var.kms_key_arn
   tags        = local.common_tags
 }
@@ -96,7 +108,7 @@ resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_ingress_from_a
   to_port                      = 6379
   ip_protocol                  = "tcp"
   referenced_security_group_id = each.value
-  description                  = "Allow TCP/6379 (Redis) inbound to Elasticache from ${each.key}."
+  description                  = "Allow TCP/6379 (Redis/Valkey) inbound to Elasticache from ${each.key}."
 
   security_group_id = aws_security_group.elasticache[0].id
   tags              = local.common_tags

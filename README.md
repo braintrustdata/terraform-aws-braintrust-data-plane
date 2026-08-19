@@ -28,6 +28,39 @@ If you're using a brand new AWS account for your Braintrust data plane you will 
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
 
+### ElastiCache Redis/Valkey configuration
+
+The module provisions a cluster-mode-disabled ElastiCache instance for API and
+Brainstore coordination (transaction IDs and other short-lived state). Customer
+data lives in Postgres and S3, not in ElastiCache. The module keeps the
+existing `redis_*` outputs and `RedisUrl-` secret name for both engines.
+
+Valkey is Redis-protocol compatible and is intended for **new** deployments.
+Valkey requires
+`use_redis_replication_group = true` because the legacy single-node resource
+supports Redis only. Choose the engine when you first apply, and prefer a
+replication group so transit encryption is enabled:
+```hcl
+elasticache_engine             = "valkey"
+valkey_engine_version          = "8.0"
+use_redis_replication_group    = true
+elasticache_num_cache_clusters = 2 # one primary plus one replica
+```
+
+Confirm the Valkey version is available in the region with the ElastiCache
+`DescribeCacheEngineVersions` API before applying.
+
+Set `elasticache_num_cache_clusters` to `2` or more for a primary plus
+replicas with automatic failover. The replication group can contain one
+primary and up to five replicas (maximum six cache clusters), and its subnet
+group should span at least two Availability Zones for useful failover.
+
+Do not change `elasticache_engine` on an existing deployment (Redis→Valkey or
+Valkey→Redis). That cutover is not a supported in-place migration: it can
+replace the cluster, change the endpoint, and take API and Brainstore writes
+offline while transaction IDs cannot be allocated. Leave existing stacks on
+the engine they already run.
+
 ### Organization access configuration
 
 Prefer ID-based organization access for new deployments:

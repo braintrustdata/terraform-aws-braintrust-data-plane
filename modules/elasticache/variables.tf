@@ -15,12 +15,12 @@ variable "vpc_id" {
 
 variable "kms_key_arn" {
   type        = string
-  description = "KMS key ARN used to encrypt Redis URL secret."
+  description = "KMS key ARN used to encrypt the Redis-compatible Redis/Valkey URL secret."
 }
 
 variable "authorized_security_groups" {
   type        = map(string)
-  description = "Map of security group names to their IDs that are authorized to access Elasticache. Format: { name = <security_group_id> }"
+  description = "Map of security group names to their IDs that are authorized to access the Redis-compatible Redis/Valkey cache. Format: { name = <security_group_id> }"
   default     = {}
 }
 
@@ -36,7 +36,7 @@ variable "use_redis_replication_group" {
 }
 
 variable "engine" {
-  description = "ElastiCache engine to provision. Valkey is a Redis-compatible drop-in and uses the same redis:// / rediss:// URL schemes. Switching this on an existing deployment forces replacement of the cache cluster."
+  description = "ElastiCache engine to provision: \"redis\" or \"valkey\". Valkey requires use_redis_replication_group = true because the legacy single-node resource supports Redis only. Valkey is Redis-compatible and uses the same redis:// / rediss:// URL schemes. Intended for new deployments. Do not change this on an existing stack; switching engines is not a supported in-place migration and can take API and Brainstore writes offline."
   type        = string
   default     = "redis"
 
@@ -60,18 +60,18 @@ variable "redis_version" {
 
 variable "valkey_engine_version" {
   type        = string
-  description = "Valkey engine version. Used when engine = \"valkey\"."
+  description = "Valkey engine version. Used when engine = \"valkey\". Verify availability in the deployment region with the ElastiCache DescribeCacheEngineVersions API before applying."
   default     = "8.0"
 }
 
 variable "num_cache_clusters" {
-  description = "Number of nodes in the replication group (primary + replicas). 1 = primary only; 2+ = active/passive with automatic failover. Only applies when use_redis_replication_group = true."
+  description = "Number of nodes in the replication group (primary + replicas). 1 = primary only; 2+ = active/passive with automatic failover. Only applies when use_redis_replication_group = true. The maximum supported value is 6 (one primary plus up to five replicas)."
   type        = number
   default     = 1
 
   validation {
-    condition     = var.num_cache_clusters >= 1 && var.num_cache_clusters <= 5
-    error_message = "num_cache_clusters must be between 1 and 5."
+    condition     = var.num_cache_clusters >= 1 && var.num_cache_clusters <= 6
+    error_message = "num_cache_clusters must be between 1 and 6."
   }
 }
 

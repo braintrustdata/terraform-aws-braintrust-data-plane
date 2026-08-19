@@ -1,31 +1,33 @@
 output "redis_endpoint" {
-  value = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cache_nodes[0].address : aws_elasticache_replication_group.main[0].primary_endpoint_address
+  value       = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cache_nodes[0].address : aws_elasticache_replication_group.main[0].primary_endpoint_address
+  description = "Primary endpoint for the Redis-compatible Redis/Valkey cache."
 }
 
 output "redis_port" {
   value       = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cache_nodes[0].port : aws_elasticache_replication_group.main[0].port
-  description = "Redis port"
+  description = "Port for the Redis-compatible Redis/Valkey cache. The redis_* name is retained for compatibility."
 }
 
 output "redis_arn" {
   value       = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].arn : aws_elasticache_replication_group.main[0].arn
-  description = "Redis ARN"
+  description = "ARN of the Redis-compatible Redis/Valkey cache. The redis_* name is retained for compatibility."
 }
 
 output "monitoring_target" {
-  description = "ElastiCache target identifiers for CloudWatch monitoring."
+  description = "ElastiCache target identifiers for CloudWatch monitoring. Replication groups expose every member cluster through cache_cluster_ids; cache_cluster_id is retained for legacy single-node consumers."
   value = {
-    cache_cluster_id = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cluster_id : one(aws_elasticache_replication_group.main[0].member_clusters)
-    cache_node_id    = "0001"
+    cache_cluster_id  = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cluster_id : try(one(aws_elasticache_replication_group.main[0].member_clusters), null)
+    cache_cluster_ids = local.create_legacy_redis_cluster ? [aws_elasticache_cluster.main[0].cluster_id] : aws_elasticache_replication_group.main[0].member_clusters
+    cache_node_id     = "0001"
   }
 }
 
 output "redis_security_group_id" {
   value       = local.elasticache_security_group_ids[0]
-  description = "The ID of the first security group for the Elasticache instance"
+  description = "The ID of the first security group for the Redis-compatible Redis/Valkey cache. The redis_* name is retained for compatibility."
 }
 
 output "redis_url_secret_arn" {
   value       = aws_secretsmanager_secret.redis_url.arn
-  description = "ARN of the secret containing the Redis URL"
+  description = "ARN of the secret containing the Redis-compatible Redis/Valkey URL. The redis_* name is retained for compatibility."
 }

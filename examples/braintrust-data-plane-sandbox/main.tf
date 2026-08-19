@@ -97,9 +97,18 @@ module "braintrust-data-plane" {
   # Set to true if you need to test user-defined functions.
   enable_quarantine_vpc = false
 
-  ### Redis configuration
+  ### Redis/Valkey configuration
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
+
+  # Valkey is a Redis-compatible option for new deployments. Choose it at
+  # create time; do not change elasticache_engine on an existing stack.
+  #   elasticache_engine    = "valkey"
+  #   valkey_engine_version = "8.0"
+
+  # Use replicas only when testing failover behavior.
+  #   use_redis_replication_group   = true
+  #   elasticache_num_cache_clusters = 2
 
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false

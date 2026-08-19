@@ -58,6 +58,11 @@ variable "redis_port" {
   type        = number
 }
 
+variable "use_redis_replication_group" {
+  description = "Use the rediss:// scheme when the Redis-compatible cache requires TLS."
+  type        = bool
+}
+
 variable "kms_key_arn" {
   description = "ARN of the KMS key to use for encrypting the bastion host"
   type        = string

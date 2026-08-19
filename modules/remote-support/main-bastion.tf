@@ -46,6 +46,7 @@ resource "aws_instance" "bastion" {
     database_secret_arn  = var.database_secret_arn
     redis_host           = var.redis_host
     redis_port           = var.redis_port
+    redis_scheme         = var.use_redis_replication_group ? "rediss" : "redis"
     lambda_function_arns = var.lambda_function_arns
   })
   user_data_replace_on_change = true

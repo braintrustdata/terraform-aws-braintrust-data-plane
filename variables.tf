@@ -363,7 +363,7 @@ variable "DANGER_disable_database_deletion_protection" {
   default     = false
 }
 
-## Redis
+## Redis/Valkey
 variable "use_redis_replication_group" {
   description = "Use an ElastiCache replication group instead of the legacy single-node ElastiCache cluster. Existing deployments should leave this false until following the documented Redis migration procedure."
   type        = bool
@@ -371,7 +371,7 @@ variable "use_redis_replication_group" {
 }
 
 variable "elasticache_engine" {
-  description = "ElastiCache engine to provision: \"redis\" or \"valkey\". Valkey is a Redis-compatible drop-in and reuses the same redis:// / rediss:// URL schemes, so no downstream service configuration changes are required. Changing this on an existing deployment forces replacement of the cache cluster."
+  description = "ElastiCache engine to provision: \"redis\" (default) or \"valkey\". Valkey requires use_redis_replication_group = true because the legacy single-node resource supports Redis only. Valkey is Redis-compatible and uses the same redis:// / rediss:// URL schemes. Intended for new deployments. Do not change this on an existing stack; switching engines is not a supported in-place migration and can take API and Brainstore writes offline."
   type        = string
   default     = "redis"
 
@@ -394,25 +394,25 @@ variable "redis_version" {
 }
 
 variable "valkey_engine_version" {
-  description = "Valkey engine version. Used when elasticache_engine = \"valkey\"."
+  description = "Valkey engine version. Used when elasticache_engine = \"valkey\". Verify that this version is available in the deployment region with the ElastiCache DescribeCacheEngineVersions API before applying."
   type        = string
   default     = "8.0"
 }
 
 variable "elasticache_num_cache_clusters" {
-  description = "Number of nodes in the ElastiCache replication group (primary + replicas). 1 = primary only; 2+ = active/passive with automatic failover. Only applies when use_redis_replication_group = true."
+  description = "Number of nodes in the ElastiCache replication group (primary + replicas). 1 = primary only; 2+ = active/passive with automatic failover. Only applies when use_redis_replication_group = true. The maximum supported value is 6 (one primary plus up to five replicas)."
   type        = number
   default     = 1
 
   validation {
-    condition     = var.elasticache_num_cache_clusters >= 1 && var.elasticache_num_cache_clusters <= 5
-    error_message = "elasticache_num_cache_clusters must be between 1 and 5."
+    condition     = var.elasticache_num_cache_clusters >= 1 && var.elasticache_num_cache_clusters <= 6
+    error_message = "elasticache_num_cache_clusters must be between 1 and 6."
   }
 }
 
 variable "redis_authorized_security_groups" {
   type        = map(string)
-  description = "Map of security group names to their IDs that are authorized to access the Redis instance. Format: { name = <security_group_id> }"
+  description = "Map of security group names to their IDs that are authorized to access the Redis-compatible Redis/Valkey instance. Format: { name = <security_group_id> }"
   default     = {}
 }
 

@@ -93,7 +93,7 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
-  ### Redis configuration
+  ### Redis/Valkey configuration
 
   # Default is acceptable for typical production deployments.
   redis_instance_type = "cache.r7g.large"
@@ -101,13 +101,16 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
-  # ElastiCache engine: "redis" (default) or "valkey". Valkey is a Redis-compatible
-  # drop-in and requires no changes to downstream service configuration.
-  #   elasticache_engine = "valkey"
-  #   valkey_engine_version = "8.0"
+  # Valkey is a Redis-compatible option for new deployments. Choose it at
+  # create time; do not change elasticache_engine on an existing stack.
+  # Verify the version is available in the region before applying.
+  #   elasticache_engine             = "valkey"
+  #   valkey_engine_version          = "8.0"
+  #   use_redis_replication_group    = true
 
-  # Active/passive replication group (primary + replica) with automatic failover.
-  # Requires use_redis_replication_group = true.
+  # Traditional active/passive replication group (primary + replica) with
+  # automatic failover. Requires a subnet group spanning at least two AZs.
+  #   use_redis_replication_group    = true
   #   elasticache_num_cache_clusters = 2
 
   ### Tagging
