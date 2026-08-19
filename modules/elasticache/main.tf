@@ -7,6 +7,8 @@ locals {
   create_redis_replication_group = var.use_redis_replication_group
   create_legacy_redis_cluster    = !var.use_redis_replication_group
 
+  engine_version = var.engine == "valkey" ? var.valkey_engine_version : var.redis_version
+
   legacy_redis_endpoint = try(
     "redis://${aws_elasticache_cluster.main[0].cache_nodes[0].address}:${aws_elasticache_cluster.main[0].cache_nodes[0].port}",
     null
@@ -30,10 +32,10 @@ resource "aws_elasticache_cluster" "main" {
   count = local.create_legacy_redis_cluster ? 1 : 0
 
   cluster_id         = "${var.deployment_name}-redis"
-  engine             = "redis"
+  engine             = var.engine
   node_type          = var.redis_instance_type
   num_cache_nodes    = 1
-  engine_version     = var.redis_version
+  engine_version     = local.engine_version
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = local.elasticache_security_group_ids
   tags               = local.common_tags
@@ -43,14 +45,18 @@ resource "aws_elasticache_replication_group" "main" {
   count = local.create_redis_replication_group ? 1 : 0
 
   replication_group_id = "${var.deployment_name}-redis-rg"
-  description          = "${var.deployment_name} redis"
+  description          = "${var.deployment_name} ${var.engine}"
 
-  engine         = "redis"
-  engine_version = var.redis_version
+  engine         = var.engine
+  engine_version = local.engine_version
   node_type      = var.redis_instance_type
 
-  num_cache_clusters = 1
+  num_cache_clusters = var.num_cache_clusters
   port               = 6379
+
+  # Automatic failover requires at least one replica. Only enable when the
+  # topology actually has a standby node (active/passive with 2+ clusters).
+  automatic_failover_enabled = var.num_cache_clusters >= 2
 
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = local.elasticache_security_group_ids
@@ -63,7 +69,7 @@ resource "aws_elasticache_replication_group" "main" {
 
 resource "aws_secretsmanager_secret" "redis_url" {
   name_prefix = "${var.deployment_name}/RedisUrl-"
-  description = "Redis URL for the Braintrust Redis cluster"
+  description = "Redis URL for the Braintrust ElastiCache cluster"
   kms_key_id  = var.kms_key_arn
   tags        = local.common_tags
 }

@@ -208,8 +208,11 @@ module "redis" {
     local.bastion_security_group,
   )
   use_redis_replication_group = var.use_redis_replication_group
+  engine                      = var.elasticache_engine
   redis_instance_type         = var.redis_instance_type
   redis_version               = var.redis_version
+  valkey_engine_version       = var.valkey_engine_version
+  num_cache_clusters          = var.elasticache_num_cache_clusters
   custom_tags                 = local.all_custom_tags
 }
 

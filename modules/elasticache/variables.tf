@@ -35,16 +35,44 @@ variable "use_redis_replication_group" {
   type        = bool
 }
 
+variable "engine" {
+  description = "ElastiCache engine to provision. Valkey is a Redis-compatible drop-in and uses the same redis:// / rediss:// URL schemes. Switching this on an existing deployment forces replacement of the cache cluster."
+  type        = string
+  default     = "redis"
+
+  validation {
+    condition     = contains(["redis", "valkey"], var.engine)
+    error_message = "engine must be one of: redis, valkey."
+  }
+}
+
 variable "redis_instance_type" {
   type        = string
-  description = "Instance type for the Redis cluster"
+  description = "Instance type for the Redis/Valkey cluster"
   default     = "cache.r7g.large"
 }
 
 variable "redis_version" {
   type        = string
-  description = "Redis engine version"
+  description = "Redis engine version. Used when engine = \"redis\"."
   default     = "7.0"
+}
+
+variable "valkey_engine_version" {
+  type        = string
+  description = "Valkey engine version. Used when engine = \"valkey\"."
+  default     = "8.0"
+}
+
+variable "num_cache_clusters" {
+  description = "Number of nodes in the replication group (primary + replicas). 1 = primary only; 2+ = active/passive with automatic failover. Only applies when use_redis_replication_group = true."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.num_cache_clusters >= 1 && var.num_cache_clusters <= 5
+    error_message = "num_cache_clusters must be between 1 and 5."
+  }
 }
 
 variable "custom_tags" {

@@ -370,16 +370,44 @@ variable "use_redis_replication_group" {
   default     = false
 }
 
+variable "elasticache_engine" {
+  description = "ElastiCache engine to provision: \"redis\" or \"valkey\". Valkey is a Redis-compatible drop-in and reuses the same redis:// / rediss:// URL schemes, so no downstream service configuration changes are required. Changing this on an existing deployment forces replacement of the cache cluster."
+  type        = string
+  default     = "redis"
+
+  validation {
+    condition     = contains(["redis", "valkey"], var.elasticache_engine)
+    error_message = "elasticache_engine must be one of: redis, valkey."
+  }
+}
+
 variable "redis_instance_type" {
-  description = "Instance type for the Redis cluster"
+  description = "Instance type for the Redis/Valkey cluster"
   type        = string
   default     = "cache.r7g.large"
 }
 
 variable "redis_version" {
-  description = "Redis engine version"
+  description = "Redis engine version. Used when elasticache_engine = \"redis\"."
   type        = string
   default     = "7.0"
+}
+
+variable "valkey_engine_version" {
+  description = "Valkey engine version. Used when elasticache_engine = \"valkey\"."
+  type        = string
+  default     = "8.0"
+}
+
+variable "elasticache_num_cache_clusters" {
+  description = "Number of nodes in the ElastiCache replication group (primary + replicas). 1 = primary only; 2+ = active/passive with automatic failover. Only applies when use_redis_replication_group = true."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.elasticache_num_cache_clusters >= 1 && var.elasticache_num_cache_clusters <= 5
+    error_message = "elasticache_num_cache_clusters must be between 1 and 5."
+  }
 }
 
 variable "redis_authorized_security_groups" {

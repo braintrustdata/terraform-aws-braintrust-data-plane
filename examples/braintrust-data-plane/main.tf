@@ -101,6 +101,15 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
+  # ElastiCache engine: "redis" (default) or "valkey". Valkey is a Redis-compatible
+  # drop-in and requires no changes to downstream service configuration.
+  #   elasticache_engine = "valkey"
+  #   valkey_engine_version = "8.0"
+
+  # Active/passive replication group (primary + replica) with automatic failover.
+  # Requires use_redis_replication_group = true.
+  #   elasticache_num_cache_clusters = 2
+
   ### Tagging
   # Optionally add any custom AWS tags you want to apply to all resources created by the module
   #  custom_tags = {
