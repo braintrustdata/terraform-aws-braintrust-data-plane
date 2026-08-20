@@ -1,4 +1,4 @@
-# PrivateLink sandwich (Netflix NLB→ALB pattern): quarantine VPC reaches the
+# PrivateLink sandwich (NLB→ALB): quarantine VPC reaches the
 # private gateway ALB without VPC peering.
 #
 # Provider (main VPC): internal NLB → target_type=alb (gateway ALB) → VPC

@@ -37,6 +37,10 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 ## Rules
 
+### Do not name customers in public text
+
+Do not mention named customers in PRs, comments, docs, examples, or commit messages. Refer to them generically (private dataplane, hybrid, residency-sensitive, etc.).
+
 ### Keep examples in sync with variables
 
 When adding, removing, or renaming variables in the root module's `variables.tf`, update the example `main.tf` files to reflect the change. All examples under `examples/` should remain valid and representative.
@@ -114,7 +118,7 @@ existing stacks are unchanged until operators explicitly enable it.
 
 #### Networking (PrivateLink; only when the flag wires to private gateway)
 
-Clones the Netflix NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
+Uses an NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
 
 1. **Provider (main VPC)**: internal multi-AZ NLB → target group
    `target_type = "alb"` attached to the gateway ALB → TCP **80** listener →
