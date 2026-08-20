@@ -264,7 +264,7 @@ output "monitoring_contract" {
       log_groups = merge(
         local.create_ecs_api ? { api-ecs = module.api_ecs[0].cloudwatch_log_groups } : {},
         local.create_ai_gateway ? { gateway = module.gateway_ecs[0].cloudwatch_log_groups } : {},
-        local.create_loop_runtime ? { loop-runtime = module.loop_runtime_alb[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime ? { loop-runtime = module.loop_runtime_ecs[0].cloudwatch_log_groups } : {},
         local.create_loop_runtime ? { loop-runtime-sandbox = { group = module.loop_runtime_sandbox_aws_microvm[0].microvm_log_group_name } } : {},
       )
     }
