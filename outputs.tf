@@ -206,7 +206,7 @@ output "cloudfront_distribution_hosted_zone_id" {
 output "monitoring_contract" {
   description = "Versioned resource identifiers and capabilities consumed by terraform-aws-braintrust-data-plane-cloudwatch."
   value = {
-    version = 1
+    version = 2
 
     rds = {
       identifier               = module.database.postgres_database_identifier
@@ -257,6 +257,15 @@ output "monitoring_contract" {
             tg_arn_suffix = module.gateway_alb[0].gateway_target_group_arn_suffix
           }
         } : {},
+      )
+    }
+
+    cloudwatch = {
+      log_groups = merge(
+        local.create_ecs_api ? { api-ecs = module.api_ecs[0].cloudwatch_log_groups } : {},
+        local.create_ai_gateway ? { gateway = module.gateway_ecs[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime ? { loop-runtime = module.loop_runtime_alb[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime ? { loop-runtime-sandbox = { group = module.loop_runtime_sandbox_aws_microvm[0].microvm_log_group_name } } : {},
       )
     }
   }

@@ -101,3 +101,12 @@ output "url_ssm_parameter_version" {
   description = "Version of the SSM parameter containing the API ECS URL. Increments whenever the URL changes (e.g. HTTP -> HTTPS), so consumers can pin to it and force a refresh."
   value       = aws_ssm_parameter.api_url.version
 }
+
+output "cloudwatch_log_groups" {
+  description = "Names of the cloudwatch log groups created for ECS."
+  value = {
+    braintrust_api            = aws_cloudwatch_log_group.braintrust_api.name
+    braintrust_api_ingest     = aws_cloudwatch_log_group.braintrust_api_ingest.name
+    braintrust_api_background = aws_cloudwatch_log_group.braintrust_api_background.name
+  }
+}
