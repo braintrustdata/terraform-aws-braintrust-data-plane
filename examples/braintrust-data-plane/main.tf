@@ -120,6 +120,32 @@ module "braintrust-data-plane" {
   # You might need to adjust this so it does not conflict with any other VPC CIDR blocks you intend to peer with Braintrust
   # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
+  # VPC Flow Logs (disabled by default; only applied to VPCs this module creates).
+  # Configure the main and quarantine VPCs separately.
+  #
+  # Option A - write to your own S3 bucket:
+  # main_vpc_flow_log = {
+  #   enabled         = true
+  #   traffic_type    = "ALL" # ALL | ACCEPT | REJECT
+  #   destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
+  # }
+  #
+  # Option B - let the module create and manage a dedicated S3 bucket (leave destination_arn unset):
+  # main_vpc_flow_log = {
+  #   enabled = true
+  # }
+  #
+  # Option C - write to CloudWatch Logs (module creates the log group + IAM role):
+  # main_vpc_flow_log = {
+  #   enabled           = true
+  #   destination_type  = "cloud-watch-logs"
+  #   retention_in_days = 365
+  # }
+  #
+  # quarantine_vpc_flow_log = {
+  #   enabled = true
+  # }
+
 
   ### Advanced configuration
 
