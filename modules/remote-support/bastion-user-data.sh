@@ -6,7 +6,7 @@ echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
 # Add retries
 echo 'Acquire::Retries "5";' >> /etc/apt/apt.conf.d/99apt-lock-retry
 
-sed -i "s|http://[a-z0-9-]\+\.ec2\.ports\.ubuntu\.com|http://ports.ubuntu.com|g" /etc/apt/sources.list.d/ubuntu.sources
+sed -i "s|http://[a-z0-9-]\+\.ec2\.ports\.ubuntu\.com|http://ports.ubuntu.com|g" /etc/apt/sources.list
 rm -rf /var/lib/apt/lists/*
 apt-get clean
 apt-get update
