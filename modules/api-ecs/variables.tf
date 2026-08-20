@@ -8,6 +8,12 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt API ECS resources that support customer-managed KMS keys."
 }
 
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
+  default     = null
+}
+
 variable "vpc_id" {
   type        = string
   description = "VPC ID where ECS resources are deployed."
@@ -602,7 +608,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, AI Proxy URL, hosted gateway /v1/proxy, or PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy). Null or blank omits the env var so api-ts getRuntimeEnv falls back to the caller proxy URL."
+  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), or AI Proxy Function URL. Null or blank omits the env var so api-ts getRuntimeEnv falls back to the caller proxy URL."
   default     = null
 }
 

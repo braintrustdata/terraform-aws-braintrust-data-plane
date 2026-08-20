@@ -136,10 +136,17 @@ module "braintrust-data-plane" {
 
   # Opt in to wire quarantine UDF LLM calls to the private gateway via
   # PrivateLink (NLB→ALB + VPC endpoint) at http://<vpce-dns>/v1/proxy.
-  # Default false keeps SaaS hosted-gateway / manual quarantine_proxy_url.
+  # Default false keeps the AI Proxy Function URL / manual quarantine_proxy_url.
   # Requires create_ai_gateway; auto-wires only with create_vpc + module quarantine.
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
+
+  ### CloudFront TLS configuration
+  # Minimum TLS protocol version CloudFront negotiates with viewers. Requires
+  # custom_certificate_arn to be set (Terraform errors otherwise), defaults to
+  # TLSv1.3_2025 when left unset, and is distribution-wide. Lower this (e.g. to
+  # "TLSv1.2_2021") only if you have clients that cannot negotiate TLS 1.3.
+  # cloudfront_minimum_protocol_version = "TLSv1.2_2021"
 
   # Optional URL-security controls for externally supplied outbound HTTP URLs.
   # Leave unset to use the application default mode of "warn".
@@ -172,6 +179,16 @@ module "braintrust-data-plane" {
   # s3_additional_allowed_origins                  = ["https://app.example.com"]
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: S3 server access logging for the brainstore, code-bundle, and
+  # lambda-responses buckets. Attach the destination bucket policy (grant
+  # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination
+  # must use SSE-S3 (AES256), not SSE-KMS. See the module README "S3 Server
+  # Access Logging" section for the required order and policy.
+  # s3_server_access_logging = {
+  #   bucket = "your-audit-logs-bucket"
+  #   prefix = "braintrust/"
+  # }
 
   # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # s3_export_assume_role_arns = [

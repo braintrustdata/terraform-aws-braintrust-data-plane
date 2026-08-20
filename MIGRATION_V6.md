@@ -51,6 +51,8 @@ These services have new variables that require consideration:
 
 Set `enable_ecs_api = false` and apply. CloudFront will revert to the Lambda path. This is a fast rollback while the Lambdas are still deployed.
 
+The custom CloudFront origin request policy (`<deployment>-all-viewer-with-forwarded-proto`) is left in place after rollback. CloudFront cannot delete a policy in the same apply that detaches it from the distribution.
+
 ## Cleanup
 
 Lambda resources will continue to exist in your data plane, though they are no longer used. A future release will remove the Lambda resources.

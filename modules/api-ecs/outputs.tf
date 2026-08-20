@@ -12,9 +12,35 @@ output "service_names" {
   }
 }
 
+output "monitoring_targets" {
+  description = "API ECS service and target group identifiers keyed by stable role for monitoring integrations."
+  value = {
+    api-ecs = {
+      alarm_group   = "api-ecs"
+      service_name  = aws_ecs_service.braintrust_api.name
+      tg_arn_suffix = aws_lb_target_group.braintrust_api.arn_suffix
+    }
+    api-ingest = {
+      alarm_group   = "api-ecs"
+      service_name  = aws_ecs_service.braintrust_api_ingest.name
+      tg_arn_suffix = aws_lb_target_group.braintrust_api_ingest.arn_suffix
+    }
+    api-background = {
+      alarm_group   = "api-ecs"
+      service_name  = aws_ecs_service.braintrust_api_background.name
+      tg_arn_suffix = aws_lb_target_group.braintrust_api_background.arn_suffix
+    }
+  }
+}
+
 output "alb_arn" {
   description = "ARN of the API ECS ALB."
   value       = aws_lb.api_ecs.arn
+}
+
+output "alb_arn_suffix" {
+  description = "ARN suffix of the API ECS ALB for CloudWatch dimensions."
+  value       = aws_lb.api_ecs.arn_suffix
 }
 
 output "alb_dns_name" {
@@ -35,6 +61,11 @@ output "alb_domain" {
 output "target_group_arn" {
   description = "ARN of the braintrust-api ALB target group."
   value       = aws_lb_target_group.braintrust_api.arn
+}
+
+output "target_group_arn_suffix" {
+  description = "ARN suffix of the braintrust-api ALB target group for CloudWatch dimensions."
+  value       = aws_lb_target_group.braintrust_api.arn_suffix
 }
 
 output "target_group_arns" {
@@ -74,4 +105,13 @@ output "url_ssm_parameter_name" {
 output "url_ssm_parameter_version" {
   description = "Version of the SSM parameter containing the API ECS URL. Increments whenever the URL changes (e.g. HTTP -> HTTPS), so consumers can pin to it and force a refresh."
   value       = aws_ssm_parameter.api_url.version
+}
+
+output "cloudwatch_log_groups" {
+  description = "Names of the cloudwatch log groups created for ECS."
+  value = {
+    braintrust_api            = aws_cloudwatch_log_group.braintrust_api.name
+    braintrust_api_ingest     = aws_cloudwatch_log_group.braintrust_api_ingest.name
+    braintrust_api_background = aws_cloudwatch_log_group.braintrust_api_background.name
+  }
 }

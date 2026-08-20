@@ -65,6 +65,15 @@ Module changes must be applyable directly to live customer stacks without tear-d
 - Avoid env-only changes on Lambdas that do not need them — e.g. do not merge shared env into `MigrateDatabaseFunction` or crons, because that publishes a new Lambda version and re-invokes migrations.
 - Prefer state moves and in-place updates over replace; if a resource must be replaced, document why and whether downtime is expected.
 
+### Review the inverse of every `count` / `for_each`
+
+Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
+
+- Mentally apply `true → false`. Terraform will destroy the resource in the same apply that stops referencing it.
+- If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
+- Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
+- `create_*` flags own resource lifetime; `enable_*` flags own routing.
+
 ### Private gateway ALB relocation
 
 The gateway internal ALB lives in `modules/gateway-alb` so callers can reference `GATEWAY_URL` without depending on `gateway-ecs`. Temporary `moved` blocks in `moved_state.tf` remount state from `services_common` → `gateway_alb` so upgrades do not destroy/recreate the ALB. Remove those moved blocks after all stacks have applied once.
@@ -87,7 +96,8 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
 Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
 peer the quarantine VPC to main for this path. Prefer PrivateLink to the
-private gateway when opted in.
+private gateway when opted in. Loop Runtime stays on the AI Proxy Function
+URL; PrivateLink only affects quarantine when the flag is on.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 
@@ -98,23 +108,21 @@ existing stacks are unchanged until operators explicitly enable it.
 
 - **`false`**: do **not** auto-set from PrivateLink / private gateway; do
   **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
-  if set; otherwise legacy SaaS defaults (AI Proxy Function URL when
-  `enable_ecs_api` is false; else hosted gateway `/v1/proxy`).
+  if set; otherwise the AI Proxy Lambda Function URL.
 - **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
   quarantine VPC are both enabled, creates PrivateLink and sets
   `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
-  No-ops PrivateLink when `use_global_ai_gateway_origin` is true (hosted
-  URL). Adds an internal NLB (extra cost) in front of the gateway ALB.
+  No-ops PrivateLink when `use_global_ai_gateway_origin` is true. Adds an
+  internal NLB (extra cost) in front of the gateway ALB.
 
 #### URL precedence
 
 1. `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API
    `/v1/proxy`, or GCP-style manual URLs) — **always wins**
-2. else AI Proxy Lambda Function URL when `enable_ecs_api` is false
-3. else `http://<vpce-dns>/v1/proxy` when
+2. else `http://<vpce-dns>/v1/proxy` when
    `use_private_gateway_quarantine_proxy` wires PrivateLink (module-managed
    VPCs; not `use_global_ai_gateway_origin`)
-4. else hosted gateway `/v1/proxy` (legacy SaaS / ECS default)
+3. else AI Proxy Lambda Function URL
 
 #### Networking (PrivateLink; only when the flag wires to private gateway)
 

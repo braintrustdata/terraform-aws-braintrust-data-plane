@@ -10,8 +10,9 @@ data "aws_iam_policy_document" "ecs_task_assume_role" {
 }
 
 resource "aws_iam_role" "task_execution" {
-  name               = "${var.deployment_name}-api-ecs-task-exec"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+  name                 = "${var.deployment_name}-api-ecs-task-exec"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
+  permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-api-ecs-task-exec"
   }, local.common_tags)

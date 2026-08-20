@@ -388,6 +388,11 @@ variable "redis_authorized_security_groups" {
   default     = {}
 }
 
+variable "redis_apply_immediately" {
+  description = "Apply Redis changes immediately instead of during the maintenance window"
+  type        = bool
+  default     = false
+}
 ## Services
 
 variable "create_ai_gateway" {
@@ -995,6 +1000,26 @@ variable "enable_s3_bucket_abac" {
   default     = false
 }
 
+variable "s3_server_access_logging" {
+  description = "Opt-in. Configure S3 server access logging for the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable (default). Attach the destination bucket policy that grants s3:PutObject to logging.s3.amazonaws.com before setting this variable. The destination bucket must be in the same AWS account and region as this deployment, must not have Object Lock, and must use SSE-S3 (AES256) default encryption, not SSE-KMS. Useful for audit and compliance requirements."
+  type = object({
+    bucket = string
+    prefix = optional(string)
+  })
+  default = null
+
+  validation {
+    condition = var.s3_server_access_logging == null ? true : (
+      length(var.s3_server_access_logging.bucket) > 0 && (
+        var.s3_server_access_logging.prefix == null ||
+        var.s3_server_access_logging.prefix == "" ||
+        endswith(var.s3_server_access_logging.prefix, "/")
+      )
+    )
+    error_message = "s3_server_access_logging.bucket must be non-empty; prefix must be null, empty, or end with '/'."
+  }
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number
@@ -1036,7 +1061,7 @@ variable "quarantine_proxy_url" {
 }
 
 variable "use_private_gateway_quarantine_proxy" {
-  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else legacy SaaS defaults (AI Proxy Function URL pre-ECS, else hosted gateway /v1/proxy). Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true. Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
+  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true. Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
   type        = bool
   default     = false
 
@@ -1072,6 +1097,24 @@ variable "cloudfront_origin_read_timeout" {
   validation {
     condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 180
     error_message = "cloudfront_origin_read_timeout must be between 1 and 180 seconds."
+  }
+}
+
+variable "cloudfront_minimum_protocol_version" {
+  description = "Minimum TLS protocol version that CloudFront uses for HTTPS connections from viewers. Requires custom_certificate_arn to be set (CloudFront cannot set a minimum protocol version on the default certificate). When unset with a custom certificate, defaults to TLSv1.3_2025. Lower this (e.g. to TLSv1.2_2021) to support clients that cannot negotiate TLS 1.3. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/secure-connections-supported-viewer-protocols-ciphers.html"
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.cloudfront_minimum_protocol_version == null ? true : contains([
+      "TLSv1", "TLSv1_2016", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.3_2025"
+    ], var.cloudfront_minimum_protocol_version)
+    error_message = "cloudfront_minimum_protocol_version must be one of: TLSv1, TLSv1_2016, TLSv1.1_2016, TLSv1.2_2018, TLSv1.2_2019, TLSv1.2_2021, TLSv1.3_2025."
+  }
+
+  validation {
+    condition     = var.cloudfront_minimum_protocol_version == null || var.custom_certificate_arn != null
+    error_message = "cloudfront_minimum_protocol_version can only be set when custom_certificate_arn is provided. CloudFront rejects a minimum protocol version on the default certificate."
   }
 }
 

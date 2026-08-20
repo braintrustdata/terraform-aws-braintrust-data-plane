@@ -2,6 +2,15 @@
 
 # Help prevent immediate failure of apt commands if another background process is holding the lock
 echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
+# Add retries
+echo 'Acquire::Retries "5";' >> /etc/apt/apt.conf.d/99apt-lock-retry
+
+if ! apt-get update; then
+  echo "apt-get update failed; clearing lists and retrying..." >&2
+  rm -rf /var/lib/apt/lists/*
+  apt-get clean
+  apt-get update
+fi
 
 # Mount the local SSD if it exists
 apt-get install -y nvme-cli mdadm
@@ -57,7 +66,6 @@ cat <<EOF > /etc/docker/daemon.json
   }
 }
 EOF
-apt-get update
 apt-get install -y docker.io jq earlyoom dstat
 systemctl start docker
 systemctl enable docker
@@ -189,11 +197,6 @@ if [ -n "$BRAINSTORE_AI_PROXY_URL" ]; then
 else
   echo "ERROR: Failed to resolve BRAINSTORE_AI_PROXY_URL from ${ai_proxy_url_ssm_parameter}, aborting" >&2
   exit 1
-fi
-
-if [ "${is_dedicated_writer_node}" = "true" ]; then
-  # Until we are comfortable with stability, restart the writer node hourly with a random delay up to 30 minutes
-  echo '0 * * * * root sleep $(shuf -i 0-1800 -n 1) && /usr/bin/docker restart brainstore >> /var/log/brainstore-restart.log 2>&1' > /etc/cron.d/restart-brainstore
 fi
 
 if [ -n "${internal_observability_api_key}" ]; then

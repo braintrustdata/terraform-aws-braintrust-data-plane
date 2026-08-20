@@ -70,18 +70,18 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
+  # Loop Runtime uses the self-hosted AI Proxy Lambda Function URL.
+  # one() keeps this index-safe when services is absent.
+  self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
+
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
-  # Precedence: explicit quarantine_proxy_url override → AI Proxy Function URL
-  # (pre-ECS) → PrivateLink VPC endpoint /v1/proxy when
-  # use_private_gateway_quarantine_proxy (and not use_global) with
-  # module-managed VPCs → else legacy SaaS hosted gateway /v1/proxy.
+  # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
+  # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
+  # use_global) with module-managed VPCs → else AI Proxy Function URL.
   # Do not hairpin via API ECS ALB or CloudFront; do not use gateway ALB DNS
   # from quarantine (no peering — reach via VPCE only).
-  # one() keeps this index-safe when services is absent
-  # (use_deployment_mode_external_eks).
-  global_ai_gateway_proxy_url = "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy"
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
-  # Off when use_global_ai_gateway_origin (hosted URL; no PrivateLink).
+  # Off when use_global_ai_gateway_origin (no PrivateLink).
   wire_quarantine_to_private_gateway = (
     var.use_private_gateway_quarantine_proxy &&
     local.create_ai_gateway &&
@@ -93,16 +93,11 @@ locals {
   )
   api_ecs_quarantine_proxy_url = (
     var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
-      !local.enable_ecs_api ? one(module.services[*].ai_proxy_url) : (
-        local.quarantine_gateway_privatelink_proxy_url != null
-        ? local.quarantine_gateway_privatelink_proxy_url
-        : local.global_ai_gateway_proxy_url
-      )
+      local.quarantine_gateway_privatelink_proxy_url != null
+      ? local.quarantine_gateway_privatelink_proxy_url
+      : local.self_hosted_ai_proxy_url
     )
   )
-
-  # When the ECS API is active, Loop Runtime uses the braintrust-hosted AI gateway.
-  api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : one(module.services[*].ai_proxy_url)
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
@@ -238,6 +233,7 @@ module "redis" {
   use_redis_replication_group = var.use_redis_replication_group
   redis_instance_type         = var.redis_instance_type
   redis_version               = var.redis_version
+  apply_immediately           = var.redis_apply_immediately
   custom_tags                 = local.all_custom_tags
 }
 
@@ -251,6 +247,7 @@ module "storage" {
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
   enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
+  s3_server_access_logging                       = var.s3_server_access_logging
   custom_tags                                    = local.all_custom_tags
 }
 
@@ -531,37 +528,39 @@ module "api_ecs" {
   alb_custom_domain              = var.braintrust_api_alb_custom_domain
   alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
 
-  kms_key_arn            = local.kms_key_arn
-  ecs_cluster_arn        = module.ecs[0].cluster_arn
-  ecs_cluster_name       = module.ecs[0].cluster_name
-  task_role_arn          = module.services_common.api_handler_role_arn
-  task_security_group_id = module.services_common.api_security_group_id
-  custom_tags            = local.all_custom_tags
+  kms_key_arn              = local.kms_key_arn
+  permissions_boundary_arn = var.permissions_boundary_arn
+  ecs_cluster_arn          = module.ecs[0].cluster_arn
+  ecs_cluster_name         = module.ecs[0].cluster_name
+  task_role_arn            = module.services_common.api_handler_role_arn
+  task_security_group_id   = module.services_common.api_security_group_id
+  custom_tags              = local.all_custom_tags
 }
 
 module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name                    = var.deployment_name
-  custom_domain                      = var.custom_domain
-  custom_certificate_arn             = var.custom_certificate_arn
-  waf_acl_id                         = var.waf_acl_id
-  cloudfront_price_class             = var.cloudfront_price_class
-  cloudfront_origin_read_timeout     = var.cloudfront_origin_read_timeout
-  use_global_ai_proxy                = var.use_global_ai_proxy
-  use_global_ai_gateway_origin       = var.use_global_ai_gateway_origin
-  use_private_ai_gateway_origin      = local.enable_private_ai_gateway_origin
-  global_ai_gateway_origin_domain    = var.global_ai_gateway_origin_domain
-  gateway_alb_arn                    = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name               = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
-  gateway_cloudfront_ingress_rule_id = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
-  ai_proxy_function_url              = module.services[0].ai_proxy_url
-  api_handler_function_arn           = module.services[0].api_handler_arn
-  enable_ecs_api                     = local.enable_ecs_api
-  api_ecs_alb_arn                    = module.api_ecs[0].alb_arn
-  api_ecs_alb_domain                 = module.api_ecs[0].alb_domain
-  api_ecs_alb_https_enabled          = module.api_ecs[0].alb_https_enabled
+  deployment_name                     = var.deployment_name
+  custom_domain                       = var.custom_domain
+  custom_certificate_arn              = var.custom_certificate_arn
+  waf_acl_id                          = var.waf_acl_id
+  cloudfront_price_class              = var.cloudfront_price_class
+  cloudfront_origin_read_timeout      = var.cloudfront_origin_read_timeout
+  cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
+  use_global_ai_proxy                 = var.use_global_ai_proxy
+  use_global_ai_gateway_origin        = var.use_global_ai_gateway_origin
+  use_private_ai_gateway_origin       = local.enable_private_ai_gateway_origin
+  global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
+  gateway_alb_arn                     = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
+  gateway_alb_dns_name                = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
+  gateway_cloudfront_ingress_rule_id  = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
+  ai_proxy_function_url               = module.services[0].ai_proxy_url
+  api_handler_function_arn            = module.services[0].api_handler_arn
+  enable_ecs_api                      = local.enable_ecs_api
+  api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
+  api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
+  api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled
 
   enable_loop_runtime                     = local.create_loop_runtime
   loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null

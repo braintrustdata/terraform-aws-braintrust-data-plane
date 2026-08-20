@@ -63,6 +63,16 @@ output "brainstore_s3_bucket_name" {
   description = "Name of the Brainstore S3 bucket"
 }
 
+output "code_bundle_s3_bucket_name" {
+  value       = module.storage.code_bundle_bucket_id
+  description = "Name of the code bundle S3 bucket"
+}
+
+output "lambda_responses_s3_bucket_name" {
+  value       = module.storage.lambda_responses_bucket_id
+  description = "Name of the lambda responses S3 bucket"
+}
+
 output "rds_security_group_id" {
   value       = module.database.rds_security_group_id
   description = "ID of the security group for the RDS instance"
@@ -150,7 +160,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, AI Proxy Function URL, hosted gateway /v1/proxy, or PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy)"
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, otherwise AI Proxy Function URL)"
 }
 
 output "api_ecs_task_security_group_id" {
@@ -206,6 +216,74 @@ output "cloudfront_distribution_arn" {
 output "cloudfront_distribution_hosted_zone_id" {
   value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
   description = "The hosted zone ID of the cloudfront distribution"
+}
+
+output "monitoring_contract" {
+  description = "Versioned resource identifiers and capabilities consumed by terraform-aws-braintrust-data-plane-cloudwatch."
+  value = {
+    version = 2
+
+    rds = {
+      identifier               = module.database.postgres_database_identifier
+      allocated_storage_gib    = module.database.postgres_allocated_storage_gib
+      provisioned_iops         = module.database.postgres_provisioned_iops
+      provisioned_iops_enabled = var.postgres_storage_iops == null ? false : var.postgres_storage_iops > 0
+    }
+
+    elasticache = module.redis.monitoring_target
+
+    lambda = {
+      enabled   = !var.use_deployment_mode_external_eks
+      functions = !var.use_deployment_mode_external_eks ? module.services[0].monitoring_functions : {}
+    }
+
+    api_gateway = {
+      enabled = !var.use_deployment_mode_external_eks
+      name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
+      stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
+    }
+
+    brainstore = {
+      enabled        = var.enable_brainstore && !var.use_deployment_mode_external_eks
+      s3_bucket_name = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+      targets        = var.enable_brainstore && !var.use_deployment_mode_external_eks ? module.brainstore[0].monitoring_targets : {}
+    }
+
+    cloudfront = {
+      enabled         = !var.use_deployment_mode_external_eks
+      distribution_id = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_id : null
+    }
+
+    ecs = {
+      enabled      = length(module.ecs) > 0
+      cluster_name = length(module.ecs) > 0 ? module.ecs[0].cluster_name : null
+      services = merge(
+        local.create_ecs_api ? {
+          for role, target in module.api_ecs[0].monitoring_targets : role => merge(
+            target,
+            { lb_arn_suffix = module.api_ecs[0].alb_arn_suffix },
+          )
+        } : {},
+        local.create_ai_gateway ? {
+          gateway = {
+            alarm_group   = "gateway"
+            service_name  = module.gateway_ecs[0].service_name
+            lb_arn_suffix = module.gateway_alb[0].gateway_alb_arn_suffix
+            tg_arn_suffix = module.gateway_alb[0].gateway_target_group_arn_suffix
+          }
+        } : {},
+      )
+    }
+
+    cloudwatch = {
+      log_groups = merge(
+        local.create_ecs_api ? { api-ecs = module.api_ecs[0].cloudwatch_log_groups } : {},
+        local.create_ai_gateway ? { gateway = module.gateway_ecs[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime ? { loop-runtime = module.loop_runtime_ecs[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime ? { loop-runtime-sandbox = { group = module.loop_runtime_sandbox_aws_microvm[0].microvm_log_group_name } } : {},
+      )
+    }
+  }
 }
 
 output "kms_key_arn" {

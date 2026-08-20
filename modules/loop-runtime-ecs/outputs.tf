@@ -12,3 +12,10 @@ output "task_role_arn" {
   description = "ARN of the Loop runtime ECS task role"
   value       = aws_iam_role.task.arn
 }
+
+output "cloudwatch_log_groups" {
+  description = "Names of the cloudwatch log groups created for the Loop runtime ECS tasks."
+  value = {
+    service = aws_cloudwatch_log_group.service.name
+  }
+}
