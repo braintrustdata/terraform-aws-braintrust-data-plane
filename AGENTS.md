@@ -37,6 +37,10 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 ## Rules
 
+### Do not name customers in public text
+
+Do not mention named customers in PRs, comments, docs, examples, or commit messages. Refer to them generically (private dataplane, hybrid, residency-sensitive, etc.).
+
 ### Keep examples in sync with variables
 
 When adding, removing, or renaming variables in the root module's `variables.tf`, update the example `main.tf` files to reflect the change. All examples under `examples/` should remain valid and representative.
@@ -83,6 +87,73 @@ Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself
 - **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API. Requires `create_ai_gateway`.
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.
+
+### Quarantine LLM proxy URL
+
+Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
+`QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
+`*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
+header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
+Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
+peer the quarantine VPC to main for this path. Prefer PrivateLink to the
+private gateway when opted in. Loop Runtime stays on the AI Proxy Function
+URL; PrivateLink only affects quarantine when the flag is on.
+
+#### `use_private_gateway_quarantine_proxy` (default `false`)
+
+Opt-in switch for dataplane-local quarantine → private gateway wiring via
+**PrivateLink** (interim and preferred endgame vs VPC peering).
+Default **false** so SaaS (including eu-prod's manual hosted URL) and
+existing stacks are unchanged until operators explicitly enable it.
+
+- **`false`**: do **not** auto-set from PrivateLink / private gateway; do
+  **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
+  if set; otherwise the AI Proxy Lambda Function URL.
+- **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
+  quarantine VPC are both enabled, creates PrivateLink and sets
+  `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
+  No-ops PrivateLink when `use_global_ai_gateway_origin` is true. Adds an
+  internal NLB (extra cost) in front of the gateway ALB.
+
+#### URL precedence
+
+1. `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API
+   `/v1/proxy`, or GCP-style manual URLs) — **always wins**
+2. else `http://<vpce-dns>/v1/proxy` when
+   `use_private_gateway_quarantine_proxy` wires PrivateLink (module-managed
+   VPCs; not `use_global_ai_gateway_origin`)
+3. else AI Proxy Lambda Function URL
+
+#### Networking (PrivateLink; only when the flag wires to private gateway)
+
+Uses an NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
+
+1. **Provider (main VPC)**: internal multi-AZ NLB → target group
+   `target_type = "alb"` attached to the gateway ALB → TCP **80** listener →
+   `aws_vpc_endpoint_service` with `acceptance_required = false`
+   (same-account). Gateway ALB SG allows HTTP from the NLB SG only —
+   quarantine does **not** talk to the ALB directly.
+2. **Consumer (quarantine VPC)**: interface VPC endpoint in quarantine
+   private subnets; endpoint SG allows the quarantine Lambda SG on **:80**.
+3. **URL**: `http://<vpce-dns>/v1/proxy` (VPCE DNS, not gateway ALB DNS).
+   Plain HTTP on this hop is intentional: traffic stays inside AWS PrivateLink
+   (quarantine VPCE → NLB → gateway ALB) and never crosses the public internet.
+   TLS would require certs on the private ALB/NLB path without a customer DNS
+   name; HTTP matches the private-ALB pattern used elsewhere in this module.
+
+Automated only for **module-managed** main + quarantine VPCs
+(`create_vpc` and `enable_quarantine_vpc` without `existing_quarantine_vpc_id`).
+Not automated: `existing_vpc_id` and/or `existing_quarantine_vpc_id` —
+create an interface endpoint to
+`quarantine_gateway_privatelink_service_name` (when the provider side exists
+in a module-managed stack, or stand up equivalent NLB/service yourself) and
+set `quarantine_proxy_url` to `http://<your-vpce-dns>/v1/proxy`.
+
+**Cost / AZ notes**: PrivateLink adds an internal NLB (hourly + LCU) plus
+interface endpoint hourly/GB charges. Place NLB and VPCE ENIs across the
+same AZs as the gateway ALB subnets so the endpoint service is available in
+those AZs; mismatched AZ coverage can yield unresolved or unhealthy
+endpoints.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

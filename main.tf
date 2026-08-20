@@ -70,9 +70,34 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # Quarantine and Loop Runtime use the self-hosted AI Proxy Lambda Function URL.
+  # Loop Runtime uses the self-hosted AI Proxy Lambda Function URL.
   # one() keeps this index-safe when services is absent.
   self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
+
+  # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
+  # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
+  # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
+  # use_global) with module-managed VPCs → else AI Proxy Function URL.
+  # Do not hairpin via API ECS ALB or CloudFront; do not use gateway ALB DNS
+  # from quarantine (no peering — reach via VPCE only).
+  # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
+  # Off when use_global_ai_gateway_origin (no PrivateLink).
+  wire_quarantine_to_private_gateway = (
+    var.use_private_gateway_quarantine_proxy &&
+    local.create_ai_gateway &&
+    !var.use_global_ai_gateway_origin
+  )
+  quarantine_gateway_privatelink_proxy_url = try(
+    "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
+    null
+  )
+  api_ecs_quarantine_proxy_url = (
+    var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
+      local.quarantine_gateway_privatelink_proxy_url != null
+      ? local.quarantine_gateway_privatelink_proxy_url
+      : local.self_hosted_ai_proxy_url
+    )
+  )
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
@@ -485,7 +510,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = local.self_hosted_ai_proxy_url
+  quarantine_proxy_url                = local.api_ecs_quarantine_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id
