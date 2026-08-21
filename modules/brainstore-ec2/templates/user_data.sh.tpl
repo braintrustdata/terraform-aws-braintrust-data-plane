@@ -5,12 +5,10 @@ echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
 # Add retries
 echo 'Acquire::Retries "5";' >> /etc/apt/apt.conf.d/99apt-lock-retry
 
-if ! apt-get update; then
-  echo "apt-get update failed; clearing lists and retrying..." >&2
-  rm -rf /var/lib/apt/lists/*
-  apt-get clean
-  apt-get update
-fi
+sed -i "s|http://[a-z0-9-]\+\.ec2\.ports\.ubuntu\.com|http://ports.ubuntu.com|g" /etc/apt/sources.list.d/ubuntu.sources
+rm -rf /var/lib/apt/lists/*
+apt-get clean
+apt-get update
 
 # Mount the local SSD if it exists
 apt-get install -y nvme-cli mdadm
