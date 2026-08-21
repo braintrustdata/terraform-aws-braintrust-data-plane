@@ -246,13 +246,13 @@ module "services" {
   redis_host                  = module.redis.redis_endpoint
   redis_port                  = module.redis.redis_port
 
-  brainstore_enabled              = var.enable_brainstore
+  brainstore_enabled              = true
   brainstore_default              = var.brainstore_default
-  brainstore_hostname             = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname      = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_fast_reader_hostname = var.enable_brainstore && var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
-  brainstore_s3_bucket_name       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_hostname             = module.brainstore[0].dns_name
+  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
+  brainstore_port                 = module.brainstore[0].port
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
@@ -575,7 +575,7 @@ module "services_common" {
 
 module "brainstore" {
   source = "./modules/brainstore-ec2"
-  count  = var.enable_brainstore && !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   deployment_name                       = var.deployment_name
   instance_count                        = var.brainstore_instance_count
