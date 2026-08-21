@@ -1,4 +1,5 @@
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 locals {
   common_tags = merge({
@@ -9,6 +10,82 @@ locals {
     "ssmmessages" : "com.amazonaws.${data.aws_region.current.region}.ssmmessages",
     "ec2messages" : "com.amazonaws.${data.aws_region.current.region}.ec2messages",
   }
+
+  s3_vpc_endpoint_has_org_ids     = length(var.s3_vpc_endpoint_resource_org_ids) > 0
+  s3_vpc_endpoint_has_account_ids = length(var.s3_vpc_endpoint_resource_account_ids) > 0
+  s3_vpc_endpoint_restricted      = local.s3_vpc_endpoint_has_org_ids || local.s3_vpc_endpoint_has_account_ids
+
+  # Always include this account so module-owned buckets keep working (org and/or account mode).
+  s3_vpc_endpoint_account_ids = distinct(concat(
+    var.s3_vpc_endpoint_resource_account_ids,
+    [data.aws_caller_identity.current.account_id]
+  ))
+
+  # Org and account allowlists compose (union of Allows), so cross-org export destinations
+  # can be allowlisted by account even when org IDs are also set.
+  s3_vpc_endpoint_customer_statements = !local.s3_vpc_endpoint_restricted ? [
+    {
+      Effect    = "Allow"
+      Action    = ["s3:*"]
+      Principal = "*"
+      Resource  = ["*"]
+    }
+    ] : concat(
+    local.s3_vpc_endpoint_has_org_ids ? [
+      {
+        Sid       = "AllowS3InAllowedOrganizations"
+        Effect    = "Allow"
+        Action    = ["s3:*"]
+        Principal = "*"
+        Resource  = ["*"]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceOrgID" = var.s3_vpc_endpoint_resource_org_ids
+          }
+        }
+      }
+    ] : [],
+    [
+      {
+        Sid       = "AllowS3InAllowedAccounts"
+        Effect    = "Allow"
+        Action    = ["s3:*"]
+        Principal = "*"
+        Resource  = ["*"]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = local.s3_vpc_endpoint_account_ids
+          }
+        }
+      }
+    ]
+  )
+
+  # Amazon-owned buckets needed when restricted:
+  # - ECR starport: private ECR layer pulls (defaults use public.ecr.aws over NAT/CloudFront;
+  #   this covers private ECR / custom container_image overrides).
+  # - CloudWatch agent: Brainstore user-data .deb from s3.amazonaws.com/amazoncloudwatch-agent/...
+  s3_vpc_endpoint_aws_service_statements = local.s3_vpc_endpoint_restricted ? [
+    {
+      Sid       = "AllowECRStarportLayerBucket"
+      Effect    = "Allow"
+      Action    = ["s3:GetObject"]
+      Principal = "*"
+      Resource  = ["arn:aws:s3:::prod-${data.aws_region.current.region}-starport-layer-bucket/*"]
+    },
+    {
+      Sid       = "AllowCloudWatchAgentBucket"
+      Effect    = "Allow"
+      Action    = ["s3:GetObject"]
+      Principal = "*"
+      Resource  = ["arn:aws:s3:::amazoncloudwatch-agent/*"]
+    }
+  ] : []
+
+  s3_vpc_endpoint_statements = concat(
+    local.s3_vpc_endpoint_customer_statements,
+    local.s3_vpc_endpoint_aws_service_statements
+  )
 }
 
 resource "aws_vpc" "vpc" {
@@ -161,15 +238,8 @@ resource "aws_vpc_endpoint" "s3" {
   route_table_ids   = [aws_route_table.private_route_table.id]
 
   policy = jsonencode({ # nosemgrep
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Action    = ["s3:*"],
-        Principal = "*",
-        Resource  = ["*"]
-      }
-    ]
+    Version   = "2012-10-17",
+    Statement = local.s3_vpc_endpoint_statements
   })
 
   tags = merge({
