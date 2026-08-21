@@ -3,7 +3,7 @@ provider "aws" {
 
 #   # Optional, but recommended. Use a specific AWS credential profile for creating the Braintrust
 #   # resources. This helps prevent accidental changes in the wrong account.
-   profile = "default"
+   profile = "sandbox"
 
 #   # Optional, but recommended. Only allow running in a specific AWS account.
 #   # This is helpful for preventing accidental changes in the wrong account.
