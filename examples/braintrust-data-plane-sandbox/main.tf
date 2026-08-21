@@ -31,7 +31,8 @@ module "braintrust-data-plane" {
   # btql_audit_logs_strict_org_ids      = []
   # btql_audit_logs_best_effort_org_ids = []
 
-  # The optional Loop runtime is disabled by default.
+  # The optional Loop runtime is disabled by default. Enabling it requires a
+  # Gateway: use_global_ai_gateway_origin or enable_ai_gateway.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
 
