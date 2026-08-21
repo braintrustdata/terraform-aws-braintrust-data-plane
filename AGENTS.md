@@ -84,6 +84,17 @@ Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.
 
+### Loop runtime requires a Gateway
+
+Loop v2 (the Loop runtime ECS + MicroVM sandbox) needs Gateway semantics. It cannot use the AI Proxy Lambda as the LLM router.
+
+`enable_loop_runtime` is invalid unless one of:
+
+- **Public Gateway:** `use_global_ai_gateway_origin = true` (CloudFront `/v1/proxy` → hosted `gateway.braintrust.dev`)
+- **Private Gateway:** `enable_ai_gateway = true` (wires `GATEWAY_URL` on AIProxy; Loop still uses the Function URL hop from #329)
+
+`create_ai_gateway = true` with `enable_ai_gateway = false` and `use_global_ai_gateway_origin = false` fails plan — that is AI Proxy with no Gateway. Keep `use_global_ai_gateway_origin = true` during the two-step private-gateway cutover if Loop is already on.
+
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 
 These constraints apply to customers migrating from Data Plane 1.x to 2.0. New deployments on 2.0+ ship with WAL v3 and no-PG defaults baked in.
