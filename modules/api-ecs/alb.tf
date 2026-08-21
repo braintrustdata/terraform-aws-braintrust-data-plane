@@ -64,6 +64,18 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   security_group_id        = var.task_security_group_id
 }
 
+resource "aws_security_group_rule" "task_ingress_from_alb_rust_ingest" {
+  count = var.create_rust_api_ingest ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 8100
+  to_port                  = 8100
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id
+  description              = "Allow inbound traffic from API ECS ALB to Rust ingest tasks."
+  security_group_id        = var.task_security_group_id
+}
+
 resource "aws_lb" "api_ecs" {
   name               = "${var.deployment_name}-api-ecs"
   internal           = true
