@@ -115,6 +115,9 @@ module "braintrust-data-plane" {
   # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
   # unsafe_url_request_mode = "warn"
 
+  # Optional custom CA bundle for outbound HTTPS from API ECS.
+  # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
+
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to
   # peer with other VPCs and the default CIDRs conflict.
