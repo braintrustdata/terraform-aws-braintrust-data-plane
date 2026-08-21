@@ -1115,11 +1115,6 @@ variable "lambda_version_tag_override" {
 }
 
 ## Brainstore
-variable "enable_brainstore" {
-  type        = bool
-  description = "Enable Brainstore for faster analytics"
-  default     = true
-}
 
 variable "brainstore_default" {
   type        = string

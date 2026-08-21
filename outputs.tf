@@ -44,12 +44,12 @@ output "main_vpc_private_route_table_id" {
 }
 
 output "brainstore_security_group_id" {
-  value       = var.enable_brainstore ? module.services_common.brainstore_instance_security_group_id : null
+  value       = module.services_common.brainstore_instance_security_group_id
   description = "ID of the security group for the Brainstore instances"
 }
 
 output "brainstore_s3_bucket_name" {
-  value       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
+  value       = module.storage.brainstore_bucket_id
   description = "Name of the Brainstore S3 bucket"
 }
 
@@ -229,9 +229,9 @@ output "monitoring_contract" {
     }
 
     brainstore = {
-      enabled        = var.enable_brainstore && !var.use_deployment_mode_external_eks
-      s3_bucket_name = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-      targets        = var.enable_brainstore && !var.use_deployment_mode_external_eks ? module.brainstore[0].monitoring_targets : {}
+      enabled        = !var.use_deployment_mode_external_eks
+      s3_bucket_name = module.storage.brainstore_bucket_id
+      targets        = !var.use_deployment_mode_external_eks ? module.brainstore[0].monitoring_targets : {}
     }
 
     cloudfront = {
