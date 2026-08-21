@@ -424,6 +424,7 @@ module "api_ecs" {
   brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
   brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
   brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
+  brainstore_locks_s3_path        = var.brainstore_locks_s3_path
   brainstore_port                 = module.brainstore[0].port
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
@@ -457,6 +458,17 @@ module "api_ecs" {
   braintrust_api_ingest_cpu_autoscaling                        = var.braintrust_api_ingest_cpu_autoscaling
   braintrust_api_ingest_event_loop_utilization_autoscaling     = var.braintrust_api_ingest_event_loop_utilization_autoscaling
   braintrust_api_ingest_event_loop_delay_autoscaling           = var.braintrust_api_ingest_event_loop_delay_autoscaling
+  create_rust_api_ingest                                       = var.create_rust_api_ingest
+  enable_rust_api_ingest                                       = var.enable_rust_api_ingest
+  rust_api_ingest_traffic_weight                               = var.rust_api_ingest_traffic_weight
+  rust_api_ingest_container_image_repository                   = var.rust_api_ingest_container_image_repository
+  rust_api_ingest_version_override                             = var.rust_api_ingest_version_override
+  rust_api_ingest_cpu                                          = var.rust_api_ingest_cpu
+  rust_api_ingest_memory                                       = var.rust_api_ingest_memory
+  rust_api_ingest_min_count                                    = var.rust_api_ingest_min_count
+  rust_api_ingest_max_count                                    = var.rust_api_ingest_max_count
+  rust_api_ingest_cpu_autoscaling                              = var.rust_api_ingest_cpu_autoscaling
+  rust_api_ingest_health_check_path                            = var.rust_api_ingest_health_check_path
   braintrust_api_background_cpu                                = var.braintrust_api_background_cpu
   braintrust_api_background_memory                             = var.braintrust_api_background_memory
   braintrust_api_background_min_count                          = var.braintrust_api_background_min_count

@@ -76,6 +76,17 @@ The gateway internal ALB lives in `modules/gateway-alb` so callers can reference
 
 Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
 
+### Optional Rust ingest: `create_rust_api_ingest` vs `enable_rust_api_ingest`
+
+Similar two-step pattern to the private gateway:
+
+- **`create_rust_api_ingest`**: parallel Rust ingest ECS service + target group.
+- **`enable_rust_api_ingest`**: point ingest ALB paths (`/logs3`, `/otel/v1/*`, `/attachment*`, `/logs3/overflow`) at Rust only. Requires `create_rust_api_ingest`.
+
+Use `create_rust_api_ingest = true` with `enable_rust_api_ingest = false` for a two-step prod cutover (stand up Rust while ingest stays on TypeScript). Set both true for single-apply wiring on greenfield deployments.
+
+Requires `rust_api_ingest_container_image_repository` and either `rust_api_ingest_version_override` or `modules/api-ecs/VERSIONS.json` key `api_rust_ingest`.
+
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
 Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
