@@ -415,11 +415,10 @@ module "api_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 
   # Data stores
-  database_url_secret_arn      = module.database.postgres_database_url_secret_arn
-  redis_url_secret_arn         = module.redis.redis_url_secret_arn
-  function_tools_secret_arn    = module.services_common.function_tools_secret_arn
-  custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
-  custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
+  database_url_secret_arn     = module.database.postgres_database_url_secret_arn
+  redis_url_secret_arn        = module.redis.redis_url_secret_arn
+  function_tools_secret_arn   = module.services_common.function_tools_secret_arn
+  custom_ca_bundle_secret_arn = var.custom_ca_bundle_secret_arn
 
   # Brainstore
   brainstore_hostname             = module.brainstore[0].dns_name
