@@ -63,6 +63,30 @@ variable "gateway_alb_subnets_applied" {
   default     = null
 }
 
+variable "enable_loop_runtime" {
+  description = "Add a LoopRuntimeOrigin VPC origin and route /loop/runtime[/*] to the Loop runtime ALB."
+  type        = bool
+  default     = false
+}
+
+variable "loop_runtime_alb_arn" {
+  description = "ARN of the internal Loop runtime ALB for CloudFront VPC origin routing"
+  type        = string
+  default     = null
+}
+
+variable "loop_runtime_alb_dns_name" {
+  description = "DNS name of the internal Loop runtime ALB for CloudFront VPC origin routing"
+  type        = string
+  default     = null
+}
+
+variable "loop_runtime_cloudfront_ingress_rule_id" {
+  description = "ID of the Loop runtime ALB ingress rule for CloudFront VPC origins"
+  type        = string
+  default     = null
+}
+
 variable "global_ai_gateway_origin_domain" {
   description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled"
   type        = string
@@ -119,6 +143,24 @@ variable "cloudfront_origin_read_timeout" {
   validation {
     condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 180
     error_message = "cloudfront_origin_read_timeout must be between 1 and 180 seconds."
+  }
+}
+
+variable "cloudfront_minimum_protocol_version" {
+  description = "Minimum TLS protocol version that CloudFront uses for HTTPS connections from viewers. Requires a custom certificate; when null with a custom certificate it defaults to TLSv1.3_2025. Lower this (e.g. to TLSv1.2_2021) to support clients that cannot negotiate TLS 1.3."
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.cloudfront_minimum_protocol_version == null ? true : contains([
+      "TLSv1", "TLSv1_2016", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.3_2025"
+    ], var.cloudfront_minimum_protocol_version)
+    error_message = "cloudfront_minimum_protocol_version must be one of: TLSv1, TLSv1_2016, TLSv1.1_2016, TLSv1.2_2018, TLSv1.2_2019, TLSv1.2_2021, TLSv1.3_2025."
+  }
+
+  validation {
+    condition     = var.cloudfront_minimum_protocol_version == null || var.custom_certificate_arn != null
+    error_message = "cloudfront_minimum_protocol_version can only be set when custom_certificate_arn is provided. CloudFront rejects a minimum protocol version on the default certificate."
   }
 }
 

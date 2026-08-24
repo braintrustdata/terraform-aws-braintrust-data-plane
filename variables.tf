@@ -359,6 +359,18 @@ variable "postgres_backup_retention_period" {
   default     = 14
 }
 
+variable "postgres_backup_window" {
+  description = "The daily time range (in UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi."
+  type        = string
+  default     = "00:00-00:30"
+}
+
+variable "postgres_maintenance_window" {
+  description = "The weekly time range (in UTC) during which system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi. Default is Mon 08:00-11:00 UTC (12am-3am PST)."
+  type        = string
+  default     = "Mon:08:00-Mon:11:00"
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
@@ -390,6 +402,11 @@ variable "redis_authorized_security_groups" {
   default     = {}
 }
 
+variable "redis_apply_immediately" {
+  description = "Apply Redis changes immediately instead of during the maintenance window"
+  type        = bool
+  default     = false
+}
 ## Services
 
 variable "create_ai_gateway" {
@@ -422,7 +439,7 @@ variable "container_insights" {
 
 variable "ai_gateway_version_override" {
   type        = string
-  description = "Lock Gateway on a specific version. Don't set this unless instructed by Braintrust."
+  description = "Optional Gateway image tag override. If unset, uses modules/gateway-ecs/VERSIONS.json. Don't set this unless instructed by Braintrust."
   default     = null
 
   validation {
@@ -851,6 +868,11 @@ variable "braintrust_api_extra_env_vars" {
   description = "Extra environment variables for the API ECS container."
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key."
+  }
 }
 
 variable "braintrust_api_authorized_security_groups" {
@@ -992,6 +1014,26 @@ variable "enable_s3_bucket_abac" {
   default     = false
 }
 
+variable "s3_server_access_logging" {
+  description = "Opt-in. Configure S3 server access logging for the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable (default). Attach the destination bucket policy that grants s3:PutObject to logging.s3.amazonaws.com before setting this variable. The destination bucket must be in the same AWS account and region as this deployment, must not have Object Lock, and must use SSE-S3 (AES256) default encryption, not SSE-KMS. Useful for audit and compliance requirements."
+  type = object({
+    bucket = string
+    prefix = optional(string)
+  })
+  default = null
+
+  validation {
+    condition = var.s3_server_access_logging == null ? true : (
+      length(var.s3_server_access_logging.bucket) > 0 && (
+        var.s3_server_access_logging.prefix == null ||
+        var.s3_server_access_logging.prefix == "" ||
+        endswith(var.s3_server_access_logging.prefix, "/")
+      )
+    )
+    error_message = "s3_server_access_logging.bucket must be non-empty; prefix must be null, empty, or end with '/'."
+  }
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number
@@ -1050,6 +1092,24 @@ variable "cloudfront_origin_read_timeout" {
   }
 }
 
+variable "cloudfront_minimum_protocol_version" {
+  description = "Minimum TLS protocol version that CloudFront uses for HTTPS connections from viewers. Requires custom_certificate_arn to be set (CloudFront cannot set a minimum protocol version on the default certificate). When unset with a custom certificate, defaults to TLSv1.3_2025. Lower this (e.g. to TLSv1.2_2021) to support clients that cannot negotiate TLS 1.3. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/secure-connections-supported-viewer-protocols-ciphers.html"
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.cloudfront_minimum_protocol_version == null ? true : contains([
+      "TLSv1", "TLSv1_2016", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.3_2025"
+    ], var.cloudfront_minimum_protocol_version)
+    error_message = "cloudfront_minimum_protocol_version must be one of: TLSv1, TLSv1_2016, TLSv1.1_2016, TLSv1.2_2018, TLSv1.2_2019, TLSv1.2_2021, TLSv1.3_2025."
+  }
+
+  validation {
+    condition     = var.cloudfront_minimum_protocol_version == null || var.custom_certificate_arn != null
+    error_message = "cloudfront_minimum_protocol_version can only be set when custom_certificate_arn is provided. CloudFront rejects a minimum protocol version on the default certificate."
+  }
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
@@ -1069,11 +1129,6 @@ variable "lambda_version_tag_override" {
 }
 
 ## Brainstore
-variable "enable_brainstore" {
-  type        = bool
-  description = "Enable Brainstore for faster analytics"
-  default     = true
-}
 
 variable "brainstore_default" {
   type        = string
@@ -1181,6 +1236,103 @@ variable "brainstore_enable_export" {
   type        = bool
   description = "Enable Brainstore-based export and migrate progress state of existing export automations. Sets BRAINSTORE_EXPORT_MIGRATION_ENABLED on the API handler Lambda and BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED on Brainstore writer nodes."
   default     = false
+}
+
+variable "s3_export_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the API handler and Brainstore roles may assume for S3 export (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility with arbitrary export destinations.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
+      ["arn:aws:iam::123456789012:role/customer-export-role", "arn:aws:iam::*:role/braintrust-export-*"]
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.s3_export_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "s3_export_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}
+
+variable "ai_gateway_bedrock_assume_role_arns" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of IAM role ARNs that the AI Gateway task role may assume for Bedrock AssumeRole auth (sts:AssumeRole with ExternalId bt:*).
+    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
+    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
+      ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+    Only applies when create_ai_gateway is true.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.ai_gateway_bedrock_assume_role_arns :
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
+    ])
+    error_message = "ai_gateway_bedrock_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_org_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
+    Composes with s3_vpc_endpoint_resource_account_ids (union of Allow statements) so you can allow an
+    org and also specific accounts (e.g. cross-org export destinations).
+    When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway (Brainstore, code bundles, lambda responses, and export).
+    The current AWS account is always allowed via aws:ResourceAccount when either list is non-empty.
+    When restricted, the policy also allows GetObject to:
+      - the regional ECR starport layer bucket (private ECR image layers; defaults use public.ecr.aws)
+      - the amazoncloudwatch-agent bucket (Brainstore user-data .deb install)
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
+
+    Applies to any module-managed S3 VPC gateway endpoint (main VPC when create_vpc is true, and
+    quarantine VPC when enable_quarantine_vpc is true and existing_quarantine_vpc_id is unset).
+    Does not modify customer-managed endpoints on existing_* VPC IDs.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for org_id in var.s3_vpc_endpoint_resource_org_ids :
+      can(regex("^o-[a-z0-9]{10,32}$", org_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_org_ids entries must be AWS Organization IDs of the form o-<10-32 lowercase alphanumeric characters>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_account_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
+    Composes with s3_vpc_endpoint_resource_org_ids (union of Allow statements).
+    When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway. List additional accounts that
+    should be reachable (e.g. export destinations); the current AWS account is always included
+    automatically when either restriction list is non-empty. When restricted, the policy also allows
+    GetObject to the regional ECR starport layer bucket and the amazoncloudwatch-agent bucket.
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
+
+    Applies to any module-managed S3 VPC gateway endpoint (main VPC when create_vpc is true, and
+    quarantine VPC when enable_quarantine_vpc is true and existing_quarantine_vpc_id is unset).
+    Does not modify customer-managed endpoints on existing_* VPC IDs.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for account_id in var.s3_vpc_endpoint_resource_account_ids :
+      can(regex("^[0-9]{12}$", account_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_account_ids entries must be 12-digit AWS account IDs."
+  }
 }
 
 variable "brainstore_s3_bucket_retention_days" {

@@ -8,6 +8,12 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt API ECS resources that support customer-managed KMS keys."
 }
 
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
+  default     = null
+}
+
 variable "vpc_id" {
   type        = string
   description = "VPC ID where ECS resources are deployed."
@@ -622,6 +628,17 @@ variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to inject into the API ECS container."
   default     = {}
+
+  validation {
+    condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+  }
+}
+
+variable "brainstore_license_key" {
+  type        = string
+  description = "License key for the Brainstore instance. Passed to the API container for telemetry authorization and status/metrics reporting."
+  default     = null
 }
 
 variable "authorized_security_groups" {

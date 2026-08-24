@@ -40,6 +40,10 @@ module "braintrust-data-plane" {
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
+  # Loop runtime is not supported with external EKS deployments.
+  enable_loop_runtime              = false
+  loop_runtime_sandbox_egress_mode = "internet"
+
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles
   #enable_eks_pod_identity = true
@@ -93,6 +97,13 @@ module "braintrust-data-plane" {
   # Recommended for critical production environments. Doubles the cost of the RDS instance.
   # postgres_multi_az = false
 
+  # Daily window (UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi.
+  # postgres_backup_window = "00:00-00:30"
+
+  # Weekly window (UTC) during which RDS system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi.
+  # Default is Mon 08:00-11:00 UTC (12am-3am PST).
+  # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
+
   ### Redis configuration
   # Default is acceptable for typical production deployments.
   redis_instance_type = "cache.r7g.large"
@@ -129,4 +140,31 @@ module "braintrust-data-plane" {
   # s3_additional_allowed_origins                  = ["https://app.example.com"]
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: S3 server access logging for the brainstore, code-bundle, and
+  # lambda-responses buckets. Attach the destination bucket policy (grant
+  # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination
+  # must use SSE-S3 (AES256), not SSE-KMS. See the module README "S3 Server
+  # Access Logging" section for the required order and policy.
+  # s3_server_access_logging = {
+  #   bucket = "your-audit-logs-bucket"
+  #   prefix = "braintrust/"
+  # }
+
+  # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # s3_export_assume_role_arns = [
+  #   "arn:aws:iam::123456789012:role/customer-export-role",
+  #   "arn:aws:iam::*:role/braintrust-export-*",
+  # ]
+
+  # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # Only applies when create_ai_gateway is true.
+  # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+
+  # Opt-in: restrict S3 VPC gateway endpoint (org and account lists compose; empty = unrestricted).
+  # Current account is always allowed. When restricted, ECR starport + CloudWatch agent GetObject
+  # exceptions are added automatically. Applies to any module-managed S3 VPC endpoint
+  # (main and/or quarantine); does not modify customer-managed existing_* VPC endpoints.
+  # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
+  # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
 }

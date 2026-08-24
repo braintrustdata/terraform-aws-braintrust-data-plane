@@ -70,17 +70,22 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # When the ECS API is active, quarantine / in-VPC callers use the global AI
-  # gateway origin for proxy traffic instead of the AI Proxy Lambda. one() keeps
-  # this index-safe when services is absent (use_deployment_mode_external_eks).
-  api_ecs_ai_proxy_url = local.enable_ecs_api ? "https://${trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")}/v1/proxy" : one(module.services[*].ai_proxy_url)
+  # Quarantine and Loop Runtime use the self-hosted AI Proxy Lambda Function URL.
+  # one() keeps this index-safe when services is absent.
+  self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
-  # Only wire GATEWAY_URL into Lambdas that call the gateway. Do not merge into
-  # MigrateDatabaseFunction or crons — that changes their env hash and re-runs
-  # migrations or replaces unrelated functions on existing deployments.
-  gateway_lambda_env_services = toset(["APIHandler", "AIProxy"])
+  # Only wire per-deployment backend URLs into Lambdas that call them. Do not
+  # merge GATEWAY_URL into MigrateDatabaseFunction or crons — that changes their
+  # env hash and re-runs migrations or replaces unrelated functions.
+  # AutomationCron gets LOOP_RUNTIME_URL only (not GATEWAY_URL): ECS disables
+  # in-process automation cron, so windowed Loop automations run in that Lambda.
+  lambda_env_services              = toset(["APIHandler", "AIProxy"])
+  loop_runtime_lambda_env_services = toset(["AutomationCron"])
+  loop_runtime_lambda_env_vars = local.create_loop_runtime ? {
+    LOOP_RUNTIME_URL = module.loop_runtime_alb[0].loop_runtime_url
+  } : {}
   main_vpc_private_subnet_ids = [
     local.main_vpc_private_subnet_1_id,
     local.main_vpc_private_subnet_2_id,
@@ -116,10 +121,15 @@ locals {
   api_ecs_subnet_ids = local.create_ecs_api ? local.cloudfront_vpc_origin_safe_subnet_ids : []
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
-    { for svc in local.gateway_lambda_env_services : svc => merge(
+    { for svc in local.lambda_env_services : svc => merge(
       lookup(var.service_extra_env_vars, svc, {}),
       local.gateway_env_vars,
-    ) }
+      local.loop_runtime_lambda_env_vars,
+    ) },
+    { for svc in local.loop_runtime_lambda_env_services : svc => merge(
+      lookup(var.service_extra_env_vars, svc, {}),
+      local.loop_runtime_lambda_env_vars,
+    ) },
   )
 }
 
@@ -131,16 +141,18 @@ module "main_vpc" {
   vpc_name        = "main"
   vpc_cidr        = var.vpc_cidr
 
-  public_subnet_1_cidr      = cidrsubnet(var.vpc_cidr, 3, 0)
-  public_subnet_1_az        = local.public_subnet_1_az
-  private_subnet_1_cidr     = cidrsubnet(var.vpc_cidr, 3, 1)
-  private_subnet_1_az       = local.private_subnet_1_az
-  private_subnet_2_cidr     = cidrsubnet(var.vpc_cidr, 3, 2)
-  private_subnet_2_az       = local.private_subnet_2_az
-  private_subnet_3_cidr     = cidrsubnet(var.vpc_cidr, 3, 3)
-  private_subnet_3_az       = local.private_subnet_3_az
-  enable_brainstore_ec2_ssm = var.enable_brainstore_ec2_ssm
-  custom_tags               = local.all_custom_tags
+  public_subnet_1_cidr                 = cidrsubnet(var.vpc_cidr, 3, 0)
+  public_subnet_1_az                   = local.public_subnet_1_az
+  private_subnet_1_cidr                = cidrsubnet(var.vpc_cidr, 3, 1)
+  private_subnet_1_az                  = local.private_subnet_1_az
+  private_subnet_2_cidr                = cidrsubnet(var.vpc_cidr, 3, 2)
+  private_subnet_2_az                  = local.private_subnet_2_az
+  private_subnet_3_cidr                = cidrsubnet(var.vpc_cidr, 3, 3)
+  private_subnet_3_az                  = local.private_subnet_3_az
+  enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
+  s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
+  s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
+  custom_tags                          = local.all_custom_tags
 }
 
 module "quarantine_vpc" {
@@ -151,15 +163,17 @@ module "quarantine_vpc" {
   vpc_name        = "quarantine"
   vpc_cidr        = var.quarantine_vpc_cidr
 
-  public_subnet_1_cidr  = cidrsubnet(var.quarantine_vpc_cidr, 3, 0)
-  public_subnet_1_az    = local.quarantine_public_subnet_1_az
-  private_subnet_1_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 1)
-  private_subnet_1_az   = local.quarantine_private_subnet_1_az
-  private_subnet_2_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 2)
-  private_subnet_2_az   = local.quarantine_private_subnet_2_az
-  private_subnet_3_cidr = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
-  private_subnet_3_az   = local.quarantine_private_subnet_3_az
-  custom_tags           = local.all_custom_tags
+  public_subnet_1_cidr                 = cidrsubnet(var.quarantine_vpc_cidr, 3, 0)
+  public_subnet_1_az                   = local.quarantine_public_subnet_1_az
+  private_subnet_1_cidr                = cidrsubnet(var.quarantine_vpc_cidr, 3, 1)
+  private_subnet_1_az                  = local.quarantine_private_subnet_1_az
+  private_subnet_2_cidr                = cidrsubnet(var.quarantine_vpc_cidr, 3, 2)
+  private_subnet_2_az                  = local.quarantine_private_subnet_2_az
+  private_subnet_3_cidr                = cidrsubnet(var.quarantine_vpc_cidr, 3, 3)
+  private_subnet_3_az                  = local.quarantine_private_subnet_3_az
+  s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
+  s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
+  custom_tags                          = local.all_custom_tags
 }
 
 module "database" {
@@ -190,6 +204,8 @@ module "database" {
   postgres_storage_throughput        = var.postgres_storage_throughput
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   backup_retention_period            = var.postgres_backup_retention_period
+  backup_window                      = var.postgres_backup_window
+  maintenance_window                 = var.postgres_maintenance_window
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
   kms_key_arn              = local.kms_key_arn
@@ -223,6 +239,7 @@ module "redis" {
   use_redis_replication_group = var.use_redis_replication_group
   redis_instance_type         = var.redis_instance_type
   redis_version               = var.redis_version
+  apply_immediately           = var.redis_apply_immediately
   custom_tags                 = local.all_custom_tags
 }
 
@@ -236,6 +253,7 @@ module "storage" {
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
   enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
+  s3_server_access_logging                       = var.s3_server_access_logging
   custom_tags                                    = local.all_custom_tags
 }
 
@@ -259,13 +277,13 @@ module "services" {
   redis_host                  = module.redis.redis_endpoint
   redis_port                  = module.redis.redis_port
 
-  brainstore_enabled              = var.enable_brainstore
+  brainstore_enabled              = true
   brainstore_default              = var.brainstore_default
-  brainstore_hostname             = var.enable_brainstore ? module.brainstore[0].dns_name : null
-  brainstore_writer_hostname      = var.enable_brainstore && var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_fast_reader_hostname = var.enable_brainstore && var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
-  brainstore_s3_bucket_name       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  brainstore_port                 = var.enable_brainstore ? module.brainstore[0].port : null
+  brainstore_hostname             = module.brainstore[0].dns_name
+  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
+  brainstore_port                 = module.brainstore[0].port
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
@@ -334,7 +352,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = local.create_ai_gateway || local.create_ecs_api ? 1 : 0
+  count  = local.create_ai_gateway || local.create_ecs_api || local.create_loop_runtime ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -379,7 +397,7 @@ module "gateway_ecs" {
   ecs_cluster_name   = module.ecs[0].cluster_name
   container_image = format(
     "public.ecr.aws/braintrust/gateway:%s",
-    var.ai_gateway_version_override == null ? "prerelease" : var.ai_gateway_version_override
+    var.ai_gateway_version_override != null ? var.ai_gateway_version_override : jsondecode(file("${path.module}/modules/gateway-ecs/VERSIONS.json"))["gateway"]
   )
   cpu                         = var.ai_gateway_cpu
   memory                      = var.ai_gateway_memory
@@ -406,6 +424,7 @@ module "gateway_ecs" {
   unsafe_url_request_mode     = var.unsafe_url_request_mode
   url_security_dns_servers    = var.url_security_dns_servers
   url_security_allow_cidrs    = var.url_security_allow_cidrs
+  bedrock_assume_role_arns    = var.ai_gateway_bedrock_assume_role_arns
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -444,6 +463,7 @@ module "api_ecs" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
   brainstore_enable_export        = var.brainstore_enable_export
+  brainstore_license_key          = var.brainstore_license_key
 
   # Storage
   code_bundle_bucket = module.storage.code_bundle_bucket_id
@@ -486,7 +506,7 @@ module "api_ecs" {
   unsafe_url_request_mode                                      = var.unsafe_url_request_mode
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
-  extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars)
+  extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars)
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -499,7 +519,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = local.api_ecs_ai_proxy_url
+  quarantine_proxy_url                = local.self_hosted_ai_proxy_url
 
   # Networking — CloudFront ApiEcsOrigin requires supported AZs only
   vpc_id             = local.main_vpc_id
@@ -517,31 +537,33 @@ module "api_ecs" {
   alb_custom_domain              = var.braintrust_api_alb_custom_domain
   alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
 
-  kms_key_arn            = local.kms_key_arn
-  ecs_cluster_arn        = module.ecs[0].cluster_arn
-  ecs_cluster_name       = module.ecs[0].cluster_name
-  task_role_arn          = module.services_common.api_handler_role_arn
-  task_security_group_id = module.services_common.api_security_group_id
-  custom_tags            = local.all_custom_tags
+  kms_key_arn              = local.kms_key_arn
+  permissions_boundary_arn = var.permissions_boundary_arn
+  ecs_cluster_arn          = module.ecs[0].cluster_arn
+  ecs_cluster_name         = module.ecs[0].cluster_name
+  task_role_arn            = module.services_common.api_handler_role_arn
+  task_security_group_id   = module.services_common.api_security_group_id
+  custom_tags              = local.all_custom_tags
 }
 
 module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name                    = var.deployment_name
-  custom_domain                      = var.custom_domain
-  custom_certificate_arn             = var.custom_certificate_arn
-  waf_acl_id                         = var.waf_acl_id
-  cloudfront_price_class             = var.cloudfront_price_class
-  cloudfront_origin_read_timeout     = var.cloudfront_origin_read_timeout
-  use_global_ai_proxy                = var.use_global_ai_proxy
-  use_global_ai_gateway_origin       = var.use_global_ai_gateway_origin
-  use_private_ai_gateway_origin      = local.enable_private_ai_gateway_origin
-  global_ai_gateway_origin_domain    = var.global_ai_gateway_origin_domain
-  gateway_alb_arn                    = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name               = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
-  gateway_cloudfront_ingress_rule_id = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
+  deployment_name                     = var.deployment_name
+  custom_domain                       = var.custom_domain
+  custom_certificate_arn              = var.custom_certificate_arn
+  waf_acl_id                          = var.waf_acl_id
+  cloudfront_price_class              = var.cloudfront_price_class
+  cloudfront_origin_read_timeout      = var.cloudfront_origin_read_timeout
+  cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
+  use_global_ai_proxy                 = var.use_global_ai_proxy
+  use_global_ai_gateway_origin        = var.use_global_ai_gateway_origin
+  use_private_ai_gateway_origin       = local.enable_private_ai_gateway_origin
+  global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
+  gateway_alb_arn                     = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
+  gateway_alb_dns_name                = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
+  gateway_cloudfront_ingress_rule_id  = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
   # Fingerprint of ALB subnet membership *after* aws_lb apply. Referenced by VPC
   # origin resources so Terraform cannot create/update an origin until the ALB
   # has finished shrinking off any CloudFront-unsupported AZs.
@@ -553,7 +575,13 @@ module "ingress" {
   api_ecs_alb_domain          = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled   = module.api_ecs[0].alb_https_enabled
   api_ecs_alb_subnets_applied = module.api_ecs[0].alb_subnets_applied
-  custom_tags                 = local.all_custom_tags
+
+  enable_loop_runtime                     = local.create_loop_runtime
+  loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null
+  loop_runtime_alb_dns_name               = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_dns_name : null
+  loop_runtime_cloudfront_ingress_rule_id = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_cloudfront_vpc_origin_ingress_rule_id : null
+
+  custom_tags = local.all_custom_tags
 }
 
 module "services_common" {
@@ -569,6 +597,7 @@ module "services_common" {
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   brainstore_enable_export                  = var.brainstore_enable_export
+  s3_export_assume_role_arns                = var.s3_export_assume_role_arns
   permissions_boundary_arn                  = var.permissions_boundary_arn
   eks_cluster_arn                           = var.existing_eks_cluster_arn
   eks_namespace                             = var.eks_namespace
@@ -585,7 +614,7 @@ module "services_common" {
 
 module "brainstore" {
   source = "./modules/brainstore-ec2"
-  count  = var.enable_brainstore && !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   deployment_name                       = var.deployment_name
   instance_count                        = var.brainstore_instance_count

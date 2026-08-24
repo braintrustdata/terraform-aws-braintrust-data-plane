@@ -18,6 +18,16 @@ output "postgres_database_arn" {
   description = "The ARN of the main Postgres database"
 }
 
+output "postgres_allocated_storage_gib" {
+  value       = aws_db_instance.main.allocated_storage
+  description = "Allocated storage for the main Postgres database in GiB"
+}
+
+output "postgres_provisioned_iops" {
+  value       = aws_db_instance.main.iops
+  description = "Provisioned IOPS for the main Postgres database, or null when not configured"
+}
+
 output "postgres_database_username" {
   value       = local.postgres_username
   description = "The username for the main Postgres database"
@@ -26,6 +36,7 @@ output "postgres_database_username" {
 output "postgres_database_password" {
   value       = local.postgres_password
   description = "The password for the main Postgres database"
+  sensitive   = true
 }
 
 output "postgres_database_secret_arn" {

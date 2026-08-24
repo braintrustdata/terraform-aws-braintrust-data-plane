@@ -8,6 +8,7 @@ locals {
   cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
+  cloudfront_LoopRuntimeOrigin         = "LoopRuntimeOrigin"
   cloudfront_ProxyOrigin               = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
 
   cloudfront_api_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_APIGatewayOrigin
@@ -29,10 +30,11 @@ locals {
   # the API can recover the viewer protocol. Do not use this policy for HTTPS origins because
   # forwarding the viewer Host header can make CloudFront validate the ALB certificate against
   # the viewer hostname; the ALB already sets X-Forwarded-Proto=https in that case.
+  # The policy resource is always created; this flag only controls whether it is attached.
   cloudfront_use_ecs_forwarded_proto_policy = var.enable_ecs_api && !var.api_ecs_alb_https_enabled
   cloudfront_ecs_origin_request_policy_id = (
     local.cloudfront_use_ecs_forwarded_proto_policy
-    ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto[0].id
+    ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto.id
     : local.cloudfront_AllViewerExceptHostHeader
   )
   cloudfront_origin_request_policy_for_origin = {
@@ -42,14 +44,19 @@ locals {
     (local.cloudfront_CloudflareProxy)      = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_GatewayOrigin)        = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_PrivateGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
+    (local.cloudfront_LoopRuntimeOrigin)    = local.cloudfront_AllViewerExceptHostHeader
   }
 }
 
 # Forwards all viewer headers/cookies/query strings plus CloudFront-Forwarded-Proto. This is
 # safe only for the HTTP ECS origin; HTTPS origins must not forward the viewer Host header.
+#
+# Always created (not gated on enable_ecs_api or ALB HTTPS). CloudFront rejects deleting an
+# origin request policy while a distribution still references it, and distribution updates
+# deploy asynchronously. Gating this resource caused enable_ecs_api rollback (true → false)
+# to fail: Terraform detached the policy and deleted it in the same apply, before CloudFront
+# finished deploying. Keep the policy and only attach it when routing to the HTTP ECS origin.
 resource "aws_cloudfront_origin_request_policy" "all_viewer_with_forwarded_proto" {
-  count = local.cloudfront_use_ecs_forwarded_proto_policy ? 1 : 0
-
   name    = "${var.deployment_name}-all-viewer-with-forwarded-proto"
   comment = "All viewer headers plus CloudFront-Forwarded-Proto (for HTTP ECS ALB origin)"
 
@@ -202,6 +209,20 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
+  dynamic "origin" {
+    for_each = var.enable_loop_runtime ? [1] : []
+    content {
+      domain_name = var.loop_runtime_alb_dns_name
+      origin_id   = local.cloudfront_LoopRuntimeOrigin
+
+      vpc_origin_config {
+        vpc_origin_id            = aws_cloudfront_vpc_origin.loop_runtime[0].id
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+        origin_keepalive_timeout = 60
+      }
+    }
+  }
+
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
@@ -244,12 +265,26 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
+  dynamic "ordered_cache_behavior" {
+    for_each = var.enable_loop_runtime ? toset(["/loop/runtime", "/loop/runtime/*"]) : toset([])
+    content {
+      path_pattern           = ordered_cache_behavior.value
+      allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods         = ["GET", "HEAD", "OPTIONS"]
+      target_origin_id       = local.cloudfront_LoopRuntimeOrigin
+      viewer_protocol_policy = "redirect-to-https"
+
+      cache_policy_id          = local.cloudfront_CachingDisabled
+      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_LoopRuntimeOrigin]
+    }
+  }
+
   viewer_certificate {
     cloudfront_default_certificate = var.custom_certificate_arn != null ? false : true
     acm_certificate_arn            = var.custom_certificate_arn
 
     # These can only be set if cloudfront_default_certificate is false
-    minimum_protocol_version = var.custom_certificate_arn != null ? "TLSv1.3_2025" : null
+    minimum_protocol_version = var.custom_certificate_arn != null ? coalesce(var.cloudfront_minimum_protocol_version, "TLSv1.3_2025") : null
     ssl_support_method       = var.custom_certificate_arn != null ? "sni-only" : null
   }
 

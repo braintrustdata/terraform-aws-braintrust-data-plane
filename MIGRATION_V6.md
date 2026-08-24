@@ -9,7 +9,7 @@ v6 moves the primary APIHandler and AIProxy workloads from Lambda onto ECS. This
 APIHandler and AIProxy now run as ECS services alongside the existing Lambdas. The ECS API is split into three services for different workload types:
 
 - `braintrust-api` — general API traffic
-- `braintrust-api-ingest` — ingestion paths (`/logs3`, `/otel/v1/traces`)
+- `braintrust-api-ingest` — ingestion paths
 - `braintrust-api-background` — background paths (evals, function invoke, proxy)
 
 These services have new variables that require consideration:
@@ -50,6 +50,8 @@ These services have new variables that require consideration:
 ## Rollback
 
 Set `enable_ecs_api = false` and apply. CloudFront will revert to the Lambda path. This is a fast rollback while the Lambdas are still deployed.
+
+The custom CloudFront origin request policy (`<deployment>-all-viewer-with-forwarded-proto`) is left in place after rollback. CloudFront cannot delete a policy in the same apply that detaches it from the distribution.
 
 ## Cleanup
 
