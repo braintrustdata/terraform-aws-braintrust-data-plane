@@ -41,6 +41,14 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 Do not mention named customers in PRs, comments, docs, examples, or commit messages. Refer to them generically (private dataplane, hybrid, residency-sensitive, etc.).
 
+### Tag created AWS resources with the deployment name
+
+When this module creates AWS resources, tag them with
+`BraintrustDeploymentName = var.deployment_name` wherever the resource type
+supports tags. In submodules, use `local.common_tags`. At the root, merge that
+key with `local.all_custom_tags` (so APN tags stay). Skip resource types that
+cannot be tagged.
+
 ### Keep examples in sync with variables
 
 When adding, removing, or renaming variables in the root module's `variables.tf`, update the example `main.tf` files to reflect the change. All examples under `examples/` should remain valid and representative.

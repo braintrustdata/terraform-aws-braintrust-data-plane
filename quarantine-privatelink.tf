@@ -17,6 +17,9 @@ locals {
     var.create_vpc &&
     local.create_quarantine_vpc
   )
+  privatelink_tags = merge({
+    BraintrustDeploymentName = var.deployment_name
+  }, local.all_custom_tags)
 }
 
 resource "aws_security_group" "gateway_quarantine_privatelink_nlb" {
@@ -28,7 +31,7 @@ resource "aws_security_group" "gateway_quarantine_privatelink_nlb" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl-nlb"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 # No broad 0.0.0.0/0 :80 ingress on the NLB SG. PrivateLink consumer traffic is
@@ -48,7 +51,7 @@ resource "aws_vpc_security_group_egress_rule" "gateway_quarantine_privatelink_nl
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl-nlb-to-alb"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "gateway_alb_from_quarantine_privatelink_nlb" {
@@ -63,7 +66,7 @@ resource "aws_vpc_security_group_ingress_rule" "gateway_alb_from_quarantine_priv
 
   tags = merge({
     Name = "${var.deployment_name}-gateway-alb-from-gw-q-pl-nlb"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 resource "aws_lb" "gateway_quarantine_privatelink" {
@@ -79,7 +82,7 @@ resource "aws_lb" "gateway_quarantine_privatelink" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 resource "aws_lb_target_group" "gateway_quarantine_privatelink_alb" {
@@ -100,7 +103,7 @@ resource "aws_lb_target_group" "gateway_quarantine_privatelink_alb" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl-alb"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 resource "aws_lb_target_group_attachment" "gateway_quarantine_privatelink_alb" {
@@ -136,7 +139,7 @@ resource "aws_vpc_endpoint_service" "gateway_quarantine" {
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 # Same-account consumers still need an allowed principal; acceptance_required=false
@@ -157,7 +160,7 @@ resource "aws_security_group" "quarantine_gateway_privatelink_endpoint" {
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl-vpce"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 resource "aws_vpc_security_group_ingress_rule" "quarantine_gateway_privatelink_endpoint_http" {
@@ -172,7 +175,7 @@ resource "aws_vpc_security_group_ingress_rule" "quarantine_gateway_privatelink_e
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl-vpce-http"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 resource "aws_vpc_security_group_egress_rule" "quarantine_gateway_privatelink_endpoint_all" {
@@ -185,7 +188,7 @@ resource "aws_vpc_security_group_egress_rule" "quarantine_gateway_privatelink_en
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl-vpce-egress"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
 
 resource "aws_vpc_endpoint" "quarantine_gateway" {
@@ -207,5 +210,5 @@ resource "aws_vpc_endpoint" "quarantine_gateway" {
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl"
-  }, local.all_custom_tags)
+  }, local.privatelink_tags)
 }
