@@ -192,6 +192,13 @@ module "braintrust-data-plane" {
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
 
+  # Opt-in: restrict S3 VPC gateway endpoint (org and account lists compose; empty = unrestricted).
+  # Current account is always allowed. When restricted, ECR starport + CloudWatch agent GetObject
+  # exceptions are added automatically. Applies to any module-managed S3 VPC endpoint
+  # (main and/or quarantine); does not modify customer-managed existing_* VPC endpoints.
+  # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
+  # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
+
   ### Braintrust Remote Support
 
   # Enable sharing of Cloudwatch logs with Braintrust staff
