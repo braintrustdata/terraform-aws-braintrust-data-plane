@@ -42,10 +42,19 @@ locals {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
     } : {},
   )
-  plain_license_env_var = var.brainstore_license_key == null ? {} : {
-    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-  }
-  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  # BRAINSTORE_LICENSE_KEY is sensitive, so it is injected via ECS secrets
+  # (sourced from Secrets Manager) rather than as a plaintext environment
+  # variable. See local.license_secrets below.
+  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
+
+  license_key_set = var.brainstore_license_key != null && trimspace(var.brainstore_license_key) != ""
+
+  license_secrets = local.license_key_set ? [
+    {
+      name      = "BRAINSTORE_LICENSE_KEY"
+      valueFrom = aws_secretsmanager_secret.brainstore_license_key[0].arn
+    }
+  ] : []
 
   gateway_container_definition = {
     name      = local.container_name
@@ -64,6 +73,7 @@ locals {
         value = local.merged_env_vars[key]
       }
     ]
+    secrets = local.license_secrets
     dependsOn = [
       for dep in [
         {
@@ -181,6 +191,26 @@ data "aws_iam_policy_document" "ecs_task_assume_role" {
   }
 }
 
+resource "aws_secretsmanager_secret" "brainstore_license_key" {
+  count = local.license_key_set ? 1 : 0
+
+  name                    = "${var.deployment_name}/gateway/brainstore-license-key"
+  description             = "Brainstore license key injected into the gateway ECS task."
+  recovery_window_in_days = 0
+  kms_key_id              = var.kms_key_arn
+
+  tags = merge({
+    Name = "${var.deployment_name}-gateway-brainstore-license-key"
+  }, local.common_tags)
+}
+
+resource "aws_secretsmanager_secret_version" "brainstore_license_key" {
+  count = local.license_key_set ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.brainstore_license_key[0].id
+  secret_string = var.brainstore_license_key
+}
+
 resource "aws_cloudwatch_log_group" "service" {
   name              = "/ecs/${var.deployment_name}/gateway"
   retention_in_days = var.log_retention_days
@@ -260,6 +290,38 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
           "secretsmanager:GetSecretValue",
         ]
         Resource = var.internal_observability_api_key_secret_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+        ]
+        Resource = var.kms_key_arn
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "task_execution_license_secret" {
+  count = local.license_key_set ? 1 : 0
+
+  name = "${var.deployment_name}-gateway-task-exec-license-secret"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+        ]
+        Resource = aws_secretsmanager_secret.brainstore_license_key[0].arn
       },
       {
         Effect = "Allow"
