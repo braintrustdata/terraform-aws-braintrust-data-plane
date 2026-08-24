@@ -137,7 +137,8 @@ module "braintrust-data-plane" {
   # Opt in to wire quarantine UDF LLM calls to the private gateway via
   # PrivateLink (NLB→ALB + VPC endpoint) at http://<vpce-dns>/v1/proxy.
   # Default false keeps the AI Proxy Function URL / manual quarantine_proxy_url.
-  # Requires create_ai_gateway; auto-wires only with create_vpc + module quarantine.
+  # Requires create_ai_gateway and module-managed VPCs (or quarantine_proxy_url).
+  # Existing VPC without an override fails apply, except the global-origin no-op.
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 

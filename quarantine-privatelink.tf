@@ -22,6 +22,23 @@ locals {
   }, local.all_custom_tags)
 }
 
+# Fail when the flag is on but this module cannot create PrivateLink and there
+# is no URL override. use_global_ai_gateway_origin stays a documented no-op.
+resource "terraform_data" "quarantine_privatelink_requirements" {
+  count = var.use_private_gateway_quarantine_proxy ? 1 : 0
+
+  lifecycle {
+    precondition {
+      condition = (
+        var.use_global_ai_gateway_origin ||
+        var.quarantine_proxy_url != null ||
+        local.create_quarantine_gateway_privatelink
+      )
+      error_message = "use_private_gateway_quarantine_proxy is true, but this module cannot create PrivateLink. Set quarantine_proxy_url to your endpoint URL, or use module-managed main and quarantine VPCs."
+    }
+  }
+}
+
 resource "aws_security_group" "gateway_quarantine_privatelink_nlb" {
   count = local.create_quarantine_gateway_privatelink ? 1 : 0
 

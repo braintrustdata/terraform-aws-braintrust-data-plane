@@ -120,8 +120,10 @@ existing stacks are unchanged until operators explicitly enable it.
 - **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
   quarantine VPC are both enabled, creates PrivateLink and sets
   `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
-  No-ops PrivateLink when `use_global_ai_gateway_origin` is true. Adds an
-  internal NLB (extra cost) in front of the gateway ALB.
+  No-ops PrivateLink when `use_global_ai_gateway_origin` is true. If the
+  module cannot create PrivateLink (existing main VPC, existing quarantine
+  VPC, or quarantine disabled) and `quarantine_proxy_url` is unset, apply
+  fails. Adds an internal NLB (extra cost) in front of the gateway ALB.
 
 #### URL precedence
 
@@ -151,7 +153,9 @@ Uses an NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
 
 Automated only for **module-managed** main + quarantine VPCs
 (`create_vpc` and `enable_quarantine_vpc` without `existing_quarantine_vpc_id`).
-Not automated: `existing_vpc_id` and/or `existing_quarantine_vpc_id` —
+Existing VPC / existing quarantine / quarantine disabled: Terraform fails
+unless you set `quarantine_proxy_url`, or `use_global_ai_gateway_origin` is
+true (documented no-op; Function URL, no PrivateLink). For existing VPCs,
 create an interface endpoint to
 `quarantine_gateway_privatelink_service_name` (when the provider side exists
 in a module-managed stack, or stand up equivalent NLB/service yourself) and
