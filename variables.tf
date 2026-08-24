@@ -1237,7 +1237,7 @@ variable "s3_export_assume_role_arns" {
   validation {
     condition = alltrue([
       for arn in var.s3_export_assume_role_arns :
-      can(regex("^arn:aws:iam::(\*|[0-9]{12}):role/.+$", arn))
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
     ])
     error_message = "s3_export_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
   }
@@ -1257,7 +1257,7 @@ variable "ai_gateway_bedrock_assume_role_arns" {
   validation {
     condition = alltrue([
       for arn in var.ai_gateway_bedrock_assume_role_arns :
-      can(regex("^arn:aws:iam::(\*|[0-9]{12}):role/.+$", arn))
+      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
     ])
     error_message = "ai_gateway_bedrock_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
   }
