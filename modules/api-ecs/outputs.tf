@@ -5,11 +5,16 @@ output "service_name" {
 
 output "service_names" {
   description = "Names of all API ECS services."
-  value = {
-    braintrust_api            = aws_ecs_service.braintrust_api.name
-    braintrust_api_ingest     = aws_ecs_service.braintrust_api_ingest.name
-    braintrust_api_background = aws_ecs_service.braintrust_api_background.name
-  }
+  value = merge(
+    {
+      braintrust_api            = aws_ecs_service.braintrust_api.name
+      braintrust_api_ingest     = aws_ecs_service.braintrust_api_ingest.name
+      braintrust_api_background = aws_ecs_service.braintrust_api_background.name
+    },
+    var.create_rust_api_ingest ? {
+      braintrust_api_rust_ingest = aws_ecs_service.braintrust_api_rust_ingest[0].name
+    } : {},
+  )
 }
 
 output "monitoring_targets" {
@@ -70,11 +75,16 @@ output "target_group_arn_suffix" {
 
 output "target_group_arns" {
   description = "ARNs of all API ECS ALB target groups."
-  value = {
-    braintrust_api            = aws_lb_target_group.braintrust_api.arn
-    braintrust_api_ingest     = aws_lb_target_group.braintrust_api_ingest.arn
-    braintrust_api_background = aws_lb_target_group.braintrust_api_background.arn
-  }
+  value = merge(
+    {
+      braintrust_api            = aws_lb_target_group.braintrust_api.arn
+      braintrust_api_ingest     = aws_lb_target_group.braintrust_api_ingest.arn
+      braintrust_api_background = aws_lb_target_group.braintrust_api_background.arn
+    },
+    var.create_rust_api_ingest ? {
+      braintrust_api_rust_ingest = aws_lb_target_group.braintrust_api_rust_ingest[0].arn
+    } : {},
+  )
 }
 
 output "alb_security_group_id" {
