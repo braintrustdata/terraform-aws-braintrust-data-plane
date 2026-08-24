@@ -163,7 +163,8 @@ module "braintrust-data-plane" {
 
   # Opt-in: restrict S3 VPC gateway endpoint (org and account lists compose; empty = unrestricted).
   # Current account is always allowed. When restricted, ECR starport + CloudWatch agent GetObject
-  # exceptions are added automatically. Only applies when create_vpc is true.
+  # exceptions are added automatically. Applies to any module-managed S3 VPC endpoint
+  # (main and/or quarantine); does not modify customer-managed existing_* VPC endpoints.
   # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
   # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
 }

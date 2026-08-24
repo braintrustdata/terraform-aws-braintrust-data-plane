@@ -1278,7 +1278,9 @@ variable "s3_vpc_endpoint_resource_org_ids" {
       - the amazoncloudwatch-agent bucket (Brainstore user-data .deb install)
     Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
 
-    Only applies when create_vpc is true (module-managed VPC endpoints).
+    Applies to any module-managed S3 VPC gateway endpoint (main VPC when create_vpc is true, and
+    quarantine VPC when enable_quarantine_vpc is true and existing_quarantine_vpc_id is unset).
+    Does not modify customer-managed endpoints on existing_* VPC IDs.
   EOT
   default     = []
 
@@ -1304,7 +1306,9 @@ variable "s3_vpc_endpoint_resource_account_ids" {
     GetObject to the regional ECR starport layer bucket and the amazoncloudwatch-agent bucket.
     Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
 
-    Only applies when create_vpc is true (module-managed VPC endpoints).
+    Applies to any module-managed S3 VPC gateway endpoint (main VPC when create_vpc is true, and
+    quarantine VPC when enable_quarantine_vpc is true and existing_quarantine_vpc_id is unset).
+    Does not modify customer-managed endpoints on existing_* VPC IDs.
   EOT
   default     = []
 
