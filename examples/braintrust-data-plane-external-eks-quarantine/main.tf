@@ -41,8 +41,11 @@ module "braintrust-data-plane" {
   use_deployment_mode_external_eks = true
 
   # Loop runtime is not supported with external EKS deployments.
+  # Restricted egress (if Loop is later enabled on ECS) needs create_ai_gateway
+  # and a module-managed main VPC. Loop v2 cannot use AI Proxy.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
+  # loop_runtime_ai_proxy_url        = null
 
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles

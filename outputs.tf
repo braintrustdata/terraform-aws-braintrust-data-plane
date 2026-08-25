@@ -44,13 +44,18 @@ output "main_vpc_private_route_table_id" {
 }
 
 output "quarantine_gateway_privatelink_service_name" {
-  value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
-  description = "VPC endpoint service name for quarantine→private gateway PrivateLink (null unless use_private_gateway_quarantine_proxy with module-managed VPCs). Existing VPC / existing quarantine callers must set quarantine_proxy_url; use this name if you attach a manual interface endpoint."
+  value       = local.create_gateway_privatelink_provider ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
+  description = "VPC endpoint service name for the shared NLB→private gateway PrivateLink (null unless quarantine and/or restricted Loop create the provider). Resource names stay gateway_quarantine_* because they are the shared provider. Existing VPC callers can attach a manual interface endpoint and set quarantine_proxy_url or loop_runtime_ai_proxy_url."
 }
 
 output "quarantine_gateway_privatelink_endpoint_dns_name" {
   value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name : null
-  description = "DNS name of the quarantine VPC endpoint to the private gateway (null unless PrivateLink consumer is created)"
+  description = "DNS name of the quarantine VPC endpoint to the private gateway (null unless the quarantine PrivateLink consumer is created)"
+}
+
+output "loop_runtime_gateway_privatelink_endpoint_dns_name" {
+  value       = local.create_loop_gateway_privatelink ? aws_vpc_endpoint.loop_gateway[0].dns_entry[0].dns_name : null
+  description = "DNS name of the Loop MicroVM VPC endpoint to the private gateway (null unless restricted Loop PrivateLink is created)"
 }
 
 output "brainstore_security_group_id" {
@@ -176,6 +181,11 @@ output "loop_runtime_url" {
 output "loop_runtime_microvm_image_arn" {
   value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
   description = "ARN of the Loop runtime sandbox MicroVM image"
+}
+
+output "loop_runtime_ai_proxy_url" {
+  value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
+  description = "Effective LOOP_RUNTIME_AI_PROXY_URL (loop_runtime_ai_proxy_url override, restricted-egress PrivateLink VPCE /v1/proxy, or AI Proxy Function URL for internet-mode Loop)"
 }
 
 output "postgres_database_identifier" {

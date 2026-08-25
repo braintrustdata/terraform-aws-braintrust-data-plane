@@ -11,6 +11,8 @@ module "braintrust-data-plane" {
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # The optional Loop runtime is disabled by default.
+  # Restricted egress needs create_ai_gateway and a module-managed main VPC.
+  # Loop v2 cannot use AI Proxy.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
 

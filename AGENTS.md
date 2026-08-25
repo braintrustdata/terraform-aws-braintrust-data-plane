@@ -104,8 +104,13 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
 Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
 peer the quarantine VPC to main for this path. Prefer PrivateLink to the
-private gateway when opted in. Loop Runtime stays on the AI Proxy Function
-URL; PrivateLink only affects quarantine when the flag is on.
+private gateway when opted in.
+
+Loop v2 cannot use AI Proxy as the LLM router. Internet-mode Loop can still
+use the AI Proxy Function URL (that hop already has `GATEWAY_URL`). Restricted
+Loop uses the same PrivateLink sandwich as quarantine (shared NLB + endpoint
+service, second Interface VPCE in the MicroVM `10.255.0.0/16` VPC) and sets
+`LOOP_RUNTIME_AI_PROXY_URL` to `http://<loop-vpce-dns>/v1/proxy`.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 
@@ -165,7 +170,65 @@ set `quarantine_proxy_url` to `http://<your-vpce-dns>/v1/proxy`.
 interface endpoint hourly/GB charges. Place NLB and VPCE ENIs across the
 same AZs as the gateway ALB subnets so the endpoint service is available in
 those AZs; mismatched AZ coverage can yield unresolved or unhealthy
-endpoints.
+endpoints. The NLB + endpoint service (`gateway_quarantine_*` resource names)
+are the **shared provider**. Quarantine and restricted Loop each add their
+own Interface VPCE. One NLB even when both consumers are on.
+
+### Loop v2 restricted egress PrivateLink
+
+Loop v2 needs Gateway semantics. It cannot use AI Proxy. Restricted
+MicroVMs have no NAT and block all DNS (`*` → NXDOMAIN), so they cannot
+reach `internal-…-gateway…elb…` or a Function URL.
+
+#### When the shared provider is created
+
+The NLB→ALB endpoint service is created when **either**:
+
+- quarantine PrivateLink would create it today (`use_private_gateway_quarantine_proxy`
+  + `create_ai_gateway` + module-managed main and quarantine VPCs + not
+  `use_global_ai_gateway_origin`), **or**
+- Loop restricted egress needs it (`enable_loop_runtime` +
+  `loop_runtime_sandbox_egress_mode != "internet"` + `create_ai_gateway` +
+  module-managed main VPC + not `use_global_ai_gateway_origin`).
+
+Do not add a second NLB.
+
+#### Loop consumer
+
+When restricted Loop can create the path, this module:
+
+1. Places the 10.255 connector subnets in the **same AZs** as the gateway
+   ALB / main private subnets.
+2. Creates an Interface VPCE in that VPC (`private_dns_enabled = false`)
+   against the shared service.
+3. Allows TCP **:80** from the restricted connector SG to the VPCE SG.
+4. Adds a higher-priority DNS Firewall **ALLOW** for `*.vpce.amazonaws.com`
+   so the `*` NXDOMAIN rule does not hide the sandwich.
+5. Sets `LOOP_RUNTIME_AI_PROXY_URL` to `http://<loop-vpce-dns>/v1/proxy`
+   unless `loop_runtime_ai_proxy_url` is set.
+
+Plain HTTP is intentional: traffic stays on PrivateLink.
+
+#### URL precedence
+
+1. `loop_runtime_ai_proxy_url` override if set — **always wins**
+2. else `http://<loop-vpce-dns>/v1/proxy` when restricted Loop creates the
+   consumer VPCE
+3. else AI Proxy Lambda Function URL (internet-mode Loop only)
+
+If restricted Loop is on and this module cannot create the VPCE, apply
+**fails** unless `loop_runtime_ai_proxy_url` is set. Do not silently fall
+back to the Function URL. `use_global_ai_gateway_origin` is **not** a
+no-op for restricted Loop (MicroVMs cannot reach a hosted gateway).
+
+Existing main VPC: fail unless `loop_runtime_ai_proxy_url` is set. Use
+`quarantine_gateway_privatelink_service_name` if you attach a manual
+interface endpoint. This module does not build a split provider for
+bring-your-own VPC.
+
+Internet-mode Loop does **not** require `create_ai_gateway` (it can use a
+hosted gateway). Do not flip the Terraform default
+(`loop_runtime_sandbox_egress_mode = "internet"`).
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

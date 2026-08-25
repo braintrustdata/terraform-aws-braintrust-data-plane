@@ -47,6 +47,12 @@ module "loop_runtime_sandbox_aws_microvm" {
   microvm_auth_token_expiration_minutes = var.loop_runtime_microvm_auth_token_expiration_minutes
   enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
   sandbox_egress_mode                   = var.loop_runtime_sandbox_egress_mode
+  availability_zone_names = [
+    local.private_subnet_1_az,
+    local.private_subnet_2_az,
+    local.private_subnet_3_az,
+  ]
+  create_privatelink_endpoint = local.create_loop_gateway_privatelink
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags
@@ -96,7 +102,7 @@ module "loop_runtime_ecs" {
   code_bundle_bucket_arn    = module.storage.code_bundle_bucket_arn
 
   brainstore_reader_url = local.loop_runtime_brainstore_reader_url
-  ai_proxy_url          = local.self_hosted_ai_proxy_url
+  ai_proxy_url          = local.loop_runtime_ai_proxy_url
   braintrust_api_url    = module.ingress[0].api_url
 
   # Shared Brainstore WAL format + lock prefix — must match the API/Brainstore writers.

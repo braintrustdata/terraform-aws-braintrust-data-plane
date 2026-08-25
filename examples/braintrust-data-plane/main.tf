@@ -31,8 +31,12 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
+  # Restricted egress needs create_ai_gateway and a module-managed main VPC
+  # (PrivateLink to the private gateway). Loop v2 cannot use AI Proxy.
+  # Do not turn on restricted here by default.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
+  # loop_runtime_ai_proxy_url        = null
 
   ### Postgres configuration
   # Changing this will incur a short downtime.

@@ -32,8 +32,11 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
+  # Restricted egress needs create_ai_gateway and a module-managed main VPC
+  # (PrivateLink to the private gateway). Loop v2 cannot use AI Proxy.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
+  # loop_runtime_ai_proxy_url        = null
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.

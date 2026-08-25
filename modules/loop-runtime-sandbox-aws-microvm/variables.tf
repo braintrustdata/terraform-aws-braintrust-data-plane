@@ -95,8 +95,25 @@ variable "ingress_network_connector_arns" {
 
 variable "sandbox_egress_mode" {
   type        = string
-  description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector."
+  description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector (PrivateLink to the private gateway when the root module creates that path)."
   default     = "internet"
+}
+
+variable "availability_zone_names" {
+  type        = list(string)
+  description = "AZs for restricted-egress subnets. Pass the same AZs as the gateway ALB / main private subnets so the shared PrivateLink endpoint service is available."
+  default     = []
+
+  validation {
+    condition     = length(var.availability_zone_names) == 0 || length(var.availability_zone_names) == 3
+    error_message = "availability_zone_names must be empty or exactly 3 AZs (same count as the gateway ALB)."
+  }
+}
+
+variable "create_privatelink_endpoint" {
+  type        = bool
+  description = "Create the Loop consumer VPC endpoint security group and allow HTTP to it from the restricted connector. The Interface VPCE itself is created by the root module."
+  default     = false
 }
 
 variable "enable_microvm_runtime_logs" {

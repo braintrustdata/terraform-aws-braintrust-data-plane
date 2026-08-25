@@ -138,6 +138,26 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
 
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
-  description = "Outbound-network mode for Loop runtime sandbox MicroVMs. Exactly \"internet\" uses AWS-managed Internet egress; any other value uses a restricted connector with no outbound network access."
+  description = "Outbound-network mode for Loop runtime sandbox MicroVMs. Exactly \"internet\" uses AWS-managed Internet egress (Function URL / loop_runtime_ai_proxy_url). Any other value uses the restricted connector and PrivateLink to the private gateway at http://<vpce-dns>/v1/proxy. Restricted mode requires create_ai_gateway and a module-managed main VPC, or an explicit loop_runtime_ai_proxy_url. Loop v2 cannot use AI Proxy."
   default     = "internet"
+
+  validation {
+    condition = (
+      var.loop_runtime_sandbox_egress_mode == "internet" ||
+      !var.enable_loop_runtime ||
+      var.create_ai_gateway
+    )
+    error_message = "Restricted Loop runtime sandbox egress (loop_runtime_sandbox_egress_mode != \"internet\") requires create_ai_gateway. Loop v2 cannot use AI Proxy."
+  }
+}
+
+variable "loop_runtime_ai_proxy_url" {
+  type        = string
+  description = "Optional explicit LOOP_RUNTIME_AI_PROXY_URL. Always wins over auto-selection. When null, restricted Loop uses http://<loop-vpce-dns>/v1/proxy when this module creates that endpoint; internet-mode Loop uses the AI Proxy Function URL. Required when restricted Loop cannot create PrivateLink (existing main VPC, or use_global_ai_gateway_origin)."
+  default     = null
+
+  validation {
+    condition     = var.loop_runtime_ai_proxy_url == null || var.loop_runtime_ai_proxy_url != ""
+    error_message = "loop_runtime_ai_proxy_url must be null or a non-empty URL."
+  }
 }

@@ -150,11 +150,6 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
   }
 }
 
-data "aws_availability_zones" "available" {
-  count = local.use_restricted_egress ? 1 : 0
-  state = "available"
-}
-
 resource "aws_vpc" "restricted_egress" {
   count = local.use_restricted_egress ? 1 : 0
 
@@ -165,6 +160,13 @@ resource "aws_vpc" "restricted_egress" {
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-restricted-egress"
   }, local.common_tags)
+
+  lifecycle {
+    precondition {
+      condition     = length(var.availability_zone_names) == 3
+      error_message = "Restricted Loop egress requires 3 availability_zone_names matching the gateway ALB / main private subnets."
+    }
+  }
 }
 
 resource "aws_route_table" "restricted_egress" {
@@ -180,7 +182,7 @@ resource "aws_route_table" "restricted_egress" {
 resource "aws_subnet" "restricted_egress" {
   count = local.use_restricted_egress ? 3 : 0
 
-  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
+  availability_zone       = var.availability_zone_names[count.index]
   cidr_block              = "10.255.${count.index + 1}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
@@ -223,10 +225,31 @@ resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
   priority                = 100
 }
 
+resource "aws_route53_resolver_firewall_domain_list" "restricted_egress_privatelink" {
+  count = local.use_restricted_egress && var.create_privatelink_endpoint ? 1 : 0
+
+  domains = ["*.vpce.amazonaws.com"]
+  name    = "bt-loop-${var.deployment_name}-dns-allow-vpce"
+  tags    = local.common_tags
+}
+
+resource "aws_route53_resolver_firewall_rule" "restricted_egress_privatelink_allow" {
+  count = local.use_restricted_egress && var.create_privatelink_endpoint ? 1 : 0
+
+  action                  = "ALLOW"
+  firewall_domain_list_id = aws_route53_resolver_firewall_domain_list.restricted_egress_privatelink[0].id
+  firewall_rule_group_id  = aws_route53_resolver_firewall_rule_group.restricted_egress[0].id
+  name                    = "bt-loop-${var.deployment_name}-dns-allow-vpce"
+  priority                = 50
+}
+
 resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egress" {
   count = local.use_restricted_egress ? 1 : 0
 
-  depends_on = [aws_route53_resolver_firewall_rule.restricted_egress]
+  depends_on = [
+    aws_route53_resolver_firewall_rule.restricted_egress,
+    aws_route53_resolver_firewall_rule.restricted_egress_privatelink_allow,
+  ]
 
   firewall_rule_group_id = aws_route53_resolver_firewall_rule_group.restricted_egress[0].id
   name                   = "bt-loop-${var.deployment_name}-dns-assoc"
@@ -239,12 +262,65 @@ resource "aws_security_group" "restricted_egress" {
   count = local.use_restricted_egress ? 1 : 0
 
   description = "Security group for restricted Loop runtime sandbox egress"
-  egress      = []
   name        = "${var.deployment_name}-loop-runtime-restricted-egress"
   vpc_id      = aws_vpc.restricted_egress[0].id
 
+  egress = var.create_privatelink_endpoint ? [
+    {
+      description      = "Allow HTTP to the private gateway VPC endpoint"
+      from_port        = 80
+      to_port          = 80
+      protocol         = "tcp"
+      security_groups  = [aws_security_group.loop_gateway_privatelink_endpoint[0].id]
+      cidr_blocks      = []
+      ipv6_cidr_blocks = []
+      prefix_list_ids  = []
+      self             = false
+    }
+  ] : []
+
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-restricted-egress"
+  }, local.common_tags)
+}
+
+resource "aws_security_group" "loop_gateway_privatelink_endpoint" {
+  count = local.use_restricted_egress && var.create_privatelink_endpoint ? 1 : 0
+
+  name        = "${var.deployment_name}-loop-gw-pl-vpce"
+  description = "Security group for Loop VPC endpoint to private gateway"
+  vpc_id      = aws_vpc.restricted_egress[0].id
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-gw-pl-vpce"
+  }, local.common_tags)
+}
+
+resource "aws_vpc_security_group_ingress_rule" "loop_gateway_privatelink_endpoint_http" {
+  count = local.use_restricted_egress && var.create_privatelink_endpoint ? 1 : 0
+
+  security_group_id            = aws_security_group.loop_gateway_privatelink_endpoint[0].id
+  referenced_security_group_id = aws_security_group.restricted_egress[0].id
+  from_port                    = 80
+  to_port                      = 80
+  ip_protocol                  = "tcp"
+  description                  = "Allow HTTP from restricted Loop MicroVMs to the private gateway VPC endpoint."
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-gw-pl-vpce-http"
+  }, local.common_tags)
+}
+
+resource "aws_vpc_security_group_egress_rule" "loop_gateway_privatelink_endpoint_all" {
+  count = local.use_restricted_egress && var.create_privatelink_endpoint ? 1 : 0
+
+  security_group_id = aws_security_group.loop_gateway_privatelink_endpoint[0].id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  description       = "Allow all outbound traffic from the Loop gateway VPC endpoint."
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-gw-pl-vpce-egress"
   }, local.common_tags)
 }
 
