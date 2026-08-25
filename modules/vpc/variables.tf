@@ -64,3 +64,40 @@ variable "enable_brainstore_ec2_ssm" {
   type        = bool
   default     = false
 }
+
+variable "s3_vpc_endpoint_resource_org_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
+    Composes with s3_vpc_endpoint_resource_account_ids (union of Allow statements).
+    When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for org_id in var.s3_vpc_endpoint_resource_org_ids :
+      can(regex("^o-[a-z0-9]{10,32}$", org_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_org_ids entries must be AWS Organization IDs of the form o-<10-32 lowercase alphanumeric characters>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_account_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
+    Composes with s3_vpc_endpoint_resource_org_ids (union of Allow statements).
+    When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
+    The current AWS account is always included automatically when either restriction list is non-empty.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for account_id in var.s3_vpc_endpoint_resource_account_ids :
+      can(regex("^[0-9]{12}$", account_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_account_ids entries must be 12-digit AWS account IDs."
+  }
+}

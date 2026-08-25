@@ -26,9 +26,13 @@ locals {
   # (e.g. destination bucket created in the same configuration).
   s3_server_access_logging_enabled = var.s3_server_access_logging != null
   s3_server_access_logging_prefix = (
-    var.s3_server_access_logging != null && var.s3_server_access_logging.prefix != null
-    ? var.s3_server_access_logging.prefix
-    : "${var.deployment_name}/"
+    var.s3_server_access_logging == null
+    ? "${var.deployment_name}/"
+    : (
+      var.s3_server_access_logging.prefix != null
+      ? var.s3_server_access_logging.prefix
+      : "${var.deployment_name}/"
+    )
   )
 
   s3_server_access_logging_buckets = {
