@@ -143,6 +143,7 @@ module "loop_runtime_eks" {
   kms_key_arn               = local.kms_key_arn
   brainstore_s3_bucket_arn  = module.storage.brainstore_bucket_arn
   code_bundle_s3_bucket_arn = module.storage.code_bundle_bucket_arn
+  brainstore_locks_s3_path  = var.brainstore_locks_s3_path
   sandbox_policy_json       = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
   custom_tags               = local.all_custom_tags
 }

@@ -14,6 +14,7 @@ locals {
 
   oidc_issuer_url = var.enable_eks_irsa && var.eks_cluster_arn != null ? data.aws_eks_cluster.cluster[0].identity[0].oidc[0].issuer : null
   oidc_provider   = var.enable_eks_irsa && var.eks_cluster_arn != null ? replace(local.oidc_issuer_url, "https://", "") : null
+  locks_s3_path   = trimprefix(var.brainstore_locks_s3_path, "/")
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -112,14 +113,14 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
       {
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:DeleteObjectVersion"]
-        Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/locks/*"]
+        Resource = ["${var.brainstore_s3_bucket_arn}/${local.locks_s3_path}/*"]
       },
       {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = [var.brainstore_s3_bucket_arn]
         Condition = {
-          StringLike = { "s3:prefix" = ["brainstore/locks/*"] }
+          StringLike = { "s3:prefix" = ["${local.locks_s3_path}/*"] }
         }
       },
     ]

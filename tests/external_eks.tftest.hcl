@@ -49,8 +49,9 @@ run "external_eks_loop_runtime_plans" {
   command = plan
 
   variables {
-    enable_loop_runtime     = true
-    enable_eks_pod_identity = true
+    enable_loop_runtime      = true
+    enable_eks_pod_identity  = true
+    brainstore_locks_s3_path = "/custom/locks"
   }
 
   assert {
@@ -76,5 +77,10 @@ run "external_eks_loop_runtime_plans" {
   assert {
     condition     = length(module.ecs) == 0
     error_message = "external EKS Loop Runtime should not create an otherwise-unused ECS cluster"
+  }
+
+  assert {
+    condition     = module.loop_runtime_eks[0].locks_s3_path == "custom/locks"
+    error_message = "external EKS Loop Runtime should normalize the configured lock prefix"
   }
 }

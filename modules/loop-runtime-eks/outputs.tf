@@ -7,3 +7,8 @@ output "role_name" {
   description = "Name of the IAM role for the Loop Runtime EKS service account."
   value       = aws_iam_role.loop_runtime.name
 }
+
+output "locks_s3_path" {
+  description = "Normalized S3 path prefix used by the Loop Runtime EKS role for object-store locks."
+  value       = local.locks_s3_path
+}
