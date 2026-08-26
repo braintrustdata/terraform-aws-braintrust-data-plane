@@ -71,13 +71,13 @@ variable "lambda_responses_s3_bucket_arn" {
 
 variable "attachment_s3_bucket_arn" {
   type        = string
-  description = "The ARN of the caller-provided attachments S3 bucket. When set, the API role is granted access to the bucket and its objects. Null disables the feature."
+  description = "The ARN of the caller-provided attachment S3 bucket. When set, the API role is granted access to the bucket and its objects. Null disables the feature."
   default     = null
 }
 
 variable "attachment_s3_bucket_kms_key_arn" {
   type        = string
-  description = "The ARN of the KMS key used to encrypt the caller-provided attachments S3 bucket. When set, the API role is granted KMS permissions on this key. Null when the bucket uses SSE-S3 or no attachments bucket is configured."
+  description = "The ARN of the KMS key used to encrypt the caller-provided attachment S3 bucket. When set, the API role is granted KMS permissions on this key. Null when the bucket uses SSE-S3 or no attachment bucket is configured."
   default     = null
 }
 

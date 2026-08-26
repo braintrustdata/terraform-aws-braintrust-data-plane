@@ -92,13 +92,13 @@ locals {
     local.main_vpc_private_subnet_3_id,
   ]
 
-  # Optional caller-provided attachments bucket. The module never creates, owns,
+  # Optional caller-provided attachment bucket. The module never creates, owns,
   # or modifies the bucket; it only derives the name for the ATTACHMENT_BUCKET
   # env var and grants the API roles access. Null when the feature is disabled.
-  attachments_s3_bucket_arn         = var.existing_attachments_s3_bucket_arn
-  attachments_s3_bucket_kms_key_arn = var.existing_attachments_s3_bucket_kms_key_arn
-  attachments_s3_bucket_name        = var.existing_attachments_s3_bucket_arn != null ? split(":::", var.existing_attachments_s3_bucket_arn)[1] : null
-  enable_private_ai_gateway_origin  = local.create_ai_gateway && var.use_private_ai_gateway_origin
+  attachment_s3_bucket_arn         = var.existing_attachment_s3_bucket_arn
+  attachment_s3_bucket_kms_key_arn = var.existing_attachment_s3_bucket_kms_key_arn
+  attachment_s3_bucket_name        = var.existing_attachment_s3_bucket_arn != null ? split(":::", var.existing_attachment_s3_bucket_arn)[1] : null
+  enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
     { for svc in local.lambda_env_services : svc => merge(
@@ -272,7 +272,7 @@ module "services" {
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
   lambda_responses_bucket_arn = module.storage.lambda_responses_bucket_arn
-  attachment_bucket_name      = local.attachments_s3_bucket_name
+  attachment_bucket_name      = local.attachment_s3_bucket_name
 
   # Service configuration
   braintrust_org_name                        = var.braintrust_org_name
@@ -446,7 +446,7 @@ module "api_ecs" {
   # Storage
   code_bundle_bucket     = module.storage.code_bundle_bucket_id
   response_bucket        = module.storage.lambda_responses_bucket_id
-  attachment_bucket_name = local.attachments_s3_bucket_name
+  attachment_bucket_name = local.attachment_s3_bucket_name
 
   # Service configuration
   braintrust_org_name                                          = var.braintrust_org_name
@@ -568,8 +568,8 @@ module "services_common" {
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
   code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
-  attachment_s3_bucket_arn                  = local.attachments_s3_bucket_arn
-  attachment_s3_bucket_kms_key_arn          = local.attachments_s3_bucket_kms_key_arn
+  attachment_s3_bucket_arn                  = local.attachment_s3_bucket_arn
+  attachment_s3_bucket_kms_key_arn          = local.attachment_s3_bucket_kms_key_arn
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   brainstore_enable_export                  = var.brainstore_enable_export

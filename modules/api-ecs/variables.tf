@@ -443,7 +443,7 @@ variable "code_bundle_bucket" {
 
 variable "attachment_bucket_name" {
   type        = string
-  description = "Name of the caller-provided attachments S3 bucket. When set, ATTACHMENT_BUCKET is wired into all API ECS services. Null disables the feature."
+  description = "Name of the caller-provided attachment S3 bucket. When set, ATTACHMENT_BUCKET is wired into all API ECS services. Null disables the feature."
   default     = null
 }
 
