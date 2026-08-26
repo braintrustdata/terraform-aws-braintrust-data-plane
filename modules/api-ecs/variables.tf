@@ -452,6 +452,12 @@ variable "custom_ca_bundle_secret_arn" {
   default     = null
 }
 
+variable "custom_ca_bundle_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret."
+  default     = null
+}
+
 variable "brainstore_hostname" {
   type        = string
   description = "Brainstore hostname."
