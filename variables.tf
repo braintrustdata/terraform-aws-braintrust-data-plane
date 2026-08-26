@@ -1037,8 +1037,8 @@ variable "existing_attachments_s3_bucket_kms_key_arn" {
   default     = null
 
   validation {
-    condition     = var.existing_attachments_s3_bucket_kms_key_arn == null || can(regex("^arn:aws[a-zA-Z-]*:kms:", coalesce(var.existing_attachments_s3_bucket_kms_key_arn, "arn:aws:kms:placeholder")))
-    error_message = "existing_attachments_s3_bucket_kms_key_arn must be a KMS key ARN of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
+    condition     = var.existing_attachments_s3_bucket_kms_key_arn == null || can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-zA-Z-]+$", coalesce(var.existing_attachments_s3_bucket_kms_key_arn, "arn:aws:kms:us-east-1:000000000000:key/placeholder")))
+    error_message = "existing_attachments_s3_bucket_kms_key_arn must be a complete KMS key ARN of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
   }
 
   validation {

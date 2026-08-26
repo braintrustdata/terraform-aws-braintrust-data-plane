@@ -103,3 +103,17 @@ run "rejects_non_s3_bucket_arn" {
     var.existing_attachments_s3_bucket_arn,
   ]
 }
+
+# An incomplete KMS key ARN (prefix only, no region/account/key) is rejected.
+run "rejects_incomplete_kms_key_arn" {
+  command = plan
+
+  variables {
+    existing_attachments_s3_bucket_arn         = "arn:aws:s3:::example-attachments-bucket"
+    existing_attachments_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1"
+  }
+
+  expect_failures = [
+    var.existing_attachments_s3_bucket_kms_key_arn,
+  ]
+}
