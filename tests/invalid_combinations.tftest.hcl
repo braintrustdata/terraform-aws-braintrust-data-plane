@@ -39,3 +39,16 @@ run "rejects_enable_ai_gateway_without_create" {
     var.enable_ai_gateway,
   ]
 }
+
+run "rejects_loop_runtime_without_eks_identity" {
+  command = plan
+
+  variables {
+    use_deployment_mode_external_eks = true
+    enable_loop_runtime              = true
+  }
+
+  expect_failures = [
+    var.enable_loop_runtime,
+  ]
+}

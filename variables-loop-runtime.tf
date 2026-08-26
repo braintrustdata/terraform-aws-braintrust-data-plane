@@ -1,11 +1,11 @@
 variable "enable_loop_runtime" {
   type        = bool
-  description = "Deploy the dedicated Loop runtime ECS/Fargate service (hosted Loop) and its MicroVM sandbox. Requires the ECS API data plane and Brainstore."
+  description = "Deploy hosted Loop Runtime. Standard deployments use ECS/Fargate; external EKS deployments create the AWS MicroVM sandbox and IAM role for the Helm-managed runtime."
   default     = false
 
   validation {
-    condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
-    error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true (the Loop runtime requires the in-VPC ECS API data plane)."
+    condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks || var.enable_eks_pod_identity || (var.enable_eks_irsa && var.existing_eks_cluster_arn != null)
+    error_message = "enable_loop_runtime with use_deployment_mode_external_eks requires enable_eks_pod_identity or enable_eks_irsa with existing_eks_cluster_arn."
   }
 }
 

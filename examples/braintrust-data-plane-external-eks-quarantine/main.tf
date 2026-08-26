@@ -40,7 +40,8 @@ module "braintrust-data-plane" {
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
-  # Loop runtime is not supported with external EKS deployments.
+  # Terraform creates the AWS MicroVM sandbox and EKS IAM role. Helm runs the
+  # Loop Runtime process; enable this after configuring EKS Pod Identity or IRSA below.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
 

@@ -8,6 +8,10 @@ mock_provider "aws" {
 
 mock_provider "random" {}
 
+mock_provider "http" {
+  source = "./tests/mocks/http"
+}
+
 variables {
   braintrust_org_name              = "test-org"
   primary_org_name                 = "test-org"
@@ -38,5 +42,39 @@ run "external_eks_plans" {
   assert {
     condition     = length(module.brainstore) == 0
     error_message = "external EKS mode should skip the brainstore module"
+  }
+}
+
+run "external_eks_loop_runtime_plans" {
+  command = plan
+
+  variables {
+    enable_loop_runtime     = true
+    enable_eks_pod_identity = true
+  }
+
+  assert {
+    condition     = length(module.loop_runtime_sandbox_aws_microvm) == 1
+    error_message = "external EKS Loop Runtime should create the AWS sandbox substrate"
+  }
+
+  assert {
+    condition     = length(module.loop_runtime_eks) == 1
+    error_message = "external EKS Loop Runtime should create its dedicated IAM role"
+  }
+
+  assert {
+    condition     = length(module.loop_runtime_ecs) == 0
+    error_message = "external EKS Loop Runtime should not create the ECS service"
+  }
+
+  assert {
+    condition     = length(module.loop_runtime_alb) == 0
+    error_message = "external EKS Loop Runtime should not create the ECS ALB"
+  }
+
+  assert {
+    condition     = length(module.ecs) == 0
+    error_message = "external EKS Loop Runtime should not create an otherwise-unused ECS cluster"
   }
 }

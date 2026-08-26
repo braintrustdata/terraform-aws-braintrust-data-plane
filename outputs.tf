@@ -154,13 +154,28 @@ output "api_ecs_task_security_group_id" {
 }
 
 output "loop_runtime_url" {
-  value       = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_url : null
+  value       = local.create_loop_runtime_ecs ? module.loop_runtime_alb[0].loop_runtime_url : null
   description = "Private in-VPC URL of the Loop runtime ALB"
 }
 
 output "loop_runtime_microvm_image_arn" {
   value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
   description = "ARN of the Loop runtime sandbox MicroVM image"
+}
+
+output "loop_runtime_version" {
+  value       = local.create_loop_runtime ? local.loop_runtime_version : null
+  description = "Loop Runtime container and sandbox artifact version"
+}
+
+output "loop_runtime_eks_role_arn" {
+  value       = var.use_deployment_mode_external_eks && var.enable_loop_runtime ? module.loop_runtime_eks[0].role_arn : null
+  description = "ARN of the IAM role to associate with the Loop Runtime EKS service account"
+}
+
+output "loop_runtime_sandbox_env_vars" {
+  value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars : {}
+  description = "Non-secret AWS sandbox environment variables for the Loop Runtime Helm deployment"
 }
 
 output "postgres_database_identifier" {
@@ -264,7 +279,7 @@ output "monitoring_contract" {
       log_groups = merge(
         local.create_ecs_api ? { api-ecs = module.api_ecs[0].cloudwatch_log_groups } : {},
         local.create_ai_gateway ? { gateway = module.gateway_ecs[0].cloudwatch_log_groups } : {},
-        local.create_loop_runtime ? { loop-runtime = module.loop_runtime_ecs[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime_ecs ? { loop-runtime = module.loop_runtime_ecs[0].cloudwatch_log_groups } : {},
         local.create_loop_runtime ? { loop-runtime-sandbox = { group = module.loop_runtime_sandbox_aws_microvm[0].microvm_log_group_name } } : {},
       )
     }
