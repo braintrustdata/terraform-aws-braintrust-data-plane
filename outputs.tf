@@ -63,6 +63,16 @@ output "lambda_responses_s3_bucket_name" {
   description = "Name of the lambda responses S3 bucket"
 }
 
+output "attachments_s3_bucket_name" {
+  value       = local.attachments_s3_bucket_name
+  description = "Name of the caller-provided attachments S3 bucket, or null when the feature is disabled"
+}
+
+output "attachments_s3_bucket_arn" {
+  value       = local.attachments_s3_bucket_arn
+  description = "ARN of the caller-provided attachments S3 bucket, or null when the feature is disabled"
+}
+
 output "rds_security_group_id" {
   value       = module.database.rds_security_group_id
   description = "ID of the security group for the RDS instance"

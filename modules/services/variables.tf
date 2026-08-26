@@ -408,6 +408,12 @@ variable "lambda_responses_bucket_arn" {
   description = "The ARN of the lambda responses bucket"
 }
 
+variable "attachment_bucket_name" {
+  type        = string
+  description = "Name of the caller-provided attachments S3 bucket. When set, ATTACHMENT_BUCKET is wired into the API Handler. Null disables the feature."
+  default     = null
+}
+
 variable "api_security_group_id" {
   type        = string
   description = "The ID of the security group for the API and other lambdas"

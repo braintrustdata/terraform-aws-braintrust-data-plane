@@ -1020,6 +1020,33 @@ variable "s3_server_access_logging" {
   }
 }
 
+variable "existing_attachments_s3_bucket_arn" {
+  description = "Opt-in. ARN of a caller-provided S3 bucket used to store attachments. This module does not create, own, or modify the bucket; it only grants the API roles access and wires the ATTACHMENT_BUCKET env var. Leave null to disable (default)."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_attachments_s3_bucket_arn == null || can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", coalesce(var.existing_attachments_s3_bucket_arn, "arn:aws:s3:::placeholder")))
+    error_message = "existing_attachments_s3_bucket_arn must be an S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_attachments_s3_bucket_kms_key_arn" {
+  description = "Opt-in. ARN of the KMS key used to encrypt the caller-provided attachments bucket (see existing_attachments_s3_bucket_arn). When set, the API roles are granted KMS permissions on this key. Requires existing_attachments_s3_bucket_arn. Leave null when the bucket uses SSE-S3 (AES256) or no attachments bucket is configured."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_attachments_s3_bucket_kms_key_arn == null || can(regex("^arn:aws[a-zA-Z-]*:kms:", coalesce(var.existing_attachments_s3_bucket_kms_key_arn, "arn:aws:kms:placeholder")))
+    error_message = "existing_attachments_s3_bucket_kms_key_arn must be a KMS key ARN of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
+  }
+
+  validation {
+    condition     = var.existing_attachments_s3_bucket_kms_key_arn == null || var.existing_attachments_s3_bucket_arn != null
+    error_message = "existing_attachments_s3_bucket_arn is required when existing_attachments_s3_bucket_kms_key_arn is set."
+  }
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number

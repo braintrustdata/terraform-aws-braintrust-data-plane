@@ -151,6 +151,12 @@ resource "aws_iam_policy" "api_handler_policy" {
             var.brainstore_s3_bucket_arn != null && var.brainstore_s3_bucket_arn != "" ? [
               var.brainstore_s3_bucket_arn,
               "${var.brainstore_s3_bucket_arn}/*"
+            ] : [],
+            # Caller-provided attachments bucket. Grants both bucket-level
+            # (List/GetBucket*) and object-level actions on the external bucket.
+            var.attachment_s3_bucket_arn != null && var.attachment_s3_bucket_arn != "" ? [
+              var.attachment_s3_bucket_arn,
+              "${var.attachment_s3_bucket_arn}/*"
           ] : [])
         },
         {
@@ -187,6 +193,22 @@ resource "aws_iam_policy" "api_handler_policy" {
             "ssmmessages:OpenDataChannel",
           ]
           Resource = "*"
+        }
+      ] : [],
+      # Grant KMS access to the caller-provided attachments bucket key only when
+      # it is configured (i.e. the bucket uses SSE-KMS). Omitted otherwise.
+      var.attachment_s3_bucket_kms_key_arn != null && var.attachment_s3_bucket_kms_key_arn != "" ? [
+        {
+          Sid    = "AttachmentBucketKMSAccess"
+          Effect = "Allow"
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey"
+          ]
+          Resource = var.attachment_s3_bucket_kms_key_arn
         }
       ] : []
     )

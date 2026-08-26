@@ -69,6 +69,18 @@ variable "lambda_responses_s3_bucket_arn" {
   description = "The ARN of the lambda responses S3 bucket"
 }
 
+variable "attachment_s3_bucket_arn" {
+  type        = string
+  description = "The ARN of the caller-provided attachments S3 bucket. When set, the API role is granted access to the bucket and its objects. Null disables the feature."
+  default     = null
+}
+
+variable "attachment_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "The ARN of the KMS key used to encrypt the caller-provided attachments S3 bucket. When set, the API role is granted KMS permissions on this key. Null when the bucket uses SSE-S3 or no attachments bucket is configured."
+  default     = null
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the IAM role used by the main braintrust API service"

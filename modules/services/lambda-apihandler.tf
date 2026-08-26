@@ -95,6 +95,11 @@ locals {
     var.brainstore_enable_export ? {
       BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
     } : {},
+    # Attachments bucket is wired into the API Handler during the transition
+    # phase (Lambda handler + ECS API coexisting). Omitted when unconfigured.
+    var.attachment_bucket_name != null ? {
+      ATTACHMENT_BUCKET = var.attachment_bucket_name
+    } : {},
     local.btql_audit_log_env_vars
   )
 }

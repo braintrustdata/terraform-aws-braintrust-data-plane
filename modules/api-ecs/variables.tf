@@ -441,6 +441,12 @@ variable "code_bundle_bucket" {
   description = "S3 bucket containing code bundles."
 }
 
+variable "attachment_bucket_name" {
+  type        = string
+  description = "Name of the caller-provided attachments S3 bucket. When set, ATTACHMENT_BUCKET is wired into all API ECS services. Null disables the feature."
+  default     = null
+}
+
 variable "function_tools_secret_arn" {
   type        = string
   description = "ARN of the function tools encryption key secret."
