@@ -139,6 +139,14 @@ if ! SERVICE_TOKEN_SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id 
   exit 1
 fi
 
+%{ if custom_ca_bundle_secret_arn != "" ~}
+if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(aws secretsmanager get-secret-value --secret-id ${custom_ca_bundle_secret_arn} --query SecretString --output text); then
+  echo "Failed to retrieve BRAINTRUST_CUSTOM_CA_BUNDLE from Secrets Manager. Exiting with failure."
+  exit 1
+fi
+export BRAINTRUST_CUSTOM_CA_BUNDLE
+%{ endif ~}
+
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
 BRAINSTORE_VERBOSE=1
@@ -267,6 +275,9 @@ docker run -d \
   --network host \
   --name brainstore \
   --env-file /etc/brainstore.env \
+%{ if custom_ca_bundle_secret_arn != "" ~}
+  --env BRAINTRUST_CUSTOM_CA_BUNDLE \
+%{ endif ~}
   --restart always \
   --ulimit nofile=65535:65535 \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \

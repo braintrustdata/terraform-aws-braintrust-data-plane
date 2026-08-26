@@ -23,6 +23,18 @@ variable "database_secret_arn" {
   description = "The ARN of the secret containing database credentials"
 }
 
+variable "brainstore_custom_ca_bundle_secret_arn" {
+  type        = string
+  description = "Optional ARN of the secret containing the PEM-encoded custom CA bundle for Brainstore EC2."
+  default     = null
+}
+
+variable "brainstore_custom_ca_bundle_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret for Brainstore EC2."
+  default     = null
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
@@ -156,4 +168,3 @@ variable "quarantine_vpc_id" {
     error_message = "quarantine_vpc_id is required when enable_quarantine_vpc is true."
   }
 }
-

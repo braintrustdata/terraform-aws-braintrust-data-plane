@@ -567,6 +567,8 @@ module "services_common" {
   vpc_id                                    = local.main_vpc_id
   kms_key_arn                               = local.kms_key_arn
   database_secret_arn                       = module.database.postgres_database_secret_arn
+  brainstore_custom_ca_bundle_secret_arn    = var.enable_brainstore && !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_secret_arn : null
+  brainstore_custom_ca_bundle_kms_key_arn   = var.enable_brainstore && !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_kms_key_arn : null
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
   code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
@@ -620,6 +622,7 @@ module "brainstore" {
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port
   service_token_secret_arn              = module.services_common.function_tools_secret_arn
+  custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   lambda_responses_s3_bucket_arn        = module.storage.lambda_responses_bucket_arn
   code_bundle_s3_bucket_arn             = module.storage.code_bundle_bucket_arn
