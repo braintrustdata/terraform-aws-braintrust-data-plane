@@ -162,24 +162,32 @@ locals {
         protocol      = "tcp"
       }
     ]
-    secrets = [
-      {
-        name      = "FUNCTION_SECRET_KEY"
-        valueFrom = var.function_tools_secret_arn
-      },
-      {
-        name      = "PG_URL"
-        valueFrom = var.database_url_secret_arn
-      },
-      {
-        name      = "REDIS_URL"
-        valueFrom = var.redis_url_secret_arn
-      },
-      {
-        name      = "SERVICE_TOKEN_SECRET_KEY"
-        valueFrom = var.function_tools_secret_arn
-      }
-    ]
+    secrets = concat(
+      [
+        {
+          name      = "FUNCTION_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
+        },
+        {
+          name      = "PG_URL"
+          valueFrom = var.database_url_secret_arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = var.redis_url_secret_arn
+        },
+        {
+          name      = "SERVICE_TOKEN_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
+        }
+      ],
+      var.custom_ca_bundle_secret_arn == null ? [] : [
+        {
+          name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
+          valueFrom = var.custom_ca_bundle_secret_arn
+        }
+      ],
+    )
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval    = 30

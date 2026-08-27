@@ -861,6 +861,23 @@ variable "braintrust_api_extra_env_vars" {
   }
 }
 
+variable "custom_ca_bundle_secret_arn" {
+  description = "Optional ARN of an existing AWS Secrets Manager secret containing a PEM-encoded custom CA bundle for API ECS outbound HTTPS."
+  type        = string
+  default     = null
+}
+
+variable "custom_ca_bundle_kms_key_arn" {
+  description = "Optional ARN of the customer-managed KMS key encrypting custom_ca_bundle_secret_arn. Leave unset when the secret uses the default Secrets Manager KMS key."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.custom_ca_bundle_kms_key_arn == null || var.custom_ca_bundle_secret_arn != null
+    error_message = "custom_ca_bundle_secret_arn must be set when custom_ca_bundle_kms_key_arn is set."
+  }
+}
+
 variable "braintrust_api_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)
