@@ -1327,6 +1327,39 @@ variable "brainstore_s3_bucket_retention_days" {
   default     = 7
 }
 
+variable "create_brainstore_s3_bucket" {
+  type        = bool
+  description = "Whether this module creates and manages the Brainstore S3 bucket (the default). Set to false to consume a caller-provided bucket via existing_brainstore_s3_bucket_arn; the module then creates no bucket, lifecycle, policy, encryption, versioning, ABAC, or public-access resources for it."
+  default     = true
+}
+
+variable "existing_brainstore_s3_bucket_arn" {
+  type        = string
+  description = "ARN of an existing Brainstore S3 bucket to consume when create_brainstore_s3_bucket is false. The bucket's lifecycle is owned by the caller; this module only reads from and writes to it."
+  default     = null
+
+  validation {
+    condition     = var.create_brainstore_s3_bucket ? var.existing_brainstore_s3_bucket_arn == null : var.existing_brainstore_s3_bucket_arn != null
+    error_message = "existing_brainstore_s3_bucket_arn is required when create_brainstore_s3_bucket is false, and must be null when create_brainstore_s3_bucket is true."
+  }
+
+  validation {
+    condition     = var.existing_brainstore_s3_bucket_arn == null ? true : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.existing_brainstore_s3_bucket_arn))
+    error_message = "existing_brainstore_s3_bucket_arn must be a valid S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_brainstore_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the KMS key that encrypts the caller-provided Brainstore bucket. When set, the Brainstore and API roles are granted permission to use this key. Only valid together with existing_brainstore_s3_bucket_arn."
+  default     = null
+
+  validation {
+    condition     = var.existing_brainstore_s3_bucket_kms_key_arn == null || var.existing_brainstore_s3_bucket_arn != null
+    error_message = "existing_brainstore_s3_bucket_kms_key_arn requires existing_brainstore_s3_bucket_arn to be set."
+  }
+}
+
 variable "monitoring_telemetry" {
   description = <<-EOT
     The telemetry to send to Braintrust's control plane to monitor your deployment. Should be in the form of comma-separated values.

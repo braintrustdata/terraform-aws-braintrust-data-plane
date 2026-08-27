@@ -50,7 +50,12 @@ output "brainstore_security_group_id" {
 
 output "brainstore_s3_bucket_name" {
   value       = module.storage.brainstore_bucket_id
-  description = "Name of the Brainstore S3 bucket"
+  description = "Name of the Brainstore S3 bucket (module-owned or caller-provided)"
+}
+
+output "brainstore_s3_bucket_arn" {
+  value       = module.storage.brainstore_bucket_arn
+  description = "ARN of the Brainstore S3 bucket (module-owned or caller-provided)"
 }
 
 output "code_bundle_s3_bucket_name" {

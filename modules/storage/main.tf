@@ -22,6 +22,20 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
+  # Brainstore bucket identity. In module-owned mode it comes from the managed
+  # bucket; in external mode it is derived from the caller-provided ARN
+  # (S3 ARNs have the form arn:aws:s3:::<bucket-name>).
+  brainstore_bucket_arn = (
+    var.create_brainstore_s3_bucket
+    ? aws_s3_bucket.brainstore[0].arn
+    : var.existing_brainstore_s3_bucket_arn
+  )
+  brainstore_bucket_id = (
+    var.create_brainstore_s3_bucket
+    ? aws_s3_bucket.brainstore[0].id
+    : split(":::", var.existing_brainstore_s3_bucket_arn)[1]
+  )
+
   # Object presence is known at plan time even when .bucket is unknown until apply
   # (e.g. destination bucket created in the same configuration).
   s3_server_access_logging_enabled = var.s3_server_access_logging != null
@@ -35,9 +49,13 @@ locals {
     )
   )
 
-  s3_server_access_logging_buckets = {
-    brainstore       = aws_s3_bucket.brainstore.id
-    code-bundle      = aws_s3_bucket.code_bundle_bucket.id
-    lambda-responses = aws_s3_bucket.lambda_responses_bucket.id
-  }
+  # Server access logging only applies to buckets this module owns. A
+  # caller-provided Brainstore bucket is configured by its owner, not here.
+  s3_server_access_logging_buckets = merge(
+    var.create_brainstore_s3_bucket ? { brainstore = aws_s3_bucket.brainstore[0].id } : {},
+    {
+      code-bundle      = aws_s3_bucket.code_bundle_bucket.id
+      lambda-responses = aws_s3_bucket.lambda_responses_bucket.id
+    }
+  )
 }
