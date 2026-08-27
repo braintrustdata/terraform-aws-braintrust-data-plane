@@ -67,3 +67,10 @@ run "external_bucket_mode_without_kms_plans" {
     error_message = "external Brainstore bucket name must be derived from the provided ARN"
   }
 }
+
+# NOTE: The Loop runtime task role is a third Brainstore-bucket writer that also
+# needs the external KMS key (wired via loop_runtime_ecs.brainstore_s3_bucket_kms_key_arn).
+# That path can't be plan-tested here because the mocked Brainstore security
+# group id is unknown at plan and feeds a count() in loop-runtime-ecs, so the
+# loop runtime module cannot be planned under mock providers. It is covered by
+# terraform validate and by an isolated module-level assertion during review.
