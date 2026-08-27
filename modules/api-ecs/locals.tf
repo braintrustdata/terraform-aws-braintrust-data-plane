@@ -100,6 +100,11 @@ locals {
     var.brainstore_enable_export ? {
       BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
     } : {},
+    # Attachments bucket, wired into all API services when configured. Omitted
+    # when unconfigured so the app falls back to its default behavior.
+    var.attachment_bucket_name != null ? {
+      ATTACHMENT_BUCKET = var.attachment_bucket_name
+    } : {},
     var.brainstore_etl_batch_size != null ? {
       BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
     } : {},
