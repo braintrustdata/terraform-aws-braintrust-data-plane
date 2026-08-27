@@ -128,20 +128,42 @@ systemctl daemon-reload
 systemctl start amazon-cloudwatch-agent
 systemctl enable amazon-cloudwatch-agent
 
+get_secret_value_with_retry() {
+  local secret_id="$1"
+  local secret_name="$2"
+  local attempt
+  local retry_delay
+
+  for attempt in 1 2 3 4 5; do
+    if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
+      return 0
+    fi
+
+    if [ "$attempt" -eq 5 ]; then
+      echo "Failed to retrieve $secret_name from Secrets Manager after $attempt attempts. Exiting with failure." >&2
+      return 1
+    fi
+
+    retry_delay=$((1 << (attempt - 1)))
+    echo "Failed to retrieve $secret_name from Secrets Manager. Retrying in $retry_delay seconds." >&2
+    sleep "$retry_delay"
+  done
+}
+
 # Get database credentials from Secrets Manager
-DB_CREDS=$(aws secretsmanager get-secret-value --secret-id ${database_secret_arn} --query SecretString --output text)
+if ! DB_CREDS=$(get_secret_value_with_retry "${database_secret_arn}" "database credentials"); then
+  exit 1
+fi
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
 
 # Get the function tools secret used by Brainstore as SERVICE_TOKEN_SECRET_KEY from Secrets Manager
-if ! SERVICE_TOKEN_SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id ${service_token_secret_arn} --query SecretString --output text); then
-  echo "Failed to retrieve SERVICE_TOKEN_SECRET_KEY from Secrets Manager. Exiting with failure."
+if ! SERVICE_TOKEN_SECRET_KEY=$(get_secret_value_with_retry "${service_token_secret_arn}" "SERVICE_TOKEN_SECRET_KEY"); then
   exit 1
 fi
 
 %{ if custom_ca_bundle_secret_arn != "" ~}
-if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(aws secretsmanager get-secret-value --secret-id ${custom_ca_bundle_secret_arn} --query SecretString --output text); then
-  echo "Failed to retrieve BRAINTRUST_CUSTOM_CA_BUNDLE from Secrets Manager. Exiting with failure."
+if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bundle_secret_arn}" "BRAINTRUST_CUSTOM_CA_BUNDLE"); then
   exit 1
 fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
