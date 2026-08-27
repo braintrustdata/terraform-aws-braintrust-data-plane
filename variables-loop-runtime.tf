@@ -1,11 +1,16 @@
 variable "enable_loop_runtime" {
   type        = bool
-  description = "Deploy the dedicated Loop runtime ECS/Fargate service (hosted Loop) and its MicroVM sandbox. Requires the ECS API data plane and Brainstore."
+  description = "Deploy the dedicated Loop runtime ECS/Fargate service (hosted Loop) and its MicroVM sandbox. Requires the ECS API data plane, Brainstore, and a Gateway (use_global_ai_gateway_origin or enable_ai_gateway). Loop v2 cannot use the AI Proxy Lambda alone."
   default     = false
 
   validation {
     condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
     error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true (the Loop runtime requires the in-VPC ECS API data plane)."
+  }
+
+  validation {
+    condition     = !var.enable_loop_runtime || var.use_global_ai_gateway_origin || var.enable_ai_gateway
+    error_message = "enable_loop_runtime requires a Gateway: set use_global_ai_gateway_origin (public hosted Gateway) or enable_ai_gateway (private Gateway). create_ai_gateway alone is not enough — Loop v2 cannot use the AI Proxy Lambda without GATEWAY_URL."
   }
 }
 
