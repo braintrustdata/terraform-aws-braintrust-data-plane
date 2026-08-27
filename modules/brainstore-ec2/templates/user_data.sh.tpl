@@ -130,7 +130,6 @@ systemctl enable amazon-cloudwatch-agent
 
 get_secret_value_with_retry() {
   local secret_id="$1"
-  local secret_name="$2"
   local attempt
   local retry_delay
 
@@ -140,30 +139,30 @@ get_secret_value_with_retry() {
     fi
 
     if [ "$attempt" -eq 5 ]; then
-      echo "Failed to retrieve $secret_name from Secrets Manager after $attempt attempts. Exiting with failure." >&2
+      echo "Failed to retrieve secret $secret_id from Secrets Manager after $attempt attempts. Exiting with failure." >&2
       return 1
     fi
 
     retry_delay=$((1 << (attempt - 1)))
-    echo "Failed to retrieve $secret_name from Secrets Manager. Retrying in $retry_delay seconds." >&2
+    echo "Failed to retrieve secret $secret_id from Secrets Manager. Retrying in $retry_delay seconds." >&2
     sleep "$retry_delay"
   done
 }
 
 # Get database credentials from Secrets Manager
-if ! DB_CREDS=$(get_secret_value_with_retry "${database_secret_arn}" "database credentials"); then
+if ! DB_CREDS=$(get_secret_value_with_retry "${database_secret_arn}"); then
   exit 1
 fi
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
 
 # Get the function tools secret used by Brainstore as SERVICE_TOKEN_SECRET_KEY from Secrets Manager
-if ! SERVICE_TOKEN_SECRET_KEY=$(get_secret_value_with_retry "${service_token_secret_arn}" "SERVICE_TOKEN_SECRET_KEY"); then
+if ! SERVICE_TOKEN_SECRET_KEY=$(get_secret_value_with_retry "${service_token_secret_arn}"); then
   exit 1
 fi
 
 %{ if custom_ca_bundle_secret_arn != "" ~}
-if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bundle_secret_arn}" "BRAINTRUST_CUSTOM_CA_BUNDLE"); then
+if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bundle_secret_arn}"); then
   exit 1
 fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
