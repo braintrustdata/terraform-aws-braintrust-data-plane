@@ -1,8 +1,9 @@
 locals {
-  # Loop runtime requires the ECS API data plane and Brainstore (it reads
-  # module.brainstore[0] for the reader URL / SG). It is fronted by the shared
-  # CloudFront distribution at /loop/runtime*.
-  create_loop_runtime = local.create_ecs_api && var.enable_loop_runtime
+  # Standard deployments run Loop Runtime on ECS. External EKS deployments
+  # create the AWS sandbox substrate and IAM here, while Helm runs the
+  # Loop Runtime process in Kubernetes.
+  create_loop_runtime     = var.enable_loop_runtime
+  create_loop_runtime_ecs = local.create_ecs_api && var.enable_loop_runtime
 
   loop_runtime_version = (
     var.loop_runtime_version_override != null
@@ -10,7 +11,7 @@ locals {
     : jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
   )
 
-  loop_runtime_brainstore_reader_url = local.create_loop_runtime ? format(
+  loop_runtime_brainstore_reader_url = local.create_loop_runtime_ecs ? format(
     "http://%s:%s",
     var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : module.brainstore[0].dns_name,
     module.brainstore[0].port,
@@ -19,7 +20,7 @@ locals {
 
 module "loop_runtime_alb" {
   source = "./modules/loop-runtime-alb"
-  count  = local.create_loop_runtime ? 1 : 0
+  count  = local.create_loop_runtime_ecs ? 1 : 0
 
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
@@ -54,7 +55,7 @@ module "loop_runtime_sandbox_aws_microvm" {
 
 module "loop_runtime_ecs" {
   source = "./modules/loop-runtime-ecs"
-  count  = local.create_loop_runtime ? 1 : 0
+  count  = local.create_loop_runtime_ecs ? 1 : 0
 
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
@@ -127,4 +128,22 @@ module "loop_runtime_ecs" {
   internal_observability_region             = var.internal_observability_region
 
   custom_tags = local.all_custom_tags
+}
+
+module "loop_runtime_eks" {
+  source = "./modules/loop-runtime-eks"
+  count  = var.use_deployment_mode_external_eks && var.enable_loop_runtime ? 1 : 0
+
+  deployment_name           = var.deployment_name
+  permissions_boundary_arn  = var.permissions_boundary_arn
+  eks_cluster_arn           = var.existing_eks_cluster_arn
+  eks_namespace             = var.eks_namespace
+  eks_service_account_name  = var.loop_runtime_eks_service_account_name
+  enable_eks_pod_identity   = var.enable_eks_pod_identity
+  enable_eks_irsa           = var.enable_eks_irsa
+  kms_key_arn               = local.kms_key_arn
+  brainstore_s3_bucket_arn  = module.storage.brainstore_bucket_arn
+  code_bundle_s3_bucket_arn = module.storage.code_bundle_bucket_arn
+  sandbox_policy_json       = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
+  custom_tags               = local.all_custom_tags
 }

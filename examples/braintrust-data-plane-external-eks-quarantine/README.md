@@ -83,6 +83,45 @@ These resources are available for use by your EKS-deployed services via EKS Pod 
    - Deploy your Braintrust services to the EKS cluster
    - Ensure services can access the Quarantine VPC
 
+### Deploying Loop Runtime with Helm
+
+Set `enable_loop_runtime = true` after EKS identity configuration. In external
+EKS mode Terraform creates the AWS MicroVM image, network connectors, and a
+dedicated IAM role; it does not create an ECS service or ALB.
+
+Use the Terraform outputs to configure the Helm chart:
+
+```yaml
+cloud: aws
+
+objectStorage:
+  aws:
+    brainstoreBucket: "<terraform output brainstore_s3_bucket_name>"
+    codeBundleBucket: "<terraform output code_bundle_s3_bucket_name>"
+
+loopRuntime:
+  enabled: true
+  image:
+    tag: "<terraform output loop_runtime_version>"
+  # Use the role ARN here with IRSA. With Pod Identity, associate this role
+  # with the service account instead and leave awsRoleArn empty.
+  serviceAccount:
+    name: braintrust-loop-runtime # Must match loop_runtime_eks_service_account_name.
+    awsRoleArn: "<terraform output loop_runtime_eks_role_arn>"
+  sandbox:
+    imageIdentifier: "<terraform output loop_runtime_microvm_image_arn>"
+    region: "<AWS region>"
+    ingressNetworkConnectorArns: "<AWS_LAMBDA_MICROVM_INGRESS_NETWORK_CONNECTOR_ARNS>"
+    egressNetworkConnectorArns: "<AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARNS>"
+```
+
+The connector values are included in
+`terraform output -json loop_runtime_sandbox_env_vars`. The chart reads the
+existing `braintrust-secrets` keys (`PG_URL`, `REDIS_URL`,
+`FUNCTION_SECRET_KEY`, and `BRAINSTORE_LICENSE_KEY`) and automatically wires
+the API's `LOOP_RUNTIME_URL`. Enable `virtualService` if the runtime should be
+reachable through the chart-managed Istio ingress.
+
 ## Outputs
 
 After deployment, you can get important values using:
@@ -106,6 +145,12 @@ Key outputs:
 **Other Resources:**
 
 - `main_vpc_id` - The main VPC ID
+- `brainstore_s3_bucket_name` - Name of the Brainstore S3 bucket
+- `code_bundle_s3_bucket_name` - Name of the code bundle S3 bucket
+- `loop_runtime_eks_role_arn` - IAM role for the Helm-managed Loop Runtime service account
+- `loop_runtime_microvm_image_arn` - AWS MicroVM image used by Loop Runtime
+- `loop_runtime_version` - Loop Runtime container image and sandbox artifact version
+- `loop_runtime_sandbox_env_vars` - Non-secret sandbox settings for Helm
 
 ## Network Configuration
 

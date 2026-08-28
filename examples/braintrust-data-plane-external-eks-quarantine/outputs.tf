@@ -48,3 +48,33 @@ output "kms_key_arn" {
   description = "ARN of the KMS key used to encrypt Braintrust resources"
   value       = module.braintrust-data-plane.kms_key_arn
 }
+
+output "brainstore_s3_bucket_name" {
+  description = "Name of the Brainstore S3 bucket"
+  value       = module.braintrust-data-plane.brainstore_s3_bucket_name
+}
+
+output "code_bundle_s3_bucket_name" {
+  description = "Name of the code bundle S3 bucket"
+  value       = module.braintrust-data-plane.code_bundle_s3_bucket_name
+}
+
+output "loop_runtime_version" {
+  description = "Loop Runtime container and sandbox artifact version"
+  value       = module.braintrust-data-plane.loop_runtime_version
+}
+
+output "loop_runtime_eks_role_arn" {
+  description = "ARN of the IAM role to associate with the Loop Runtime EKS service account"
+  value       = module.braintrust-data-plane.loop_runtime_eks_role_arn
+}
+
+output "loop_runtime_microvm_image_arn" {
+  description = "ARN of the Loop Runtime sandbox MicroVM image"
+  value       = module.braintrust-data-plane.loop_runtime_microvm_image_arn
+}
+
+output "loop_runtime_sandbox_env_vars" {
+  description = "Non-secret AWS sandbox environment variables for the Loop Runtime Helm deployment"
+  value       = module.braintrust-data-plane.loop_runtime_sandbox_env_vars
+}

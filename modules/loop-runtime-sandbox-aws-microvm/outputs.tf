@@ -4,12 +4,12 @@ output "image_arn" {
 }
 
 output "sandbox_env_vars" {
-  description = "Environment variables the Loop runtime compute module merges into the container to drive this sandbox backend. Cloud-agnostic contract: a GKE/AKS sandbox module exposes the same output shape."
+  description = "Environment variables the Loop Runtime compute workload merges into the container to drive this sandbox backend. Cloud-agnostic contract: a GKE/AKS sandbox module exposes the same output shape."
   value       = local.sandbox_env_vars
 }
 
 output "task_role_policy_json" {
-  description = "IAM policy (JSON) the Loop runtime ECS task role must attach to drive MicroVMs. Cloud-agnostic contract: a GKE/AKS sandbox module exposes the same output shape (empty/adapted as needed)."
+  description = "IAM policy (JSON) the Loop Runtime compute role must attach to drive MicroVMs. Cloud-agnostic contract: a GKE/AKS sandbox module exposes the same output shape (empty/adapted as needed)."
   value       = jsonencode(local.task_role_policy)
 }
 
