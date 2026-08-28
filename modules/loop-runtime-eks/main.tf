@@ -14,7 +14,8 @@ locals {
 
   oidc_issuer_url = var.enable_eks_irsa && var.eks_cluster_arn != null ? data.aws_eks_cluster.cluster[0].identity[0].oidc[0].issuer : null
   oidc_provider   = var.enable_eks_irsa && var.eks_cluster_arn != null ? replace(local.oidc_issuer_url, "https://", "") : null
-  locks_s3_path   = trimprefix(var.brainstore_locks_s3_path, "/")
+  # Keep the IAM policy aligned with the existing Helm Brainstore lock URI.
+  locks_s3_path = "brainstore/locks"
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"

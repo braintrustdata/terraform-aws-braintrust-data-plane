@@ -53,12 +53,6 @@ variable "code_bundle_s3_bucket_arn" {
   description = "ARN of the code-bundle S3 bucket."
 }
 
-variable "brainstore_locks_s3_path" {
-  type        = string
-  description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI. Must match the deployment's Brainstore nodes so lock namespaces overlap."
-  default     = "/locks"
-}
-
 variable "sandbox_policy_json" {
   type        = string
   description = "IAM policy JSON emitted by the AWS MicroVM sandbox module. Must not grant Secrets Manager access."

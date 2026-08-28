@@ -78,8 +78,3 @@ output "loop_runtime_sandbox_env_vars" {
   description = "Non-secret AWS sandbox environment variables for the Loop Runtime Helm deployment"
   value       = module.braintrust-data-plane.loop_runtime_sandbox_env_vars
 }
-
-output "loop_runtime_locks_s3_path" {
-  description = "Normalized S3 path prefix used for Loop Runtime object-store locks"
-  value       = module.braintrust-data-plane.loop_runtime_locks_s3_path
-}

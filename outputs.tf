@@ -178,11 +178,6 @@ output "loop_runtime_sandbox_env_vars" {
   description = "Non-secret AWS sandbox environment variables for the Loop Runtime Helm deployment"
 }
 
-output "loop_runtime_locks_s3_path" {
-  value       = local.create_loop_runtime ? trimprefix(var.brainstore_locks_s3_path, "/") : null
-  description = "Normalized S3 path prefix used for Loop Runtime object-store locks"
-}
-
 output "postgres_database_identifier" {
   value       = module.database.postgres_database_identifier
   description = "Identifier of the main Braintrust Postgres database"

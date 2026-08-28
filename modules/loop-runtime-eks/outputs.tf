@@ -8,8 +8,8 @@ output "role_name" {
   value       = aws_iam_role.loop_runtime.name
 }
 
-output "locks_s3_path" {
-  description = "Normalized S3 path prefix used by the Loop Runtime EKS role for object-store locks."
+output "helm_brainstore_locks_s3_path" {
+  description = "S3 path prefix used by the Helm-managed Brainstore lock namespace."
   value       = local.locks_s3_path
 }
 
