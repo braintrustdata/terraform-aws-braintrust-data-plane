@@ -49,9 +49,10 @@ run "external_eks_loop_runtime_plans" {
   command = plan
 
   variables {
-    enable_loop_runtime      = true
-    enable_eks_pod_identity  = true
-    brainstore_locks_s3_path = "/custom/locks"
+    enable_loop_runtime                  = true
+    enable_eks_pod_identity              = true
+    brainstore_locks_s3_path             = "/custom/locks"
+    loop_runtime_eks_service_account_name = "custom-loop-runtime"
   }
 
   assert {
@@ -82,5 +83,10 @@ run "external_eks_loop_runtime_plans" {
   assert {
     condition     = module.loop_runtime_eks[0].locks_s3_path == "custom/locks"
     error_message = "external EKS Loop Runtime should normalize the configured lock prefix"
+  }
+
+  assert {
+    condition     = jsondecode(module.loop_runtime_eks[0].assume_role_policy_json).Statement[0].Condition.StringEquals["aws:RequestTag/kubernetes-service-account"][0] == "custom-loop-runtime"
+    error_message = "external EKS Loop Runtime Pod Identity trust should be scoped to the configured ServiceAccount"
   }
 }

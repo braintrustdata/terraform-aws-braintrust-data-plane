@@ -49,6 +49,16 @@ output "kms_key_arn" {
   value       = module.braintrust-data-plane.kms_key_arn
 }
 
+output "brainstore_s3_bucket_name" {
+  description = "Name of the Brainstore S3 bucket"
+  value       = module.braintrust-data-plane.brainstore_s3_bucket_name
+}
+
+output "code_bundle_s3_bucket_name" {
+  description = "Name of the code bundle S3 bucket"
+  value       = module.braintrust-data-plane.code_bundle_s3_bucket_name
+}
+
 output "loop_runtime_version" {
   description = "Loop Runtime container and sandbox artifact version"
   value       = module.braintrust-data-plane.loop_runtime_version
@@ -67,4 +77,9 @@ output "loop_runtime_microvm_image_arn" {
 output "loop_runtime_sandbox_env_vars" {
   description = "Non-secret AWS sandbox environment variables for the Loop Runtime Helm deployment"
   value       = module.braintrust-data-plane.loop_runtime_sandbox_env_vars
+}
+
+output "loop_runtime_locks_s3_path" {
+  description = "Normalized S3 path prefix used for Loop Runtime object-store locks"
+  value       = module.braintrust-data-plane.loop_runtime_locks_s3_path
 }

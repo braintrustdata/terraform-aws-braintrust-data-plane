@@ -9,6 +9,12 @@ variable "enable_loop_runtime" {
   }
 }
 
+variable "loop_runtime_eks_service_account_name" {
+  type        = string
+  description = "Kubernetes ServiceAccount name used by the Helm-managed Loop Runtime EKS workload."
+  default     = "braintrust-loop-runtime"
+}
+
 variable "loop_runtime_version_override" {
   type        = string
   description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."

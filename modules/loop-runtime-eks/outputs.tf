@@ -12,3 +12,8 @@ output "locks_s3_path" {
   description = "Normalized S3 path prefix used by the Loop Runtime EKS role for object-store locks."
   value       = local.locks_s3_path
 }
+
+output "assume_role_policy_json" {
+  description = "Assume-role policy for the Loop Runtime EKS IAM role."
+  value       = local.assume_role_policy
+}

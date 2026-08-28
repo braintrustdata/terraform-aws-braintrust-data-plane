@@ -138,6 +138,7 @@ module "loop_runtime_eks" {
   permissions_boundary_arn  = var.permissions_boundary_arn
   eks_cluster_arn           = var.existing_eks_cluster_arn
   eks_namespace             = var.eks_namespace
+  eks_service_account_name  = var.loop_runtime_eks_service_account_name
   enable_eks_pod_identity   = var.enable_eks_pod_identity
   enable_eks_irsa           = var.enable_eks_irsa
   kms_key_arn               = local.kms_key_arn

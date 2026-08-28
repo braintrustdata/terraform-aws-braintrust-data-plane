@@ -21,6 +21,11 @@ variable "eks_namespace" {
   default     = null
 }
 
+variable "eks_service_account_name" {
+  type        = string
+  description = "Kubernetes ServiceAccount name used by the Loop Runtime workload."
+}
+
 variable "enable_eks_pod_identity" {
   type        = bool
   description = "Enable EKS Pod Identity trust for the Loop Runtime role."

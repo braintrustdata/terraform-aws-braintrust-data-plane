@@ -44,6 +44,8 @@ module "braintrust-data-plane" {
   # Loop Runtime process; enable this after configuring EKS Pod Identity or IRSA below.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
+  # Must match loopRuntime.serviceAccount.name in the Helm deployment.
+  loop_runtime_eks_service_account_name = "braintrust-loop-runtime"
 
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles

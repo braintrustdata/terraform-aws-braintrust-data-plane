@@ -28,7 +28,7 @@ locals {
           Action = "sts:AssumeRoleWithWebIdentity"
           Condition = {
             StringLike = {
-              "${local.oidc_provider}:sub" = "system:serviceaccount:${var.eks_namespace != null ? var.eks_namespace : "*"}:*"
+              "${local.oidc_provider}:sub" = "system:serviceaccount:${var.eks_namespace != null ? var.eks_namespace : "*"}:${var.eks_service_account_name}"
             }
             StringEquals = {
               "${local.oidc_provider}:aud" = "sts.amazonaws.com"
@@ -37,30 +37,29 @@ locals {
         }
       ] : [],
       var.enable_eks_pod_identity ? [
-        merge(
-          {
-            Effect = "Allow"
-            Principal = {
-              Service = "pods.eks.amazonaws.com"
-            }
-            Action = [
-              "sts:AssumeRole",
-              "sts:TagSession"
-            ]
-          },
-          var.eks_cluster_arn != null || var.eks_namespace != null ? {
-            Condition = {
-              StringEquals = merge(
-                var.eks_cluster_arn != null ? {
-                  "aws:RequestTag/eks-cluster-arn" = [var.eks_cluster_arn]
-                } : {},
-                var.eks_namespace != null ? {
-                  "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
-                } : {}
-              )
-            }
-          } : {}
-        )
+        {
+          Effect = "Allow"
+          Principal = {
+            Service = "pods.eks.amazonaws.com"
+          }
+          Action = [
+            "sts:AssumeRole",
+            "sts:TagSession"
+          ]
+          Condition = {
+            StringEquals = merge(
+              {
+                "aws:RequestTag/kubernetes-service-account" = [var.eks_service_account_name]
+              },
+              var.eks_cluster_arn != null ? {
+                "aws:RequestTag/eks-cluster-arn" = [var.eks_cluster_arn]
+              } : {},
+              var.eks_namespace != null ? {
+                "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
+              } : {}
+            )
+          }
+        }
       ] : [],
     )
   })

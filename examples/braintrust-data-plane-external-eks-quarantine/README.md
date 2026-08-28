@@ -94,6 +94,15 @@ Use the Terraform outputs to configure the Helm chart:
 ```yaml
 cloud: aws
 
+objectStorage:
+  aws:
+    brainstoreBucket: "<terraform output brainstore_s3_bucket_name>"
+    codeBundleBucket: "<terraform output code_bundle_s3_bucket_name>"
+
+# Keep this prefix aligned with Terraform when using object-storage locks.
+brainstore:
+  locksS3Path: "<terraform output loop_runtime_locks_s3_path>"
+
 loopRuntime:
   enabled: true
   image:
@@ -101,7 +110,7 @@ loopRuntime:
   # Use the role ARN here with IRSA. With Pod Identity, associate this role
   # with the service account instead and leave awsRoleArn empty.
   serviceAccount:
-    name: braintrust-loop-runtime
+    name: braintrust-loop-runtime # Must match loop_runtime_eks_service_account_name.
     awsRoleArn: "<terraform output loop_runtime_eks_role_arn>"
   sandbox:
     imageIdentifier: "<terraform output loop_runtime_microvm_image_arn>"
@@ -140,9 +149,12 @@ Key outputs:
 **Other Resources:**
 
 - `main_vpc_id` - The main VPC ID
+- `brainstore_s3_bucket_name` - Name of the Brainstore S3 bucket
+- `code_bundle_s3_bucket_name` - Name of the code bundle S3 bucket
 - `loop_runtime_eks_role_arn` - IAM role for the Helm-managed Loop Runtime service account
 - `loop_runtime_microvm_image_arn` - AWS MicroVM image used by Loop Runtime
 - `loop_runtime_version` - Loop Runtime container image and sandbox artifact version
+- `loop_runtime_locks_s3_path` - Normalized object-storage lock prefix for Helm
 - `loop_runtime_sandbox_env_vars` - Non-secret sandbox settings for Helm
 
 ## Network Configuration
