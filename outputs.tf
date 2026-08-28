@@ -43,6 +43,16 @@ output "main_vpc_private_route_table_id" {
   description = "ID of the private route table in the main VPC (null when using existing VPC)"
 }
 
+output "quarantine_gateway_privatelink_service_name" {
+  value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
+  description = "VPC endpoint service name for quarantine→private gateway PrivateLink (null unless use_private_gateway_quarantine_proxy with module-managed VPCs). Existing VPC / existing quarantine callers must set quarantine_proxy_url; use this name if you attach a manual interface endpoint."
+}
+
+output "quarantine_gateway_privatelink_endpoint_dns_name" {
+  value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name : null
+  description = "DNS name of the quarantine VPC endpoint to the private gateway (null unless PrivateLink consumer is created)"
+}
+
 output "brainstore_security_group_id" {
   value       = module.services_common.brainstore_instance_security_group_id
   description = "ID of the security group for the Brainstore instances"
@@ -156,6 +166,11 @@ output "api_ecs_alb_security_group_id" {
 output "api_ecs_http_url" {
   value       = local.create_ecs_api ? module.api_ecs[0].http_url : null
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
+}
+
+output "quarantine_proxy_url" {
+  value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, otherwise AI Proxy Function URL)"
 }
 
 output "api_ecs_task_security_group_id" {

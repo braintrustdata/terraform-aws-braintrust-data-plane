@@ -201,7 +201,7 @@ variable "enable_quarantine_vpc" {
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"
-  description = "CIDR block for the Quarantined VPC (only used when creating a new quarantine VPC)"
+  description = "CIDR block for the Quarantined VPC. Used when creating a new quarantine VPC. When using existing_quarantine_vpc_id, set this to the real quarantine CIDR for documentation/ops clarity; PrivateLink quarantine→gateway does not open the gateway ALB to this CIDR (NLB SG only)."
 }
 
 # Existing Quarantine VPC variables (when provided, uses existing VPC instead of creating one)
@@ -1091,6 +1091,28 @@ variable "custom_domain" {
   description = "Custom domain name for the CloudFront distribution"
   type        = string
   default     = null
+}
+
+variable "quarantine_proxy_url" {
+  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, see use_private_gateway_quarantine_proxy for how the URL is chosen."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+  }
+}
+
+variable "use_private_gateway_quarantine_proxy" {
+  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; does not fail). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
+    error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
+  }
 }
 
 variable "custom_certificate_arn" {
