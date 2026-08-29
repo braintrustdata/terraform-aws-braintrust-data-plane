@@ -53,6 +53,7 @@ locals {
     PRIMARY_ORG_NAME                                  = var.primary_org_name
     ALLOWED_ORG_IDS                                   = var.allowed_org_ids
     BRAINTRUST_DEPLOYMENT_NAME                        = var.deployment_name
+    BRAINTRUST_API_URL                                = local.api_ecs_url
     BRAINTRUST_LEGACY_IDS                             = "true" # emit v3 spans in py+ts sdks. remove this setting when v4 migration is complete
     RESPONSE_BUCKET                                   = var.response_bucket
     CODE_BUNDLE_BUCKET                                = var.code_bundle_bucket
@@ -77,7 +78,7 @@ locals {
     TELEMETRY_LOG_LEVEL                               = var.billing_telemetry_log_level
     INSERT_LOGS2                                      = "true"
     NODE_MEMORY_PERCENT                               = "80"
-    AI_PROXY_FN_URL                                   = "http://127.0.0.1:8000"
+    AI_PROXY_FN_URL                                   = local.api_ecs_url
     BRAINSTORE_DISABLE_ETL_LOOP                       = "true"
     DISABLE_ASYNC_SCORING                             = "false"
     DISABLE_ATTACHMENT_OPTIMIZATION                   = "false"
@@ -89,7 +90,7 @@ locals {
     TS_API_HOST                                       = "0.0.0.0"
     TS_API_PORT                                       = "8000"
     PROXY_URL                                         = "http://127.0.0.1:8000/v1/proxy"
-    TS_API_ASYNC_SCORING_PROXY_URL                    = "http://127.0.0.1:8000"
+    TS_API_ASYNC_SCORING_PROXY_URL                    = local.api_ecs_url
     },
     local.quarantine_proxy_env_vars,
     local.url_security_env_vars,
