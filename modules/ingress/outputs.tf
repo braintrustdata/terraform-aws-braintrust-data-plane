@@ -22,18 +22,3 @@ output "cloudfront_distribution_hosted_zone_id" {
   description = "The hosted zone ID of the cloudfront distribution"
   value       = aws_cloudfront_distribution.dataplane.hosted_zone_id
 }
-
-output "api_gateway_rest_api_arn" {
-  description = "The ARN of the API gateway rest api"
-  value       = aws_api_gateway_rest_api.api.arn
-}
-
-output "api_gateway_name" {
-  description = "The name of the API Gateway REST API."
-  value       = aws_api_gateway_rest_api.api.name
-}
-
-output "api_gateway_stage_name" {
-  description = "The deployed API Gateway stage name."
-  value       = aws_api_gateway_stage.api.stage_name
-}

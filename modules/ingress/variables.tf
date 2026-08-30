@@ -92,8 +92,8 @@ variable "ai_proxy_function_url" {
   type        = string
 }
 
-variable "api_handler_function_arn" {
-  description = "The ARN of the API handler lambda function"
+variable "api_gateway_rest_api_id" {
+  description = "ID of the API Gateway REST API used as the CloudFront API origin."
   type        = string
 }
 
