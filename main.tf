@@ -62,11 +62,12 @@ locals {
   # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
   # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
   # version, changes the launch template, and triggers a rolling instance
-  # refresh. Lambda mode passes just the bare name. one() keeps this
-  # index-safe when api_ecs is absent.
+  # refresh. Lambda mode passes just the bare name. The counted terraform_data
+  # indirection below prevents Terraform from retaining the inactive ECS graph
+  # edge and propagating Brainstore's create-before-destroy lifecycle upstream.
   brainstore_ai_proxy_url_ssm_parameter = (
     local.enable_ecs_api
-    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
+    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(terraform_data.api_ecs_url_ssm_parameter_version[*].output)}"
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
@@ -525,6 +526,31 @@ module "api_ecs" {
   custom_tags              = local.all_custom_tags
 }
 
+resource "terraform_data" "api_ecs_url_ssm_parameter_version" {
+  count = local.enable_ecs_api ? 1 : 0
+
+  input = module.api_ecs[0].url_ssm_parameter_version
+}
+
+module "api_gateway" {
+  source = "./modules/api-gateway"
+  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+
+  deployment_name           = var.deployment_name
+  api_handler_function_name = "${var.deployment_name}-APIHandler"
+  custom_tags               = local.all_custom_tags
+}
+
+resource "aws_lambda_permission" "api_gateway" {
+  count = !var.use_deployment_mode_external_eks ? 1 : 0
+
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = split(":", module.services[0].api_handler_arn)[6]
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.api_gateway[0].execution_arn}/*/*"
+}
+
 module "ingress" {
   source = "./modules/ingress"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
@@ -544,7 +570,7 @@ module "ingress" {
   gateway_alb_dns_name                = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
   gateway_cloudfront_ingress_rule_id  = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
   ai_proxy_function_url               = module.services[0].ai_proxy_url
-  api_handler_function_arn            = module.services[0].api_handler_arn
+  api_gateway_rest_api_id             = module.api_gateway[0].rest_api_id
   enable_ecs_api                      = local.enable_ecs_api
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain

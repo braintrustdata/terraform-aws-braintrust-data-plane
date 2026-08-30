@@ -17,6 +17,7 @@ run = """
 set -e
 terraform init -backend=false -upgrade
 terraform test
+uv run --script scripts/test_ecs_replacement_order.py
 """
 
 [tasks.validate]
