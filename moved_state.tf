@@ -129,34 +129,6 @@ moved {
   to   = module.ingress[0].aws_lambda_permission.api_gateway
 }
 
-# API Gateway resources moved from ingress into a lifecycle-isolated top-level
-# module. The Lambda permission remains at the root so it can depend on both
-# the Lambda and API without making the API deployment depend on services.
-moved {
-  from = module.ingress[0].aws_api_gateway_rest_api.api
-  to   = module.api_gateway[0].aws_api_gateway_rest_api.api
-}
-
-moved {
-  from = module.ingress[0].aws_api_gateway_deployment.api
-  to   = module.api_gateway[0].aws_api_gateway_deployment.api
-}
-
-moved {
-  from = module.ingress[0].aws_api_gateway_stage.api
-  to   = module.api_gateway[0].aws_api_gateway_stage.api
-}
-
-moved {
-  from = module.ingress[0].aws_api_gateway_method_settings.all
-  to   = module.api_gateway[0].aws_api_gateway_method_settings.all
-}
-
-moved {
-  from = module.ingress[0].aws_lambda_permission.api_gateway
-  to   = aws_lambda_permission.api_gateway[0]
-}
-
 # Brainstore IAM resources moved from brainstore -> services-common
 moved {
   from = module.brainstore[0].aws_iam_role.brainstore_ec2_role

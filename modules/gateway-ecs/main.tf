@@ -377,8 +377,7 @@ resource "aws_ecs_service" "gateway" {
   depends_on = [terraform_data.gateway_http_listener]
 
   lifecycle {
-    create_before_destroy = false
-    ignore_changes        = [desired_count]
+    ignore_changes = [desired_count]
   }
 
   tags = merge({

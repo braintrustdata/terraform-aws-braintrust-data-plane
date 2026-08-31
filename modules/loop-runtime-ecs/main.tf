@@ -618,8 +618,7 @@ resource "aws_ecs_service" "loop_runtime" {
   depends_on = [terraform_data.loop_runtime_http_listener]
 
   lifecycle {
-    create_before_destroy = false
-    ignore_changes        = [desired_count]
+    ignore_changes = [desired_count]
   }
 
   tags = merge({

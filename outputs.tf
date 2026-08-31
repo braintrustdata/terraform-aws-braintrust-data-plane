@@ -249,8 +249,8 @@ output "monitoring_contract" {
 
     api_gateway = {
       enabled = !var.use_deployment_mode_external_eks
-      name    = !var.use_deployment_mode_external_eks ? module.api_gateway[0].name : null
-      stage   = !var.use_deployment_mode_external_eks ? module.api_gateway[0].stage_name : null
+      name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
+      stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
     }
 
     brainstore = {
