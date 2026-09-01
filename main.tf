@@ -253,6 +253,8 @@ module "storage" {
 
   deployment_name                                = var.deployment_name
   kms_key_arn                                    = local.kms_key_arn
+  create_brainstore_s3_bucket                    = var.create_brainstore_s3_bucket
+  existing_brainstore_s3_bucket_arn              = var.existing_brainstore_s3_bucket_arn
   brainstore_s3_bucket_retention_days            = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins                  = var.s3_additional_allowed_origins
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
@@ -593,6 +595,7 @@ module "services_common" {
   kms_key_arn                               = local.kms_key_arn
   database_secret_arn                       = module.database.postgres_database_secret_arn
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
+  brainstore_s3_bucket_kms_key_arn          = var.existing_brainstore_s3_bucket_kms_key_arn
   code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
   attachment_s3_bucket_arn                  = local.attachment_s3_bucket_arn

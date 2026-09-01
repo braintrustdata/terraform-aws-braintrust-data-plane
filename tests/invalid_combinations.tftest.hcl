@@ -39,3 +39,41 @@ run "rejects_enable_ai_gateway_without_create" {
     var.enable_ai_gateway,
   ]
 }
+
+run "rejects_external_brainstore_bucket_without_arn" {
+  command = plan
+
+  variables {
+    create_brainstore_s3_bucket       = false
+    existing_brainstore_s3_bucket_arn = null
+  }
+
+  expect_failures = [
+    var.existing_brainstore_s3_bucket_arn,
+  ]
+}
+
+run "rejects_external_brainstore_arn_when_module_owned" {
+  command = plan
+
+  variables {
+    create_brainstore_s3_bucket       = true
+    existing_brainstore_s3_bucket_arn = "arn:aws:s3:::some-external-bucket"
+  }
+
+  expect_failures = [
+    var.existing_brainstore_s3_bucket_arn,
+  ]
+}
+
+run "rejects_external_brainstore_kms_key_without_arn" {
+  command = plan
+
+  variables {
+    existing_brainstore_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+  }
+
+  expect_failures = [
+    var.existing_brainstore_s3_bucket_kms_key_arn,
+  ]
+}

@@ -1,6 +1,6 @@
 output "brainstore_bucket_arn" {
   description = "The ARN of the S3 bucket used by Brainstore"
-  value       = aws_s3_bucket.brainstore.arn
+  value       = local.brainstore_bucket_arn
 }
 
 output "code_bundle_bucket_arn" {
@@ -15,7 +15,7 @@ output "lambda_responses_bucket_arn" {
 
 output "brainstore_bucket_id" {
   description = "The ID of the S3 bucket used by Brainstore"
-  value       = aws_s3_bucket.brainstore.id
+  value       = local.brainstore_bucket_id
 }
 
 output "code_bundle_bucket_id" {

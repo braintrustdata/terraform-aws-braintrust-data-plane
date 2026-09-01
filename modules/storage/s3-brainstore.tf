@@ -1,4 +1,6 @@
 resource "aws_s3_bucket" "brainstore" {
+  count = var.create_brainstore_s3_bucket ? 1 : 0
+
   bucket_prefix = "${var.deployment_name}-brainstore-"
 
   lifecycle {
@@ -12,9 +14,9 @@ resource "aws_s3_bucket" "brainstore" {
 }
 
 resource "aws_s3_bucket_abac" "brainstore" {
-  count = var.enable_s3_bucket_abac ? 1 : 0
+  count = var.create_brainstore_s3_bucket && var.enable_s3_bucket_abac ? 1 : 0
 
-  bucket = aws_s3_bucket.brainstore.id
+  bucket = aws_s3_bucket.brainstore[0].id
 
   abac_status {
     status = "Enabled"
@@ -22,7 +24,9 @@ resource "aws_s3_bucket_abac" "brainstore" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "brainstore" {
-  bucket = aws_s3_bucket.brainstore.id
+  count = var.create_brainstore_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.brainstore[0].id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -35,15 +39,19 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "brainstore" {
 }
 
 resource "aws_s3_bucket_versioning" "brainstore" {
-  bucket = aws_s3_bucket.brainstore.id
+  count = var.create_brainstore_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.brainstore[0].id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
+  count = var.create_brainstore_s3_bucket ? 1 : 0
+
   depends_on = [aws_s3_bucket_versioning.brainstore]
-  bucket     = aws_s3_bucket.brainstore.id
+  bucket     = aws_s3_bucket.brainstore[0].id
 
   rule {
     id     = "cleanup-old-versions"
@@ -102,7 +110,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
 }
 
 resource "aws_s3_bucket_public_access_block" "brainstore" {
-  bucket = aws_s3_bucket.brainstore.id
+  count = var.create_brainstore_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.brainstore[0].id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -111,7 +121,9 @@ resource "aws_s3_bucket_public_access_block" "brainstore" {
 }
 
 resource "aws_s3_bucket_policy" "brainstore" {
-  bucket = aws_s3_bucket.brainstore.id
+  count = var.create_brainstore_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.brainstore[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -122,8 +134,8 @@ resource "aws_s3_bucket_policy" "brainstore" {
         Principal = "*"
         Action    = "s3:*"
         Resource = [
-          aws_s3_bucket.brainstore.arn,
-          "${aws_s3_bucket.brainstore.arn}/*"
+          aws_s3_bucket.brainstore[0].arn,
+          "${aws_s3_bucket.brainstore[0].arn}/*"
         ]
         Condition = {
           Bool = {

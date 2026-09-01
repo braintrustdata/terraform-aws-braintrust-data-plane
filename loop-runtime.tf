@@ -90,10 +90,11 @@ module "loop_runtime_ecs" {
   redis_url_secret_arn      = module.redis.redis_url_secret_arn
   function_tools_secret_arn = module.services_common.function_tools_secret_arn
 
-  brainstore_s3_bucket_name = module.storage.brainstore_bucket_id
-  brainstore_s3_bucket_arn  = module.storage.brainstore_bucket_arn
-  code_bundle_bucket        = module.storage.code_bundle_bucket_id
-  code_bundle_bucket_arn    = module.storage.code_bundle_bucket_arn
+  brainstore_s3_bucket_name        = module.storage.brainstore_bucket_id
+  brainstore_s3_bucket_arn         = module.storage.brainstore_bucket_arn
+  brainstore_s3_bucket_kms_key_arn = var.existing_brainstore_s3_bucket_kms_key_arn
+  code_bundle_bucket               = module.storage.code_bundle_bucket_id
+  code_bundle_bucket_arn           = module.storage.code_bundle_bucket_arn
 
   brainstore_reader_url = local.loop_runtime_brainstore_reader_url
   ai_proxy_url          = local.self_hosted_ai_proxy_url
