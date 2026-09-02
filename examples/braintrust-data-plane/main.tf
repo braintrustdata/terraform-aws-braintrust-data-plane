@@ -123,7 +123,10 @@ module "braintrust-data-plane" {
   # VPC Flow Logs (disabled by default; only applied to VPCs this module creates).
   # Configure the main and quarantine VPCs separately.
   #
-  # Option A - write to your own S3 bucket:
+  # Option A - write to your own S3 bucket. Attach a destination bucket policy
+  # that grants delivery.logs.amazonaws.com s3:PutObject and s3:GetBucketAcl
+  # before enabling this, or CreateFlowLogs succeeds and no objects arrive.
+  # See the module README "VPC Flow Logs" section.
   # main_vpc_flow_log = {
   #   enabled         = true
   #   traffic_type    = "ALL" # ALL | ACCEPT | REJECT

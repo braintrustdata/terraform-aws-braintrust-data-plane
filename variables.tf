@@ -271,10 +271,13 @@ variable "main_vpc_flow_log" {
     VPC Flow Logs configuration for the main VPC. Only applied when create_vpc is true.
     Disabled by default. When enabled, a destination is required:
       - destination_type = "s3": set destination_arn to your S3 bucket ARN, or leave it null to have
-        the module create a dedicated S3 bucket.
+        the module create a dedicated S3 bucket. A customer-provided bucket must already allow
+        delivery.logs.amazonaws.com to s3:PutObject and s3:GetBucketAcl (see README).
       - destination_type = "cloud-watch-logs": set destination_arn to your CloudWatch log group ARN, or
         leave it null to have the module create one.
     traffic_type may be ALL, ACCEPT, or REJECT.
+    retention_in_days applies to a module-managed CloudWatch log group and to lifecycle
+    expiration on a module-managed S3 bucket. A customer-provided destination is unmanaged.
   EOT
   type = object({
     enabled                  = optional(bool, false)

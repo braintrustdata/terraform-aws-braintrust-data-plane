@@ -118,9 +118,12 @@ variable "flow_log" {
     destination_arn          = optional(string, null)
     max_aggregation_interval = optional(number, 600)
     log_format               = optional(string, null)
-    # Only used when the module manages the destination (destination_arn = null):
+    # Module-managed destinations only (destination_arn = null):
+    # CloudWatch log group retention, and S3 object expiration on the managed bucket.
     retention_in_days = optional(number, 365)
-    kms_key_arn       = optional(string, null)
+    # SSE-KMS for the managed S3 bucket or CloudWatch log group. The module KMS key
+    # already allows delivery.logs.amazonaws.com. A customer-managed CMK must too.
+    kms_key_arn = optional(string, null)
   })
   default = {}
 

@@ -1,5 +1,3 @@
-data "aws_caller_identity" "current" {}
-
 data "aws_partition" "current" {}
 
 locals {
@@ -15,10 +13,15 @@ locals {
   create_flow_log_log_group = local.flow_log_enabled && local.flow_log_is_cloudwatch && var.flow_log.destination_arn == null
   create_flow_log_bucket    = local.flow_log_enabled && local.flow_log_is_s3 && var.flow_log.destination_arn == null
 
-  flow_log_destination_arn = (
-    var.flow_log.destination_arn != null ? var.flow_log.destination_arn : (
-      local.flow_log_is_cloudwatch ? aws_cloudwatch_log_group.flow_log[0].arn : aws_s3_bucket.flow_log[0].arn
-    )
+  # try() so a disabled default (all null / count = 0) does not fail plan.
+  # coalesce() itself errors when every argument is null.
+  flow_log_destination_arn = try(
+    coalesce(
+      var.flow_log.destination_arn,
+      try(aws_cloudwatch_log_group.flow_log[0].arn, null),
+      try(aws_s3_bucket.flow_log[0].arn, null)
+    ),
+    null
   )
 
   flow_log_name = "${var.deployment_name}-${var.vpc_name}-flow-log"
@@ -38,6 +41,11 @@ resource "aws_flow_log" "vpc" {
   tags = merge({
     Name = local.flow_log_name
   }, local.common_tags)
+
+  depends_on = [
+    aws_s3_bucket_policy.flow_log,
+    aws_iam_role_policy_attachment.flow_log,
+  ]
 }
 
 ########################################
@@ -100,12 +108,18 @@ data "aws_iam_policy_document" "flow_log" {
   }
 }
 
-resource "aws_iam_role_policy" "flow_log" {
+resource "aws_iam_policy" "flow_log" {
   count = local.create_flow_log_role ? 1 : 0
 
   name   = local.flow_log_name
-  role   = aws_iam_role.flow_log[0].id
   policy = data.aws_iam_policy_document.flow_log[0].json
+}
+
+resource "aws_iam_role_policy_attachment" "flow_log" {
+  count = local.create_flow_log_role ? 1 : 0
+
+  role       = aws_iam_role.flow_log[0].name
+  policy_arn = aws_iam_policy.flow_log[0].arn
 }
 
 ########################################
@@ -127,6 +141,16 @@ resource "aws_s3_bucket" "flow_log" {
   tags = merge({
     Name = local.flow_log_name
   }, local.common_tags)
+}
+
+resource "aws_s3_bucket_ownership_controls" "flow_log" {
+  count = local.create_flow_log_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.flow_log[0].id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "flow_log" {
@@ -154,10 +178,32 @@ resource "aws_s3_bucket_public_access_block" "flow_log" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "flow_log" {
+  count = local.create_flow_log_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.flow_log[0].id
+
+  rule {
+    id     = "expire-flow-logs"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    expiration {
+      days = var.flow_log.retention_in_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+}
+
 data "aws_iam_policy_document" "flow_log_bucket" {
   count = local.create_flow_log_bucket ? 1 : 0
 
-  # Allow the log delivery service to write flow logs into the bucket.
   statement {
     sid     = "AWSLogDeliveryWrite"
     effect  = "Allow"
@@ -171,11 +217,6 @@ data "aws_iam_policy_document" "flow_log_bucket" {
       identifiers = ["delivery.logs.amazonaws.com"]
     }
 
-    condition {
-      test     = "StringEquals"
-      variable = "s3:x-amz-acl"
-      values   = ["bucket-owner-full-control"]
-    }
     condition {
       test     = "StringEquals"
       variable = "aws:SourceAccount"
@@ -238,4 +279,6 @@ resource "aws_s3_bucket_policy" "flow_log" {
 
   bucket = aws_s3_bucket.flow_log[0].id
   policy = data.aws_iam_policy_document.flow_log_bucket[0].json
+
+  depends_on = [aws_s3_bucket_ownership_controls.flow_log]
 }

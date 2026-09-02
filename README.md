@@ -114,6 +114,31 @@ If you need to enable CloudFront standard access logging, you can configure it i
 
 See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
 
+### VPC Flow Logs
+
+VPC Flow Logs are disabled by default and only apply to VPCs this module creates (`create_vpc = true` / a module-managed quarantine VPC). Configure the main and quarantine VPCs separately via `main_vpc_flow_log` and `quarantine_vpc_flow_log`.
+
+When enabled, logs go to one of:
+
+- **Customer S3 bucket** — set `destination_arn` to the bucket ARN. Attach a destination policy that grants `delivery.logs.amazonaws.com` `s3:PutObject` and `s3:GetBucketAcl` *before* enabling Flow Logs. `CreateFlowLogs` can succeed even when delivery is denied, so a missing policy looks like an empty bucket.
+- **Module-managed S3 bucket** — leave `destination_arn` null. The module creates a `bucket_prefix` bucket with Bucket owner enforced ownership, SSE, a log-delivery policy (no `x-amz-acl` condition), and object expiration from `retention_in_days`.
+- **CloudWatch Logs** — set `destination_type = "cloud-watch-logs"`. The module creates an IAM role plus a customer-managed policy attachment (not an inline policy) so accounts that deny `iam:PutRolePolicy` still apply.
+
+To encrypt a module-managed S3 destination with the data-plane KMS key, pass `kms_key_arn` from this module's `kms_key_arn` output. That key already allows `delivery.logs.amazonaws.com`. A customer-managed CMK needs the same grant or delivery fails after `CreateFlowLogs` succeeds.
+
+```hcl
+main_vpc_flow_log = {
+  enabled         = true
+  traffic_type    = "ALL"
+  destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
+}
+
+quarantine_vpc_flow_log = {
+  enabled          = true
+  destination_type = "cloud-watch-logs"
+}
+```
+
 ### S3 Server Access Logging
 
 S3 server access logging is disabled by default. Enable it to deliver access logs from the brainstore, code-bundle, and lambda-responses buckets to an S3 bucket you own. This is commonly used for audit and compliance requirements.
