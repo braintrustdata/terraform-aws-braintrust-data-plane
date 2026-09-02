@@ -43,6 +43,16 @@ output "default_security_group_id" {
   value       = aws_vpc.vpc.default_security_group_id
 }
 
+output "flow_log_enabled" {
+  description = "True when VPC Flow Logs are enabled for this VPC"
+  value       = local.flow_log_enabled
+}
+
+output "flow_log_destination_arn" {
+  description = "Resolved Flow Log destination ARN (caller-provided or module-managed). Null when Flow Logs are disabled."
+  value       = local.flow_log_destination_arn
+}
+
 output "flow_log_id" {
   description = "ID of the VPC Flow Log, if enabled"
   value       = local.flow_log_enabled ? aws_flow_log.vpc[0].id : null

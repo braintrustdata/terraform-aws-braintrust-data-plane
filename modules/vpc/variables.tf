@@ -121,8 +121,9 @@ variable "flow_log" {
     # Module-managed destinations only (destination_arn = null):
     # CloudWatch log group retention, and S3 object expiration on the managed bucket.
     retention_in_days = optional(number, 365)
-    # SSE-KMS for the managed S3 bucket or CloudWatch log group. The module KMS key
-    # already allows delivery.logs.amazonaws.com. A customer-managed CMK must too.
+    # SSE-KMS for the managed S3 bucket or CloudWatch log group. Root defaults
+    # this to the data-plane KMS key. A customer-managed CMK must allow
+    # delivery.logs.amazonaws.com.
     kms_key_arn = optional(string, null)
   })
   default = {}
@@ -140,10 +141,12 @@ variable "flow_log" {
     error_message = "flow_log.max_aggregation_interval must be either 60 or 600 seconds."
   }
   validation {
-    condition = contains([
-      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
-      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    condition = var.flow_log.destination_type != "cloud-watch-logs" ? (
+      var.flow_log.retention_in_days >= 0
+      ) : contains([
+        0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+        365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
     ], var.flow_log.retention_in_days)
-    error_message = "flow_log.retention_in_days must be a valid CloudWatch Logs retention value."
+    error_message = "flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
   }
 }

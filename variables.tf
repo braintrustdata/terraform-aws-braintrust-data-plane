@@ -273,11 +273,14 @@ variable "main_vpc_flow_log" {
       - destination_type = "s3": set destination_arn to your S3 bucket ARN, or leave it null to have
         the module create a dedicated S3 bucket. A customer-provided bucket must already allow
         delivery.logs.amazonaws.com to s3:PutObject and s3:GetBucketAcl (see README).
-      - destination_type = "cloud-watch-logs": set destination_arn to your CloudWatch log group ARN, or
-        leave it null to have the module create one.
+      - destination_type = "cloud-watch-logs": set destination_arn to your CloudWatch log group ARN
+        (bare log-group ARN, without a trailing :*), or leave it null to have the module create one.
     traffic_type may be ALL, ACCEPT, or REJECT.
     retention_in_days applies to a module-managed CloudWatch log group and to lifecycle
-    expiration on a module-managed S3 bucket. A customer-provided destination is unmanaged.
+    expiration on a module-managed S3 bucket (0 = never expire / skip S3 expiration).
+    A customer-provided destination is unmanaged.
+    Module-managed destinations are encrypted with the data-plane KMS key unless you set kms_key_arn
+    to a different CMK (that key must allow delivery.logs.amazonaws.com).
   EOT
   type = object({
     enabled                  = optional(bool, false)
@@ -290,6 +293,28 @@ variable "main_vpc_flow_log" {
     kms_key_arn              = optional(string, null)
   })
   default = {}
+
+  validation {
+    condition     = contains(["ALL", "ACCEPT", "REJECT"], var.main_vpc_flow_log.traffic_type)
+    error_message = "main_vpc_flow_log.traffic_type must be one of ALL, ACCEPT, or REJECT."
+  }
+  validation {
+    condition     = contains(["s3", "cloud-watch-logs"], var.main_vpc_flow_log.destination_type)
+    error_message = "main_vpc_flow_log.destination_type must be either \"s3\" or \"cloud-watch-logs\"."
+  }
+  validation {
+    condition     = contains([60, 600], var.main_vpc_flow_log.max_aggregation_interval)
+    error_message = "main_vpc_flow_log.max_aggregation_interval must be either 60 or 600 seconds."
+  }
+  validation {
+    condition = var.main_vpc_flow_log.destination_type != "cloud-watch-logs" ? (
+      var.main_vpc_flow_log.retention_in_days >= 0
+      ) : contains([
+        0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+        365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.main_vpc_flow_log.retention_in_days)
+    error_message = "main_vpc_flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
+  }
 }
 
 variable "quarantine_vpc_flow_log" {
@@ -309,6 +334,28 @@ variable "quarantine_vpc_flow_log" {
     kms_key_arn              = optional(string, null)
   })
   default = {}
+
+  validation {
+    condition     = contains(["ALL", "ACCEPT", "REJECT"], var.quarantine_vpc_flow_log.traffic_type)
+    error_message = "quarantine_vpc_flow_log.traffic_type must be one of ALL, ACCEPT, or REJECT."
+  }
+  validation {
+    condition     = contains(["s3", "cloud-watch-logs"], var.quarantine_vpc_flow_log.destination_type)
+    error_message = "quarantine_vpc_flow_log.destination_type must be either \"s3\" or \"cloud-watch-logs\"."
+  }
+  validation {
+    condition     = contains([60, 600], var.quarantine_vpc_flow_log.max_aggregation_interval)
+    error_message = "quarantine_vpc_flow_log.max_aggregation_interval must be either 60 or 600 seconds."
+  }
+  validation {
+    condition = var.quarantine_vpc_flow_log.destination_type != "cloud-watch-logs" ? (
+      var.quarantine_vpc_flow_log.retention_in_days >= 0
+      ) : contains([
+        0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+        365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.quarantine_vpc_flow_log.retention_in_days)
+    error_message = "quarantine_vpc_flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
+  }
 }
 
 

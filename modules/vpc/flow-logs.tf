@@ -13,11 +13,19 @@ locals {
   create_flow_log_log_group = local.flow_log_enabled && local.flow_log_is_cloudwatch && var.flow_log.destination_arn == null
   create_flow_log_bucket    = local.flow_log_enabled && local.flow_log_is_s3 && var.flow_log.destination_arn == null
 
+  # Console/CFN log-group ARNs often end in ":*". Strip that so log_destination
+  # and the IAM resource "${arn}:*" do not become "...:*:*".
+  flow_log_caller_destination_arn = (
+    var.flow_log.destination_arn != null
+    ? trimsuffix(var.flow_log.destination_arn, ":*")
+    : null
+  )
+
   # try() so a disabled default (all null / count = 0) does not fail plan.
   # coalesce() itself errors when every argument is null.
   flow_log_destination_arn = try(
     coalesce(
-      var.flow_log.destination_arn,
+      local.flow_log_caller_destination_arn,
       try(aws_cloudwatch_log_group.flow_log[0].arn, null),
       try(aws_s3_bucket.flow_log[0].arn, null)
     ),
@@ -113,6 +121,7 @@ resource "aws_iam_policy" "flow_log" {
 
   name   = local.flow_log_name
   policy = data.aws_iam_policy_document.flow_log[0].json
+  tags   = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "flow_log" {
@@ -179,7 +188,7 @@ resource "aws_s3_bucket_public_access_block" "flow_log" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "flow_log" {
-  count = local.create_flow_log_bucket ? 1 : 0
+  count = local.create_flow_log_bucket && var.flow_log.retention_in_days > 0 ? 1 : 0
 
   bucket = aws_s3_bucket.flow_log[0].id
 

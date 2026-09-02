@@ -54,13 +54,23 @@ output "quarantine_gateway_privatelink_endpoint_dns_name" {
 }
 
 output "main_vpc_flow_log_s3_bucket_arn" {
-  value       = var.create_vpc ? module.main_vpc[0].flow_log_s3_bucket_arn : null
+  value       = one(module.main_vpc[*].flow_log_s3_bucket_arn)
   description = "ARN of the module-managed S3 bucket for main VPC Flow Logs (null unless the module created one)"
 }
 
+output "main_vpc_flow_log_cloudwatch_log_group_arn" {
+  value       = one(module.main_vpc[*].flow_log_cloudwatch_log_group_arn)
+  description = "ARN of the module-managed CloudWatch log group for main VPC Flow Logs (null unless the module created one)"
+}
+
 output "quarantine_vpc_flow_log_s3_bucket_arn" {
-  value       = local.create_quarantine_vpc ? module.quarantine_vpc[0].flow_log_s3_bucket_arn : null
+  value       = one(module.quarantine_vpc[*].flow_log_s3_bucket_arn)
   description = "ARN of the module-managed S3 bucket for quarantine VPC Flow Logs (null unless the module created one)"
+}
+
+output "quarantine_vpc_flow_log_cloudwatch_log_group_arn" {
+  value       = one(module.quarantine_vpc[*].flow_log_cloudwatch_log_group_arn)
+  description = "ARN of the module-managed CloudWatch log group for quarantine VPC Flow Logs (null unless the module created one)"
 }
 
 output "brainstore_security_group_id" {

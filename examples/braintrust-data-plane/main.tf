@@ -133,7 +133,8 @@ module "braintrust-data-plane" {
   #   destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
   # }
   #
-  # Option B - let the module create and manage a dedicated S3 bucket (leave destination_arn unset):
+  # Option B - let the module create and manage a dedicated S3 bucket (leave destination_arn unset).
+  # Encrypted with the data-plane KMS key unless you set kms_key_arn to a different CMK.
   # main_vpc_flow_log = {
   #   enabled = true
   # }
