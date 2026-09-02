@@ -52,7 +52,7 @@ resource "aws_flow_log" "vpc" {
 
   depends_on = [
     aws_s3_bucket_policy.flow_log,
-    aws_iam_role_policy_attachment.flow_log,
+    aws_iam_role_policy.flow_log,
   ]
 }
 
@@ -130,19 +130,12 @@ data "aws_iam_policy_document" "flow_log" {
   }
 }
 
-resource "aws_iam_policy" "flow_log" {
+resource "aws_iam_role_policy" "flow_log" {
   count = local.create_flow_log_role ? 1 : 0
 
   name   = local.flow_log_name
+  role   = aws_iam_role.flow_log[0].id
   policy = data.aws_iam_policy_document.flow_log[0].json
-  tags   = local.common_tags
-}
-
-resource "aws_iam_role_policy_attachment" "flow_log" {
-  count = local.create_flow_log_role ? 1 : 0
-
-  role       = aws_iam_role.flow_log[0].name
-  policy_arn = aws_iam_policy.flow_log[0].arn
 }
 
 ########################################
