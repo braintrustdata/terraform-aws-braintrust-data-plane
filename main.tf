@@ -124,9 +124,12 @@ locals {
   )
   # lookup() so a mistyped/out-of-region AZ name fails closed (omit subnet) instead
   # of a cryptic Invalid index; precondition below still requires ≥2 supported subnets.
-  private_subnet_1_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_1_az, null)
-  private_subnet_2_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_2_az, null)
-  private_subnet_3_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_3_az, null)
+  private_subnet_1_zone_id            = lookup(local.availability_zone_id_by_name, local.private_subnet_1_az, null)
+  private_subnet_2_zone_id            = lookup(local.availability_zone_id_by_name, local.private_subnet_2_az, null)
+  private_subnet_3_zone_id            = lookup(local.availability_zone_id_by_name, local.private_subnet_3_az, null)
+  quarantine_private_subnet_1_zone_id = lookup(local.availability_zone_id_by_name, local.quarantine_private_subnet_1_az, null)
+  quarantine_private_subnet_2_zone_id = lookup(local.availability_zone_id_by_name, local.quarantine_private_subnet_2_az, null)
+  quarantine_private_subnet_3_zone_id = lookup(local.availability_zone_id_by_name, local.quarantine_private_subnet_3_az, null)
   # Subnets in CloudFront VPC-origin-supported AZs. Used by any ALB that backs
   # a CloudFront VPC origin (API ECS, private gateway when enabled, Loop runtime).
   # create_vpc path filters by known AZ locals; existing-VPC path uses subnet data.
@@ -134,10 +137,31 @@ locals {
     local.private_subnet_1_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_1_zone_id) ? null : local.main_vpc_private_subnet_1_id,
     local.private_subnet_2_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_2_zone_id) ? null : local.main_vpc_private_subnet_2_id,
     local.private_subnet_3_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_3_zone_id) ? null : local.main_vpc_private_subnet_3_id,
-    ]) : [
-    for subnet_id in local.main_vpc_private_subnet_ids :
-    subnet_id if !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private[subnet_id].availability_zone_id)
-  ]
+    ]) : compact([
+    !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private["1"].availability_zone_id) ? var.existing_private_subnet_1_id : null,
+    !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private["2"].availability_zone_id) ? var.existing_private_subnet_2_id : null,
+    !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private["3"].availability_zone_id) ? var.existing_private_subnet_3_id : null,
+  ])
+  cloudfront_vpc_origin_safe_zone_ids = var.create_vpc ? compact([
+    local.private_subnet_1_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_1_zone_id) ? null : local.private_subnet_1_zone_id,
+    local.private_subnet_2_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_2_zone_id) ? null : local.private_subnet_2_zone_id,
+    local.private_subnet_3_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_3_zone_id) ? null : local.private_subnet_3_zone_id,
+    ]) : compact([
+    !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private["1"].availability_zone_id) ? data.aws_subnet.private["1"].availability_zone_id : null,
+    !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private["2"].availability_zone_id) ? data.aws_subnet.private["2"].availability_zone_id : null,
+    !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private["3"].availability_zone_id) ? data.aws_subnet.private["3"].availability_zone_id : null,
+  ])
+  quarantine_gateway_privatelink_endpoint_subnet_ids = local.create_quarantine_gateway_privatelink ? (
+    local.enable_private_ai_gateway_origin ? compact([
+      local.quarantine_private_subnet_1_zone_id != null && contains(local.cloudfront_vpc_origin_safe_zone_ids, local.quarantine_private_subnet_1_zone_id) ? module.quarantine_vpc[0].private_subnet_1_id : null,
+      local.quarantine_private_subnet_2_zone_id != null && contains(local.cloudfront_vpc_origin_safe_zone_ids, local.quarantine_private_subnet_2_zone_id) ? module.quarantine_vpc[0].private_subnet_2_id : null,
+      local.quarantine_private_subnet_3_zone_id != null && contains(local.cloudfront_vpc_origin_safe_zone_ids, local.quarantine_private_subnet_3_zone_id) ? module.quarantine_vpc[0].private_subnet_3_id : null,
+      ]) : [
+      module.quarantine_vpc[0].private_subnet_1_id,
+      module.quarantine_vpc[0].private_subnet_2_id,
+      module.quarantine_vpc[0].private_subnet_3_id,
+    ]
+  ) : []
 
   # Optional caller-provided attachment bucket. The module never creates, owns,
   # or modifies the bucket; it only derives the name for the ATTACHMENT_BUCKET

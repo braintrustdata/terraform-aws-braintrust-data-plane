@@ -130,7 +130,17 @@ output "gateway_alb_arn" {
 
 output "gateway_alb_subnet_ids" {
   value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_subnet_ids : null
-  description = "Subnet IDs attached to the private gateway ALB."
+  description = "Private subnet IDs attached to the gateway ALB."
+}
+
+output "api_ecs_subnet_ids" {
+  value       = local.create_ecs_api ? local.api_ecs_subnet_ids : null
+  description = "Private subnet IDs used by the API ECS ALB and tasks."
+}
+
+output "cloudfront_vpc_origin_safe_zone_ids" {
+  value       = local.cloudfront_vpc_origin_safe_zone_ids
+  description = "Availability zone IDs used for CloudFront VPC origin load balancers after exclusions."
 }
 
 output "gateway_target_group_arn" {
