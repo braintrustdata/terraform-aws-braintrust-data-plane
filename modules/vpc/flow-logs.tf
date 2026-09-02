@@ -147,6 +147,10 @@ resource "aws_s3_bucket" "flow_log" {
 
   bucket_prefix = "${var.deployment_name}-${var.vpc_name}-flow-"
 
+  # No force_destroy. After objects exist, disable/destroy fails with
+  # BucketNotEmpty. Keep the logs by removing this bucket (and its
+  # policy/lifecycle/encryption/PAB/ownership resources) from state first.
+
   lifecycle {
     ignore_changes = [
       # S3 does not support renaming buckets

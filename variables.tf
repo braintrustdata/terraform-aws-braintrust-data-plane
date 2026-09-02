@@ -281,6 +281,8 @@ variable "main_vpc_flow_log" {
     A customer-provided destination is unmanaged.
     Module-managed destinations are encrypted with the data-plane KMS key unless you set kms_key_arn
     to a different CMK (S3: delivery.logs.amazonaws.com; CloudWatch: logs.<region>.amazonaws.com).
+    The managed S3 bucket does not set force_destroy. After objects exist, disable/destroy fails
+    with BucketNotEmpty until you empty the bucket or remove it from Terraform state (see README).
   EOT
   type = object({
     enabled                  = optional(bool, false)

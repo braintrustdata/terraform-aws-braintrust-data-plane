@@ -135,6 +135,8 @@ module "braintrust-data-plane" {
   #
   # Option B - let the module create and manage a dedicated S3 bucket (leave destination_arn unset).
   # Encrypted with the data-plane KMS key unless you set kms_key_arn to a different CMK.
+  # After objects exist, disable/destroy fails with BucketNotEmpty unless you empty
+  # the bucket or remove it from Terraform state first. See the module README.
   # main_vpc_flow_log = {
   #   enabled = true
   # }
