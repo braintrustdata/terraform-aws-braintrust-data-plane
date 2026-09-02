@@ -114,7 +114,8 @@ variable "flow_log" {
       - destination_type = "s3": logs are written to `destination_arn` (a customer-provided S3 bucket).
         Leave `destination_arn` null to have the module create and manage a dedicated S3 bucket.
         That bucket does not set force_destroy; after objects exist, disable/destroy fails with
-        BucketNotEmpty until you empty it or remove it from Terraform state.
+        BucketNotEmpty until you empty it or remove it from Terraform state. A full stack
+        destroy must also preserve the encrypting KMS key (see the root README).
       - destination_type = "cloud-watch-logs": logs are written to `destination_arn` (a customer-provided
         CloudWatch log group). Leave `destination_arn` null to have the module create the log group.
         An IAM role for delivery is always created for the CloudWatch destination.

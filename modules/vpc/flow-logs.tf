@@ -150,6 +150,7 @@ resource "aws_s3_bucket" "flow_log" {
   # No force_destroy. After objects exist, disable/destroy fails with
   # BucketNotEmpty. Keep the logs by removing this bucket (and its
   # policy/lifecycle/encryption/PAB/ownership resources) from state first.
+  # On full stack destroy, also keep the encrypting KMS key (see README).
 
   lifecycle {
     ignore_changes = [
