@@ -112,9 +112,12 @@ data "aws_iam_policy_document" "flow_log" {
   }
 
   statement {
-    effect    = "Allow"
-    actions   = ["logs:DescribeLogStreams"]
-    resources = [local.flow_log_destination_arn]
+    effect  = "Allow"
+    actions = ["logs:DescribeLogStreams"]
+    resources = [
+      local.flow_log_destination_arn,
+      "${local.flow_log_destination_arn}:*",
+    ]
   }
 
   statement {
