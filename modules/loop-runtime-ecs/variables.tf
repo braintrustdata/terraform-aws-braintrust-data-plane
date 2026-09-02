@@ -8,6 +8,12 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt Loop runtime resources that support customer-managed KMS keys."
 }
 
+variable "brainstore_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the KMS key encrypting a caller-provided Brainstore bucket. When set, the Loop runtime task role is granted use of this key for its SSE-KMS WAL and lock writes, in addition to kms_key_arn."
+  default     = null
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to the Loop runtime task role."

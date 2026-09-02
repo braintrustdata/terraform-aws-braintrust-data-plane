@@ -70,9 +70,34 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # Quarantine and Loop Runtime use the self-hosted AI Proxy Lambda Function URL.
+  # Loop Runtime uses the self-hosted AI Proxy Lambda Function URL.
   # one() keeps this index-safe when services is absent.
   self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
+
+  # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
+  # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
+  # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
+  # use_global) with module-managed VPCs → else AI Proxy Function URL.
+  # Do not hairpin via API ECS ALB or CloudFront; do not use gateway ALB DNS
+  # from quarantine (no peering — reach via VPCE only).
+  # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
+  # Off when use_global_ai_gateway_origin (no PrivateLink).
+  wire_quarantine_to_private_gateway = (
+    var.use_private_gateway_quarantine_proxy &&
+    local.create_ai_gateway &&
+    !var.use_global_ai_gateway_origin
+  )
+  quarantine_gateway_privatelink_proxy_url = try(
+    "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
+    null
+  )
+  api_ecs_quarantine_proxy_url = (
+    var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
+      local.quarantine_gateway_privatelink_proxy_url != null
+      ? local.quarantine_gateway_privatelink_proxy_url
+      : local.self_hosted_ai_proxy_url
+    )
+  )
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
@@ -113,6 +138,13 @@ locals {
     for subnet_id in local.main_vpc_private_subnet_ids :
     subnet_id if !contains(local.cloudfront_vpc_origin_excluded_zone_ids, data.aws_subnet.private[subnet_id].availability_zone_id)
   ]
+
+  # Optional caller-provided attachment bucket. The module never creates, owns,
+  # or modifies the bucket; it only derives the name for the ATTACHMENT_BUCKET
+  # env var and grants the API roles access. Null when the feature is disabled.
+  attachment_s3_bucket_arn         = var.existing_attachment_s3_bucket_arn
+  attachment_s3_bucket_kms_key_arn = var.existing_attachment_s3_bucket_kms_key_arn
+  attachment_s3_bucket_name        = var.existing_attachment_s3_bucket_arn != null ? split(":::", var.existing_attachment_s3_bucket_arn)[1] : null
   enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
   gateway_alb_subnet_ids = !local.create_ai_gateway ? [] : (
     local.enable_private_ai_gateway_origin ? local.cloudfront_vpc_origin_safe_subnet_ids : local.main_vpc_private_subnet_ids
@@ -248,6 +280,8 @@ module "storage" {
 
   deployment_name                                = var.deployment_name
   kms_key_arn                                    = local.kms_key_arn
+  create_brainstore_s3_bucket                    = var.create_brainstore_s3_bucket
+  existing_brainstore_s3_bucket_arn              = var.existing_brainstore_s3_bucket_arn
   brainstore_s3_bucket_retention_days            = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins                  = var.s3_additional_allowed_origins
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
@@ -292,6 +326,7 @@ module "services" {
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
   lambda_responses_bucket_arn = module.storage.lambda_responses_bucket_arn
+  attachment_bucket_name      = local.attachment_s3_bucket_name
 
   # Service configuration
   braintrust_org_name                        = var.braintrust_org_name
@@ -449,9 +484,11 @@ module "api_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 
   # Data stores
-  database_url_secret_arn   = module.database.postgres_database_url_secret_arn
-  redis_url_secret_arn      = module.redis.redis_url_secret_arn
-  function_tools_secret_arn = module.services_common.function_tools_secret_arn
+  database_url_secret_arn      = module.database.postgres_database_url_secret_arn
+  redis_url_secret_arn         = module.redis.redis_url_secret_arn
+  function_tools_secret_arn    = module.services_common.function_tools_secret_arn
+  custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
+  custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
 
   # Brainstore
   brainstore_hostname             = module.brainstore[0].dns_name
@@ -466,8 +503,9 @@ module "api_ecs" {
   brainstore_license_key          = var.brainstore_license_key
 
   # Storage
-  code_bundle_bucket = module.storage.code_bundle_bucket_id
-  response_bucket    = module.storage.lambda_responses_bucket_id
+  code_bundle_bucket     = module.storage.code_bundle_bucket_id
+  response_bucket        = module.storage.lambda_responses_bucket_id
+  attachment_bucket_name = local.attachment_s3_bucket_name
 
   # Service configuration
   braintrust_org_name                                          = var.braintrust_org_name
@@ -519,7 +557,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = local.self_hosted_ai_proxy_url
+  quarantine_proxy_url                = local.api_ecs_quarantine_proxy_url
 
   # Networking — CloudFront ApiEcsOrigin requires supported AZs only
   vpc_id             = local.main_vpc_id
@@ -592,8 +630,11 @@ module "services_common" {
   kms_key_arn                               = local.kms_key_arn
   database_secret_arn                       = module.database.postgres_database_secret_arn
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
+  brainstore_s3_bucket_kms_key_arn          = var.existing_brainstore_s3_bucket_kms_key_arn
   code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
+  attachment_s3_bucket_arn                  = local.attachment_s3_bucket_arn
+  attachment_s3_bucket_kms_key_arn          = local.attachment_s3_bucket_kms_key_arn
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   brainstore_enable_export                  = var.brainstore_enable_export

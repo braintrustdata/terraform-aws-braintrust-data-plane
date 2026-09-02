@@ -441,9 +441,27 @@ variable "code_bundle_bucket" {
   description = "S3 bucket containing code bundles."
 }
 
+variable "attachment_bucket_name" {
+  type        = string
+  description = "Name of the caller-provided attachment S3 bucket. When set, ATTACHMENT_BUCKET is wired into all API ECS services. Null disables the feature."
+  default     = null
+}
+
 variable "function_tools_secret_arn" {
   type        = string
   description = "ARN of the function tools encryption key secret."
+}
+
+variable "custom_ca_bundle_secret_arn" {
+  type        = string
+  description = "Optional ARN of the secret containing a PEM-encoded custom CA bundle."
+  default     = null
+}
+
+variable "custom_ca_bundle_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret."
+  default     = null
 }
 
 variable "brainstore_hostname" {
@@ -608,7 +626,8 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "AI proxy/Gateway URL used for quarantine execution."
+  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), or AI Proxy Function URL. Null or blank omits the env var so api-ts getRuntimeEnv falls back to the caller proxy URL."
+  default     = null
 }
 
 

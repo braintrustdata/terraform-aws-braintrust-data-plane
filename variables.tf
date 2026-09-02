@@ -215,7 +215,7 @@ variable "enable_quarantine_vpc" {
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"
-  description = "CIDR block for the Quarantined VPC (only used when creating a new quarantine VPC)"
+  description = "CIDR block for the Quarantined VPC. Used when creating a new quarantine VPC. When using existing_quarantine_vpc_id, set this to the real quarantine CIDR for documentation/ops clarity; PrivateLink quarantine→gateway does not open the gateway ALB to this CIDR (NLB SG only)."
 }
 
 # Existing Quarantine VPC variables (when provided, uses existing VPC instead of creating one)
@@ -875,6 +875,23 @@ variable "braintrust_api_extra_env_vars" {
   }
 }
 
+variable "custom_ca_bundle_secret_arn" {
+  description = "Optional ARN of an existing AWS Secrets Manager secret containing a PEM-encoded custom CA bundle for API ECS outbound HTTPS."
+  type        = string
+  default     = null
+}
+
+variable "custom_ca_bundle_kms_key_arn" {
+  description = "Optional ARN of the customer-managed KMS key encrypting custom_ca_bundle_secret_arn. Leave unset when the secret uses the default Secrets Manager KMS key."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.custom_ca_bundle_kms_key_arn == null || var.custom_ca_bundle_secret_arn != null
+    error_message = "custom_ca_bundle_secret_arn must be set when custom_ca_bundle_kms_key_arn is set."
+  }
+}
+
 variable "braintrust_api_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)
@@ -1034,6 +1051,33 @@ variable "s3_server_access_logging" {
   }
 }
 
+variable "existing_attachment_s3_bucket_arn" {
+  description = "Opt-in. ARN of a caller-provided S3 bucket used to store attachments. This module does not create, own, or modify the bucket; it only grants the API roles access and wires the ATTACHMENT_BUCKET env var. Leave null to disable (default)."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_attachment_s3_bucket_arn == null || can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", coalesce(var.existing_attachment_s3_bucket_arn, "arn:aws:s3:::placeholder")))
+    error_message = "existing_attachment_s3_bucket_arn must be an S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_attachment_s3_bucket_kms_key_arn" {
+  description = "Opt-in. ARN of the KMS key used to encrypt the caller-provided attachment bucket (see existing_attachment_s3_bucket_arn). When set, the API roles are granted KMS permissions on this key. Requires existing_attachment_s3_bucket_arn. Leave null when the bucket uses SSE-S3 (AES256) or no attachment bucket is configured."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_attachment_s3_bucket_kms_key_arn == null || can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-zA-Z-]+$", coalesce(var.existing_attachment_s3_bucket_kms_key_arn, "arn:aws:kms:us-east-1:000000000000:key/placeholder")))
+    error_message = "existing_attachment_s3_bucket_kms_key_arn must be a complete KMS key ARN of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
+  }
+
+  validation {
+    condition     = var.existing_attachment_s3_bucket_kms_key_arn == null || var.existing_attachment_s3_bucket_arn != null
+    error_message = "existing_attachment_s3_bucket_arn is required when existing_attachment_s3_bucket_kms_key_arn is set."
+  }
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number
@@ -1061,6 +1105,28 @@ variable "custom_domain" {
   description = "Custom domain name for the CloudFront distribution"
   type        = string
   default     = null
+}
+
+variable "quarantine_proxy_url" {
+  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, see use_private_gateway_quarantine_proxy for how the URL is chosen."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+  }
+}
+
+variable "use_private_gateway_quarantine_proxy" {
+  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; does not fail). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
+    error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
+  }
 }
 
 variable "custom_certificate_arn" {
@@ -1339,6 +1405,39 @@ variable "brainstore_s3_bucket_retention_days" {
   type        = number
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
   default     = 7
+}
+
+variable "create_brainstore_s3_bucket" {
+  type        = bool
+  description = "Whether this module creates and manages the Brainstore S3 bucket (the default). Set to false to consume a caller-provided bucket via existing_brainstore_s3_bucket_arn; the module then creates no bucket, lifecycle, policy, encryption, versioning, ABAC, or public-access resources for it."
+  default     = true
+}
+
+variable "existing_brainstore_s3_bucket_arn" {
+  type        = string
+  description = "ARN of an existing Brainstore S3 bucket to consume when create_brainstore_s3_bucket is false. The bucket's lifecycle is owned by the caller; this module only reads from and writes to it."
+  default     = null
+
+  validation {
+    condition     = var.create_brainstore_s3_bucket ? var.existing_brainstore_s3_bucket_arn == null : var.existing_brainstore_s3_bucket_arn != null
+    error_message = "existing_brainstore_s3_bucket_arn is required when create_brainstore_s3_bucket is false, and must be null when create_brainstore_s3_bucket is true."
+  }
+
+  validation {
+    condition     = var.existing_brainstore_s3_bucket_arn == null ? true : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.existing_brainstore_s3_bucket_arn))
+    error_message = "existing_brainstore_s3_bucket_arn must be a valid S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_brainstore_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the KMS key that encrypts the caller-provided Brainstore bucket. When set, the Brainstore and API roles are granted permission to use this key. Only valid together with existing_brainstore_s3_bucket_arn."
+  default     = null
+
+  validation {
+    condition     = var.existing_brainstore_s3_bucket_kms_key_arn == null || var.existing_brainstore_s3_bucket_arn != null
+    error_message = "existing_brainstore_s3_bucket_kms_key_arn requires existing_brainstore_s3_bucket_arn to be set."
+  }
 }
 
 variable "monitoring_telemetry" {
