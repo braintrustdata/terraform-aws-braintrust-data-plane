@@ -18,9 +18,8 @@ resource "aws_lambda_function" "automation_cron" {
   architectures = ["arm64"]
   kms_key_arn   = var.kms_key_arn
 
-  # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
-    [local.duckdb_nodejs_arm64_layer_arn],
+    [aws_lambda_layer_version.duckdb_node_api.arn],
     local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
   )
 

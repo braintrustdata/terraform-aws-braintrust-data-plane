@@ -17,9 +17,8 @@ locals {
     "us-west-2",
   ]
   lambda_s3_bucket = "braintrust-assets-${data.aws_region.current.region}"
-  lambda_names     = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
+  lambda_names     = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron", "DuckDBNodeAPILayer"]
 
-  duckdb_nodejs_arm64_layer_arn   = "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
   observability_enabled           = nonsensitive(var.internal_observability_api_key != null && var.internal_observability_api_key != "")
   datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:131"
   datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:90"
