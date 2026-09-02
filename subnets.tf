@@ -33,3 +33,14 @@ resource "terraform_data" "api_ecs_subnet_validation" {
     }
   }
 }
+
+resource "terraform_data" "loop_runtime_subnet_validation" {
+  count = local.create_loop_runtime ? 1 : 0
+
+  lifecycle {
+    precondition {
+      condition     = length(local.cloudfront_vpc_origin_safe_subnet_ids) >= 2
+      error_message = "Loop runtime (CloudFront LoopRuntimeOrigin) requires at least 2 private subnets in CloudFront VPC origin supported availability zones. Excluded zone IDs: ${join(", ", local.cloudfront_vpc_origin_excluded_zone_ids)}."
+    }
+  }
+}

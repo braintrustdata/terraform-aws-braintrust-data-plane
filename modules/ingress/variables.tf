@@ -87,6 +87,12 @@ variable "loop_runtime_cloudfront_ingress_rule_id" {
   default     = null
 }
 
+variable "loop_runtime_alb_subnets_applied" {
+  description = "Fingerprint of Loop runtime ALB subnet membership after aws_lb apply. VPC origin resources reference this so origin create waits for ALB subnet shrinks."
+  type        = string
+  default     = null
+}
+
 variable "global_ai_gateway_origin_domain" {
   description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled"
   type        = string

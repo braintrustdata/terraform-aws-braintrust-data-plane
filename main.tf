@@ -128,7 +128,7 @@ locals {
   private_subnet_2_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_2_az, null)
   private_subnet_3_zone_id = lookup(local.availability_zone_id_by_name, local.private_subnet_3_az, null)
   # Subnets in CloudFront VPC-origin-supported AZs. Used by any ALB that backs
-  # a CloudFront VPC origin (API ECS always; private gateway when enabled).
+  # a CloudFront VPC origin (API ECS, private gateway when enabled, Loop runtime).
   # create_vpc path filters by known AZ locals; existing-VPC path uses subnet data.
   cloudfront_vpc_origin_safe_subnet_ids = var.create_vpc ? compact([
     local.private_subnet_1_zone_id == null || contains(local.cloudfront_vpc_origin_excluded_zone_ids, local.private_subnet_1_zone_id) ? null : local.main_vpc_private_subnet_1_id,
@@ -618,6 +618,7 @@ module "ingress" {
   loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null
   loop_runtime_alb_dns_name               = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_dns_name : null
   loop_runtime_cloudfront_ingress_rule_id = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_cloudfront_vpc_origin_ingress_rule_id : null
+  loop_runtime_alb_subnets_applied        = local.create_loop_runtime ? module.loop_runtime_alb[0].alb_subnets_applied : null
 
   custom_tags = local.all_custom_tags
 }

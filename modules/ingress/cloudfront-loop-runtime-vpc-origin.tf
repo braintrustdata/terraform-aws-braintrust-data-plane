@@ -16,5 +16,6 @@ resource "aws_cloudfront_vpc_origin" "loop_runtime" {
 
   tags = merge({
     CloudFrontVpcOriginIngressRuleId = var.loop_runtime_cloudfront_ingress_rule_id
+    AlbSubnetsApplied                = var.loop_runtime_alb_subnets_applied
   }, local.common_tags)
 }
