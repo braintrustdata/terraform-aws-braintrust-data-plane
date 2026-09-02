@@ -65,6 +65,12 @@ variable "enable_brainstore_ec2_ssm" {
   default     = false
 }
 
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to IAM roles created by this module"
+  default     = null
+}
+
 variable "s3_vpc_endpoint_resource_org_ids" {
   type        = list(string)
   description = <<-EOT
@@ -123,7 +129,7 @@ variable "flow_log" {
     retention_in_days = optional(number, 365)
     # SSE-KMS for the managed S3 bucket or CloudWatch log group. Root defaults
     # this to the data-plane KMS key. A customer-managed CMK must allow
-    # delivery.logs.amazonaws.com.
+    # delivery.logs.amazonaws.com (S3) or logs.<region>.amazonaws.com (CloudWatch).
     kms_key_arn = optional(string, null)
   })
   default = {}

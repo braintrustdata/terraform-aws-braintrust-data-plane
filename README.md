@@ -124,7 +124,7 @@ When enabled, logs go to one of:
 - **Module-managed S3 bucket** — leave `destination_arn` null. The module creates a `bucket_prefix` bucket with Bucket owner enforced ownership, SSE-KMS using the data-plane key, a log-delivery policy (no `x-amz-acl` condition), and object expiration from `retention_in_days` (set `0` to skip expiration).
 - **CloudWatch Logs** — set `destination_type = "cloud-watch-logs"`. Pass a bare log-group ARN if you bring your own (no trailing `:*`; the module strips that suffix if present). The module creates an IAM role plus a customer-managed policy attachment (not an inline policy) so accounts that deny `iam:PutRolePolicy` still apply.
 
-Module-managed destinations are encrypted with the data-plane KMS key (`kms_key_arn` input, or the key this module creates). You do not pass this module's `kms_key_arn` output back into `main_vpc_flow_log` — that is a cycle. Override `kms_key_arn` on the flow-log object only when using a different CMK; that key must allow `delivery.logs.amazonaws.com` or delivery fails after `CreateFlowLogs` succeeds.
+Module-managed destinations are encrypted with the data-plane KMS key (`kms_key_arn` input, or the key this module creates). You do not pass this module's `kms_key_arn` output back into `main_vpc_flow_log` — that is a cycle. Override `kms_key_arn` on the flow-log object only when using a different CMK. That custom key must allow the service principal for the destination: `delivery.logs.amazonaws.com` for S3, or `logs.<region>.amazonaws.com` for a CloudWatch log group. Otherwise delivery fails after `CreateFlowLogs` succeeds.
 
 ```hcl
 main_vpc_flow_log = {

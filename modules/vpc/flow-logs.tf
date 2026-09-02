@@ -95,8 +95,9 @@ data "aws_iam_policy_document" "flow_log_assume_role" {
 resource "aws_iam_role" "flow_log" {
   count = local.create_flow_log_role ? 1 : 0
 
-  name               = local.flow_log_name
-  assume_role_policy = data.aws_iam_policy_document.flow_log_assume_role[0].json
+  name                 = local.flow_log_name
+  assume_role_policy   = data.aws_iam_policy_document.flow_log_assume_role[0].json
+  permissions_boundary = var.permissions_boundary_arn
 
   tags = local.common_tags
 }
@@ -105,12 +106,22 @@ data "aws_iam_policy_document" "flow_log" {
   count = local.create_flow_log_role ? 1 : 0
 
   statement {
+    effect    = "Allow"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["logs:DescribeLogStreams"]
+    resources = [local.flow_log_destination_arn]
+  }
+
+  statement {
     effect = "Allow"
     actions = [
       "logs:CreateLogStream",
       "logs:PutLogEvents",
-      "logs:DescribeLogGroups",
-      "logs:DescribeLogStreams",
     ]
     resources = ["${local.flow_log_destination_arn}:*"]
   }

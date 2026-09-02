@@ -280,7 +280,7 @@ variable "main_vpc_flow_log" {
     expiration on a module-managed S3 bucket (0 = never expire / skip S3 expiration).
     A customer-provided destination is unmanaged.
     Module-managed destinations are encrypted with the data-plane KMS key unless you set kms_key_arn
-    to a different CMK (that key must allow delivery.logs.amazonaws.com).
+    to a different CMK (S3: delivery.logs.amazonaws.com; CloudWatch: logs.<region>.amazonaws.com).
   EOT
   type = object({
     enabled                  = optional(bool, false)
