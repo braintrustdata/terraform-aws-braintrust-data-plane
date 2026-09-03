@@ -73,6 +73,19 @@ Module changes must be applyable directly to live customer stacks without tear-d
 - Avoid env-only changes on Lambdas that do not need them — e.g. do not merge shared env into `MigrateDatabaseFunction` or crons, because that publishes a new Lambda version and re-invokes migrations.
 - Prefer state moves and in-place updates over replace; if a resource must be replaced, document why and whether downtime is expected.
 
+### Bump major when downgrade-after-apply is unsafe
+
+Some Terraform changes apply forward in place (`moved` blocks, new resource keys, gapped priorities) but a revert or module downgrade after apply **recreates live resources**. Example: ALB listener rules fall through to the default target group. Do not hide these in a patch.
+
+Spot these:
+- Changing `for_each` / `count` identity (index keys → stable keys)
+- `moved` blocks (often in `moved_state.tf`) that exist so apply is in-place
+- Replacing resource addresses that AWS will treat as destroy+create
+- Listener rule priorities or names that collide on rollback
+- State identity changes where `terraform plan` on the previous module version after apply would destroy load balancer rules, endpoint services, databases, or similar
+
+Call this out in the PR. Bump **major** (preferred). If a major is truly wrong, bump at least **minor** and say why rollback is unsafe in the GitHub release notes. This repo has no CHANGELOG; versions are git tags (`v6.6.0`) and GitHub Releases via `.github/workflows/create-release.yml`. For a major, add or update `MIGRATION_V*.md` and the Major versions section in `README.md`.
+
 ### Review the inverse of every `count` / `for_each`
 
 Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
