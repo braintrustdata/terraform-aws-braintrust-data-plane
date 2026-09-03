@@ -329,20 +329,6 @@ variable "lambda_version_tag_override" {
   default     = null
 }
 
-variable "duckdb_node_api_layer_version_tag_override" {
-  description = "Optional version tag for the first-party DuckDB Node API Lambda layer. Set alongside lambda_version_tag_override for Lambda builds that require it."
-  type        = string
-  default     = null
-
-  validation {
-    condition = (
-      var.duckdb_node_api_layer_version_tag_override == null ||
-      var.duckdb_node_api_layer_version_tag_override == var.lambda_version_tag_override
-    )
-    error_message = "duckdb_node_api_layer_version_tag_override must be null or equal lambda_version_tag_override."
-  }
-}
-
 variable "extra_env_vars" {
   type = object({
     APIHandler               = map(string)

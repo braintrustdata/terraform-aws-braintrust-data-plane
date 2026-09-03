@@ -34,10 +34,7 @@ def main():
     # Write lambda version tag to services/VERSIONS.json
     print("Writing lambda version tag to modules/services/VERSIONS.json...")
     versions_path = f"{script_dir}/modules/services/VERSIONS.json"
-    lambda_versions = {
-        "lambda_version_tag": version_tag,
-        "duckdb_node_api_layer_version_tag": version_tag,
-    }
+    lambda_versions = {"lambda_version_tag": version_tag}
     with open(versions_path, "w") as f:
         json.dump(lambda_versions, f, indent=4)
 
