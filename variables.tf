@@ -1180,6 +1180,20 @@ variable "lambda_version_tag_override" {
   default     = null
 }
 
+variable "duckdb_node_api_layer_version_tag_override" {
+  description = "Optional version tag for the first-party DuckDB Node API Lambda layer. Set this to the same value as lambda_version_tag_override when selecting a Lambda build that requires the first-party layer. Leave null for older Lambda builds."
+  type        = string
+  default     = null
+
+  validation {
+    condition = (
+      var.duckdb_node_api_layer_version_tag_override == null ||
+      var.duckdb_node_api_layer_version_tag_override == var.lambda_version_tag_override
+    )
+    error_message = "duckdb_node_api_layer_version_tag_override must be null or equal lambda_version_tag_override."
+  }
+}
+
 ## Brainstore
 
 variable "brainstore_default" {

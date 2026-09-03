@@ -6,6 +6,11 @@ module "braintrust-data-plane" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # ... your eixsting configuration ...
 
+  # When instructed to override Lambda artifacts to a build that uses the
+  # first-party DuckDB Node API layer, set both overrides to the same tag.
+  # lambda_version_tag_override                = "<version_tag>"
+  # duckdb_node_api_layer_version_tag_override = "<version_tag>"
+
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"

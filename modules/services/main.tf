@@ -17,15 +17,17 @@ locals {
     "us-west-2",
   ]
   lambda_s3_bucket = "braintrust-assets-${data.aws_region.current.region}"
-  lambda_names     = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron", "DuckDBNodeAPILayer"]
+  lambda_names     = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
-  observability_enabled           = nonsensitive(var.internal_observability_api_key != null && var.internal_observability_api_key != "")
-  datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:131"
-  datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:90"
-  datadog_python_layer_arn        = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Python313:118"
-  datadog_extension_layer_arn     = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension:70"
-  nodejs_datadog_handler          = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
-  python_datadog_handler          = "datadog_lambda.handler.handler"
+  # Lambda releases before the DuckDB Node API migration require this public layer.
+  legacy_duckdb_nodejs_arm64_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
+  observability_enabled                = nonsensitive(var.internal_observability_api_key != null && var.internal_observability_api_key != "")
+  datadog_node_layer_arn               = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:131"
+  datadog_extension_arm_layer_arn      = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:90"
+  datadog_python_layer_arn             = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Python313:118"
+  datadog_extension_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension:70"
+  nodejs_datadog_handler               = "/opt/nodejs/node_modules/datadog-lambda-js/handler.handler"
+  python_datadog_handler               = "datadog_lambda.handler.handler"
   datadog_env_vars = merge({
     DD_SITE            = "${var.internal_observability_region}.datadoghq.com"
     DD_API_KEY         = var.internal_observability_api_key != null ? var.internal_observability_api_key : ""
@@ -43,9 +45,15 @@ locals {
   code_bundle_bucket_id      = split(":::", var.code_bundle_bucket_arn)[1]
   lambda_responses_bucket_id = split(":::", var.lambda_responses_bucket_arn)[1]
 
-  # Lambda versions can be specified statically through VERSIONS.json or dynamically via lambda_version_tag_override
-  # If lambda_version_tag_override is provided, use it. Otherwise, use the lambda_version_tag from VERSIONS.json
-  lambda_version_tag = var.lambda_version_tag_override != null ? var.lambda_version_tag_override : jsondecode(file("${path.module}/VERSIONS.json"))["lambda_version_tag"]
+  # Lambda versions can be specified statically through VERSIONS.json or dynamically via overrides.
+  locked_versions    = jsondecode(file("${path.module}/VERSIONS.json"))
+  lambda_version_tag = var.lambda_version_tag_override != null ? var.lambda_version_tag_override : local.locked_versions["lambda_version_tag"]
+  duckdb_node_api_layer_version_tag = var.lambda_version_tag_override != null ? (
+    var.duckdb_node_api_layer_version_tag_override
+  ) : local.locked_versions["duckdb_node_api_layer_version_tag"]
+  duckdb_nodejs_arm64_layer_arn = local.duckdb_node_api_layer_version_tag != null ? (
+    aws_lambda_layer_version.duckdb_node_api[0].arn
+  ) : local.legacy_duckdb_nodejs_arm64_layer_arn
 
   lambda_versions = {
     for lambda in local.lambda_names :

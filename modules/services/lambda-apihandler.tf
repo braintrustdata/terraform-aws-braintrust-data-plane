@@ -127,7 +127,7 @@ resource "aws_lambda_function" "api_handler" {
   }
 
   layers = concat(
-    [aws_lambda_layer_version.duckdb_node_api.arn],
+    [local.duckdb_nodejs_arm64_layer_arn],
     local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
   )
 

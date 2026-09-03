@@ -4,6 +4,11 @@ module "braintrust-data-plane" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
+  # When instructed to override Lambda artifacts to a build that uses the
+  # first-party DuckDB Node API layer, set both overrides to the same tag.
+  # lambda_version_tag_override                = "<version_tag>"
+  # duckdb_node_api_layer_version_tag_override = "<version_tag>"
+
   ### Examples below are shown with the module defaults. You do not have to uncomment them
   ### unless you want to change the default value.
   ### The default values are for production-sized deployments.

@@ -268,8 +268,9 @@ module "services" {
   source = "./modules/services"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name             = var.deployment_name
-  lambda_version_tag_override = var.lambda_version_tag_override
+  deployment_name                            = var.deployment_name
+  lambda_version_tag_override                = var.lambda_version_tag_override
+  duckdb_node_api_layer_version_tag_override = var.duckdb_node_api_layer_version_tag_override
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry
