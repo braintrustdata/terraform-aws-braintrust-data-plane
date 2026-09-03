@@ -42,4 +42,14 @@ run "default_plans" {
     condition     = length(module.brainstore) == 1
     error_message = "default mode should create the brainstore module"
   }
+
+  assert {
+    condition     = module.main_vpc[0].flow_log_id == null
+    error_message = "VPC Flow Logs should be disabled by default"
+  }
+
+  assert {
+    condition     = module.quarantine_vpc[0].flow_log_id == null
+    error_message = "quarantine VPC Flow Logs should be disabled by default"
+  }
 }

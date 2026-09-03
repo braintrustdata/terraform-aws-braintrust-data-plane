@@ -136,6 +136,16 @@ locals {
       local.loop_runtime_lambda_env_vars,
     ) },
   )
+
+  # Wire the data-plane KMS key into module-managed Flow Log destinations unless
+  # the caller passed their own CMK. Avoids a cycle (cannot use this module's
+  # kms_key_arn output as an input to the same module).
+  main_vpc_flow_log = merge(var.main_vpc_flow_log, {
+    kms_key_arn = coalesce(var.main_vpc_flow_log.kms_key_arn, local.kms_key_arn)
+  })
+  quarantine_vpc_flow_log = merge(var.quarantine_vpc_flow_log, {
+    kms_key_arn = coalesce(var.quarantine_vpc_flow_log.kms_key_arn, local.kms_key_arn)
+  })
 }
 
 module "main_vpc" {
@@ -158,6 +168,8 @@ module "main_vpc" {
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
   custom_tags                          = local.all_custom_tags
+  permissions_boundary_arn             = var.permissions_boundary_arn
+  flow_log                             = local.main_vpc_flow_log
 }
 
 module "quarantine_vpc" {
@@ -179,6 +191,8 @@ module "quarantine_vpc" {
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
   custom_tags                          = local.all_custom_tags
+  permissions_boundary_arn             = var.permissions_boundary_arn
+  flow_log                             = local.quarantine_vpc_flow_log
 }
 
 module "database" {

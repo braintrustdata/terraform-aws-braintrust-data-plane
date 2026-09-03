@@ -148,6 +148,16 @@ module "braintrust-data-plane" {
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
 
+  # Opt-in: VPC Flow Logs for module-created VPCs. Leave unset to disable.
+  # A customer-provided S3 destination must already allow
+  # delivery.logs.amazonaws.com. See the module README "VPC Flow Logs" section.
+  # main_vpc_flow_log = {
+  #   enabled = true
+  # }
+  # quarantine_vpc_flow_log = {
+  #   enabled = true
+  # }
+
   # Opt-in: S3 server access logging for the brainstore, code-bundle, and
   # lambda-responses buckets. Attach the destination bucket policy (grant
   # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination
