@@ -113,8 +113,11 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
 Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
 peer the quarantine VPC to main for this path. Prefer PrivateLink to the
-private gateway when opted in. Loop Runtime stays on the AI Proxy Function
-URL; PrivateLink only affects quarantine when the flag is on.
+private gateway when opted in. Loop Runtime Codex app-server uses the
+private gateway ALB `/v1/proxy` when `create_ai_gateway` (in-VPC; exec-server
+in the MicroVM does not call the gateway). Without a private gateway it
+uses the hosted gateway origin or CloudFront API `/v1/proxy`, not the AI
+Proxy Function URL. PrivateLink only affects quarantine when the flag is on.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 

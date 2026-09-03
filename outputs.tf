@@ -188,6 +188,11 @@ output "loop_runtime_url" {
   description = "Private in-VPC URL of the Loop runtime ALB"
 }
 
+output "loop_runtime_ai_proxy_url" {
+  value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
+  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy when create_ai_gateway, otherwise hosted gateway or CloudFront API /v1/proxy)"
+}
+
 output "loop_runtime_microvm_image_arn" {
   value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
   description = "ARN of the Loop runtime sandbox MicroVM image"

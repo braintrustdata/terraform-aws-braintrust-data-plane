@@ -70,7 +70,8 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # Loop Runtime uses the self-hosted AI Proxy Lambda Function URL.
+  # AI Proxy Lambda Function URL. Quarantine UDF fallback (and similar
+  # internet-reachable callers). Loop Runtime does not use this.
   # one() keeps this index-safe when services is absent.
   self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
 
