@@ -61,6 +61,15 @@ Variables prefixed with `DANGER_` (e.g., `DANGER_disable_database_deletion_prote
 
 The `internal_observability_*` variables (Datadog API key, env name, region) are for internal Braintrust engineering use. Do not add them to customer-facing documentation, production examples, or sandbox examples.
 
+### Custom CA bundle delivery
+
+`custom_ca_bundle_secret_arn` references a Secrets Manager secret containing a PEM-encoded CA bundle. Keep the certificate value out of Terraform configuration and retrieve it at runtime.
+
+- API ECS uses native ECS secret injection.
+- Brainstore EC2 retrieves the secret in `user_data` and passes the exported multiline value to Docker with `--env BRAINTRUST_CUSTOM_CA_BUNDLE`. Do not place the multiline PEM in `/etc/brainstore.env`.
+- When `custom_ca_bundle_kms_key_arn` is set, grant only `kms:Decrypt` for the supplied key and restrict it to Secrets Manager.
+- Leave existing runtime behavior unchanged when these inputs are unset.
+
 ### Scripts use `uv` shebangs
 
 Python scripts in `scripts/` use `#!/usr/bin/env -S uv run --script` with inline dependency metadata. This allows zero-setup execution without managing virtual environments. Do not replace these with plain `python3` shebangs or add `requirements.txt` files.

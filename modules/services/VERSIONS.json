@@ -1,4 +1,4 @@
 {
-    "lambda_version_tag": "v2.12.0",
-    "duckdb_node_api_layer_version_tag": null
+    "lambda_version_tag": "v2.13.0",
+    "duckdb_node_api_layer_version_tag": "v2.13.0"
 }

@@ -160,9 +160,9 @@ module "braintrust-data-plane" {
   # url_security_dns_servers = "1.1.1.1,8.8.8.8"
   # url_security_allow_cidrs = "10.0.0.0/8"
 
-  # Optional custom CA bundle for outbound HTTPS from API ECS. The secret value
-  # must contain PEM-encoded CA certificates. Set the KMS key ARN only when the
-  # secret uses a customer-managed key instead of the default Secrets Manager key.
+  # Optional custom CA bundle for outbound HTTPS from API ECS and Brainstore EC2.
+  # The secret value must contain PEM-encoded CA certificates. Set the KMS key ARN
+  # only when the secret uses a customer-managed key instead of the default Secrets Manager key.
   # custom_ca_bundle_secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
   # custom_ca_bundle_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
 
