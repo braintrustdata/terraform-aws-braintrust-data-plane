@@ -55,7 +55,7 @@ resource "aws_lb" "loop_runtime" {
 
 # Emits the ALB's applied subnet set so CloudFront VPC origins can depend on it.
 resource "terraform_data" "alb_subnets_applied" {
-  input = join(",", sort(tolist(aws_lb.loop_runtime.subnets)))
+  input = join("+", sort(tolist(aws_lb.loop_runtime.subnets)))
 }
 
 resource "aws_lb_target_group" "loop_runtime" {

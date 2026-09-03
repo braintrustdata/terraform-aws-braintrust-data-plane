@@ -57,7 +57,7 @@ resource "aws_lb" "gateway" {
 # Emits the ALB's applied subnet set so CloudFront VPC origins can depend on it.
 # ARN/DNS alone do not change when subnets shrink off a banned AZ.
 resource "terraform_data" "alb_subnets_applied" {
-  input = join(",", sort(tolist(aws_lb.gateway.subnets)))
+  input = join("+", sort(tolist(aws_lb.gateway.subnets)))
 }
 
 resource "aws_lb_target_group" "gateway" {
