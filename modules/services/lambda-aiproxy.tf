@@ -70,6 +70,7 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "x-bt-org-name",
       "x-bt-project-id",
       "x-bt-auth-token",
+      "x-bt-endpoint-name",
       "x-bt-stream-fmt",
       "x-bt-use-cache",
       "x-bt-use-gateway",

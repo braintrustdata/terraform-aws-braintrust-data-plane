@@ -127,7 +127,7 @@ module "braintrust-data-plane" {
   # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
   # unsafe_url_request_mode = "warn"
 
-  # Optional custom CA bundle for outbound HTTPS from API ECS.
+  # Optional custom CA bundle for outbound HTTPS from API ECS and Brainstore EC2.
   # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
 
   ### Network configuration
