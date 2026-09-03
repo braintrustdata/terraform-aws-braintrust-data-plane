@@ -862,7 +862,7 @@ variable "braintrust_api_extra_env_vars" {
 }
 
 variable "custom_ca_bundle_secret_arn" {
-  description = "Optional ARN of an existing AWS Secrets Manager secret containing a PEM-encoded custom CA bundle for API ECS outbound HTTPS."
+  description = "Optional ARN of an existing AWS Secrets Manager secret containing a PEM-encoded custom CA bundle for API ECS and Brainstore EC2 outbound HTTPS."
   type        = string
   default     = null
 }
