@@ -1,7 +1,7 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 locals {
-  braintrust_build_tag = "bc7cc9a30126323dc436dc0f1e31271093d15c50"
+  braintrust_build_tag = "b9b5a682f7b2ac2f5f283fbe56b865013745e333"
 }
 
 module "braintrust-data-plane" {
@@ -169,6 +169,22 @@ module "braintrust-data-plane" {
 
   braintrust_api_extra_env_vars = {
     ALLOWED_SYSADMINS = "eugene.vignanker@braintrustdata.com"
+    BRAINSTORE_MERGE_CYCLE_VERBOSE = "true"
+    BRAINSTORE_MERGE_DICTIONARY_ENABLED_ON_FINAL_MERGE = "true"
+  }
+
+  brainstore_extra_env_vars = {
+    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://ip-10-175-2-18.us-east-2.compute.internal:3100/otlp"
+    BRAINSTORE_OTLP_TELEMETRY     = "logs"
+    BRAINSTORE_VERBOSE            = "1"
+  }
+
+  brainstore_extra_env_vars_writer = {
+    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://ip-10-175-2-18.us-east-2.compute.internal:3100/otlp"
+    BRAINSTORE_OTLP_TELEMETRY     = "logs"
+    BRAINSTORE_VERBOSE            = "1"
+    BRAINSTORE_MERGE_CYCLE_VERBOSE = "true"
+    BRAINSTORE_MERGE_DICTIONARY_ENABLED_ON_FINAL_MERGE = "true"
   }
 
   service_extra_env_vars = {
