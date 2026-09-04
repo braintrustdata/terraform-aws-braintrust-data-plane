@@ -49,15 +49,19 @@ locals {
     local.main_vpc_private_subnet_3_id
   ]
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  create_ai_gateway                          = var.create_ai_gateway
-  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
-  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
-  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
-  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  create_ecs_api = !var.use_deployment_mode_external_eks
+  enable_ecs_api = local.create_ecs_api && var.enable_ecs_api
+  # The API Handler Lambda is not on the customer traffic path after the ECS
+  # API cutover. Keeping provisioned concurrency on its alias adds cost and can
+  # leave upgrades stuck when a newly published Lambda version fails to start.
+  effective_api_handler_provisioned_concurrency = local.enable_ecs_api ? 0 : var.api_handler_provisioned_concurrency
+  create_ai_gateway                             = var.create_ai_gateway
+  enable_ai_gateway                             = local.create_ai_gateway && var.enable_ai_gateway
+  enable_internal_observability                 = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  create_internal_observability_secret          = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
+  ai_proxy_url_ssm_parameter_name               = "/braintrust/${var.deployment_name}/ai-proxy-url"
+  api_ecs_url_ssm_parameter_name                = "/braintrust/${var.deployment_name}/ecs-api-url"
+  brainstore_ai_proxy_url_ssm_parameter_name    = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
 
   # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
   # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
@@ -307,7 +311,7 @@ module "services" {
   allowed_org_ids                            = var.allowed_org_ids
   btql_audit_logs_strict_org_ids             = var.btql_audit_logs_strict_org_ids
   btql_audit_logs_best_effort_org_ids        = var.btql_audit_logs_best_effort_org_ids
-  api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
+  api_handler_provisioned_concurrency        = local.effective_api_handler_provisioned_concurrency
   api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
   api_handler_memory_limit                   = var.api_handler_memory_limit
   ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
