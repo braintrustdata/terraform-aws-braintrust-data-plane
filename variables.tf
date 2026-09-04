@@ -931,7 +931,7 @@ variable "braintrust_api_url" {
 }
 
 variable "api_handler_provisioned_concurrency" {
-  description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
+  description = "The number of API Handler Lambda instances to provision and keep alive while Lambda serves API traffic. Ignored when enable_ecs_api is true because customer API traffic is routed to ECS."
   type        = number
   default     = 1
 }
