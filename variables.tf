@@ -1,4 +1,18 @@
 locals {
+  # CloudFront VPC origins exclude specific AZs in a few regions. Source (as of
+  # 2026-07): https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-vpc-origins.html
+  # ("Supported AWS Regions for VPC origins"). eu-west-1 (prod-eu) has no AZ
+  # exceptions. This list is manually curated — if AWS adds exclusions, create
+  # of aws_cloudfront_vpc_origin fails with a ValidationException until updated.
+  # Applied only to ALB/task subnet selection — not to VPC AZ defaults — so
+  # existing create_vpc stacks do not ForceNew subnets/NAT on upgrade.
+  cloudfront_vpc_origin_excluded_zone_ids = [
+    "use1-az3",  # us-east-1
+    "usw1-az2",  # us-west-1
+    "apne1-az3", # ap-northeast-1
+    "cac1-az3",  # ca-central-1
+  ]
+
   # Lookup and choose an AZ if not provided
   private_subnet_1_az = var.private_subnet_1_az != null ? var.private_subnet_1_az : data.aws_availability_zones.available.names[0]
   private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : data.aws_availability_zones.available.names[1]

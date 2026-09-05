@@ -23,7 +23,7 @@ module "loop_runtime_alb" {
 
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
-  private_subnet_ids                   = local.main_vpc_private_subnet_ids
+  private_subnet_ids                   = local.cloudfront_vpc_origin_safe_subnet_ids
   enable_cloudfront_vpc_origin_ingress = true
   authorized_security_groups = {
     "API" = module.services_common.api_security_group_id
@@ -59,7 +59,7 @@ module "loop_runtime_ecs" {
   deployment_name    = var.deployment_name
   kms_key_arn        = local.kms_key_arn
   vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
+  private_subnet_ids = local.cloudfront_vpc_origin_safe_subnet_ids
   ecs_cluster_arn    = module.ecs[0].cluster_arn
   ecs_cluster_name   = module.ecs[0].cluster_name
 
