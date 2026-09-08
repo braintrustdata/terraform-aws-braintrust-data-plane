@@ -201,7 +201,7 @@ resource "aws_route_table_association" "restricted_egress" {
 resource "aws_route53_resolver_firewall_domain_list" "restricted_egress" {
   count = local.use_restricted_egress ? 1 : 0
 
-  domains = ["*"]
+  domains = ["*."]
   name    = "bt-loop-${var.deployment_name}-dns-domains"
   tags    = local.common_tags
 }
