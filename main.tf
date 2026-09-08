@@ -48,6 +48,23 @@ locals {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
+  postgres_credentials_secret_arn = coalesce(var.postgres_credentials_secret_arn, module.database.postgres_database_secret_arn)
+  postgres_credentials = var.postgres_credentials_secret_arn != null ? jsondecode(data.aws_secretsmanager_secret_version.postgres_credentials[0].secret_string) : {
+    username = module.database.postgres_database_username
+    password = module.database.postgres_database_password
+  }
+  postgres_username = local.postgres_credentials.username
+  postgres_password = local.postgres_credentials.password
+  postgres_host     = coalesce(var.postgres_host, module.database.postgres_database_address)
+  database_url_override_suffix = substr(sha1(join("|", [
+    var.postgres_host != null ? var.postgres_host : "",
+    var.postgres_credentials_secret_arn != null ? var.postgres_credentials_secret_arn : "",
+  ])), 0, 8)
+  database_url_secret_arn = (
+    var.postgres_host != null || var.postgres_credentials_secret_arn != null
+    ? aws_secretsmanager_secret.database_url_override[0].arn
+    : module.database.postgres_database_url_secret_arn
+  )
 
   create_ecs_api                             = !var.use_deployment_mode_external_eks
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
@@ -289,9 +306,9 @@ module "services" {
   monitoring_telemetry = var.monitoring_telemetry
 
   # Data stores
-  postgres_username = module.database.postgres_database_username
-  postgres_password = module.database.postgres_database_password
-  postgres_host     = module.database.postgres_database_address
+  postgres_username = local.postgres_username
+  postgres_password = local.postgres_password
+  postgres_host     = local.postgres_host
   postgres_port     = module.database.postgres_database_port
 
   use_redis_replication_group = var.use_redis_replication_group
@@ -468,7 +485,7 @@ module "api_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 
   # Data stores
-  database_url_secret_arn      = module.database.postgres_database_url_secret_arn
+  database_url_secret_arn      = local.database_url_secret_arn
   redis_url_secret_arn         = module.redis.redis_url_secret_arn
   function_tools_secret_arn    = module.services_common.function_tools_secret_arn
   custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
@@ -607,7 +624,7 @@ module "services_common" {
   deployment_name                           = var.deployment_name
   vpc_id                                    = local.main_vpc_id
   kms_key_arn                               = local.kms_key_arn
-  database_secret_arn                       = module.database.postgres_database_secret_arn
+  database_secret_arn                       = local.postgres_credentials_secret_arn
   brainstore_custom_ca_bundle_secret_arn    = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_secret_arn : null
   brainstore_custom_ca_bundle_kms_key_arn   = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_kms_key_arn : null
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
@@ -657,9 +674,9 @@ module "brainstore" {
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
   ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                  = var.monitoring_telemetry
-  database_host                         = module.database.postgres_database_address
+  database_host                         = local.postgres_host
   database_port                         = module.database.postgres_database_port
-  database_secret_arn                   = module.database.postgres_database_secret_arn
+  database_secret_arn                   = local.postgres_credentials_secret_arn
   use_redis_replication_group           = var.use_redis_replication_group
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port
