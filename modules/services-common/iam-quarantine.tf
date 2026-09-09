@@ -83,6 +83,35 @@ resource "aws_iam_role_policy_attachment" "quarantine_function_role" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role_policy" "quarantine_function_deny_ec2" {
+  count = var.enable_quarantine_vpc ? 1 : 0
+  name  = "DenyEC2FromFunctionCode"
+  role  = aws_iam_role.quarantine_function_role[0].id
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Deny"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeSubnets",
+          "ec2:DeleteNetworkInterface",
+          "ec2:DetachNetworkInterface",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "lambda:SourceFunctionArn" = "arn:aws:lambda:*:*:function:*"
+          }
+        }
+      }
+    ]
+  })
+}
+
 # Policy attached to the API handler role for quarantine operations
 resource "aws_iam_policy" "api_handler_quarantine" {
   count = var.enable_quarantine_vpc ? 1 : 0

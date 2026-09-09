@@ -19,7 +19,6 @@ locals {
   lambda_s3_bucket = "braintrust-assets-${data.aws_region.current.region}"
   lambda_names     = ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"]
 
-  duckdb_nodejs_arm64_layer_arn   = "arn:aws:lambda:${data.aws_region.current.region}:041475135427:layer:duckdb-nodejs-arm64:14"
   observability_enabled           = nonsensitive(var.internal_observability_api_key != null && var.internal_observability_api_key != "")
   datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:131"
   datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:90"
@@ -44,9 +43,9 @@ locals {
   code_bundle_bucket_id      = split(":::", var.code_bundle_bucket_arn)[1]
   lambda_responses_bucket_id = split(":::", var.lambda_responses_bucket_arn)[1]
 
-  # Lambda versions can be specified statically through VERSIONS.json or dynamically via lambda_version_tag_override
-  # If lambda_version_tag_override is provided, use it. Otherwise, use the lambda_version_tag from VERSIONS.json
-  lambda_version_tag = var.lambda_version_tag_override != null ? var.lambda_version_tag_override : jsondecode(file("${path.module}/VERSIONS.json"))["lambda_version_tag"]
+  # The Lambda code and its DuckDB layer are published under the same release tag.
+  lambda_version_tag            = var.lambda_version_tag_override != null ? var.lambda_version_tag_override : jsondecode(file("${path.module}/VERSIONS.json"))["lambda_version_tag"]
+  duckdb_nodejs_arm64_layer_arn = aws_lambda_layer_version.duckdb_node_api.arn
 
   lambda_versions = {
     for lambda in local.lambda_names :

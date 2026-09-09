@@ -48,7 +48,7 @@ locals {
       BRAINSTORE_REALTIME_WAL_URI        = "s3://${local.brainstore_s3_bucket}/brainstore/wal"
       BRAINSTORE_CODE_BUNDLE_URI         = "s3://${var.code_bundle_bucket}"
       BRAINSTORE_CACHE_DIR               = "/mnt/tmp/brainstore"
-      BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry
+      BRAINSTORE_CONTROL_PLANE_TELEMETRY = join(",", [var.monitoring_telemetry, "metrics", "traces"])
       BRAINSTORE_DISABLE_STATUS_UPDATES  = var.brainstore_disable_status_updates
       NO_COLOR                           = "1"
       AWS_DEFAULT_REGION                 = data.aws_region.current.region

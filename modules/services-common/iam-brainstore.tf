@@ -119,16 +119,33 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
 
   policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = "secretsmanager:GetSecretValue"
-        Resource = [
-          var.database_secret_arn,
-          aws_secretsmanager_secret.function_tools_secret.arn
-        ]
-      }
-    ]
+    Statement = concat(
+      [
+        {
+          Effect = "Allow"
+          Action = "secretsmanager:GetSecretValue"
+          Resource = concat(
+            [
+              var.database_secret_arn,
+              aws_secretsmanager_secret.function_tools_secret.arn
+            ],
+            var.brainstore_custom_ca_bundle_secret_arn == null ? [] : [var.brainstore_custom_ca_bundle_secret_arn]
+          )
+        }
+      ],
+      var.brainstore_custom_ca_bundle_kms_key_arn == null ? [] : [
+        {
+          Effect   = "Allow"
+          Action   = "kms:Decrypt"
+          Resource = var.brainstore_custom_ca_bundle_kms_key_arn
+          Condition = {
+            StringEquals = {
+              "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+            }
+          }
+        }
+      ]
+    )
   })
 }
 
