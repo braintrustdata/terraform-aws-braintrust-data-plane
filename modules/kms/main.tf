@@ -104,6 +104,9 @@ resource "aws_kms_key" "braintrust" {
             StringEquals = {
               "aws:SourceAccount" : data.aws_caller_identity.current.account_id
             }
+            ArnLike = {
+              "aws:SourceArn" : "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:*"
+            }
           }
         },
         {
@@ -173,4 +176,5 @@ resource "aws_kms_alias" "braintrust" {
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
 data "aws_region" "current" {}
