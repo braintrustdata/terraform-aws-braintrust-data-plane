@@ -48,20 +48,26 @@ locals {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
-  postgres_credentials_secret_arn = coalesce(var.postgres_credentials_secret_arn, module.database.postgres_database_secret_arn)
-  postgres_credentials = var.postgres_credentials_secret_arn != null ? jsondecode(data.aws_secretsmanager_secret_version.postgres_credentials[0].secret_string) : {
-    username = module.database.postgres_database_username
-    password = module.database.postgres_database_password
-  }
-  postgres_username = local.postgres_credentials.username
-  postgres_password = local.postgres_credentials.password
-  postgres_host     = coalesce(var.postgres_host, module.database.postgres_database_address)
+  # Object presence remains plan-known even when its fields reference resources
+  # whose values will not be known until apply.
+  use_postgres_connection_override = var.postgres_connection_override != null
+  postgres_credentials_secret_arn = coalesce(
+    try(var.postgres_connection_override.credentials_secret_arn, null),
+    module.database.postgres_database_secret_arn,
+  )
+  postgres_credentials = jsondecode(data.aws_secretsmanager_secret_version.postgres_credentials.secret_string)
+  postgres_username    = local.postgres_credentials.username
+  postgres_password    = local.postgres_credentials.password
+  postgres_host = coalesce(
+    try(var.postgres_connection_override.host, null),
+    module.database.postgres_database_address,
+  )
   database_url_override_suffix = substr(sha1(join("|", [
-    var.postgres_host != null ? var.postgres_host : "",
-    var.postgres_credentials_secret_arn != null ? var.postgres_credentials_secret_arn : "",
+    try(coalesce(var.postgres_connection_override.host, ""), ""),
+    try(coalesce(var.postgres_connection_override.credentials_secret_arn, ""), ""),
   ])), 0, 8)
   database_url_secret_arn = (
-    var.postgres_host != null || var.postgres_credentials_secret_arn != null
+    local.use_postgres_connection_override
     ? aws_secretsmanager_secret.database_url_override[0].arn
     : module.database.postgres_database_url_secret_arn
   )

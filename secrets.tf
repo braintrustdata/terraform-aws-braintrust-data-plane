@@ -1,5 +1,5 @@
 resource "aws_secretsmanager_secret" "database_url_override" {
-  count = var.postgres_host != null || var.postgres_credentials_secret_arn != null ? 1 : 0
+  count = local.use_postgres_connection_override ? 1 : 0
 
   name_prefix = "${var.deployment_name}/DatabaseUrlOverride-${local.database_url_override_suffix}-"
   description = "PostgreSQL URL for the configured database connection"

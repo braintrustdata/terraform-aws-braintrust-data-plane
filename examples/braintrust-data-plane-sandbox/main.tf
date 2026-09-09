@@ -43,13 +43,12 @@ module "braintrust-data-plane" {
   # }
 
   ### Postgres configuration
-  # Optional alternate PostgreSQL endpoint used by services and Brainstore.
-  # Defaults to the module-managed database address.
-  # postgres_host = "database.example.internal"
-  #
-  # Optional ARN of an out-of-band PostgreSQL credentials secret containing
-  # JSON fields named "username" and "password".
-  # postgres_credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf"
+  # Optional connection override. Omit either field to keep using the
+  # corresponding module-managed database value.
+  # postgres_connection_override = {
+  #   host                   = "database.example.internal"
+  #   credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf"
+  # }
 
   postgres_instance_type = "db.r8g.large"
 
