@@ -56,7 +56,7 @@ resolve_external_id() {
     existing="$(aws iam get-role \
       --profile "$PROFILE" \
       --role-name "$ROLE_NAME" \
-      --output json | jq -r '.Role.AssumeRolePolicyDocument | fromjson | .Statement[0].Condition.StringEquals."sts:ExternalId" // empty')"
+      --output json | jq -r '.Role.AssumeRolePolicyDocument | (if type == "string" then fromjson else . end) | .Statement[0].Condition.StringEquals."sts:ExternalId" // empty')"
     if [[ -n "$existing" && "$existing" != "null" ]]; then
       EXTERNAL_ID="$existing"
       return
