@@ -120,6 +120,39 @@ module "braintrust-data-plane" {
   # You might need to adjust this so it does not conflict with any other VPC CIDR blocks you intend to peer with Braintrust
   # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
+  # VPC Flow Logs (disabled by default; only applied to VPCs this module creates).
+  # Configure the main and quarantine VPCs separately.
+  #
+  # Option A - write to your own S3 bucket. Attach a destination bucket policy
+  # that grants delivery.logs.amazonaws.com s3:PutObject and s3:GetBucketAcl
+  # before enabling this, or CreateFlowLogs succeeds and no objects arrive.
+  # See the module README "VPC Flow Logs" section.
+  # main_vpc_flow_log = {
+  #   enabled         = true
+  #   traffic_type    = "ALL" # ALL | ACCEPT | REJECT
+  #   destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
+  # }
+  #
+  # Option B - let the module create and manage a dedicated S3 bucket (leave destination_arn unset).
+  # Encrypted with the data-plane KMS key unless you set kms_key_arn to a different CMK.
+  # After objects exist, disable/destroy fails with BucketNotEmpty unless you empty
+  # the bucket or remove it from Terraform state first. Full stack destroy must
+  # also keep the encrypting KMS key. See the module README.
+  # main_vpc_flow_log = {
+  #   enabled = true
+  # }
+  #
+  # Option C - write to CloudWatch Logs (module creates the log group + IAM role):
+  # main_vpc_flow_log = {
+  #   enabled           = true
+  #   destination_type  = "cloud-watch-logs"
+  #   retention_in_days = 365
+  # }
+  #
+  # quarantine_vpc_flow_log = {
+  #   enabled = true
+  # }
+
 
   ### Advanced configuration
 

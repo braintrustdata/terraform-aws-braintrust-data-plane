@@ -114,6 +114,33 @@ If you need to enable CloudFront standard access logging, you can configure it i
 
 See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
 
+### VPC Flow Logs
+
+VPC Flow Logs are disabled by default and only apply to VPCs this module creates (`create_vpc = true` / a module-managed quarantine VPC). Configure the main and quarantine VPCs separately via `main_vpc_flow_log` and `quarantine_vpc_flow_log`.
+
+When enabled, logs go to one of:
+
+- **Customer S3 bucket** — set `destination_arn` to the bucket ARN. Attach a destination policy that grants `delivery.logs.amazonaws.com` `s3:PutObject` and `s3:GetBucketAcl` *before* enabling Flow Logs. `CreateFlowLogs` can succeed even when delivery is denied, so a missing policy looks like an empty bucket.
+- **Module-managed S3 bucket** — leave `destination_arn` null. The module creates a `bucket_prefix` bucket with Bucket owner enforced ownership, SSE-KMS using the data-plane key, a log-delivery policy (no `x-amz-acl` condition), and object expiration from `retention_in_days` (set `0` to skip expiration). This bucket does not set `force_destroy`. After Flow Logs have written objects, setting `enabled = false`, changing destination, or destroying the stack fails with `BucketNotEmpty`. That is intentional: the module will not empty audit logs. To delete the logs, empty the bucket (or wait for lifecycle expiration) and apply. To keep the logs when disabling or changing destination (stack stays up), remove the managed bucket and its companion resources from Terraform state, then apply. The data-plane KMS key is left in place, so the objects stay readable.
+
+  Full stack destroy is different. The module-created key uses a 7-day pending-deletion window and is unusable while pending, so retained objects become permanently unreadable unless you also keep that key. Before destroy, remove the key and its alias from state (`module.kms[0].aws_kms_key.braintrust` and `module.kms[0].aws_kms_alias.braintrust` when this module is the root) along with the bucket. Or encrypt the destination with an externally managed CMK from the start (`kms_key_arn` on the flow-log object, or this module's `kms_key_arn` input). Or copy/re-encrypt the objects to another key before destroy.
+- **CloudWatch Logs** — set `destination_type = "cloud-watch-logs"`. Pass a bare log-group ARN if you bring your own (no trailing `:*`; the module strips that suffix if present). The module creates an IAM role with an inline delivery policy, matching the rest of this module.
+
+Module-managed destinations are encrypted with the data-plane KMS key (`kms_key_arn` input, or the key this module creates). You do not pass this module's `kms_key_arn` output back into `main_vpc_flow_log` — that is a cycle. Override `kms_key_arn` on the flow-log object only when using a different CMK. That custom key must allow the service principal for the destination: `delivery.logs.amazonaws.com` for S3, or `logs.<region>.amazonaws.com` for a CloudWatch log group. Otherwise delivery fails after `CreateFlowLogs` succeeds.
+
+```hcl
+main_vpc_flow_log = {
+  enabled         = true
+  traffic_type    = "ALL"
+  destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
+}
+
+quarantine_vpc_flow_log = {
+  enabled          = true
+  destination_type = "cloud-watch-logs"
+}
+```
+
 ### S3 Server Access Logging
 
 S3 server access logging is disabled by default. Enable it to deliver access logs from the brainstore, code-bundle, and lambda-responses buckets to an S3 bucket you own. This is commonly used for audit and compliance requirements.
