@@ -65,6 +65,13 @@ module "braintrust-data-plane" {
   # quarantine_vpc_cidr = "10.175.8.0/21"
 
   ### Postgres configuration
+  # Optional connection override. Omit either field to keep using the
+  # corresponding module-managed database value.
+  # postgres_connection_override = {
+  #   host                   = "database.example.internal"
+  #   credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf"
+  # }
+
   # Changing this will incur a short downtime.
   postgres_instance_type = "db.r8g.2xlarge"
 

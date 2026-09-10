@@ -29,6 +29,12 @@ mock_data "aws_secretsmanager_random_password" {
   }
 }
 
+mock_data "aws_secretsmanager_secret_version" {
+  defaults = {
+    secret_string = "{\"username\":\"test-user\",\"password\":\"test-password\"}"
+  }
+}
+
 # Brainstore postconditions require local NVMe (total_instance_storage != null).
 mock_data "aws_ec2_instance_type" {
   defaults = {

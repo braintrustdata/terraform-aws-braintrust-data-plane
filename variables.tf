@@ -405,6 +405,44 @@ variable "postgres_version" {
   default     = "15"
 }
 
+variable "postgres_connection_override" {
+  description = <<-EOT
+    Optional PostgreSQL connection override. Omitted fields continue using the
+    module-managed database values. The credentials secret must contain JSON
+    fields named "username" and "password". If encrypted with a customer-managed
+    KMS key, it must use kms_key_arn.
+  EOT
+  type = object({
+    host                   = optional(string)
+    credentials_secret_arn = optional(string)
+  })
+  default = null
+
+  validation {
+    condition = var.postgres_connection_override == null || try(
+      var.postgres_connection_override.host != null || var.postgres_connection_override.credentials_secret_arn != null,
+      false,
+    )
+    error_message = "postgres_connection_override must specify host, credentials_secret_arn, or both."
+  }
+
+  validation {
+    condition = var.postgres_connection_override == null || try(
+      var.postgres_connection_override.host == null || try(trimspace(var.postgres_connection_override.host), "") != "",
+      false,
+    )
+    error_message = "postgres_connection_override.host must be null or a non-empty string."
+  }
+
+  validation {
+    condition = var.postgres_connection_override == null || try(
+      var.postgres_connection_override.credentials_secret_arn == null || try(trimspace(var.postgres_connection_override.credentials_secret_arn), "") != "",
+      false,
+    )
+    error_message = "postgres_connection_override.credentials_secret_arn must be null or a non-empty string."
+  }
+}
+
 variable "postgres_multi_az" {
   description = "Specifies if the RDS instance is multi-AZ. Increases cost but provides higher availability. Recommended for production environments."
   type        = bool
