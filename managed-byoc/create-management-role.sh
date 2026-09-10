@@ -71,7 +71,7 @@ build_trust_policy() {
     "$TRUST_POLICY_PATH"
 }
 
-# Renders the inline policy, replacing MANAGEMENT_ROLE_ARN_PLACEHOLDER with the
+# Renders the inline policy, replacing {{management_role_arn}} with the
 # exact ARN AWS returned for this role so the self-modification deny targets it.
 build_role_policy() {
   if [[ "$MANAGEMENT_ROLE_ARN" != arn:* ]]; then
@@ -80,9 +80,9 @@ build_role_policy() {
   fi
   local rendered
   rendered="$(jq --arg role_arn "$MANAGEMENT_ROLE_ARN" \
-    '(.Statement[] | select(.Resource == "MANAGEMENT_ROLE_ARN_PLACEHOLDER") | .Resource) = $role_arn' \
+    '(.Statement[] | select(.Resource == "{{management_role_arn}}") | .Resource) = $role_arn' \
     "$ROLE_POLICY_PATH")"
-  if grep -q 'MANAGEMENT_ROLE_ARN_PLACEHOLDER' <<<"$rendered" || ! grep -qF "\"$MANAGEMENT_ROLE_ARN\"" <<<"$rendered"; then
+  if grep -qF '{{management_role_arn}}' <<<"$rendered" || ! grep -qF "\"$MANAGEMENT_ROLE_ARN\"" <<<"$rendered"; then
     echo "Failed to inject management role ARN into $ROLE_POLICY_PATH." >&2
     exit 1
   fi

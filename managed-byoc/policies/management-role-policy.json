@@ -174,7 +174,7 @@
         "iam:UpdateRole",
         "iam:UpdateRoleDescription"
       ],
-      "Resource": "MANAGEMENT_ROLE_ARN_PLACEHOLDER"
+      "Resource": "{{management_role_arn}}"
     },
     {
       "Sid": "AllowReadOnlyAccountContext",
