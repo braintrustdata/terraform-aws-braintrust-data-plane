@@ -48,6 +48,29 @@ locals {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
+  # Object presence remains plan-known even when its fields reference resources
+  # whose values will not be known until apply.
+  use_postgres_connection_override = var.postgres_connection_override != null
+  postgres_credentials_secret_arn = coalesce(
+    try(var.postgres_connection_override.credentials_secret_arn, null),
+    module.database.postgres_database_secret_arn,
+  )
+  postgres_credentials = jsondecode(data.aws_secretsmanager_secret_version.postgres_credentials.secret_string)
+  postgres_username    = local.postgres_credentials.username
+  postgres_password    = local.postgres_credentials.password
+  postgres_host = coalesce(
+    try(var.postgres_connection_override.host, null),
+    module.database.postgres_database_address,
+  )
+  database_url_override_suffix = substr(sha1(join("|", [
+    try(coalesce(var.postgres_connection_override.host, ""), ""),
+    try(coalesce(var.postgres_connection_override.credentials_secret_arn, ""), ""),
+  ])), 0, 8)
+  database_url_secret_arn = (
+    local.use_postgres_connection_override
+    ? aws_secretsmanager_secret.database_url_override[0].arn
+    : module.database.postgres_database_url_secret_arn
+  )
 
   create_ecs_api                             = !var.use_deployment_mode_external_eks
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
@@ -137,6 +160,16 @@ locals {
       local.loop_runtime_lambda_env_vars,
     ) },
   )
+
+  # Wire the data-plane KMS key into module-managed Flow Log destinations unless
+  # the caller passed their own CMK. Avoids a cycle (cannot use this module's
+  # kms_key_arn output as an input to the same module).
+  main_vpc_flow_log = merge(var.main_vpc_flow_log, {
+    kms_key_arn = coalesce(var.main_vpc_flow_log.kms_key_arn, local.kms_key_arn)
+  })
+  quarantine_vpc_flow_log = merge(var.quarantine_vpc_flow_log, {
+    kms_key_arn = coalesce(var.quarantine_vpc_flow_log.kms_key_arn, local.kms_key_arn)
+  })
 }
 
 module "main_vpc" {
@@ -159,6 +192,8 @@ module "main_vpc" {
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
   custom_tags                          = local.all_custom_tags
+  permissions_boundary_arn             = var.permissions_boundary_arn
+  flow_log                             = local.main_vpc_flow_log
 }
 
 module "quarantine_vpc" {
@@ -180,6 +215,8 @@ module "quarantine_vpc" {
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
   custom_tags                          = local.all_custom_tags
+  permissions_boundary_arn             = var.permissions_boundary_arn
+  flow_log                             = local.quarantine_vpc_flow_log
 }
 
 module "database" {
@@ -276,9 +313,9 @@ module "services" {
   monitoring_telemetry = var.monitoring_telemetry
 
   # Data stores
-  postgres_username = module.database.postgres_database_username
-  postgres_password = module.database.postgres_database_password
-  postgres_host     = module.database.postgres_database_address
+  postgres_username = local.postgres_username
+  postgres_password = local.postgres_password
+  postgres_host     = local.postgres_host
   postgres_port     = module.database.postgres_database_port
 
   use_redis_replication_group = var.use_redis_replication_group
@@ -405,32 +442,34 @@ module "gateway_ecs" {
     "public.ecr.aws/braintrust/gateway:%s",
     var.ai_gateway_version_override != null ? var.ai_gateway_version_override : jsondecode(file("${path.module}/modules/gateway-ecs/VERSIONS.json"))["gateway"]
   )
-  cpu                         = var.ai_gateway_cpu
-  memory                      = var.ai_gateway_memory
-  cpu_architecture            = var.ai_gateway_cpu_architecture
-  min_capacity                = var.ai_gateway_min_capacity
-  max_capacity                = var.ai_gateway_max_capacity
-  target_cpu_utilization      = var.ai_gateway_target_cpu_utilization
-  target_memory_utilization   = var.ai_gateway_target_memory_utilization
-  log_retention_days          = var.ai_gateway_log_retention_days
-  permissions_boundary_arn    = var.permissions_boundary_arn
-  use_redis_replication_group = var.use_redis_replication_group
-  redis_host                  = module.redis.redis_endpoint
-  redis_port                  = module.redis.redis_port
-  redis_security_group_id     = module.redis.redis_security_group_id
-  target_group_arn            = module.gateway_alb[0].gateway_target_group_arn
-  alb_security_group_id       = module.gateway_alb[0].gateway_alb_security_group_id
-  gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
-  extra_env_vars              = var.ai_gateway_extra_env_vars
-  custom_tags                 = local.all_custom_tags
-  brainstore_license_key      = var.brainstore_license_key
-  enable_execute_command      = var.ai_gateway_enable_execute_command
-  braintrust_app_url          = var.ai_gateway_braintrust_app_url
-  braintrust_api_url          = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
-  unsafe_url_request_mode     = var.unsafe_url_request_mode
-  url_security_dns_servers    = var.url_security_dns_servers
-  url_security_allow_cidrs    = var.url_security_allow_cidrs
-  bedrock_assume_role_arns    = var.ai_gateway_bedrock_assume_role_arns
+  cpu                          = var.ai_gateway_cpu
+  memory                       = var.ai_gateway_memory
+  cpu_architecture             = var.ai_gateway_cpu_architecture
+  min_capacity                 = var.ai_gateway_min_capacity
+  max_capacity                 = var.ai_gateway_max_capacity
+  target_cpu_utilization       = var.ai_gateway_target_cpu_utilization
+  target_memory_utilization    = var.ai_gateway_target_memory_utilization
+  log_retention_days           = var.ai_gateway_log_retention_days
+  permissions_boundary_arn     = var.permissions_boundary_arn
+  use_redis_replication_group  = var.use_redis_replication_group
+  redis_host                   = module.redis.redis_endpoint
+  redis_port                   = module.redis.redis_port
+  redis_security_group_id      = module.redis.redis_security_group_id
+  target_group_arn             = module.gateway_alb[0].gateway_target_group_arn
+  alb_security_group_id        = module.gateway_alb[0].gateway_alb_security_group_id
+  gateway_http_listener_arn    = module.gateway_alb[0].gateway_http_listener_arn
+  extra_env_vars               = var.ai_gateway_extra_env_vars
+  custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
+  custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
+  custom_tags                  = local.all_custom_tags
+  brainstore_license_key       = var.brainstore_license_key
+  enable_execute_command       = var.ai_gateway_enable_execute_command
+  braintrust_app_url           = var.ai_gateway_braintrust_app_url
+  braintrust_api_url           = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  unsafe_url_request_mode      = var.unsafe_url_request_mode
+  url_security_dns_servers     = var.url_security_dns_servers
+  url_security_allow_cidrs     = var.url_security_allow_cidrs
+  bedrock_assume_role_arns     = var.ai_gateway_bedrock_assume_role_arns
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -455,7 +494,7 @@ module "api_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 
   # Data stores
-  database_url_secret_arn      = module.database.postgres_database_url_secret_arn
+  database_url_secret_arn      = local.database_url_secret_arn
   redis_url_secret_arn         = module.redis.redis_url_secret_arn
   function_tools_secret_arn    = module.services_common.function_tools_secret_arn
   custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
@@ -594,7 +633,7 @@ module "services_common" {
   deployment_name                           = var.deployment_name
   vpc_id                                    = local.main_vpc_id
   kms_key_arn                               = local.kms_key_arn
-  database_secret_arn                       = module.database.postgres_database_secret_arn
+  database_secret_arn                       = local.postgres_credentials_secret_arn
   brainstore_custom_ca_bundle_secret_arn    = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_secret_arn : null
   brainstore_custom_ca_bundle_kms_key_arn   = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_kms_key_arn : null
   brainstore_s3_bucket_arn                  = module.storage.brainstore_bucket_arn
@@ -644,9 +683,9 @@ module "brainstore" {
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
   ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                  = var.monitoring_telemetry
-  database_host                         = module.database.postgres_database_address
+  database_host                         = local.postgres_host
   database_port                         = module.database.postgres_database_port
-  database_secret_arn                   = module.database.postgres_database_secret_arn
+  database_secret_arn                   = local.postgres_credentials_secret_arn
   use_redis_replication_group           = var.use_redis_replication_group
   redis_host                            = module.redis.redis_endpoint
   redis_port                            = module.redis.redis_port

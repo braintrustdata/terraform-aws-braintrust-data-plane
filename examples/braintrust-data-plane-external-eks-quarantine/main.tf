@@ -65,6 +65,13 @@ module "braintrust-data-plane" {
   # quarantine_vpc_cidr = "10.175.8.0/21"
 
   ### Postgres configuration
+  # Optional connection override. Omit either field to keep using the
+  # corresponding module-managed database value.
+  # postgres_connection_override = {
+  #   host                   = "database.example.internal"
+  #   credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf"
+  # }
+
   # Changing this will incur a short downtime.
   postgres_instance_type = "db.r8g.2xlarge"
 
@@ -147,6 +154,16 @@ module "braintrust-data-plane" {
   # s3_additional_allowed_origins                  = ["https://app.example.com"]
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: VPC Flow Logs for module-created VPCs. Leave unset to disable.
+  # A customer-provided S3 destination must already allow
+  # delivery.logs.amazonaws.com. See the module README "VPC Flow Logs" section.
+  # main_vpc_flow_log = {
+  #   enabled = true
+  # }
+  # quarantine_vpc_flow_log = {
+  #   enabled = true
+  # }
 
   # Opt-in: S3 server access logging for the brainstore, code-bundle, and
   # lambda-responses buckets. Attach the destination bucket policy (grant
