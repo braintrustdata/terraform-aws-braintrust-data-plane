@@ -52,4 +52,14 @@ run "default_plans" {
     condition     = module.quarantine_vpc[0].flow_log_id == null
     error_message = "quarantine VPC Flow Logs should be disabled by default"
   }
+
+  assert {
+    condition     = module.main_vpc[0].encryption_control_id == null
+    error_message = "VPC Encryption Control should be disabled by default"
+  }
+
+  assert {
+    condition     = module.quarantine_vpc[0].encryption_control_id == null
+    error_message = "quarantine VPC Encryption Control should be disabled by default"
+  }
 }

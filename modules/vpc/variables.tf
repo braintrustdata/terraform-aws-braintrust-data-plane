@@ -159,3 +159,20 @@ variable "flow_log" {
     error_message = "flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
   }
 }
+
+variable "encryption_control_mode" {
+  description = <<-EOT
+    VPC Encryption Control mode for this VPC. Enforces encryption in transit for VPC traffic.
+    Disabled by default; the aws_vpc_encryption_control resource is only created when a mode is set.
+      - null:      no resource is created (default).
+      - "monitor": create the resource in monitor mode (observe only, do not block traffic).
+      - "enforce": create the resource in enforce mode (require encryption in transit).
+  EOT
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.encryption_control_mode == null || contains(["monitor", "enforce"], coalesce(var.encryption_control_mode, "monitor"))
+    error_message = "encryption_control_mode must be null, \"monitor\", or \"enforce\"."
+  }
+}

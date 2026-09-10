@@ -361,6 +361,40 @@ variable "quarantine_vpc_flow_log" {
   }
 }
 
+# VPC Encryption Control (only applied to VPCs this module creates)
+variable "main_vpc_encryption_control_mode" {
+  description = <<-EOT
+    VPC Encryption Control mode for the main VPC. Enforces encryption in transit for VPC traffic.
+    Only applied when create_vpc is true. Disabled by default; the resource is created only when
+    a mode is set:
+      - null:      no resource is created (default).
+      - "monitor": create the resource in monitor mode (observe only, does not block traffic).
+      - "enforce": create the resource in enforce mode (require encryption in transit).
+  EOT
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.main_vpc_encryption_control_mode == null || contains(["monitor", "enforce"], coalesce(var.main_vpc_encryption_control_mode, "monitor"))
+    error_message = "main_vpc_encryption_control_mode must be null, \"monitor\", or \"enforce\"."
+  }
+}
+
+variable "quarantine_vpc_encryption_control_mode" {
+  description = <<-EOT
+    VPC Encryption Control mode for the quarantine VPC. Only applied when the quarantine VPC is created
+    by this module (enable_quarantine_vpc is true and no existing_quarantine_vpc_id is provided).
+    Same options and behavior as main_vpc_encryption_control_mode.
+  EOT
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.quarantine_vpc_encryption_control_mode == null || contains(["monitor", "enforce"], coalesce(var.quarantine_vpc_encryption_control_mode, "monitor"))
+    error_message = "quarantine_vpc_encryption_control_mode must be null, \"monitor\", or \"enforce\"."
+  }
+}
+
 
 ## Database
 variable "postgres_instance_type" {

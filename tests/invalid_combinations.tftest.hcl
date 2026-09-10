@@ -108,3 +108,15 @@ run "rejects_invalid_cloudwatch_retention" {
     var.main_vpc_flow_log,
   ]
 }
+
+run "rejects_invalid_encryption_control_mode" {
+  command = plan
+
+  variables {
+    main_vpc_encryption_control_mode = "enforced"
+  }
+
+  expect_failures = [
+    var.main_vpc_encryption_control_mode,
+  ]
+}

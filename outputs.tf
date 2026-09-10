@@ -73,6 +73,26 @@ output "quarantine_vpc_flow_log_cloudwatch_log_group_arn" {
   description = "ARN of the module-managed CloudWatch log group for quarantine VPC Flow Logs (null unless the module created one)"
 }
 
+output "main_vpc_encryption_control_mode" {
+  value       = one(module.main_vpc[*].encryption_control_mode)
+  description = "AWS VPC Encryption Control mode for the main VPC (\"monitor\"/\"enforce\", null unless enabled)"
+}
+
+output "main_vpc_encryption_control_id" {
+  value       = one(module.main_vpc[*].encryption_control_id)
+  description = "ID of the main VPC Encryption Control resource (null unless enabled)"
+}
+
+output "quarantine_vpc_encryption_control_mode" {
+  value       = one(module.quarantine_vpc[*].encryption_control_mode)
+  description = "AWS VPC Encryption Control mode for the quarantine VPC (\"monitor\"/\"enforce\", null unless enabled)"
+}
+
+output "quarantine_vpc_encryption_control_id" {
+  value       = one(module.quarantine_vpc[*].encryption_control_id)
+  description = "ID of the quarantine VPC Encryption Control resource (null unless enabled)"
+}
+
 output "brainstore_security_group_id" {
   value       = module.services_common.brainstore_instance_security_group_id
   description = "ID of the security group for the Brainstore instances"
