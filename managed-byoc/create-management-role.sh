@@ -10,7 +10,7 @@ PROFILE="${AWS_PROFILE:-default}"
 INLINE_POLICY_NAME="${INLINE_POLICY_NAME:-BraintrustManagementRolePolicy}"
 EXTERNAL_ID=""
 MANAGEMENT_ROLE_ARN=""
-MAX_SESSION_DURATION_SECONDS=14400
+MAX_SESSION_DURATION_SECONDS=3600
 
 usage() {
   cat <<'EOF'
@@ -159,7 +159,7 @@ if aws iam get-role --profile "$PROFILE" --role-name "$ROLE_NAME" >/dev/null 2>&
     --role-name "$ROLE_NAME" \
     --policy-document "$TRUST_POLICY_DOCUMENT" \
     >/dev/null
-  echo "Updating max session duration to 4 hours..."
+  echo "Updating max session duration to 1 hour..."
   aws iam update-role \
     --profile "$PROFILE" \
     --role-name "$ROLE_NAME" \
