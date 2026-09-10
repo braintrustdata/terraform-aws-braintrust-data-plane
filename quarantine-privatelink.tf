@@ -95,7 +95,7 @@ resource "aws_lb" "gateway_quarantine_privatelink" {
   security_groups    = [aws_security_group.gateway_quarantine_privatelink_nlb[0].id]
   # PrivateLink traffic bypasses NLB SG evaluation; see comment above the NLB SG.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
-  subnets                                                      = local.main_vpc_private_subnet_ids
+  subnets                                                      = local.gateway_alb_subnet_ids
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl"
@@ -215,12 +215,8 @@ resource "aws_vpc_endpoint" "quarantine_gateway" {
   service_name        = aws_vpc_endpoint_service.gateway_quarantine[0].service_name
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = false
-  subnet_ids = [
-    module.quarantine_vpc[0].private_subnet_1_id,
-    module.quarantine_vpc[0].private_subnet_2_id,
-    module.quarantine_vpc[0].private_subnet_3_id,
-  ]
-  security_group_ids = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
+  subnet_ids          = local.quarantine_gateway_privatelink_endpoint_subnet_ids
+  security_group_ids  = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
 
   # Ensure the account root is allow-listed before the consumer VPCE is created.
   depends_on = [aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account]
