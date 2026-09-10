@@ -148,12 +148,12 @@ quarantine_vpc_flow_log = {
 Each accepts one of:
 
 - **`"disabled"`** (default) — no `aws_vpc_encryption_control` resource is created.
-- **`"monitoring"`** — creates the resource in AWS `monitor` mode. Unencrypted traffic is reported but still allowed, so you can assess impact before enforcing.
-- **`"enforced"`** — creates the resource in AWS `enforce` mode. Traffic that is not encrypted in transit is blocked. Enable this only after reviewing `monitoring` findings, since it can break workloads that rely on unencrypted paths.
+- **`"monitor"`** — creates the resource in `monitor` mode. Unencrypted traffic is reported but still allowed, so you can assess impact before enforcing.
+- **`"enforce"`** — creates the resource in `enforce` mode. Traffic that is not encrypted in transit is blocked. Enable this only after reviewing `monitor` findings, since it can break workloads that rely on unencrypted paths.
 
 ```hcl
-main_vpc_encryption_control       = "enforced"
-quarantine_vpc_encryption_control = "monitoring"
+main_vpc_encryption_control       = "enforce"
+quarantine_vpc_encryption_control = "monitor"
 ```
 
 ### S3 Server Access Logging

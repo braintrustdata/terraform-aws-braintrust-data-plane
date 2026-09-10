@@ -367,16 +367,16 @@ variable "main_vpc_encryption_control" {
     VPC Encryption Control for the main VPC. Enforces encryption in transit for VPC traffic.
     Only applied when create_vpc is true. Disabled by default; the resource is created only when
     a mode is selected:
-      - "disabled":   no resource is created (default).
-      - "monitoring": create the resource in AWS "monitor" mode (observe only, does not block traffic).
-      - "enforced":   create the resource in AWS "enforce" mode (require encryption in transit).
+      - "disabled": no resource is created (default).
+      - "monitor":  create the resource in monitor mode (observe only, does not block traffic).
+      - "enforce":  create the resource in enforce mode (require encryption in transit).
   EOT
   type        = string
   default     = "disabled"
 
   validation {
-    condition     = contains(["disabled", "monitoring", "enforced"], var.main_vpc_encryption_control)
-    error_message = "main_vpc_encryption_control must be one of \"disabled\", \"monitoring\", or \"enforced\"."
+    condition     = contains(["disabled", "monitor", "enforce"], var.main_vpc_encryption_control)
+    error_message = "main_vpc_encryption_control must be one of \"disabled\", \"monitor\", or \"enforce\"."
   }
 }
 
@@ -390,8 +390,8 @@ variable "quarantine_vpc_encryption_control" {
   default     = "disabled"
 
   validation {
-    condition     = contains(["disabled", "monitoring", "enforced"], var.quarantine_vpc_encryption_control)
-    error_message = "quarantine_vpc_encryption_control must be one of \"disabled\", \"monitoring\", or \"enforced\"."
+    condition     = contains(["disabled", "monitor", "enforce"], var.quarantine_vpc_encryption_control)
+    error_message = "quarantine_vpc_encryption_control must be one of \"disabled\", \"monitor\", or \"enforce\"."
   }
 }
 

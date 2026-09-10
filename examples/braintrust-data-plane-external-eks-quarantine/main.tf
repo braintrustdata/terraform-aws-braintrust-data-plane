@@ -158,12 +158,6 @@ module "braintrust-data-plane" {
   #   enabled = true
   # }
 
-  # Opt-in: VPC Encryption Control for module-created VPCs. Enforces encryption in
-  # transit. Options: "disabled" (default) | "monitoring" | "enforced". See the
-  # module README "VPC Encryption Control" section.
-  # main_vpc_encryption_control       = "monitoring"
-  # quarantine_vpc_encryption_control = "monitoring"
-
   # Opt-in: S3 server access logging for the brainstore, code-bundle, and
   # lambda-responses buckets. Attach the destination bucket policy (grant
   # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination

@@ -153,14 +153,6 @@ module "braintrust-data-plane" {
   #   enabled = true
   # }
 
-  # VPC Encryption Control (disabled by default; only applied to VPCs this module creates).
-  # Enforces encryption in transit for VPC traffic. Options: "disabled" | "monitoring" | "enforced".
-  # Start with "monitoring" (AWS "monitor" mode: reports unencrypted traffic without blocking it),
-  # then move to "enforced" (AWS "enforce" mode: blocks unencrypted traffic) once findings are clean.
-  # See the module README "VPC Encryption Control" section.
-  # main_vpc_encryption_control       = "monitoring"
-  # quarantine_vpc_encryption_control = "monitoring"
-
 
   ### Advanced configuration
 

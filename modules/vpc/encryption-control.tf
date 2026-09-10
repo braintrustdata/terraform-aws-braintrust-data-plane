@@ -2,21 +2,16 @@
 # VPC Encryption Control (optional)
 ########################################
 # Enforces encryption in transit for traffic in this VPC. Disabled by default;
-# the resource is created only when var.encryption_control is "monitoring" or
-# "enforced". The module-facing options map to the AWS mode values:
-#   monitoring -> monitor   (observe only, does not block unencrypted traffic)
-#   enforced   -> enforce   (require encryption in transit)
+# the resource is created only when var.encryption_control is "monitor" or
+# "enforce", which are passed straight through as the AWS mode:
+#   monitor -> observe only, does not block unencrypted traffic
+#   enforce -> require encryption in transit
 
 locals {
   encryption_control_enabled = var.encryption_control != "disabled"
 
-  encryption_control_mode_map = {
-    monitoring = "monitor"
-    enforced   = "enforce"
-  }
-
   # Null when disabled so downstream lookups do not fail.
-  encryption_control_mode = local.encryption_control_enabled ? local.encryption_control_mode_map[var.encryption_control] : null
+  encryption_control_mode = local.encryption_control_enabled ? var.encryption_control : null
 }
 
 resource "aws_vpc_encryption_control" "vpc" {
