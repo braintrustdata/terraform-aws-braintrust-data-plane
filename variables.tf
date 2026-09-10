@@ -361,6 +361,40 @@ variable "quarantine_vpc_flow_log" {
   }
 }
 
+# VPC Encryption Control (only applied to VPCs this module creates)
+variable "main_vpc_encryption_control" {
+  description = <<-EOT
+    VPC Encryption Control for the main VPC. Enforces encryption in transit for VPC traffic.
+    Only applied when create_vpc is true. Disabled by default; the resource is created only when
+    a mode is selected:
+      - "disabled":   no resource is created (default).
+      - "monitoring": create the resource in AWS "monitor" mode (observe only, does not block traffic).
+      - "enforced":   create the resource in AWS "enforce" mode (require encryption in transit).
+  EOT
+  type        = string
+  default     = "disabled"
+
+  validation {
+    condition     = contains(["disabled", "monitoring", "enforced"], var.main_vpc_encryption_control)
+    error_message = "main_vpc_encryption_control must be one of \"disabled\", \"monitoring\", or \"enforced\"."
+  }
+}
+
+variable "quarantine_vpc_encryption_control" {
+  description = <<-EOT
+    VPC Encryption Control for the quarantine VPC. Only applied when the quarantine VPC is created
+    by this module (enable_quarantine_vpc is true and no existing_quarantine_vpc_id is provided).
+    Same options and behavior as main_vpc_encryption_control.
+  EOT
+  type        = string
+  default     = "disabled"
+
+  validation {
+    condition     = contains(["disabled", "monitoring", "enforced"], var.quarantine_vpc_encryption_control)
+    error_message = "quarantine_vpc_encryption_control must be one of \"disabled\", \"monitoring\", or \"enforced\"."
+  }
+}
+
 
 ## Database
 variable "postgres_instance_type" {

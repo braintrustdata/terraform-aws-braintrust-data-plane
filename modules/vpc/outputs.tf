@@ -67,3 +67,18 @@ output "flow_log_cloudwatch_log_group_arn" {
   description = "ARN of the module-managed CloudWatch log group used for VPC Flow Logs, if created"
   value       = local.create_flow_log_log_group ? aws_cloudwatch_log_group.flow_log[0].arn : null
 }
+
+output "encryption_control_enabled" {
+  description = "True when VPC Encryption Control is enabled for this VPC"
+  value       = local.encryption_control_enabled
+}
+
+output "encryption_control_mode" {
+  description = "AWS VPC Encryption Control mode in effect (\"monitor\" or \"enforce\"). Null when disabled."
+  value       = local.encryption_control_mode
+}
+
+output "encryption_control_id" {
+  description = "ID of the VPC Encryption Control resource, if enabled"
+  value       = local.encryption_control_enabled ? aws_vpc_encryption_control.vpc[0].id : null
+}

@@ -141,6 +141,21 @@ quarantine_vpc_flow_log = {
 }
 ```
 
+### VPC Encryption Control
+
+[VPC Encryption Control](https://docs.aws.amazon.com/vpc/latest/userguide/encryption-control.html) enforces encryption in transit for traffic in a VPC. It is disabled by default and only applies to VPCs this module creates (`create_vpc = true` / a module-managed quarantine VPC). Configure the main and quarantine VPCs separately via `main_vpc_encryption_control` and `quarantine_vpc_encryption_control`.
+
+Each accepts one of:
+
+- **`"disabled"`** (default) — no `aws_vpc_encryption_control` resource is created.
+- **`"monitoring"`** — creates the resource in AWS `monitor` mode. Unencrypted traffic is reported but still allowed, so you can assess impact before enforcing.
+- **`"enforced"`** — creates the resource in AWS `enforce` mode. Traffic that is not encrypted in transit is blocked. Enable this only after reviewing `monitoring` findings, since it can break workloads that rely on unencrypted paths.
+
+```hcl
+main_vpc_encryption_control       = "enforced"
+quarantine_vpc_encryption_control = "monitoring"
+```
+
 ### S3 Server Access Logging
 
 S3 server access logging is disabled by default. Enable it to deliver access logs from the brainstore, code-bundle, and lambda-responses buckets to an S3 bucket you own. This is commonly used for audit and compliance requirements.

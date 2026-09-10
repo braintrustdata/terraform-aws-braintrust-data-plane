@@ -170,6 +170,7 @@ module "main_vpc" {
   custom_tags                          = local.all_custom_tags
   permissions_boundary_arn             = var.permissions_boundary_arn
   flow_log                             = local.main_vpc_flow_log
+  encryption_control                   = var.main_vpc_encryption_control
 }
 
 module "quarantine_vpc" {
@@ -193,6 +194,7 @@ module "quarantine_vpc" {
   custom_tags                          = local.all_custom_tags
   permissions_boundary_arn             = var.permissions_boundary_arn
   flow_log                             = local.quarantine_vpc_flow_log
+  encryption_control                   = var.quarantine_vpc_encryption_control
 }
 
 module "database" {
