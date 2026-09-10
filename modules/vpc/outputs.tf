@@ -74,8 +74,8 @@ output "encryption_control_enabled" {
 }
 
 output "encryption_control_mode" {
-  description = "AWS VPC Encryption Control mode in effect (\"monitor\" or \"enforce\"). Null when disabled."
-  value       = local.encryption_control_mode
+  description = "VPC Encryption Control mode in effect (\"monitor\" or \"enforce\"). Null when disabled."
+  value       = var.encryption_control_mode
 }
 
 output "encryption_control_id" {

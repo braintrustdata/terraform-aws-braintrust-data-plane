@@ -143,17 +143,17 @@ quarantine_vpc_flow_log = {
 
 ### VPC Encryption Control
 
-[VPC Encryption Control](https://docs.aws.amazon.com/vpc/latest/userguide/encryption-control.html) enforces encryption in transit for traffic in a VPC. It is disabled by default and only applies to VPCs this module creates (`create_vpc = true` / a module-managed quarantine VPC). Configure the main and quarantine VPCs separately via `main_vpc_encryption_control` and `quarantine_vpc_encryption_control`.
+[VPC Encryption Control](https://docs.aws.amazon.com/vpc/latest/userguide/encryption-control.html) enforces encryption in transit for traffic in a VPC. It is disabled by default and only applies to VPCs this module creates (`create_vpc = true` / a module-managed quarantine VPC). Configure the main and quarantine VPCs separately via `main_vpc_encryption_control_mode` and `quarantine_vpc_encryption_control_mode`.
 
 Each accepts one of:
 
-- **`"disabled"`** (default) — no `aws_vpc_encryption_control` resource is created.
+- **`null`** (default) — no `aws_vpc_encryption_control` resource is created.
 - **`"monitor"`** — creates the resource in `monitor` mode. Unencrypted traffic is reported but still allowed, so you can assess impact before enforcing.
 - **`"enforce"`** — creates the resource in `enforce` mode. Traffic that is not encrypted in transit is blocked. Enable this only after reviewing `monitor` findings, since it can break workloads that rely on unencrypted paths.
 
 ```hcl
-main_vpc_encryption_control       = "enforce"
-quarantine_vpc_encryption_control = "monitor"
+main_vpc_encryption_control_mode       = "enforce"
+quarantine_vpc_encryption_control_mode = "monitor"
 ```
 
 ### S3 Server Access Logging

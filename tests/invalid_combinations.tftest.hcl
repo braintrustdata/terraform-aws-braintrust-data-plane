@@ -113,10 +113,10 @@ run "rejects_invalid_encryption_control_mode" {
   command = plan
 
   variables {
-    main_vpc_encryption_control = "enforced"
+    main_vpc_encryption_control_mode = "enforced"
   }
 
   expect_failures = [
-    var.main_vpc_encryption_control,
+    var.main_vpc_encryption_control_mode,
   ]
 }

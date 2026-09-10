@@ -24,7 +24,7 @@ run "monitor_enables_main_vpc" {
   command = plan
 
   variables {
-    main_vpc_encryption_control = "monitor"
+    main_vpc_encryption_control_mode = "monitor"
   }
 
   assert {
@@ -47,7 +47,7 @@ run "enforce_enables_quarantine_vpc" {
   command = plan
 
   variables {
-    quarantine_vpc_encryption_control = "enforce"
+    quarantine_vpc_encryption_control_mode = "enforce"
   }
 
   assert {

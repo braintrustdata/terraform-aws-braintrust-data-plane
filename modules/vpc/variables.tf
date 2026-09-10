@@ -160,19 +160,19 @@ variable "flow_log" {
   }
 }
 
-variable "encryption_control" {
+variable "encryption_control_mode" {
   description = <<-EOT
-    VPC Encryption Control for this VPC. Enforces encryption in transit for VPC traffic.
-    Disabled by default; the aws_vpc_encryption_control resource is only created when enabled.
-      - "disabled": no resource is created.
-      - "monitor":  create the resource in monitor mode (observe only, do not block traffic).
-      - "enforce":  create the resource in enforce mode (require encryption in transit).
+    VPC Encryption Control mode for this VPC. Enforces encryption in transit for VPC traffic.
+    Disabled by default; the aws_vpc_encryption_control resource is only created when a mode is set.
+      - null:      no resource is created (default).
+      - "monitor": create the resource in monitor mode (observe only, do not block traffic).
+      - "enforce": create the resource in enforce mode (require encryption in transit).
   EOT
   type        = string
-  default     = "disabled"
+  default     = null
 
   validation {
-    condition     = contains(["disabled", "monitor", "enforce"], var.encryption_control)
-    error_message = "encryption_control must be one of \"disabled\", \"monitor\", or \"enforce\"."
+    condition     = var.encryption_control_mode == null || contains(["monitor", "enforce"], coalesce(var.encryption_control_mode, "monitor"))
+    error_message = "encryption_control_mode must be null, \"monitor\", or \"enforce\"."
   }
 }
