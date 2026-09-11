@@ -15,6 +15,25 @@ locals {
     var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : module.brainstore[0].dns_name,
     module.brainstore[0].port,
   ) : ""
+
+  # Codex app-server on the Loop ECS task is the LLM client. Exec-server in
+  # the MicroVM never calls this URL. Prefer the in-VPC private gateway ALB
+  # when it exists; otherwise hosted gateway or CloudFront API /v1/proxy.
+  # Do not use the AI Proxy Function URL — that hop is for internet-mode /
+  # quarantine callers, not Loop.
+  hosted_ai_gateway_proxy_url = format(
+    "https://%s/v1/proxy",
+    trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
+  )
+  loop_runtime_ai_proxy_url = (
+    local.create_ai_gateway
+    ? "${one(module.gateway_alb[*].gateway_url)}/v1/proxy"
+    : (
+      var.use_global_ai_gateway_origin
+      ? local.hosted_ai_gateway_proxy_url
+      : one(module.ingress[*].api_url)
+    )
+  )
 }
 
 module "loop_runtime_alb" {
@@ -97,7 +116,7 @@ module "loop_runtime_ecs" {
   code_bundle_bucket_arn           = module.storage.code_bundle_bucket_arn
 
   brainstore_reader_url = local.loop_runtime_brainstore_reader_url
-  ai_proxy_url          = local.self_hosted_ai_proxy_url
+  ai_proxy_url          = local.loop_runtime_ai_proxy_url
   braintrust_api_url    = module.ingress[0].api_url
 
   # Shared Brainstore WAL format + lock prefix — must match the API/Brainstore writers.
@@ -108,13 +127,14 @@ module "loop_runtime_ecs" {
   brainstore_license_key = var.brainstore_license_key
   monitoring_telemetry   = var.monitoring_telemetry
 
-  # SG ingress targets so tasks can reach Postgres / Redis / Brainstore
+  # SG ingress targets so tasks can reach Postgres / Redis / Brainstore / gateway
   database_security_group_id   = module.database.rds_security_group_id
   database_port                = module.database.postgres_database_port
   redis_security_group_id      = module.redis.redis_security_group_id
   redis_port                   = module.redis.redis_port
   brainstore_security_group_id = module.brainstore[0].brainstore_elb_security_group_id
   brainstore_port              = module.brainstore[0].port
+  gateway_security_group_id    = local.create_ai_gateway ? one(module.gateway_alb[*].gateway_alb_security_group_id) : null
 
   # Runtime config
   org_name        = var.loop_runtime_org_name
