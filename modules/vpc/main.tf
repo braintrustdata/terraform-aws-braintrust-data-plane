@@ -286,7 +286,9 @@ resource "aws_security_group" "vpc_endpoints_tls" {
     cidr_blocks = [var.vpc_cidr]
   }
 
-  tags = local.common_tags
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-vpc-endpoints"
+  }, local.common_tags)
 }
 
 resource "aws_vpc_endpoint" "ec2_ssm_endpoint" {
