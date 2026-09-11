@@ -159,3 +159,10 @@ variable "flow_log" {
     error_message = "flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
   }
 }
+
+variable "create_secrets_manager_vpc_endpoint" {
+  description = "Create a Secrets Manager interface endpoint with Private DNS in all three private subnets."
+  # The root enables this by default only for main; quarantine keeps it disabled.
+  type    = bool
+  default = false
+}

@@ -111,6 +111,12 @@ variable "create_vpc" {
   description = "Whether to create a new VPC. If false, existing VPC details must be provided."
 }
 
+variable "create_secrets_manager_vpc_endpoint" {
+  type        = bool
+  default     = true
+  description = "Create a Secrets Manager interface endpoint with Private DNS in all three main VPC private subnets. Only applies when create_vpc is true; does not create an endpoint in quarantine or an existing VPC. Adds interface endpoint charges and routes the standard regional Secrets Manager hostname through the endpoint for callers using VPC DNS. Set false to opt out."
+}
+
 variable "vpc_cidr" {
   type        = string
   default     = "10.175.0.0/21"
