@@ -157,6 +157,26 @@
       }
     },
     {
+      "Sid": "DenyManagementRoleSelfModification",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DeleteRole",
+        "iam:DeleteRolePermissionsBoundary",
+        "iam:DeleteRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PassRole",
+        "iam:PutRolePermissionsBoundary",
+        "iam:PutRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription"
+      ],
+      "Resource": "{{management_role_arn}}"
+    },
+    {
       "Sid": "AllowReadOnlyAccountContext",
       "Effect": "Allow",
       "Action": [
