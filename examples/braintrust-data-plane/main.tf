@@ -127,6 +127,10 @@ module "braintrust-data-plane" {
   # You might need to adjust this so it does not conflict with any other VPC CIDR blocks you intend to peer with Braintrust
   # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
+  # Optional: private Secrets Manager access in a module-managed main VPC.
+  # Adds interface endpoint charges; Private DNS redirects regional API calls.
+  # create_secrets_manager_vpc_endpoint = true
+
   # VPC Flow Logs (disabled by default; only applied to VPCs this module creates).
   # Configure the main and quarantine VPCs separately.
   #
