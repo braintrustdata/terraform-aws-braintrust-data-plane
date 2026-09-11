@@ -1,5 +1,5 @@
-# Mocked plans verify the endpoint works independently of SSM and rejects
-# existing-VPC configurations where this module cannot create the endpoint.
+# Mocked plans cover default enablement, SSM independence, opt-out, and
+# existing-VPC compatibility where the main VPC module is not instantiated.
 mock_provider "aws" {
   source = "./tests/mocks/aws"
 }
@@ -11,11 +11,10 @@ mock_provider "http" {
 }
 
 variables {
-  braintrust_org_name                 = "test-org"
-  primary_org_name                    = "test-org"
-  deployment_name                     = "bt-test"
-  brainstore_license_key              = "test-license"
-  create_secrets_manager_vpc_endpoint = true
+  braintrust_org_name    = "test-org"
+  primary_org_name       = "test-org"
+  deployment_name        = "bt-test"
+  brainstore_license_key = "test-license"
 }
 
 run "secrets_manager_without_ssm" {
@@ -34,7 +33,15 @@ run "secrets_manager_with_ssm" {
   }
 }
 
-run "existing_vpc_rejected" {
+run "secrets_manager_opt_out" {
+  command = plan
+
+  variables {
+    create_secrets_manager_vpc_endpoint = false
+  }
+}
+
+run "existing_vpc_skips_endpoint" {
   command = plan
 
   variables {
@@ -46,5 +53,8 @@ run "existing_vpc_rejected" {
     existing_public_subnet_1_id  = "subnet-44444444"
   }
 
-  expect_failures = [var.create_secrets_manager_vpc_endpoint]
+  assert {
+    condition     = length(module.main_vpc) == 0
+    error_message = "An existing main VPC must not instantiate the VPC module or its endpoints."
+  }
 }

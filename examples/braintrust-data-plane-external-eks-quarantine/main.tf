@@ -141,9 +141,9 @@ module "braintrust-data-plane" {
   # You might need to adjust this so it does not conflict with any other VPC CIDR blocks you intend to peer with Braintrust.
   # vpc_cidr = "10.175.0.0/21"
 
-  # Optional: private Secrets Manager access in a module-managed main VPC.
+  # Secrets Manager endpoint is enabled by default in a module-managed main VPC.
   # Adds interface endpoint charges; Private DNS redirects regional API calls.
-  # create_secrets_manager_vpc_endpoint = true
+  # create_secrets_manager_vpc_endpoint = false # Opt out.
 
   ### Tagging
   # Optionally add any custom AWS tags you want to apply to all resources created by the module

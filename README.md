@@ -98,14 +98,18 @@ The module creates these AWS service endpoints in VPCs it manages:
 | --- | --- | --- | --- |
 | S3 | Gateway | Always, in both main and quarantine VPCs when created; attached to their private route tables | Not applicable |
 | SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) | Enabled |
-| Secrets Manager | Interface | Main VPC with `create_secrets_manager_vpc_endpoint = true` (default `false`) | Enabled |
+| Secrets Manager | Interface | Main VPC with `create_secrets_manager_vpc_endpoint = true` (default `true`) | Enabled |
 
 SSM and Secrets Manager endpoints span all three private subnets and share a
 security group allowing HTTPS (TCP 443) from the VPC CIDR. Private DNS lets
 existing SDK and CLI calls use the endpoints without URL overrides. Interface
 endpoint charges apply.
 
-The Secrets Manager option is independent of SSM and requires `create_vpc = true`.
+Secrets Manager is enabled by default independently of SSM. Upgrading a deployment
+with a module-managed main VPC adds the endpoint and redirects regional Secrets
+Manager calls through it. Set `create_secrets_manager_vpc_endpoint = false` to
+retain the previous network path and avoid the additional endpoint charges.
+The option has no effect when `create_vpc = false`.
 The module does not create these AWS service endpoints inside supplied existing
 VPCs. With `create_vpc = false`, it can still create an S3 endpoint in a separate,
 module-managed quarantine VPC.

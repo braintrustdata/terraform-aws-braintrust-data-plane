@@ -162,6 +162,7 @@ variable "flow_log" {
 
 variable "create_secrets_manager_vpc_endpoint" {
   description = "Create a Secrets Manager interface endpoint with Private DNS in all three private subnets."
-  type        = bool
-  default     = false
+  # The root enables this by default only for main; quarantine keeps it disabled.
+  type    = bool
+  default = false
 }

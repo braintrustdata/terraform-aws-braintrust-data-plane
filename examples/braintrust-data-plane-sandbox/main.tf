@@ -138,9 +138,9 @@ module "braintrust-data-plane" {
   # vpc_cidr            = "10.175.0.0/21"
   # quarantine_vpc_cidr = "10.175.8.0/21"
 
-  # Optional: private Secrets Manager access in a module-managed main VPC.
+  # Secrets Manager endpoint is enabled by default in a module-managed main VPC.
   # Adds interface endpoint charges; Private DNS redirects regional API calls.
-  # create_secrets_manager_vpc_endpoint = true
+  # create_secrets_manager_vpc_endpoint = false # Opt out.
 
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
