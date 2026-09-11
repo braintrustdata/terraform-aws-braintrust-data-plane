@@ -18,7 +18,6 @@ resource "aws_lambda_function" "ai_proxy" {
   timeout                        = 900
   publish                        = true
   kms_key_arn                    = var.kms_key_arn
-  # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
     [local.duckdb_nodejs_arm64_layer_arn],
     local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []
@@ -71,6 +70,7 @@ resource "aws_lambda_function_url" "ai_proxy" {
       "x-bt-org-name",
       "x-bt-project-id",
       "x-bt-auth-token",
+      "x-bt-endpoint-name",
       "x-bt-stream-fmt",
       "x-bt-use-cache",
       "x-bt-use-gateway",
@@ -105,6 +105,12 @@ resource "aws_lambda_alias" "ai_proxy_live" {
 
 # Function URL auth model (by Nov 2026) requires both InvokeFunctionUrl and InvokeFunction
 resource "aws_lambda_permission" "ai_proxy" {
+  # authorization_type = "NONE" makes the AWS provider add public URL
+  # permissions during aws_lambda_function_url creation. Lambda serializes
+  # resource-policy updates, so wait for those writes before adding the
+  # module-managed alias permission.
+  depends_on = [aws_lambda_function_url.ai_proxy]
+
   statement_id = "AllowFunctionURLInvoke"
   action       = "lambda:InvokeFunctionUrl"
 
@@ -115,6 +121,9 @@ resource "aws_lambda_permission" "ai_proxy" {
 }
 
 resource "aws_lambda_permission" "ai_proxy_invoke" {
+  # Keep the two module-managed AddPermission calls serialized as well.
+  depends_on = [aws_lambda_permission.ai_proxy]
+
   statement_id = "AllowFunctionInvoke"
   action       = "lambda:InvokeFunction"
 

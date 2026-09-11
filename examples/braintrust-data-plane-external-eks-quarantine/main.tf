@@ -65,6 +65,13 @@ module "braintrust-data-plane" {
   # quarantine_vpc_cidr = "10.175.8.0/21"
 
   ### Postgres configuration
+  # Optional connection override. Omit either field to keep using the
+  # corresponding module-managed database value.
+  # postgres_connection_override = {
+  #   host                   = "database.example.internal"
+  #   credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf"
+  # }
+
   # Changing this will incur a short downtime.
   postgres_instance_type = "db.r8g.2xlarge"
 
@@ -97,6 +104,13 @@ module "braintrust-data-plane" {
   # Recommended for critical production environments. Doubles the cost of the RDS instance.
   # postgres_multi_az = false
 
+  # Daily window (UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi.
+  # postgres_backup_window = "00:00-00:30"
+
+  # Weekly window (UTC) during which RDS system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi.
+  # Default is Mon 08:00-11:00 UTC (12am-3am PST).
+  # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
+
   ### Redis configuration
   # Default is acceptable for typical production deployments.
   redis_instance_type = "cache.r7g.large"
@@ -107,6 +121,13 @@ module "braintrust-data-plane" {
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
+
+  # Opt in to wire quarantine → private gateway via PrivateLink
+  # (http://<vpce-dns>/v1/proxy). Default false. Requires create_ai_gateway
+  # and module-managed VPCs (or quarantine_proxy_url). Existing VPC without
+  # an override fails apply, except the global-origin no-op.
+  # use_private_gateway_quarantine_proxy = false
+  # quarantine_proxy_url                 = null
 
   # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
   # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
@@ -134,6 +155,26 @@ module "braintrust-data-plane" {
   # s3_code_bundle_additional_allowed_origins      = []
   # s3_lambda_responses_additional_allowed_origins = []
 
+  # Opt-in: VPC Flow Logs for module-created VPCs. Leave unset to disable.
+  # A customer-provided S3 destination must already allow
+  # delivery.logs.amazonaws.com. See the module README "VPC Flow Logs" section.
+  # main_vpc_flow_log = {
+  #   enabled = true
+  # }
+  # quarantine_vpc_flow_log = {
+  #   enabled = true
+  # }
+
+  # Opt-in: S3 server access logging for the brainstore, code-bundle, and
+  # lambda-responses buckets. Attach the destination bucket policy (grant
+  # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination
+  # must use SSE-S3 (AES256), not SSE-KMS. See the module README "S3 Server
+  # Access Logging" section for the required order and policy.
+  # s3_server_access_logging = {
+  #   bucket = "your-audit-logs-bucket"
+  #   prefix = "braintrust/"
+  # }
+
   # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # s3_export_assume_role_arns = [
   #   "arn:aws:iam::123456789012:role/customer-export-role",
@@ -143,4 +184,11 @@ module "braintrust-data-plane" {
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # Only applies when create_ai_gateway is true.
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+
+  # Opt-in: restrict S3 VPC gateway endpoint (org and account lists compose; empty = unrestricted).
+  # Current account is always allowed. When restricted, ECR starport + CloudWatch agent GetObject
+  # exceptions are added automatically. Applies to any module-managed S3 VPC endpoint
+  # (main and/or quarantine); does not modify customer-managed existing_* VPC endpoints.
+  # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
+  # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
 }

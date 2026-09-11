@@ -201,7 +201,7 @@ variable "enable_quarantine_vpc" {
 variable "quarantine_vpc_cidr" {
   type        = string
   default     = "10.175.8.0/21"
-  description = "CIDR block for the Quarantined VPC (only used when creating a new quarantine VPC)"
+  description = "CIDR block for the Quarantined VPC. Used when creating a new quarantine VPC. When using existing_quarantine_vpc_id, set this to the real quarantine CIDR for documentation/ops clarity; PrivateLink quarantine→gateway does not open the gateway ALB to this CIDR (NLB SG only)."
 }
 
 # Existing Quarantine VPC variables (when provided, uses existing VPC instead of creating one)
@@ -265,6 +265,102 @@ variable "quarantine_public_subnet_1_az" {
   description = "Availability zone for the public subnet. Leave blank to choose the first available zone"
 }
 
+# VPC Flow Logs (only applied to VPCs this module creates)
+variable "main_vpc_flow_log" {
+  description = <<-EOT
+    VPC Flow Logs configuration for the main VPC. Only applied when create_vpc is true.
+    Disabled by default. When enabled, a destination is required:
+      - destination_type = "s3": set destination_arn to your S3 bucket ARN, or leave it null to have
+        the module create a dedicated S3 bucket. A customer-provided bucket must already allow
+        delivery.logs.amazonaws.com to s3:PutObject and s3:GetBucketAcl (see README).
+      - destination_type = "cloud-watch-logs": set destination_arn to your CloudWatch log group ARN
+        (bare log-group ARN, without a trailing :*), or leave it null to have the module create one.
+    traffic_type may be ALL, ACCEPT, or REJECT.
+    retention_in_days applies to a module-managed CloudWatch log group and to lifecycle
+    expiration on a module-managed S3 bucket (0 = never expire / skip S3 expiration).
+    A customer-provided destination is unmanaged.
+    Module-managed destinations are encrypted with the data-plane KMS key unless you set kms_key_arn
+    to a different CMK (S3: delivery.logs.amazonaws.com; CloudWatch: logs.<region>.amazonaws.com).
+    The managed S3 bucket does not set force_destroy. After objects exist, disable/destroy fails
+    with BucketNotEmpty until you empty the bucket or remove it from Terraform state. A full
+    stack destroy must also preserve the encrypting KMS key (see README).
+  EOT
+  type = object({
+    enabled                  = optional(bool, false)
+    traffic_type             = optional(string, "ALL")
+    destination_type         = optional(string, "s3")
+    destination_arn          = optional(string, null)
+    max_aggregation_interval = optional(number, 600)
+    log_format               = optional(string, null)
+    retention_in_days        = optional(number, 365)
+    kms_key_arn              = optional(string, null)
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["ALL", "ACCEPT", "REJECT"], var.main_vpc_flow_log.traffic_type)
+    error_message = "main_vpc_flow_log.traffic_type must be one of ALL, ACCEPT, or REJECT."
+  }
+  validation {
+    condition     = contains(["s3", "cloud-watch-logs"], var.main_vpc_flow_log.destination_type)
+    error_message = "main_vpc_flow_log.destination_type must be either \"s3\" or \"cloud-watch-logs\"."
+  }
+  validation {
+    condition     = contains([60, 600], var.main_vpc_flow_log.max_aggregation_interval)
+    error_message = "main_vpc_flow_log.max_aggregation_interval must be either 60 or 600 seconds."
+  }
+  validation {
+    condition = var.main_vpc_flow_log.destination_type != "cloud-watch-logs" ? (
+      var.main_vpc_flow_log.retention_in_days >= 0
+      ) : contains([
+        0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+        365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.main_vpc_flow_log.retention_in_days)
+    error_message = "main_vpc_flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
+  }
+}
+
+variable "quarantine_vpc_flow_log" {
+  description = <<-EOT
+    VPC Flow Logs configuration for the quarantine VPC. Only applied when the quarantine VPC is created
+    by this module (enable_quarantine_vpc is true and no existing_quarantine_vpc_id is provided).
+    Same shape and behavior as main_vpc_flow_log.
+  EOT
+  type = object({
+    enabled                  = optional(bool, false)
+    traffic_type             = optional(string, "ALL")
+    destination_type         = optional(string, "s3")
+    destination_arn          = optional(string, null)
+    max_aggregation_interval = optional(number, 600)
+    log_format               = optional(string, null)
+    retention_in_days        = optional(number, 365)
+    kms_key_arn              = optional(string, null)
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["ALL", "ACCEPT", "REJECT"], var.quarantine_vpc_flow_log.traffic_type)
+    error_message = "quarantine_vpc_flow_log.traffic_type must be one of ALL, ACCEPT, or REJECT."
+  }
+  validation {
+    condition     = contains(["s3", "cloud-watch-logs"], var.quarantine_vpc_flow_log.destination_type)
+    error_message = "quarantine_vpc_flow_log.destination_type must be either \"s3\" or \"cloud-watch-logs\"."
+  }
+  validation {
+    condition     = contains([60, 600], var.quarantine_vpc_flow_log.max_aggregation_interval)
+    error_message = "quarantine_vpc_flow_log.max_aggregation_interval must be either 60 or 600 seconds."
+  }
+  validation {
+    condition = var.quarantine_vpc_flow_log.destination_type != "cloud-watch-logs" ? (
+      var.quarantine_vpc_flow_log.retention_in_days >= 0
+      ) : contains([
+        0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+        365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.quarantine_vpc_flow_log.retention_in_days)
+    error_message = "quarantine_vpc_flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
+  }
+}
+
 
 ## Database
 variable "postgres_instance_type" {
@@ -309,6 +405,44 @@ variable "postgres_version" {
   default     = "15"
 }
 
+variable "postgres_connection_override" {
+  description = <<-EOT
+    Optional PostgreSQL connection override. Omitted fields continue using the
+    module-managed database values. The credentials secret must contain JSON
+    fields named "username" and "password". If encrypted with a customer-managed
+    KMS key, it must use kms_key_arn.
+  EOT
+  type = object({
+    host                   = optional(string)
+    credentials_secret_arn = optional(string)
+  })
+  default = null
+
+  validation {
+    condition = var.postgres_connection_override == null || try(
+      var.postgres_connection_override.host != null || var.postgres_connection_override.credentials_secret_arn != null,
+      false,
+    )
+    error_message = "postgres_connection_override must specify host, credentials_secret_arn, or both."
+  }
+
+  validation {
+    condition = var.postgres_connection_override == null || try(
+      var.postgres_connection_override.host == null || try(trimspace(var.postgres_connection_override.host), "") != "",
+      false,
+    )
+    error_message = "postgres_connection_override.host must be null or a non-empty string."
+  }
+
+  validation {
+    condition = var.postgres_connection_override == null || try(
+      var.postgres_connection_override.credentials_secret_arn == null || try(trimspace(var.postgres_connection_override.credentials_secret_arn), "") != "",
+      false,
+    )
+    error_message = "postgres_connection_override.credentials_secret_arn must be null or a non-empty string."
+  }
+}
+
 variable "postgres_multi_az" {
   description = "Specifies if the RDS instance is multi-AZ. Increases cost but provides higher availability. Recommended for production environments."
   type        = bool
@@ -345,6 +479,18 @@ variable "postgres_backup_retention_period" {
   default     = 14
 }
 
+variable "postgres_backup_window" {
+  description = "The daily time range (in UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi."
+  type        = string
+  default     = "00:00-00:30"
+}
+
+variable "postgres_maintenance_window" {
+  description = "The weekly time range (in UTC) during which system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi. Default is Mon 08:00-11:00 UTC (12am-3am PST)."
+  type        = string
+  default     = "Mon:08:00-Mon:11:00"
+}
+
 variable "DANGER_disable_database_deletion_protection" {
   type        = bool
   description = "Disable deletion protection for the database. Do not disable this unless you fully intend to destroy the database."
@@ -376,6 +522,11 @@ variable "redis_authorized_security_groups" {
   default     = {}
 }
 
+variable "redis_apply_immediately" {
+  description = "Apply Redis changes immediately instead of during the maintenance window"
+  type        = bool
+  default     = false
+}
 ## Services
 
 variable "create_ai_gateway" {
@@ -844,6 +995,23 @@ variable "braintrust_api_extra_env_vars" {
   }
 }
 
+variable "custom_ca_bundle_secret_arn" {
+  description = "Optional ARN of an existing AWS Secrets Manager secret containing a PEM-encoded custom CA bundle for API ECS, Brainstore EC2, and Gateway ECS outbound HTTPS."
+  type        = string
+  default     = null
+}
+
+variable "custom_ca_bundle_kms_key_arn" {
+  description = "Optional ARN of the customer-managed KMS key encrypting custom_ca_bundle_secret_arn. Leave unset when the secret uses the default Secrets Manager KMS key."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.custom_ca_bundle_kms_key_arn == null || var.custom_ca_bundle_secret_arn != null
+    error_message = "custom_ca_bundle_secret_arn must be set when custom_ca_bundle_kms_key_arn is set."
+  }
+}
+
 variable "braintrust_api_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)
@@ -983,6 +1151,53 @@ variable "enable_s3_bucket_abac" {
   default     = false
 }
 
+variable "s3_server_access_logging" {
+  description = "Opt-in. Configure S3 server access logging for the brainstore, code-bundle, and lambda-responses buckets. Leave null to disable (default). Attach the destination bucket policy that grants s3:PutObject to logging.s3.amazonaws.com before setting this variable. The destination bucket must be in the same AWS account and region as this deployment, must not have Object Lock, and must use SSE-S3 (AES256) default encryption, not SSE-KMS. Useful for audit and compliance requirements."
+  type = object({
+    bucket = string
+    prefix = optional(string)
+  })
+  default = null
+
+  validation {
+    condition = var.s3_server_access_logging == null ? true : (
+      length(var.s3_server_access_logging.bucket) > 0 && (
+        var.s3_server_access_logging.prefix == null ||
+        var.s3_server_access_logging.prefix == "" ||
+        endswith(var.s3_server_access_logging.prefix, "/")
+      )
+    )
+    error_message = "s3_server_access_logging.bucket must be non-empty; prefix must be null, empty, or end with '/'."
+  }
+}
+
+variable "existing_attachment_s3_bucket_arn" {
+  description = "Opt-in. ARN of a caller-provided S3 bucket used to store attachments. This module does not create, own, or modify the bucket; it only grants the API roles access and wires the ATTACHMENT_BUCKET env var. Leave null to disable (default)."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_attachment_s3_bucket_arn == null || can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", coalesce(var.existing_attachment_s3_bucket_arn, "arn:aws:s3:::placeholder")))
+    error_message = "existing_attachment_s3_bucket_arn must be an S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_attachment_s3_bucket_kms_key_arn" {
+  description = "Opt-in. ARN of the KMS key used to encrypt the caller-provided attachment bucket (see existing_attachment_s3_bucket_arn). When set, the API roles are granted KMS permissions on this key. Requires existing_attachment_s3_bucket_arn. Leave null when the bucket uses SSE-S3 (AES256) or no attachment bucket is configured."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_attachment_s3_bucket_kms_key_arn == null || can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-zA-Z-]+$", coalesce(var.existing_attachment_s3_bucket_kms_key_arn, "arn:aws:kms:us-east-1:000000000000:key/placeholder")))
+    error_message = "existing_attachment_s3_bucket_kms_key_arn must be a complete KMS key ARN of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
+  }
+
+  validation {
+    condition     = var.existing_attachment_s3_bucket_kms_key_arn == null || var.existing_attachment_s3_bucket_arn != null
+    error_message = "existing_attachment_s3_bucket_arn is required when existing_attachment_s3_bucket_kms_key_arn is set."
+  }
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number
@@ -1010,6 +1225,28 @@ variable "custom_domain" {
   description = "Custom domain name for the CloudFront distribution"
   type        = string
   default     = null
+}
+
+variable "quarantine_proxy_url" {
+  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, see use_private_gateway_quarantine_proxy for how the URL is chosen."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+  }
+}
+
+variable "use_private_gateway_quarantine_proxy" {
+  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; does not fail). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
+    error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
+  }
 }
 
 variable "custom_certificate_arn" {
@@ -1041,6 +1278,24 @@ variable "cloudfront_origin_read_timeout" {
   }
 }
 
+variable "cloudfront_minimum_protocol_version" {
+  description = "Minimum TLS protocol version that CloudFront uses for HTTPS connections from viewers. Requires custom_certificate_arn to be set (CloudFront cannot set a minimum protocol version on the default certificate). When unset with a custom certificate, defaults to TLSv1.3_2025. Lower this (e.g. to TLSv1.2_2021) to support clients that cannot negotiate TLS 1.3. See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/secure-connections-supported-viewer-protocols-ciphers.html"
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.cloudfront_minimum_protocol_version == null ? true : contains([
+      "TLSv1", "TLSv1_2016", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021", "TLSv1.3_2025"
+    ], var.cloudfront_minimum_protocol_version)
+    error_message = "cloudfront_minimum_protocol_version must be one of: TLSv1, TLSv1_2016, TLSv1.1_2016, TLSv1.2_2018, TLSv1.2_2019, TLSv1.2_2021, TLSv1.3_2025."
+  }
+
+  validation {
+    condition     = var.cloudfront_minimum_protocol_version == null || var.custom_certificate_arn != null
+    error_message = "cloudfront_minimum_protocol_version can only be set when custom_certificate_arn is provided. CloudFront rejects a minimum protocol version on the default certificate."
+  }
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the main braintrust API service"
@@ -1060,11 +1315,6 @@ variable "lambda_version_tag_override" {
 }
 
 ## Brainstore
-variable "enable_brainstore" {
-  type        = bool
-  description = "Enable Brainstore for faster analytics"
-  default     = true
-}
 
 variable "brainstore_default" {
   type        = string
@@ -1213,10 +1463,101 @@ variable "ai_gateway_bedrock_assume_role_arns" {
   }
 }
 
+variable "s3_vpc_endpoint_resource_org_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
+    Composes with s3_vpc_endpoint_resource_account_ids (union of Allow statements) so you can allow an
+    org and also specific accounts (e.g. cross-org export destinations).
+    When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway (Brainstore, code bundles, lambda responses, and export).
+    The current AWS account is always allowed via aws:ResourceAccount when either list is non-empty.
+    When restricted, the policy also allows GetObject to:
+      - the regional ECR starport layer bucket (private ECR image layers; defaults use public.ecr.aws)
+      - the amazoncloudwatch-agent bucket (Brainstore user-data .deb install)
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
+
+    Applies to any module-managed S3 VPC gateway endpoint (main VPC when create_vpc is true, and
+    quarantine VPC when enable_quarantine_vpc is true and existing_quarantine_vpc_id is unset).
+    Does not modify customer-managed endpoints on existing_* VPC IDs.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for org_id in var.s3_vpc_endpoint_resource_org_ids :
+      can(regex("^o-[a-z0-9]{10,32}$", org_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_org_ids entries must be AWS Organization IDs of the form o-<10-32 lowercase alphanumeric characters>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_account_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
+    Composes with s3_vpc_endpoint_resource_org_ids (union of Allow statements).
+    When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
+
+    Restricting the endpoint applies to all S3 access via the gateway. List additional accounts that
+    should be reachable (e.g. export destinations); the current AWS account is always included
+    automatically when either restriction list is non-empty. When restricted, the policy also allows
+    GetObject to the regional ECR starport layer bucket and the amazoncloudwatch-agent bucket.
+    Adding new same-region AWS-owned S3 dependencies later requires a matching endpoint exception.
+
+    Applies to any module-managed S3 VPC gateway endpoint (main VPC when create_vpc is true, and
+    quarantine VPC when enable_quarantine_vpc is true and existing_quarantine_vpc_id is unset).
+    Does not modify customer-managed endpoints on existing_* VPC IDs.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for account_id in var.s3_vpc_endpoint_resource_account_ids :
+      can(regex("^[0-9]{12}$", account_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_account_ids entries must be 12-digit AWS account IDs."
+  }
+}
+
 variable "brainstore_s3_bucket_retention_days" {
   type        = number
   description = "The number of days to retain non-current S3 objects. e.g. deleted objects"
   default     = 7
+}
+
+variable "create_brainstore_s3_bucket" {
+  type        = bool
+  description = "Whether this module creates and manages the Brainstore S3 bucket (the default). Set to false to consume a caller-provided bucket via existing_brainstore_s3_bucket_arn; the module then creates no bucket, lifecycle, policy, encryption, versioning, ABAC, or public-access resources for it."
+  default     = true
+}
+
+variable "existing_brainstore_s3_bucket_arn" {
+  type        = string
+  description = "ARN of an existing Brainstore S3 bucket to consume when create_brainstore_s3_bucket is false. The bucket's lifecycle is owned by the caller; this module only reads from and writes to it."
+  default     = null
+
+  validation {
+    condition     = var.create_brainstore_s3_bucket ? var.existing_brainstore_s3_bucket_arn == null : var.existing_brainstore_s3_bucket_arn != null
+    error_message = "existing_brainstore_s3_bucket_arn is required when create_brainstore_s3_bucket is false, and must be null when create_brainstore_s3_bucket is true."
+  }
+
+  validation {
+    condition     = var.existing_brainstore_s3_bucket_arn == null ? true : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.existing_brainstore_s3_bucket_arn))
+    error_message = "existing_brainstore_s3_bucket_arn must be a valid S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_brainstore_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the KMS key that encrypts the caller-provided Brainstore bucket. When set, the Brainstore and API roles are granted permission to use this key. Only valid together with existing_brainstore_s3_bucket_arn."
+  default     = null
+
+  validation {
+    condition     = var.existing_brainstore_s3_bucket_kms_key_arn == null || var.existing_brainstore_s3_bucket_arn != null
+    error_message = "existing_brainstore_s3_bucket_kms_key_arn requires existing_brainstore_s3_bucket_arn to be set."
+  }
 }
 
 variable "monitoring_telemetry" {

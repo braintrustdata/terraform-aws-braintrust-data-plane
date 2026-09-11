@@ -37,6 +37,41 @@ moved {
   to   = module.storage.aws_s3_bucket_public_access_block.brainstore
 }
 
+# The module-owned Brainstore bucket resources became conditional
+# (create_brainstore_s3_bucket) so the module can consume a caller-provided
+# bucket instead. Each resource gains a count index; these moves keep existing
+# module-owned buckets in place with no replacement. Chains with the
+# brainstore -> storage moves above.
+moved {
+  from = module.storage.aws_s3_bucket.brainstore
+  to   = module.storage.aws_s3_bucket.brainstore[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_server_side_encryption_configuration.brainstore
+  to   = module.storage.aws_s3_bucket_server_side_encryption_configuration.brainstore[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_versioning.brainstore
+  to   = module.storage.aws_s3_bucket_versioning.brainstore[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_lifecycle_configuration.brainstore
+  to   = module.storage.aws_s3_bucket_lifecycle_configuration.brainstore[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_public_access_block.brainstore
+  to   = module.storage.aws_s3_bucket_public_access_block.brainstore[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_policy.brainstore
+  to   = module.storage.aws_s3_bucket_policy.brainstore[0]
+}
+
 # Code Bundle/Lambda Responses S3 buckets moved from services -> storage
 moved {
   from = module.services.aws_s3_bucket.code_bundle_bucket

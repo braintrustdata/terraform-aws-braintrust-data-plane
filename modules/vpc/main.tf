@@ -1,4 +1,5 @@
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 locals {
   common_tags = merge({
@@ -8,6 +9,110 @@ locals {
     "ssm" : "com.amazonaws.${data.aws_region.current.region}.ssm",
     "ssmmessages" : "com.amazonaws.${data.aws_region.current.region}.ssmmessages",
     "ec2messages" : "com.amazonaws.${data.aws_region.current.region}.ec2messages",
+  }
+
+  s3_vpc_endpoint_has_org_ids = length(var.s3_vpc_endpoint_resource_org_ids) > 0
+  s3_vpc_endpoint_restricted  = local.s3_vpc_endpoint_has_org_ids || length(var.s3_vpc_endpoint_resource_account_ids) > 0
+
+  # Always include this account so module-owned buckets keep working (org and/or account mode).
+  s3_vpc_endpoint_account_ids = distinct(concat(
+    var.s3_vpc_endpoint_resource_account_ids,
+    [data.aws_caller_identity.current.account_id]
+  ))
+}
+
+# Use aws_iam_policy_document (not jsonencode + ternary locals) so unrestricted vs
+# restricted statement shapes do not hit Terraform's inconsistent conditional types.
+# Org and account allowlists compose (union of Allows) for cross-org export destinations.
+data "aws_iam_policy_document" "s3_vpc_endpoint" {
+  dynamic "statement" {
+    for_each = local.s3_vpc_endpoint_restricted ? [] : [1]
+    content {
+      effect    = "Allow"
+      actions   = ["s3:*"]
+      resources = ["*"]
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.s3_vpc_endpoint_has_org_ids ? [1] : []
+    content {
+      sid       = "AllowS3InAllowedOrganizations"
+      effect    = "Allow"
+      actions   = ["s3:*"]
+      resources = ["*"]
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+
+      condition {
+        test     = "StringEquals"
+        variable = "aws:ResourceOrgID"
+        values   = var.s3_vpc_endpoint_resource_org_ids
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.s3_vpc_endpoint_restricted ? [1] : []
+    content {
+      sid       = "AllowS3InAllowedAccounts"
+      effect    = "Allow"
+      actions   = ["s3:*"]
+      resources = ["*"]
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+
+      condition {
+        test     = "StringEquals"
+        variable = "aws:ResourceAccount"
+        values   = local.s3_vpc_endpoint_account_ids
+      }
+    }
+  }
+
+  # Amazon-owned buckets needed when restricted:
+  # - ECR starport: private ECR layer pulls (defaults use public.ecr.aws over NAT/CloudFront;
+  #   this covers private ECR / custom container_image overrides).
+  # - CloudWatch agent: Brainstore user-data .deb from s3.amazonaws.com/amazoncloudwatch-agent/...
+  dynamic "statement" {
+    for_each = local.s3_vpc_endpoint_restricted ? [1] : []
+    content {
+      sid       = "AllowECRStarportLayerBucket"
+      effect    = "Allow"
+      actions   = ["s3:GetObject"]
+      resources = ["arn:aws:s3:::prod-${data.aws_region.current.region}-starport-layer-bucket/*"]
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.s3_vpc_endpoint_restricted ? [1] : []
+    content {
+      sid       = "AllowCloudWatchAgentBucket"
+      effect    = "Allow"
+      actions   = ["s3:GetObject"]
+      resources = ["arn:aws:s3:::amazoncloudwatch-agent/*"]
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
   }
 }
 
@@ -160,17 +265,7 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [aws_route_table.private_route_table.id]
 
-  policy = jsonencode({ # nosemgrep
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Action    = ["s3:*"],
-        Principal = "*",
-        Resource  = ["*"]
-      }
-    ]
-  })
+  policy = data.aws_iam_policy_document.s3_vpc_endpoint.json
 
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-s3-endpoint"

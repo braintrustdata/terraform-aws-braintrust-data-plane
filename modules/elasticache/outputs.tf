@@ -12,6 +12,14 @@ output "redis_arn" {
   description = "Redis ARN"
 }
 
+output "monitoring_target" {
+  description = "ElastiCache target identifiers for CloudWatch monitoring."
+  value = {
+    cache_cluster_id = local.create_legacy_redis_cluster ? aws_elasticache_cluster.main[0].cluster_id : one(aws_elasticache_replication_group.main[0].member_clusters)
+    cache_node_id    = "0001"
+  }
+}
+
 output "redis_security_group_id" {
   value       = local.elasticache_security_group_ids[0]
   description = "The ID of the first security group for the Elasticache instance"

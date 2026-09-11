@@ -8,6 +8,11 @@ output "gateway_alb_arn" {
   value       = aws_lb.gateway.arn
 }
 
+output "gateway_alb_arn_suffix" {
+  description = "ARN suffix of the private gateway ALB for CloudWatch dimensions"
+  value       = aws_lb.gateway.arn_suffix
+}
+
 output "gateway_alb_security_group_id" {
   description = "Security group ID attached to the private gateway ALB"
   value       = aws_security_group.gateway_alb.id
@@ -16,6 +21,11 @@ output "gateway_alb_security_group_id" {
 output "gateway_target_group_arn" {
   description = "ARN of the gateway ALB target group"
   value       = aws_lb_target_group.gateway.arn
+}
+
+output "gateway_target_group_arn_suffix" {
+  description = "ARN suffix of the gateway ALB target group for CloudWatch dimensions"
+  value       = aws_lb_target_group.gateway.arn_suffix
 }
 
 output "gateway_http_listener_arn" {

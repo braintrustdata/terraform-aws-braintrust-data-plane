@@ -114,6 +114,99 @@ If you need to enable CloudFront standard access logging, you can configure it i
 
 See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
 
+### VPC Flow Logs
+
+VPC Flow Logs are disabled by default and only apply to VPCs this module creates (`create_vpc = true` / a module-managed quarantine VPC). Configure the main and quarantine VPCs separately via `main_vpc_flow_log` and `quarantine_vpc_flow_log`.
+
+When enabled, logs go to one of:
+
+- **Customer S3 bucket** — set `destination_arn` to the bucket ARN. Attach a destination policy that grants `delivery.logs.amazonaws.com` `s3:PutObject` and `s3:GetBucketAcl` *before* enabling Flow Logs. `CreateFlowLogs` can succeed even when delivery is denied, so a missing policy looks like an empty bucket.
+- **Module-managed S3 bucket** — leave `destination_arn` null. The module creates a `bucket_prefix` bucket with Bucket owner enforced ownership, SSE-KMS using the data-plane key, a log-delivery policy (no `x-amz-acl` condition), and object expiration from `retention_in_days` (set `0` to skip expiration). This bucket does not set `force_destroy`. After Flow Logs have written objects, setting `enabled = false`, changing destination, or destroying the stack fails with `BucketNotEmpty`. That is intentional: the module will not empty audit logs. To delete the logs, empty the bucket (or wait for lifecycle expiration) and apply. To keep the logs when disabling or changing destination (stack stays up), remove the managed bucket and its companion resources from Terraform state, then apply. The data-plane KMS key is left in place, so the objects stay readable.
+
+  Full stack destroy is different. The module-created key uses a 7-day pending-deletion window and is unusable while pending, so retained objects become permanently unreadable unless you also keep that key. Before destroy, remove the key and its alias from state (`module.kms[0].aws_kms_key.braintrust` and `module.kms[0].aws_kms_alias.braintrust` when this module is the root) along with the bucket. Or encrypt the destination with an externally managed CMK from the start (`kms_key_arn` on the flow-log object, or this module's `kms_key_arn` input). Or copy/re-encrypt the objects to another key before destroy.
+- **CloudWatch Logs** — set `destination_type = "cloud-watch-logs"`. Pass a bare log-group ARN if you bring your own (no trailing `:*`; the module strips that suffix if present). The module creates an IAM role with an inline delivery policy, matching the rest of this module.
+
+Module-managed destinations are encrypted with the data-plane KMS key (`kms_key_arn` input, or the key this module creates). You do not pass this module's `kms_key_arn` output back into `main_vpc_flow_log` — that is a cycle. Override `kms_key_arn` on the flow-log object only when using a different CMK. That custom key must allow the service principal for the destination: `delivery.logs.amazonaws.com` for S3, or `logs.<region>.amazonaws.com` for a CloudWatch log group. Otherwise delivery fails after `CreateFlowLogs` succeeds.
+
+```hcl
+main_vpc_flow_log = {
+  enabled         = true
+  traffic_type    = "ALL"
+  destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
+}
+
+quarantine_vpc_flow_log = {
+  enabled          = true
+  destination_type = "cloud-watch-logs"
+}
+```
+
+### S3 Server Access Logging
+
+S3 server access logging is disabled by default. Enable it to deliver access logs from the brainstore, code-bundle, and lambda-responses buckets to an S3 bucket you own. This is commonly used for audit and compliance requirements.
+
+Enable logging in this order. The destination policy must already be in place before you set `s3_server_access_logging`; this module only configures the source buckets and cannot depend on a policy you manage outside it.
+
+1. Create the destination bucket (same AWS account and region as the data plane). It must not have Object Lock or Requester Pays enabled, and default encryption must be SSE-S3 (AES256). SSE-KMS prevents Amazon S3 from delivering logs you can decrypt.
+2. Deploy the data plane (or use an existing deployment) so the source bucket name outputs are available.
+3. Attach a bucket policy on the destination bucket that grants `s3:PutObject` to `logging.s3.amazonaws.com` (see below). Restrict access to the destination bucket; access logs can include object keys and requester information.
+4. Only after that policy is applied, set `s3_server_access_logging` and apply again. Use the same prefix as the destination policy `Resource` path (`braintrust/` in the example below). If you omit `prefix`, the module defaults to `<deployment_name>/`, and the policy path must match that instead. Per-bucket suffixes (`brainstore/`, `code-bundle/`, `lambda-responses/`) are appended under the prefix; `braintrust/*` already covers them, so no extra policy statements are needed.
+
+```hcl
+s3_server_access_logging = {
+  bucket = "your-audit-logs-bucket"
+  prefix = "braintrust/"
+}
+```
+
+Use the `brainstore_s3_bucket_name`, `code_bundle_s3_bucket_name`, and `lambda_responses_s3_bucket_name` outputs for the source bucket names in the destination policy. The `Resource` prefix must match `s3_server_access_logging.prefix` (default `<deployment_name>/` when omitted). Any `Deny` statements on the destination bucket must not block log delivery.
+
+```hcl
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "s3_server_access_logs" {
+  statement {
+    sid    = "S3ServerAccessLogsPolicy"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["logging.s3.amazonaws.com"]
+    }
+
+    actions   = ["s3:PutObject"]
+    resources = ["arn:aws:s3:::your-audit-logs-bucket/braintrust/*"]
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values = [
+        "arn:aws:s3:::${module.braintrust-data-plane.brainstore_s3_bucket_name}",
+        "arn:aws:s3:::${module.braintrust-data-plane.code_bundle_s3_bucket_name}",
+        "arn:aws:s3:::${module.braintrust-data-plane.lambda_responses_s3_bucket_name}",
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "s3_server_access_logs" {
+  bucket = "your-audit-logs-bucket"
+  policy = data.aws_iam_policy_document.s3_server_access_logs.json
+}
+```
+
+Logs are written with a date-partitioned key format:
+
+`<prefix><bucket-role>/<SourceAccountId>/<SourceRegion>/<SourceBucket>/<YYYY>/<MM>/<DD>/...`
+
+For example, `braintrust/brainstore/<account>/<region>/<bucket>/2026/08/12/...`. First log delivery can take a few hours after you enable logging.
+
 ### Using an Existing VPC
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.

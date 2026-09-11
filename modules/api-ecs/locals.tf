@@ -12,12 +12,22 @@ locals {
   # When both an ACM certificate and a custom domain are provided, the ALB serves
   # HTTPS on 443 and the API URL points at the custom domain so the certificate
   # validates. Otherwise the ALB serves plain HTTP on 80 via its AWS DNS name.
-  alb_https_enabled        = var.alb_certificate_arn != null && var.alb_custom_domain != null
-  alb_listener_port        = local.alb_https_enabled ? 443 : 80
-  api_ecs_url              = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
+  alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
+  alb_listener_port = local.alb_https_enabled ? 443 : 80
+  api_ecs_url       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
+  # Root module resolves override / AI Proxy / hosted / PrivateLink VPCE URL.
+  # Null/blank → omit QUARANTINE_PROXY_URL so api-ts getRuntimeEnv falls back.
+  quarantine_proxy_url = (
+    var.quarantine_proxy_url != null && trimspace(var.quarantine_proxy_url) != ""
+    ? trimspace(var.quarantine_proxy_url)
+    : null
+  )
   unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
   url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
   url_security_allow_cidrs = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  quarantine_proxy_env_vars = local.quarantine_proxy_url != null ? {
+    QUARANTINE_PROXY_URL = local.quarantine_proxy_url
+  } : {}
   url_security_env_vars = merge(
     local.unsafe_url_request_mode != "" ? {
       BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
@@ -51,7 +61,6 @@ locals {
     OUTBOUND_RATE_LIMIT_MAX_REQUESTS                  = tostring(var.outbound_rate_limit_max_requests)
     QUARANTINE_INVOKE_ROLE                            = var.use_quarantine_vpc && var.quarantine_invoke_role_arn != null ? var.quarantine_invoke_role_arn : ""
     QUARANTINE_FUNCTION_ROLE                          = var.use_quarantine_vpc && var.quarantine_function_role_arn != null ? var.quarantine_function_role_arn : ""
-    QUARANTINE_PROXY_URL                              = var.quarantine_proxy_url
     QUARANTINE_PRIVATE_SUBNET_1_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[0] : ""
     QUARANTINE_PRIVATE_SUBNET_2_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[1] : ""
     QUARANTINE_PRIVATE_SUBNET_3_ID                    = var.use_quarantine_vpc ? var.quarantine_vpc_private_subnets[2] : ""
@@ -82,6 +91,7 @@ locals {
     PROXY_URL                                         = "http://127.0.0.1:8000/v1/proxy"
     TS_API_ASYNC_SCORING_PROXY_URL                    = "http://127.0.0.1:8000"
     },
+    local.quarantine_proxy_env_vars,
     local.url_security_env_vars,
     local.btql_audit_log_env_vars,
     local.using_brainstore_fast_reader ? {
@@ -99,6 +109,11 @@ locals {
     } : {},
     var.brainstore_enable_export ? {
       BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
+    } : {},
+    # Attachments bucket, wired into all API services when configured. Omitted
+    # when unconfigured so the app falls back to its default behavior.
+    var.attachment_bucket_name != null ? {
+      ATTACHMENT_BUCKET = var.attachment_bucket_name
     } : {},
     var.brainstore_etl_batch_size != null ? {
       BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = tostring(var.brainstore_etl_batch_size)
@@ -157,24 +172,32 @@ locals {
         protocol      = "tcp"
       }
     ]
-    secrets = [
-      {
-        name      = "FUNCTION_SECRET_KEY"
-        valueFrom = var.function_tools_secret_arn
-      },
-      {
-        name      = "PG_URL"
-        valueFrom = var.database_url_secret_arn
-      },
-      {
-        name      = "REDIS_URL"
-        valueFrom = var.redis_url_secret_arn
-      },
-      {
-        name      = "SERVICE_TOKEN_SECRET_KEY"
-        valueFrom = var.function_tools_secret_arn
-      }
-    ]
+    secrets = concat(
+      [
+        {
+          name      = "FUNCTION_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
+        },
+        {
+          name      = "PG_URL"
+          valueFrom = var.database_url_secret_arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = var.redis_url_secret_arn
+        },
+        {
+          name      = "SERVICE_TOKEN_SECRET_KEY"
+          valueFrom = var.function_tools_secret_arn
+        }
+      ],
+      var.custom_ca_bundle_secret_arn == null ? [] : [
+        {
+          name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
+          valueFrom = var.custom_ca_bundle_secret_arn
+        }
+      ],
+    )
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval    = 30

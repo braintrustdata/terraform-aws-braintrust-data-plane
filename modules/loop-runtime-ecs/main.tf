@@ -48,7 +48,7 @@ locals {
       BRAINSTORE_REALTIME_WAL_URI        = "s3://${local.brainstore_s3_bucket}/brainstore/wal"
       BRAINSTORE_CODE_BUNDLE_URI         = "s3://${var.code_bundle_bucket}"
       BRAINSTORE_CACHE_DIR               = "/mnt/tmp/brainstore"
-      BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry
+      BRAINSTORE_CONTROL_PLANE_TELEMETRY = join(",", [var.monitoring_telemetry, "metrics", "traces"])
       BRAINSTORE_DISABLE_STATUS_UPDATES  = var.brainstore_disable_status_updates
       NO_COLOR                           = "1"
       AWS_DEFAULT_REGION                 = data.aws_region.current.region
@@ -121,6 +121,10 @@ locals {
     linuxParameters = {
       initProcessEnabled = true
       capabilities = {
+        # AWS stores drop=["ALL"] as {add=[], drop=["ALL"]}. Omitting add makes
+        # container_definitions never match state, so every plan ForceNew-replaces
+        # the task definition (and rolls Loop on unrelated gateway releases).
+        add  = []
         drop = ["ALL"]
       }
     }
@@ -463,7 +467,9 @@ resource "aws_iam_role_policy" "code_bundle_access" {
   })
 }
 
-# The Brainstore and code-bundle buckets are encrypted with kms_key_arn, so
+# The code-bundle bucket is encrypted with kms_key_arn. The Brainstore bucket
+# is encrypted with kms_key_arn when module-owned, or with
+# brainstore_s3_bucket_kms_key_arn when a caller provides an SSE-KMS bucket.
 # SSE-KMS reads/writes need key access in addition to the S3 grants above.
 resource "aws_iam_role_policy" "kms_access" {
   name = "LoopRuntimeKmsAccess"
@@ -471,9 +477,12 @@ resource "aws_iam_role_policy" "kms_access" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
-      Resource = var.kms_key_arn
+      Effect = "Allow"
+      Action = ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
+      Resource = var.brainstore_s3_bucket_kms_key_arn != null ? [
+        var.kms_key_arn,
+        var.brainstore_s3_bucket_kms_key_arn,
+      ] : [var.kms_key_arn]
       Condition = {
         StringEquals = {
           "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"

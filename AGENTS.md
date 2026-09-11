@@ -37,6 +37,18 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 ## Rules
 
+### Do not name customers in public text
+
+Do not mention named customers in PRs, comments, docs, examples, or commit messages. Refer to them generically (private dataplane, hybrid, residency-sensitive, etc.).
+
+### Tag created AWS resources with the deployment name
+
+When this module creates AWS resources, tag them with
+`BraintrustDeploymentName = var.deployment_name` wherever the resource type
+supports tags. In submodules, use `local.common_tags`. At the root, merge that
+key with `local.all_custom_tags` (so APN tags stay). Skip resource types that
+cannot be tagged.
+
 ### Keep examples in sync with variables
 
 When adding, removing, or renaming variables in the root module's `variables.tf`, update the example `main.tf` files to reflect the change. All examples under `examples/` should remain valid and representative.
@@ -49,6 +61,15 @@ Variables prefixed with `DANGER_` (e.g., `DANGER_disable_database_deletion_prote
 
 The `internal_observability_*` variables (Datadog API key, env name, region) are for internal Braintrust engineering use. Do not add them to customer-facing documentation, production examples, or sandbox examples.
 
+### Custom CA bundle delivery
+
+`custom_ca_bundle_secret_arn` references a Secrets Manager secret containing a PEM-encoded CA bundle. Keep the certificate value out of Terraform configuration and retrieve it at runtime.
+
+- API ECS uses native ECS secret injection.
+- Brainstore EC2 retrieves the secret in `user_data` and passes the exported multiline value to Docker with `--env BRAINTRUST_CUSTOM_CA_BUNDLE`. Do not place the multiline PEM in `/etc/brainstore.env`.
+- When `custom_ca_bundle_kms_key_arn` is set, grant only `kms:Decrypt` for the supplied key and restrict it to Secrets Manager.
+- Leave existing runtime behavior unchanged when these inputs are unset.
+
 ### Scripts use `uv` shebangs
 
 Python scripts in `scripts/` use `#!/usr/bin/env -S uv run --script` with inline dependency metadata. This allows zero-setup execution without managing virtual environments. Do not replace these with plain `python3` shebangs or add `requirements.txt` files.
@@ -60,6 +81,28 @@ Module changes must be applyable directly to live customer stacks without tear-d
 - Add `moved` blocks to `moved_state.tf` instead of taint/recreate when restructuring resources that customers have in state (see existing brainstore and ingress moves).
 - Avoid env-only changes on Lambdas that do not need them — e.g. do not merge shared env into `MigrateDatabaseFunction` or crons, because that publishes a new Lambda version and re-invokes migrations.
 - Prefer state moves and in-place updates over replace; if a resource must be replaced, document why and whether downtime is expected.
+
+### Bump major when downgrade-after-apply is unsafe
+
+Some Terraform changes apply forward in place (`moved` blocks, new resource keys, gapped priorities) but a revert or module downgrade after apply **recreates live resources**. Example: ALB listener rules fall through to the default target group. Do not hide these in a patch.
+
+Spot these:
+- Changing `for_each` / `count` identity (index keys → stable keys)
+- `moved` blocks (often in `moved_state.tf`) that exist so apply is in-place
+- Replacing resource addresses that AWS will treat as destroy+create
+- Listener rule priorities or names that collide on rollback
+- State identity changes where `terraform plan` on the previous module version after apply would destroy load balancer rules, endpoint services, databases, or similar
+
+Call this out in the PR. Bump **major** (preferred). If a major is truly wrong, bump at least **minor** and say why rollback is unsafe in the GitHub release notes. This repo has no CHANGELOG; versions are git tags (`v6.6.0`) and GitHub Releases via `.github/workflows/create-release.yml`. For a major, add or update `MIGRATION_V*.md` and the Major versions section in `README.md`.
+
+### Review the inverse of every `count` / `for_each`
+
+Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
+
+- Mentally apply `true → false`. Terraform will destroy the resource in the same apply that stops referencing it.
+- If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
+- Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
+- `create_*` flags own resource lifetime; `enable_*` flags own routing.
 
 ### Private gateway ALB relocation
 
@@ -75,6 +118,76 @@ Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.
 
+### Quarantine LLM proxy URL
+
+Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
+`QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
+`*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
+header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
+Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
+peer the quarantine VPC to main for this path. Prefer PrivateLink to the
+private gateway when opted in. Loop Runtime stays on the AI Proxy Function
+URL; PrivateLink only affects quarantine when the flag is on.
+
+#### `use_private_gateway_quarantine_proxy` (default `false`)
+
+Opt-in switch for dataplane-local quarantine → private gateway wiring via
+**PrivateLink** (interim and preferred endgame vs VPC peering).
+Default **false** so SaaS (including eu-prod's manual hosted URL) and
+existing stacks are unchanged until operators explicitly enable it.
+
+- **`false`**: do **not** auto-set from PrivateLink / private gateway; do
+  **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
+  if set; otherwise the AI Proxy Lambda Function URL.
+- **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
+  quarantine VPC are both enabled, creates PrivateLink and sets
+  `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
+  No-ops PrivateLink when `use_global_ai_gateway_origin` is true. If the
+  module cannot create PrivateLink (existing main VPC, existing quarantine
+  VPC, or quarantine disabled) and `quarantine_proxy_url` is unset, apply
+  fails. Adds an internal NLB (extra cost) in front of the gateway ALB.
+
+#### URL precedence
+
+1. `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API
+   `/v1/proxy`, or GCP-style manual URLs) — **always wins**
+2. else `http://<vpce-dns>/v1/proxy` when
+   `use_private_gateway_quarantine_proxy` wires PrivateLink (module-managed
+   VPCs; not `use_global_ai_gateway_origin`)
+3. else AI Proxy Lambda Function URL
+
+#### Networking (PrivateLink; only when the flag wires to private gateway)
+
+Uses an NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
+
+1. **Provider (main VPC)**: internal multi-AZ NLB → target group
+   `target_type = "alb"` attached to the gateway ALB → TCP **80** listener →
+   `aws_vpc_endpoint_service` with `acceptance_required = false`
+   (same-account). Gateway ALB SG allows HTTP from the NLB SG only —
+   quarantine does **not** talk to the ALB directly.
+2. **Consumer (quarantine VPC)**: interface VPC endpoint in quarantine
+   private subnets; endpoint SG allows the quarantine Lambda SG on **:80**.
+3. **URL**: `http://<vpce-dns>/v1/proxy` (VPCE DNS, not gateway ALB DNS).
+   Plain HTTP on this hop is intentional: traffic stays inside AWS PrivateLink
+   (quarantine VPCE → NLB → gateway ALB) and never crosses the public internet.
+   TLS would require certs on the private ALB/NLB path without a customer DNS
+   name; HTTP matches the private-ALB pattern used elsewhere in this module.
+
+Automated only for **module-managed** main + quarantine VPCs
+(`create_vpc` and `enable_quarantine_vpc` without `existing_quarantine_vpc_id`).
+Existing VPC / existing quarantine / quarantine disabled: Terraform fails
+unless you set `quarantine_proxy_url`, or `use_global_ai_gateway_origin` is
+true (documented no-op; Function URL, no PrivateLink). For existing VPCs,
+create an interface endpoint to
+`quarantine_gateway_privatelink_service_name` (when the provider side exists
+in a module-managed stack, or stand up equivalent NLB/service yourself) and
+set `quarantine_proxy_url` to `http://<your-vpce-dns>/v1/proxy`.
+
+**Cost / AZ notes**: PrivateLink adds an internal NLB (hourly + LCU) plus
+interface endpoint hourly/GB charges. Place NLB and VPCE ENIs across the
+same AZs as the gateway ALB subnets so the endpoint service is available in
+those AZs; mismatched AZ coverage can yield unresolved or unhealthy
+endpoints.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

@@ -10,7 +10,7 @@ variable "kms_key_arn" {
 
 variable "permissions_boundary_arn" {
   type        = string
-  description = "ARN of the IAM permissions boundary to apply to the gateway task role."
+  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
   default     = null
 }
 
@@ -47,6 +47,18 @@ variable "container_image" {
     condition     = trimspace(var.container_image) != ""
     error_message = "container_image must not be empty."
   }
+}
+
+variable "custom_ca_bundle_secret_arn" {
+  type        = string
+  description = "Optional ARN of the secret containing a PEM-encoded custom CA bundle."
+  default     = null
+}
+
+variable "custom_ca_bundle_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret."
+  default     = null
 }
 
 variable "cpu" {

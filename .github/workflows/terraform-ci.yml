@@ -29,3 +29,6 @@ jobs:
 
       - name: Validate module and example code with OpenTofu
         run: mise run validate-tofu
+
+      - name: Run tests with Terraform
+        run: mise run test

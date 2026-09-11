@@ -43,14 +43,69 @@ output "main_vpc_private_route_table_id" {
   description = "ID of the private route table in the main VPC (null when using existing VPC)"
 }
 
+output "quarantine_gateway_privatelink_service_name" {
+  value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
+  description = "VPC endpoint service name for quarantine→private gateway PrivateLink (null unless use_private_gateway_quarantine_proxy with module-managed VPCs). Existing VPC / existing quarantine callers must set quarantine_proxy_url; use this name if you attach a manual interface endpoint."
+}
+
+output "quarantine_gateway_privatelink_endpoint_dns_name" {
+  value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name : null
+  description = "DNS name of the quarantine VPC endpoint to the private gateway (null unless PrivateLink consumer is created)"
+}
+
+output "main_vpc_flow_log_s3_bucket_arn" {
+  value       = one(module.main_vpc[*].flow_log_s3_bucket_arn)
+  description = "ARN of the module-managed S3 bucket for main VPC Flow Logs (null unless the module created one)"
+}
+
+output "main_vpc_flow_log_cloudwatch_log_group_arn" {
+  value       = one(module.main_vpc[*].flow_log_cloudwatch_log_group_arn)
+  description = "ARN of the module-managed CloudWatch log group for main VPC Flow Logs (null unless the module created one)"
+}
+
+output "quarantine_vpc_flow_log_s3_bucket_arn" {
+  value       = one(module.quarantine_vpc[*].flow_log_s3_bucket_arn)
+  description = "ARN of the module-managed S3 bucket for quarantine VPC Flow Logs (null unless the module created one)"
+}
+
+output "quarantine_vpc_flow_log_cloudwatch_log_group_arn" {
+  value       = one(module.quarantine_vpc[*].flow_log_cloudwatch_log_group_arn)
+  description = "ARN of the module-managed CloudWatch log group for quarantine VPC Flow Logs (null unless the module created one)"
+}
+
 output "brainstore_security_group_id" {
-  value       = var.enable_brainstore ? module.services_common.brainstore_instance_security_group_id : null
+  value       = module.services_common.brainstore_instance_security_group_id
   description = "ID of the security group for the Brainstore instances"
 }
 
 output "brainstore_s3_bucket_name" {
-  value       = var.enable_brainstore ? module.storage.brainstore_bucket_id : null
-  description = "Name of the Brainstore S3 bucket"
+  value       = module.storage.brainstore_bucket_id
+  description = "Name of the Brainstore S3 bucket (module-owned or caller-provided)"
+}
+
+output "brainstore_s3_bucket_arn" {
+  value       = module.storage.brainstore_bucket_arn
+  description = "ARN of the Brainstore S3 bucket (module-owned or caller-provided)"
+}
+
+output "code_bundle_s3_bucket_name" {
+  value       = module.storage.code_bundle_bucket_id
+  description = "Name of the code bundle S3 bucket"
+}
+
+output "lambda_responses_s3_bucket_name" {
+  value       = module.storage.lambda_responses_bucket_id
+  description = "Name of the lambda responses S3 bucket"
+}
+
+output "attachment_s3_bucket_name" {
+  value       = local.attachment_s3_bucket_name
+  description = "Name of the caller-provided attachment S3 bucket, or null when the feature is disabled"
+}
+
+output "attachment_s3_bucket_arn" {
+  value       = local.attachment_s3_bucket_arn
+  description = "ARN of the caller-provided attachment S3 bucket, or null when the feature is disabled"
 }
 
 output "rds_security_group_id" {
@@ -138,6 +193,11 @@ output "api_ecs_http_url" {
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
 }
 
+output "quarantine_proxy_url" {
+  value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, otherwise AI Proxy Function URL)"
+}
+
 output "api_ecs_task_security_group_id" {
   value       = local.create_ecs_api ? module.api_ecs[0].task_security_group_id : null
   description = "ID of the security group for API ECS tasks"
@@ -191,6 +251,74 @@ output "cloudfront_distribution_arn" {
 output "cloudfront_distribution_hosted_zone_id" {
   value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
   description = "The hosted zone ID of the cloudfront distribution"
+}
+
+output "monitoring_contract" {
+  description = "Versioned resource identifiers and capabilities consumed by terraform-aws-braintrust-data-plane-cloudwatch."
+  value = {
+    version = 2
+
+    rds = {
+      identifier               = module.database.postgres_database_identifier
+      allocated_storage_gib    = module.database.postgres_allocated_storage_gib
+      provisioned_iops         = module.database.postgres_provisioned_iops
+      provisioned_iops_enabled = var.postgres_storage_iops == null ? false : var.postgres_storage_iops > 0
+    }
+
+    elasticache = module.redis.monitoring_target
+
+    lambda = {
+      enabled   = !var.use_deployment_mode_external_eks
+      functions = !var.use_deployment_mode_external_eks ? module.services[0].monitoring_functions : {}
+    }
+
+    api_gateway = {
+      enabled = !var.use_deployment_mode_external_eks
+      name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
+      stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
+    }
+
+    brainstore = {
+      enabled        = !var.use_deployment_mode_external_eks
+      s3_bucket_name = module.storage.brainstore_bucket_id
+      targets        = !var.use_deployment_mode_external_eks ? module.brainstore[0].monitoring_targets : {}
+    }
+
+    cloudfront = {
+      enabled         = !var.use_deployment_mode_external_eks
+      distribution_id = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_id : null
+    }
+
+    ecs = {
+      enabled      = length(module.ecs) > 0
+      cluster_name = length(module.ecs) > 0 ? module.ecs[0].cluster_name : null
+      services = merge(
+        local.create_ecs_api ? {
+          for role, target in module.api_ecs[0].monitoring_targets : role => merge(
+            target,
+            { lb_arn_suffix = module.api_ecs[0].alb_arn_suffix },
+          )
+        } : {},
+        local.create_ai_gateway ? {
+          gateway = {
+            alarm_group   = "gateway"
+            service_name  = module.gateway_ecs[0].service_name
+            lb_arn_suffix = module.gateway_alb[0].gateway_alb_arn_suffix
+            tg_arn_suffix = module.gateway_alb[0].gateway_target_group_arn_suffix
+          }
+        } : {},
+      )
+    }
+
+    cloudwatch = {
+      log_groups = merge(
+        local.create_ecs_api ? { api-ecs = module.api_ecs[0].cloudwatch_log_groups } : {},
+        local.create_ai_gateway ? { gateway = module.gateway_ecs[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime ? { loop-runtime = module.loop_runtime_ecs[0].cloudwatch_log_groups } : {},
+        local.create_loop_runtime ? { loop-runtime-sandbox = { group = module.loop_runtime_sandbox_aws_microvm[0].microvm_log_group_name } } : {},
+      )
+    }
+  }
 }
 
 output "kms_key_arn" {

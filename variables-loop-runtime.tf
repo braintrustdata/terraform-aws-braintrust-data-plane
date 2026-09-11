@@ -4,11 +4,6 @@ variable "enable_loop_runtime" {
   default     = false
 
   validation {
-    condition     = !var.enable_loop_runtime || var.enable_brainstore
-    error_message = "enable_loop_runtime requires enable_brainstore = true (the Loop runtime reads from Brainstore)."
-  }
-
-  validation {
     condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
     error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true (the Loop runtime requires the in-VPC ECS API data plane)."
   }
@@ -139,5 +134,5 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
   description = "Outbound-network mode for Loop runtime sandbox MicroVMs. Exactly \"internet\" uses AWS-managed Internet egress; any other value uses a restricted connector with no outbound network access."
-  default     = "internet"
+  default     = "restricted"
 }

@@ -64,6 +64,12 @@ locals {
         value = local.merged_env_vars[key]
       }
     ]
+    secrets = var.custom_ca_bundle_secret_arn == null ? [] : [
+      {
+        name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
+        valueFrom = var.custom_ca_bundle_secret_arn
+      }
+    ]
     dependsOn = [
       for dep in [
         {
@@ -232,8 +238,9 @@ resource "aws_vpc_security_group_ingress_rule" "cache_allow_ingress_from_gateway
 }
 
 resource "aws_iam_role" "task_execution" {
-  name               = "${var.deployment_name}-gateway-task-exec"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+  name                 = "${var.deployment_name}-gateway-task-exec"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
+  permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-gateway-task-exec"
   }, local.common_tags)
@@ -242,6 +249,42 @@ resource "aws_iam_role" "task_execution" {
 resource "aws_iam_role_policy_attachment" "task_execution_default" {
   role       = aws_iam_role.task_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy" "task_execution_custom_ca_bundle_secret" {
+  count = var.custom_ca_bundle_secret_arn == null ? 0 : 1
+
+  name = "${var.deployment_name}-gateway-task-exec-custom-ca"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat(
+      [
+        {
+          Effect = "Allow"
+          Action = [
+            "secretsmanager:GetSecretValue",
+          ]
+          Resource = var.custom_ca_bundle_secret_arn
+        }
+      ],
+      var.custom_ca_bundle_kms_key_arn == null ? [] : [
+        {
+          Effect = "Allow"
+          Action = [
+            "kms:Decrypt",
+          ]
+          Resource = var.custom_ca_bundle_kms_key_arn
+          Condition = {
+            StringEquals = {
+              "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+            }
+          }
+        }
+      ],
+    )
+  })
 }
 
 resource "aws_iam_role_policy" "task_execution_observability_secrets" {

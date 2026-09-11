@@ -2,7 +2,7 @@ locals {
   # Loop runtime requires the ECS API data plane and Brainstore (it reads
   # module.brainstore[0] for the reader URL / SG). It is fronted by the shared
   # CloudFront distribution at /loop/runtime*.
-  create_loop_runtime = local.create_ecs_api && var.enable_brainstore && var.enable_loop_runtime
+  create_loop_runtime = local.create_ecs_api && var.enable_loop_runtime
 
   loop_runtime_version = (
     var.loop_runtime_version_override != null
@@ -86,17 +86,18 @@ module "loop_runtime_ecs" {
   additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
 
   # Data-plane connectivity
-  database_url_secret_arn   = module.database.postgres_database_url_secret_arn
+  database_url_secret_arn   = local.database_url_secret_arn
   redis_url_secret_arn      = module.redis.redis_url_secret_arn
   function_tools_secret_arn = module.services_common.function_tools_secret_arn
 
-  brainstore_s3_bucket_name = module.storage.brainstore_bucket_id
-  brainstore_s3_bucket_arn  = module.storage.brainstore_bucket_arn
-  code_bundle_bucket        = module.storage.code_bundle_bucket_id
-  code_bundle_bucket_arn    = module.storage.code_bundle_bucket_arn
+  brainstore_s3_bucket_name        = module.storage.brainstore_bucket_id
+  brainstore_s3_bucket_arn         = module.storage.brainstore_bucket_arn
+  brainstore_s3_bucket_kms_key_arn = var.existing_brainstore_s3_bucket_kms_key_arn
+  code_bundle_bucket               = module.storage.code_bundle_bucket_id
+  code_bundle_bucket_arn           = module.storage.code_bundle_bucket_arn
 
   brainstore_reader_url = local.loop_runtime_brainstore_reader_url
-  ai_proxy_url          = local.api_ecs_ai_proxy_url
+  ai_proxy_url          = local.self_hosted_ai_proxy_url
   braintrust_api_url    = module.ingress[0].api_url
 
   # Shared Brainstore WAL format + lock prefix — must match the API/Brainstore writers.

@@ -47,6 +47,11 @@ variable "redis_version" {
   default     = "7.0"
 }
 
+variable "apply_immediately" {
+  type        = bool
+  description = "Apply Redis changes immediately instead of during the maintenance window"
+  default     = false
+}
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

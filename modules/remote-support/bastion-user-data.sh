@@ -1,7 +1,16 @@
 #!/bin/bash
 sudo hostnamectl set-hostname bastion
 
+# Help prevent immediate failure of apt commands if another background process is holding the lock
+echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
+# Add retries
+echo 'Acquire::Retries "5";' >> /etc/apt/apt.conf.d/99apt-lock-retry
+
+sed -i "s|http://[a-z0-9-]\+\.ec2\.ports\.ubuntu\.com|http://ports.ubuntu.com|g" /etc/apt/sources.list
+rm -rf /var/lib/apt/lists/*
+apt-get clean
 apt-get update
+
 apt-get install -y jq unzip earlyoom postgresql-client
 snap install aws-cli --classic
 

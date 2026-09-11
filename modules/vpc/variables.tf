@@ -64,3 +64,98 @@ variable "enable_brainstore_ec2_ssm" {
   type        = bool
   default     = false
 }
+
+variable "permissions_boundary_arn" {
+  type        = string
+  description = "ARN of the IAM permissions boundary to apply to IAM roles created by this module"
+  default     = null
+}
+
+variable "s3_vpc_endpoint_resource_org_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS Organization IDs for the S3 VPC gateway endpoint policy (aws:ResourceOrgID).
+    Composes with s3_vpc_endpoint_resource_account_ids (union of Allow statements).
+    When both this and s3_vpc_endpoint_resource_account_ids are empty (default), the endpoint allows all S3 traffic.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for org_id in var.s3_vpc_endpoint_resource_org_ids :
+      can(regex("^o-[a-z0-9]{10,32}$", org_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_org_ids entries must be AWS Organization IDs of the form o-<10-32 lowercase alphanumeric characters>."
+  }
+}
+
+variable "s3_vpc_endpoint_resource_account_ids" {
+  type        = list(string)
+  description = <<-EOT
+    Optional allowlist of AWS account IDs for the S3 VPC gateway endpoint policy (aws:ResourceAccount).
+    Composes with s3_vpc_endpoint_resource_org_ids (union of Allow statements).
+    When both this and s3_vpc_endpoint_resource_org_ids are empty (default), the endpoint allows all S3 traffic.
+    The current AWS account is always included automatically when either restriction list is non-empty.
+  EOT
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for account_id in var.s3_vpc_endpoint_resource_account_ids :
+      can(regex("^[0-9]{12}$", account_id))
+    ])
+    error_message = "s3_vpc_endpoint_resource_account_ids entries must be 12-digit AWS account IDs."
+  }
+}
+
+variable "flow_log" {
+  description = <<-EOT
+    VPC Flow Logs configuration. Disabled by default. When enabled, a destination is required:
+      - destination_type = "s3": logs are written to `destination_arn` (a customer-provided S3 bucket).
+        Leave `destination_arn` null to have the module create and manage a dedicated S3 bucket.
+        That bucket does not set force_destroy; after objects exist, disable/destroy fails with
+        BucketNotEmpty until you empty it or remove it from Terraform state. A full stack
+        destroy must also preserve the encrypting KMS key (see the root README).
+      - destination_type = "cloud-watch-logs": logs are written to `destination_arn` (a customer-provided
+        CloudWatch log group). Leave `destination_arn` null to have the module create the log group.
+        An IAM role for delivery is always created for the CloudWatch destination.
+  EOT
+  type = object({
+    enabled                  = optional(bool, false)
+    traffic_type             = optional(string, "ALL")
+    destination_type         = optional(string, "s3")
+    destination_arn          = optional(string, null)
+    max_aggregation_interval = optional(number, 600)
+    log_format               = optional(string, null)
+    # Module-managed destinations only (destination_arn = null):
+    # CloudWatch log group retention, and S3 object expiration on the managed bucket.
+    retention_in_days = optional(number, 365)
+    # SSE-KMS for the managed S3 bucket or CloudWatch log group. Root defaults
+    # this to the data-plane KMS key. A customer-managed CMK must allow
+    # delivery.logs.amazonaws.com (S3) or logs.<region>.amazonaws.com (CloudWatch).
+    kms_key_arn = optional(string, null)
+  })
+  default = {}
+
+  validation {
+    condition     = contains(["ALL", "ACCEPT", "REJECT"], var.flow_log.traffic_type)
+    error_message = "flow_log.traffic_type must be one of ALL, ACCEPT, or REJECT."
+  }
+  validation {
+    condition     = contains(["s3", "cloud-watch-logs"], var.flow_log.destination_type)
+    error_message = "flow_log.destination_type must be either \"s3\" or \"cloud-watch-logs\"."
+  }
+  validation {
+    condition     = contains([60, 600], var.flow_log.max_aggregation_interval)
+    error_message = "flow_log.max_aggregation_interval must be either 60 or 600 seconds."
+  }
+  validation {
+    condition = var.flow_log.destination_type != "cloud-watch-logs" ? (
+      var.flow_log.retention_in_days >= 0
+      ) : contains([
+        0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+        365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.flow_log.retention_in_days)
+    error_message = "flow_log.retention_in_days must be >= 0 for S3, or a valid CloudWatch Logs retention value (0 = never expire) for cloud-watch-logs."
+  }
+}

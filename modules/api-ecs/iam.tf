@@ -10,8 +10,9 @@ data "aws_iam_policy_document" "ecs_task_assume_role" {
 }
 
 resource "aws_iam_role" "task_execution" {
-  name               = "${var.deployment_name}-api-ecs-task-exec"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
+  name                 = "${var.deployment_name}-api-ecs-task-exec"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
+  permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-api-ecs-task-exec"
   }, local.common_tags)
@@ -40,6 +41,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
             var.function_tools_secret_arn,
             var.redis_url_secret_arn,
           ],
+          var.custom_ca_bundle_secret_arn == null ? [] : [var.custom_ca_bundle_secret_arn],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
         )
       },
@@ -48,7 +50,10 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Action = [
           "kms:Decrypt",
         ]
-        Resource = var.kms_key_arn
+        Resource = concat(
+          [var.kms_key_arn],
+          var.custom_ca_bundle_kms_key_arn == null ? [] : [var.custom_ca_bundle_kms_key_arn],
+        )
         Condition = {
           StringEquals = {
             "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
