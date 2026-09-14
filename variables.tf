@@ -1421,7 +1421,7 @@ variable "skip_pg_for_brainstore_objects" {
 variable "brainstore_enable_export" {
   type        = bool
   description = "Enable Brainstore-based export and migrate progress state of existing export automations. Sets BRAINSTORE_EXPORT_MIGRATION_ENABLED on the API handler Lambda and BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED on Brainstore writer nodes."
-  default     = false
+  default     = true
 }
 
 variable "s3_export_assume_role_arns" {
