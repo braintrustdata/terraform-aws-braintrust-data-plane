@@ -187,6 +187,7 @@ module "main_vpc" {
   private_subnet_2_az                  = local.private_subnet_2_az
   private_subnet_3_cidr                = cidrsubnet(var.vpc_cidr, 3, 3)
   private_subnet_3_az                  = local.private_subnet_3_az
+  create_secrets_manager_vpc_endpoint  = var.create_secrets_manager_vpc_endpoint
   enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids

@@ -14,7 +14,8 @@ module "braintrust-data-plane" {
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "internet"
 
-  # Optional URL-security inputs are shown in examples/braintrust-data-plane/main.tf.
+  # Optional networking inputs, including create_secrets_manager_vpc_endpoint,
+  # and URL-security inputs are shown in examples/braintrust-data-plane/main.tf.
 }
 
 ###############################################################################
