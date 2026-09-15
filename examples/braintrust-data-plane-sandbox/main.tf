@@ -1,7 +1,7 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 locals {
-  braintrust_build_tag = "78f822094beeab789ba98b5e94321c02b7c8cdf1"
+  braintrust_build_tag = "b9b5a682f7b2ac2f5f283fbe56b865013745e333"
 }
 
 module "braintrust-data-plane" {
@@ -208,8 +208,6 @@ module "braintrust-data-plane" {
 
   braintrust_api_extra_env_vars = {
     ALLOWED_SYSADMINS = "eugene.vignanker@braintrustdata.com"
-#    BRAINSTORE_MERGE_CYCLE_VERBOSE = "true"
-#    BRAINSTORE_MERGE_DICTIONARY_ENABLED_ON_FINAL_MERGE = "true"
   }
 
 #  brainstore_extra_env_vars = {
