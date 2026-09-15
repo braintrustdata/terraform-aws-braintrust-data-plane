@@ -1,7 +1,7 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 locals {
-  braintrust_build_tag = "b9b5a682f7b2ac2f5f283fbe56b865013745e333"
+  braintrust_build_tag = "78f822094beeab789ba98b5e94321c02b7c8cdf1"
 }
 
 module "braintrust-data-plane" {
@@ -186,22 +186,30 @@ module "braintrust-data-plane" {
 
   braintrust_api_extra_env_vars = {
     ALLOWED_SYSADMINS = "eugene.vignanker@braintrustdata.com"
-    BRAINSTORE_MERGE_CYCLE_VERBOSE = "true"
+#    BRAINSTORE_MERGE_CYCLE_VERBOSE = "true"
+#    BRAINSTORE_MERGE_DICTIONARY_ENABLED_ON_FINAL_MERGE = "true"
+  }
+
+#  brainstore_extra_env_vars = {
+#    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://ip-10-175-2-18.us-east-2.compute.internal:3100/otlp"
+#    BRAINSTORE_OTLP_TELEMETRY     = "logs"
+#    BRAINSTORE_VERBOSE            = "1"
+#  }
+
+  brainstore_extra_env_vars_writer = {
+    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://ip-10-175-2-18.us-east-2.compute.internal:4318"
+    BRAINSTORE_OTLP_TELEMETRY     = "logs,metrics,traces"
+    BRAINSTORE_VERBOSE            = "1"
     BRAINSTORE_MERGE_DICTIONARY_ENABLED_ON_FINAL_MERGE = "true"
+    RUST_LOG                      = "debug,hyper=warn,hyper_util=warn,tower=warn,h2=warn,opentelemetry=warn"
   }
 
   brainstore_extra_env_vars = {
-    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://ip-10-175-2-18.us-east-2.compute.internal:3100/otlp"
-    BRAINSTORE_OTLP_TELEMETRY     = "logs"
+    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://ip-10-175-2-18.us-east-2.compute.internal:4318"
+    BRAINSTORE_OTLP_TELEMETRY     = "logs,metrics,traces"
     BRAINSTORE_VERBOSE            = "1"
-  }
-
-  brainstore_extra_env_vars_writer = {
-    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://ip-10-175-2-18.us-east-2.compute.internal:3100/otlp"
-    BRAINSTORE_OTLP_TELEMETRY     = "logs"
-    BRAINSTORE_VERBOSE            = "1"
-    BRAINSTORE_MERGE_CYCLE_VERBOSE = "true"
-    BRAINSTORE_MERGE_DICTIONARY_ENABLED_ON_FINAL_MERGE = "true"
+    RUST_LOG                      = "debug,hyper=warn,hyper_util=warn,tower=warn,h2=warn,opentelemetry=warn"
+    RUST_LOG                      = "warn,storage::directory::io_log_directory=debug,storage::resource_limited_object_store=debug,hyper_util=warn,tower=warn,h2=warn,opentelemetry=warn"
   }
 
   service_extra_env_vars = {
