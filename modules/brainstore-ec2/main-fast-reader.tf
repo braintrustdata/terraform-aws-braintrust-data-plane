@@ -149,14 +149,14 @@ resource "aws_lb_listener" "brainstore_fast_reader" {
 resource "aws_autoscaling_group" "brainstore_fast_reader" {
   count                     = local.has_fast_reader_nodes ? 1 : 0
   name_prefix               = "${var.deployment_name}-brainstore-fast-reader"
-  min_size                  = var.fast_reader_instance_count
-  max_size                  = var.fast_reader_instance_count * 2
-  desired_capacity          = var.fast_reader_instance_count
+  min_size                  = local.fast_reader_min_size
+  max_size                  = local.fast_reader_max_size
+  desired_capacity          = local.fast_reader_autoscaling ? null : var.fast_reader_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_fast_reader[0].arn]
-  wait_for_elb_capacity     = var.fast_reader_instance_count
+  wait_for_elb_capacity     = local.fast_reader_autoscaling ? local.fast_reader_min_size : var.fast_reader_instance_count
   launch_template {
     id      = aws_launch_template.brainstore_fast_reader[0].id
     version = aws_launch_template.brainstore_fast_reader[0].latest_version

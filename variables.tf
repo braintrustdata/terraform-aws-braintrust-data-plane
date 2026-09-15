@@ -1334,14 +1334,38 @@ variable "brainstore_instance_type" {
 
 variable "brainstore_instance_count" {
   type        = number
-  description = "The number of Brainstore reader instances to provision"
+  description = "The number of Brainstore reader instances to provision. Used as the fixed desired capacity unless brainstore_min_instance_count/brainstore_max_instance_count enable autoscaling, in which case it is only the initial desired capacity."
   default     = 2
+}
+
+variable "brainstore_min_instance_count" {
+  type        = number
+  description = "Optional. Minimum size of the Brainstore reader ASG. Set this together with brainstore_max_instance_count to enable autoscaling. When set, Terraform stops managing the ASG's desired capacity so a running autoscaler is not scaled back down on every apply. Defaults to brainstore_instance_count."
+  default     = null
+}
+
+variable "brainstore_max_instance_count" {
+  type        = number
+  description = "Optional. Maximum size of the Brainstore reader ASG. Set this together with brainstore_min_instance_count to enable autoscaling. Defaults to brainstore_instance_count * 2."
+  default     = null
 }
 
 variable "brainstore_writer_instance_count" {
   type        = number
-  description = "The number of dedicated writer nodes to create"
+  description = "The number of dedicated writer nodes to create. Used as the fixed desired capacity unless brainstore_writer_min_instance_count/brainstore_writer_max_instance_count enable autoscaling, in which case it is only the initial desired capacity."
   default     = 1
+}
+
+variable "brainstore_writer_min_instance_count" {
+  type        = number
+  description = "Optional. Minimum size of the Brainstore writer ASG. Set this together with brainstore_writer_max_instance_count to enable autoscaling. When set, Terraform stops managing the ASG's desired capacity so a running autoscaler is not scaled back down on every apply. Defaults to brainstore_writer_instance_count."
+  default     = null
+}
+
+variable "brainstore_writer_max_instance_count" {
+  type        = number
+  description = "Optional. Maximum size of the Brainstore writer ASG. Set this together with brainstore_writer_min_instance_count to enable autoscaling. Defaults to brainstore_writer_instance_count * 2."
+  default     = null
 }
 
 variable "brainstore_writer_instance_type" {
@@ -1598,8 +1622,20 @@ variable "brainstore_extra_env_vars_writer" {
 
 variable "brainstore_fast_reader_instance_count" {
   type        = number
-  description = "The number of dedicated fast reader nodes to create"
+  description = "The number of dedicated fast reader nodes to create. Used as the fixed desired capacity unless brainstore_fast_reader_min_instance_count/brainstore_fast_reader_max_instance_count enable autoscaling, in which case it is only the initial desired capacity."
   default     = 2
+}
+
+variable "brainstore_fast_reader_min_instance_count" {
+  type        = number
+  description = "Optional. Minimum size of the Brainstore fast reader ASG. Set this together with brainstore_fast_reader_max_instance_count to enable autoscaling. When set, Terraform stops managing the ASG's desired capacity so a running autoscaler is not scaled back down on every apply. Defaults to brainstore_fast_reader_instance_count."
+  default     = null
+}
+
+variable "brainstore_fast_reader_max_instance_count" {
+  type        = number
+  description = "Optional. Maximum size of the Brainstore fast reader ASG. Set this together with brainstore_fast_reader_min_instance_count to enable autoscaling. Defaults to brainstore_fast_reader_instance_count * 2."
+  default     = null
 }
 
 variable "brainstore_fast_reader_instance_type" {

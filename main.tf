@@ -665,6 +665,8 @@ module "brainstore" {
 
   deployment_name                       = var.deployment_name
   instance_count                        = var.brainstore_instance_count
+  min_instance_count                    = var.brainstore_min_instance_count
+  max_instance_count                    = var.brainstore_max_instance_count
   instance_type                         = var.brainstore_instance_type
   instance_key_pair_name                = var.brainstore_instance_key_pair_name
   port                                  = var.brainstore_port
@@ -675,8 +677,12 @@ module "brainstore" {
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
+  writer_min_instance_count             = var.brainstore_writer_min_instance_count
+  writer_max_instance_count             = var.brainstore_writer_max_instance_count
   writer_instance_type                  = var.brainstore_writer_instance_type
   fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
+  fast_reader_min_instance_count        = var.brainstore_fast_reader_min_instance_count
+  fast_reader_max_instance_count        = var.brainstore_fast_reader_max_instance_count
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader

@@ -20,8 +20,35 @@ variable "license_key" {
 
 variable "instance_count" {
   type        = number
-  description = "The number of reader instances to create"
+  description = "The number of reader instances to create. Used as the fixed desired capacity unless min_instance_count/max_instance_count enable autoscaling, in which case it is only the initial desired capacity."
   default     = 2
+}
+
+variable "min_instance_count" {
+  type        = number
+  description = "Optional. Minimum size of the reader ASG. Set this together with max_instance_count to enable autoscaling. When set, Terraform stops managing the ASG's desired capacity so a running autoscaler is not scaled back down on every apply. Defaults to instance_count."
+  default     = null
+
+  validation {
+    condition     = var.min_instance_count == null ? true : var.min_instance_count >= 0
+    error_message = "min_instance_count must be >= 0."
+  }
+}
+
+variable "max_instance_count" {
+  type        = number
+  description = "Optional. Maximum size of the reader ASG. Set this together with min_instance_count to enable autoscaling. Defaults to instance_count * 2."
+  default     = null
+
+  validation {
+    condition     = var.max_instance_count == null ? true : var.max_instance_count >= 1
+    error_message = "max_instance_count must be >= 1."
+  }
+
+  validation {
+    condition     = (var.max_instance_count == null || var.min_instance_count == null) ? true : var.max_instance_count >= var.min_instance_count
+    error_message = "max_instance_count must be >= min_instance_count."
+  }
 }
 
 variable "port" {
@@ -114,8 +141,35 @@ variable "extra_env_vars_writer" {
 
 variable "writer_instance_count" {
   type        = number
-  description = "The number of dedicated writer nodes to create"
+  description = "The number of dedicated writer nodes to create. Used as the fixed desired capacity unless writer_min_instance_count/writer_max_instance_count enable autoscaling, in which case it is only the initial desired capacity."
   default     = 1
+}
+
+variable "writer_min_instance_count" {
+  type        = number
+  description = "Optional. Minimum size of the writer ASG. Set this together with writer_max_instance_count to enable autoscaling. When set, Terraform stops managing the ASG's desired capacity so a running autoscaler is not scaled back down on every apply. Defaults to writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = var.writer_min_instance_count == null ? true : var.writer_min_instance_count >= 0
+    error_message = "writer_min_instance_count must be >= 0."
+  }
+}
+
+variable "writer_max_instance_count" {
+  type        = number
+  description = "Optional. Maximum size of the writer ASG. Set this together with writer_min_instance_count to enable autoscaling. Defaults to writer_instance_count * 2."
+  default     = null
+
+  validation {
+    condition     = var.writer_max_instance_count == null ? true : var.writer_max_instance_count >= 1
+    error_message = "writer_max_instance_count must be >= 1."
+  }
+
+  validation {
+    condition     = (var.writer_max_instance_count == null || var.writer_min_instance_count == null) ? true : var.writer_max_instance_count >= var.writer_min_instance_count
+    error_message = "writer_max_instance_count must be >= writer_min_instance_count."
+  }
 }
 
 variable "writer_instance_type" {
@@ -233,8 +287,35 @@ variable "cache_file_size_writer" {
 
 variable "fast_reader_instance_count" {
   type        = number
-  description = "The number of dedicated fast reader nodes to create"
+  description = "The number of dedicated fast reader nodes to create. Used as the fixed desired capacity unless fast_reader_min_instance_count/fast_reader_max_instance_count enable autoscaling, in which case it is only the initial desired capacity."
   default     = 0
+}
+
+variable "fast_reader_min_instance_count" {
+  type        = number
+  description = "Optional. Minimum size of the fast reader ASG. Set this together with fast_reader_max_instance_count to enable autoscaling. When set, Terraform stops managing the ASG's desired capacity so a running autoscaler is not scaled back down on every apply. Defaults to fast_reader_instance_count."
+  default     = null
+
+  validation {
+    condition     = var.fast_reader_min_instance_count == null ? true : var.fast_reader_min_instance_count >= 0
+    error_message = "fast_reader_min_instance_count must be >= 0."
+  }
+}
+
+variable "fast_reader_max_instance_count" {
+  type        = number
+  description = "Optional. Maximum size of the fast reader ASG. Set this together with fast_reader_min_instance_count to enable autoscaling. Defaults to fast_reader_instance_count * 2."
+  default     = null
+
+  validation {
+    condition     = var.fast_reader_max_instance_count == null ? true : var.fast_reader_max_instance_count >= 1
+    error_message = "fast_reader_max_instance_count must be >= 1."
+  }
+
+  validation {
+    condition     = (var.fast_reader_max_instance_count == null || var.fast_reader_min_instance_count == null) ? true : var.fast_reader_max_instance_count >= var.fast_reader_min_instance_count
+    error_message = "fast_reader_max_instance_count must be >= fast_reader_min_instance_count."
+  }
 }
 
 variable "fast_reader_instance_type" {

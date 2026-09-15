@@ -53,6 +53,26 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
 
+### Brainstore instance count and autoscaling
+
+By default each Brainstore Auto Scaling Group (reader, writer, fast reader) is a fixed size: `min = desired = *_instance_count` and `max = *_instance_count * 2`. Terraform manages the desired capacity, so every apply resets the group to the configured count.
+
+To autoscale a group, set an explicit min and/or max:
+
+```hcl
+brainstore_instance_count     = 2 # initial desired capacity
+brainstore_min_instance_count = 2
+brainstore_max_instance_count = 8
+
+# Same knobs exist for the writer and fast reader ASGs:
+# brainstore_writer_min_instance_count / brainstore_writer_max_instance_count
+# brainstore_fast_reader_min_instance_count / brainstore_fast_reader_max_instance_count
+```
+
+When either the min or max is set, the group is treated as autoscaling: `*_instance_count` becomes only the **initial** desired capacity, and Terraform stops managing the group's desired capacity thereafter. This is what keeps a running autoscaler (for example, a target-tracking scaling policy you attach out of band) from being scaled back down to `*_instance_count` on every `terraform apply`. Unset defaults for min/max are `*_instance_count` and `*_instance_count * 2` respectively.
+
+This module does not create scaling policies itself; attach your own (target tracking, step, or scheduled) to the ASGs, or scale them via the AWS console/CLI. Setting min == max pins the group to a fixed size while still leaving desired capacity unmanaged.
+
 ## Useful scripts
 
 ### dump-logs.sh

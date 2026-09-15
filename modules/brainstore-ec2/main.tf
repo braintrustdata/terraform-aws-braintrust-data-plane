@@ -6,6 +6,23 @@ locals {
   architecture          = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes      = var.writer_instance_count > 0
   has_fast_reader_nodes = var.fast_reader_instance_count > 0
+
+  # Autoscaling: when a caller sets an explicit min and/or max instance count, the
+  # ASG is treated as autoscaling. In that mode Terraform stops managing the ASG's
+  # desired_capacity (set to null) so an external autoscaler is not scaled back down
+  # to the desired count on every apply. When neither is set, behavior is unchanged:
+  # a fixed-size ASG with min = desired = *_instance_count and max = *_instance_count * 2.
+  reader_autoscaling = var.min_instance_count != null || var.max_instance_count != null
+  reader_min_size    = coalesce(var.min_instance_count, var.instance_count)
+  reader_max_size    = coalesce(var.max_instance_count, var.instance_count * 2)
+
+  writer_autoscaling = var.writer_min_instance_count != null || var.writer_max_instance_count != null
+  writer_min_size    = coalesce(var.writer_min_instance_count, var.writer_instance_count)
+  writer_max_size    = coalesce(var.writer_max_instance_count, var.writer_instance_count * 2)
+
+  fast_reader_autoscaling = var.fast_reader_min_instance_count != null || var.fast_reader_max_instance_count != null
+  fast_reader_min_size    = coalesce(var.fast_reader_min_instance_count, var.fast_reader_instance_count)
+  fast_reader_max_size    = coalesce(var.fast_reader_max_instance_count, var.fast_reader_instance_count * 2)
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id    = split(":::", var.brainstore_s3_bucket_arn)[1]
   lambda_responses_bucket_id = split(":::", var.lambda_responses_s3_bucket_arn)[1]
@@ -168,16 +185,16 @@ resource "aws_lb_listener" "brainstore" {
 
 resource "aws_autoscaling_group" "brainstore" {
   name_prefix         = "${var.deployment_name}-brainstore"
-  min_size            = var.instance_count
-  max_size            = var.instance_count * 2
-  desired_capacity    = var.instance_count
+  min_size            = local.reader_min_size
+  max_size            = local.reader_max_size
+  desired_capacity    = local.reader_autoscaling ? null : var.instance_count
   vpc_zone_identifier = var.private_subnet_ids
   health_check_type   = "EBS,ELB"
   # This is essentially the expected boot and setup time of the instance.
   # If too low, the ASG may terminate the instance before it has a chance to boot.
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
-  wait_for_elb_capacity     = var.instance_count
+  wait_for_elb_capacity     = local.reader_autoscaling ? local.reader_min_size : var.instance_count
   launch_template {
     id      = aws_launch_template.brainstore.id
     version = aws_launch_template.brainstore.latest_version

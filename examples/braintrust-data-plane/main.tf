@@ -90,15 +90,27 @@ module "braintrust-data-plane" {
   brainstore_instance_count = 2
   brainstore_instance_type  = "c8gd.4xlarge"
 
+  # Optional: enable autoscaling for the reader ASG by setting an explicit min
+  # and max. When set, Terraform stops managing the ASG's desired capacity so an
+  # external autoscaler (e.g. a target-tracking policy you attach) is not scaled
+  # back down to brainstore_instance_count on every apply. Leave unset for a
+  # fixed-size ASG (min = desired = count, max = count * 2).
+  # brainstore_min_instance_count = 2
+  # brainstore_max_instance_count = 8
+
   # The number of Brainstore fast reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_fast_reader_instance_count = 2
   brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
+  # brainstore_fast_reader_min_instance_count = 2
+  # brainstore_fast_reader_max_instance_count = 8
 
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
+  # brainstore_writer_min_instance_count = 1
+  # brainstore_writer_max_instance_count = 3
 
   ### Redis configuration
 
