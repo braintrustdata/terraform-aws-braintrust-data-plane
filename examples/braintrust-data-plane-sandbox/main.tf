@@ -1,7 +1,7 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 locals {
-  braintrust_build_tag = "b9b5a682f7b2ac2f5f283fbe56b865013745e333"
+  braintrust_build_tag = "c469f8fe87179164e816b50a21680c19e22f8ff7"
 }
 
 module "braintrust-data-plane" {
@@ -15,14 +15,14 @@ module "braintrust-data-plane" {
   # IMPORTANT: Each deployment in the same AWS account must have a unique name.
   # Use a short prefix + your name or identifier (max 18 characters).
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "evignanker-sb"
+  deployment_name = "evignanker-sb-up"
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.
-  braintrust_org_name = "Vignanker-sandbox"
+  braintrust_org_name = "Vignanker-sanbox-upgrade"
 
   # Required when braintrust_org_name is "*", or when it is unset/empty.
-  primary_org_name = "Vignanker-sandbox"
+  primary_org_name = "Vignanker-sanbox-upgrade"
 
   # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
   # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
