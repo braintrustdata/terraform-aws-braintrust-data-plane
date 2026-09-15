@@ -332,7 +332,6 @@ module "services" {
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -509,7 +508,6 @@ module "api_ecs" {
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
   brainstore_license_key          = var.brainstore_license_key
 
   # Storage
@@ -672,7 +670,6 @@ module "brainstore" {
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
   skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export              = var.brainstore_enable_export
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
