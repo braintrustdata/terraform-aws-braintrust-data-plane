@@ -51,6 +51,34 @@ variable "max_instance_count" {
   }
 }
 
+variable "enable_cpu_autoscaling" {
+  type        = bool
+  description = "Enable target-tracking autoscaling on the reader ASG based on average CPU utilization. When enabled, Terraform stops managing the ASG's desired capacity (as with min_instance_count/max_instance_count) so the scaling policy is not fought on every apply. Set min_instance_count/max_instance_count to control the scaling range."
+  default     = false
+}
+
+variable "cpu_autoscaling_target_percent" {
+  type        = number
+  description = "Target average CPU utilization (percent) for the reader ASG target-tracking scaling policy."
+  default     = 60
+
+  validation {
+    condition     = var.cpu_autoscaling_target_percent > 0 && var.cpu_autoscaling_target_percent <= 100
+    error_message = "cpu_autoscaling_target_percent must be > 0 and <= 100."
+  }
+}
+
+variable "cpu_autoscaling_estimated_warmup_seconds" {
+  type        = number
+  description = "Estimated warmup time (seconds) before a newly launched reader instance contributes to the CPU metric. Prevents over-scaling while instances boot and warm their cache."
+  default     = 300
+
+  validation {
+    condition     = var.cpu_autoscaling_estimated_warmup_seconds >= 0
+    error_message = "cpu_autoscaling_estimated_warmup_seconds must be >= 0."
+  }
+}
+
 variable "port" {
   type        = number
   description = "The port to use for the Brainstore"
@@ -322,6 +350,34 @@ variable "fast_reader_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore fast reader nodes"
   default     = "c8gd.4xlarge"
+}
+
+variable "fast_reader_enable_cpu_autoscaling" {
+  type        = bool
+  description = "Enable target-tracking autoscaling on the fast reader ASG based on average CPU utilization. When enabled, Terraform stops managing the ASG's desired capacity so the scaling policy is not fought on every apply. Set fast_reader_min_instance_count/fast_reader_max_instance_count to control the scaling range. Requires fast_reader_instance_count > 0."
+  default     = false
+}
+
+variable "fast_reader_cpu_autoscaling_target_percent" {
+  type        = number
+  description = "Target average CPU utilization (percent) for the fast reader ASG target-tracking scaling policy."
+  default     = 60
+
+  validation {
+    condition     = var.fast_reader_cpu_autoscaling_target_percent > 0 && var.fast_reader_cpu_autoscaling_target_percent <= 100
+    error_message = "fast_reader_cpu_autoscaling_target_percent must be > 0 and <= 100."
+  }
+}
+
+variable "fast_reader_cpu_autoscaling_estimated_warmup_seconds" {
+  type        = number
+  description = "Estimated warmup time (seconds) before a newly launched fast reader instance contributes to the CPU metric. Prevents over-scaling while instances boot and warm their cache."
+  default     = 300
+
+  validation {
+    condition     = var.fast_reader_cpu_autoscaling_estimated_warmup_seconds >= 0
+    error_message = "fast_reader_cpu_autoscaling_estimated_warmup_seconds must be >= 0."
+  }
 }
 
 variable "extra_env_vars_fast_reader" {

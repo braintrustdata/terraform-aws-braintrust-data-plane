@@ -148,3 +148,121 @@ run "writer_autoscaling_bounds" {
     error_message = "writer ASG max_size should follow writer_max_instance_count"
   }
 }
+
+# No CPU autoscaling by default: no scaling policies are created.
+run "no_cpu_autoscaling_by_default" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    instance_count             = 2
+    writer_instance_count      = 0
+    fast_reader_instance_count = 2
+  }
+
+  assert {
+    condition     = length(aws_autoscaling_policy.brainstore_reader_cpu) == 0
+    error_message = "reader CPU scaling policy should not exist unless enabled"
+  }
+
+  assert {
+    condition     = length(aws_autoscaling_policy.brainstore_fast_reader_cpu) == 0
+    error_message = "fast reader CPU scaling policy should not exist unless enabled"
+  }
+}
+
+# Reader CPU autoscaling: creates a target-tracking policy and puts the ASG into
+# autoscaling mode (widened max, min falls back to instance_count).
+run "reader_cpu_autoscaling" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    instance_count                 = 2
+    max_instance_count             = 10
+    enable_cpu_autoscaling         = true
+    cpu_autoscaling_target_percent = 55
+    writer_instance_count          = 0
+    fast_reader_instance_count     = 0
+  }
+
+  assert {
+    condition     = length(aws_autoscaling_policy.brainstore_reader_cpu) == 1
+    error_message = "reader CPU scaling policy should be created when enabled"
+  }
+
+  assert {
+    condition     = aws_autoscaling_policy.brainstore_reader_cpu[0].policy_type == "TargetTrackingScaling"
+    error_message = "reader CPU scaling policy should be target tracking"
+  }
+
+  assert {
+    condition     = aws_autoscaling_policy.brainstore_reader_cpu[0].target_tracking_configuration[0].target_value == 55
+    error_message = "reader CPU scaling policy should use the configured target"
+  }
+
+  assert {
+    condition     = aws_autoscaling_policy.brainstore_reader_cpu[0].target_tracking_configuration[0].predefined_metric_specification[0].predefined_metric_type == "ASGAverageCPUUtilization"
+    error_message = "reader CPU scaling policy should track average CPU"
+  }
+
+  assert {
+    condition     = aws_autoscaling_group.brainstore.min_size == 2 && aws_autoscaling_group.brainstore.max_size == 10
+    error_message = "enabling CPU autoscaling should honor min/max bounds"
+  }
+}
+
+# Fast reader CPU autoscaling: policy is created only when fast reader nodes exist.
+run "fast_reader_cpu_autoscaling" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    instance_count                             = 2
+    writer_instance_count                      = 0
+    fast_reader_instance_count                 = 2
+    fast_reader_max_instance_count             = 8
+    fast_reader_enable_cpu_autoscaling         = true
+    fast_reader_cpu_autoscaling_target_percent = 65
+  }
+
+  assert {
+    condition     = length(aws_autoscaling_policy.brainstore_fast_reader_cpu) == 1
+    error_message = "fast reader CPU scaling policy should be created when enabled and nodes exist"
+  }
+
+  assert {
+    condition     = aws_autoscaling_policy.brainstore_fast_reader_cpu[0].target_tracking_configuration[0].target_value == 65
+    error_message = "fast reader CPU scaling policy should use the configured target"
+  }
+}
+
+# Fast reader CPU autoscaling is a no-op when there are no fast reader nodes.
+run "fast_reader_cpu_autoscaling_requires_nodes" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    instance_count                     = 2
+    writer_instance_count              = 0
+    fast_reader_instance_count         = 0
+    fast_reader_enable_cpu_autoscaling = true
+  }
+
+  assert {
+    condition     = length(aws_autoscaling_policy.brainstore_fast_reader_cpu) == 0
+    error_message = "fast reader CPU scaling policy should not be created without fast reader nodes"
+  }
+}

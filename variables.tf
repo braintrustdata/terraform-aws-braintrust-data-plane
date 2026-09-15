@@ -1350,6 +1350,24 @@ variable "brainstore_max_instance_count" {
   default     = null
 }
 
+variable "brainstore_enable_cpu_autoscaling" {
+  type        = bool
+  description = "Enable target-tracking autoscaling on the Brainstore reader ASG based on average CPU utilization. When enabled, Terraform stops managing the ASG's desired capacity so the scaling policy is not fought on every apply. Use brainstore_min_instance_count/brainstore_max_instance_count to set the scaling range."
+  default     = false
+}
+
+variable "brainstore_cpu_autoscaling_target_percent" {
+  type        = number
+  description = "Target average CPU utilization (percent) for the Brainstore reader ASG target-tracking scaling policy."
+  default     = 60
+}
+
+variable "brainstore_cpu_autoscaling_estimated_warmup_seconds" {
+  type        = number
+  description = "Estimated warmup time (seconds) before a newly launched Brainstore reader instance contributes to the CPU metric. Prevents over-scaling while instances boot and warm their cache."
+  default     = 300
+}
+
 variable "brainstore_writer_instance_count" {
   type        = number
   description = "The number of dedicated writer nodes to create. Used as the fixed desired capacity unless brainstore_writer_min_instance_count/brainstore_writer_max_instance_count enable autoscaling, in which case it is only the initial desired capacity."
@@ -1636,6 +1654,24 @@ variable "brainstore_fast_reader_max_instance_count" {
   type        = number
   description = "Optional. Maximum size of the Brainstore fast reader ASG. Set this together with brainstore_fast_reader_min_instance_count to enable autoscaling. Defaults to brainstore_fast_reader_instance_count * 2."
   default     = null
+}
+
+variable "brainstore_fast_reader_enable_cpu_autoscaling" {
+  type        = bool
+  description = "Enable target-tracking autoscaling on the Brainstore fast reader ASG based on average CPU utilization. When enabled, Terraform stops managing the ASG's desired capacity so the scaling policy is not fought on every apply. Use brainstore_fast_reader_min_instance_count/brainstore_fast_reader_max_instance_count to set the scaling range. Requires brainstore_fast_reader_instance_count > 0."
+  default     = false
+}
+
+variable "brainstore_fast_reader_cpu_autoscaling_target_percent" {
+  type        = number
+  description = "Target average CPU utilization (percent) for the Brainstore fast reader ASG target-tracking scaling policy."
+  default     = 60
+}
+
+variable "brainstore_fast_reader_cpu_autoscaling_estimated_warmup_seconds" {
+  type        = number
+  description = "Estimated warmup time (seconds) before a newly launched Brainstore fast reader instance contributes to the CPU metric. Prevents over-scaling while instances boot and warm their cache."
+  default     = 300
 }
 
 variable "brainstore_fast_reader_instance_type" {

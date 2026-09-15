@@ -98,12 +98,20 @@ module "braintrust-data-plane" {
   # brainstore_min_instance_count = 2
   # brainstore_max_instance_count = 8
 
+  # Optional: autoscale readers on average CPU utilization (managed target-tracking
+  # policy). Enabling this puts the reader ASG into autoscaling mode; set the
+  # min/max above to bound the scaling range.
+  # brainstore_enable_cpu_autoscaling         = true
+  # brainstore_cpu_autoscaling_target_percent = 60
+
   # The number of Brainstore fast reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_fast_reader_instance_count = 2
   brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
   # brainstore_fast_reader_min_instance_count = 2
   # brainstore_fast_reader_max_instance_count = 8
+  # brainstore_fast_reader_enable_cpu_autoscaling         = true
+  # brainstore_fast_reader_cpu_autoscaling_target_percent = 60
 
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory

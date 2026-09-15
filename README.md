@@ -71,7 +71,28 @@ brainstore_max_instance_count = 8
 
 When either the min or max is set, the group is treated as autoscaling: `*_instance_count` becomes only the **initial** desired capacity, and Terraform stops managing the group's desired capacity thereafter. This is what keeps a running autoscaler (for example, a target-tracking scaling policy you attach out of band) from being scaled back down to `*_instance_count` on every `terraform apply`. Unset defaults for min/max are `*_instance_count` and `*_instance_count * 2` respectively.
 
-This module does not create scaling policies itself; attach your own (target tracking, step, or scheduled) to the ASGs, or scale them via the AWS console/CLI. Setting min == max pins the group to a fixed size while still leaving desired capacity unmanaged.
+Setting min == max pins the group to a fixed size while still leaving desired capacity unmanaged.
+
+#### CPU-based autoscaling (readers and fast readers)
+
+The reader and fast reader ASGs can autoscale on average CPU utilization using a managed target-tracking policy. (Writers are intentionally excluded.)
+
+```hcl
+brainstore_min_instance_count             = 2
+brainstore_max_instance_count             = 10
+brainstore_enable_cpu_autoscaling         = true
+brainstore_cpu_autoscaling_target_percent = 60 # default
+
+# Fast readers use the same pattern (requires brainstore_fast_reader_instance_count > 0):
+# brainstore_fast_reader_min_instance_count             = 2
+# brainstore_fast_reader_max_instance_count             = 8
+# brainstore_fast_reader_enable_cpu_autoscaling         = true
+# brainstore_fast_reader_cpu_autoscaling_target_percent = 60
+```
+
+Enabling CPU autoscaling automatically puts the group into autoscaling mode (desired capacity unmanaged), so the policy's scaling decisions survive `terraform apply`. Set the min/max to bound the scaling range (they still default to `*_instance_count` and `*_instance_count * 2`). `*_cpu_autoscaling_estimated_warmup_seconds` (default 300) controls how long a new instance is excluded from the metric while it boots and warms its cache, which prevents over-scaling during rollout.
+
+You can still attach your own scaling policies (step, scheduled, or additional target-tracking metrics) to the ASGs alongside or instead of the CPU policy.
 
 ## Useful scripts
 
