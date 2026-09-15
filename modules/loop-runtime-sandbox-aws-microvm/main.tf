@@ -81,6 +81,7 @@ locals {
     EXO_SANDBOX_PROVIDER                              = "aws-lambda-microvm"
     EXO_SANDBOX_IMAGE                                 = "lambda-microvm"
     AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER               = local.image_arn
+    AWS_LAMBDA_MICROVM_IMAGE_VERSION                  = aws_cloudformation_stack.microvm_image.outputs["ImageVersion"]
     AWS_LAMBDA_MICROVM_REGION                         = local.region
     AWS_LAMBDA_MICROVM_INGRESS_NETWORK_CONNECTOR_ARNS = join(",", local.ingress_connector_arns)
     AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARNS  = join(",", local.egress_connector_arns)
@@ -200,7 +201,7 @@ resource "aws_route_table_association" "restricted_egress" {
 resource "aws_route53_resolver_firewall_domain_list" "restricted_egress" {
   count = local.use_restricted_egress ? 1 : 0
 
-  domains = ["*"]
+  domains = ["*."]
   name    = "bt-loop-${var.deployment_name}-dns-domains"
   tags    = local.common_tags
 }
@@ -445,6 +446,8 @@ resource "aws_cloudformation_stack" "microvm_image" {
     Outputs:
       ImageArn:
         Value: !GetAtt MicrovmImage.ImageArn
+      ImageVersion:
+        Value: !GetAtt MicrovmImage.LatestActiveImageVersion
   YAML
 
   tags = local.common_tags

@@ -86,7 +86,7 @@ module "loop_runtime_ecs" {
   additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
 
   # Data-plane connectivity
-  database_url_secret_arn   = module.database.postgres_database_url_secret_arn
+  database_url_secret_arn   = local.database_url_secret_arn
   redis_url_secret_arn      = module.redis.redis_url_secret_arn
   function_tools_secret_arn = module.services_common.function_tools_secret_arn
 

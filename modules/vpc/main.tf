@@ -273,7 +273,7 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 resource "aws_security_group" "vpc_endpoints_tls" {
-  count       = var.enable_brainstore_ec2_ssm ? 1 : 0
+  count       = var.enable_brainstore_ec2_ssm || var.create_secrets_manager_vpc_endpoint ? 1 : 0
   name        = "${var.deployment_name}-${var.vpc_name}-vpc-endpoints"
   description = "Allow TLS inbound traffic from within VPC"
   vpc_id      = aws_vpc.vpc.id
@@ -285,6 +285,10 @@ resource "aws_security_group" "vpc_endpoints_tls" {
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
+
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-vpc-endpoints"
+  }, local.common_tags)
 }
 
 resource "aws_vpc_endpoint" "ec2_ssm_endpoint" {
@@ -306,5 +310,24 @@ resource "aws_vpc_endpoint" "ec2_ssm_endpoint" {
 
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-${each.key}-endpoint"
+  }, local.common_tags)
+}
+
+resource "aws_vpc_endpoint" "secrets_manager" {
+  count             = var.create_secrets_manager_vpc_endpoint ? 1 : 0
+  vpc_id            = aws_vpc.vpc.id
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.secretsmanager"
+  vpc_endpoint_type = "Interface"
+
+  security_group_ids  = [aws_security_group.vpc_endpoints_tls[0].id]
+  private_dns_enabled = true
+  subnet_ids = [
+    aws_subnet.private_subnet_1.id,
+    aws_subnet.private_subnet_2.id,
+    aws_subnet.private_subnet_3.id,
+  ]
+
+  tags = merge({
+    Name = "${var.deployment_name}-${var.vpc_name}-secretsmanager-endpoint"
   }, local.common_tags)
 }
