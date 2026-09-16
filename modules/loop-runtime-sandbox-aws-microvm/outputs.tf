@@ -17,3 +17,11 @@ output "microvm_log_group_name" {
   description = "CloudWatch log group used for MicroVM image build and (opt-in) runtime logs."
   value       = aws_cloudwatch_log_group.microvm_image.name
 }
+
+output "private_endpoint_dependency_ids" {
+  description = "Endpoint and access rule IDs that must exist before the runtime service starts."
+  value = [
+    aws_vpc_endpoint.loop_runtime_microvm.id,
+    aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https.id,
+  ]
+}

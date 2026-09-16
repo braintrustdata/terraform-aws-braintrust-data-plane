@@ -26,7 +26,7 @@ run "default_plans" {
     error_message = "The gateway must exist by default without API traffic cutover."
   }
   assert {
-    condition     = length(module.loop_runtime_ecs) == 0 && length(aws_vpc_endpoint.loop_runtime_microvm) == 0
+    condition     = length(module.loop_runtime_ecs) == 0 && length(module.loop_runtime_sandbox_aws_microvm) == 0
     error_message = "Loop and its private endpoint must remain optional."
   }
 

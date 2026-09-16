@@ -1,5 +1,6 @@
 data "aws_region" "current" {}
 data "aws_partition" "current" {}
+data "aws_caller_identity" "current" {}
 
 locals {
   common_tags = merge({
@@ -474,4 +475,46 @@ data "aws_subnet" "restricted_egress_existing" {
       error_message = "Each sandbox subnet must belong to the supplied sandbox VPC."
     }
   }
+}
+
+resource "aws_security_group" "loop_runtime_microvm_endpoint" {
+  name        = "${var.deployment_name}-loop-microvm-vpce"
+  description = "Private MicroVM endpoint for Loop runtime"
+  vpc_id      = var.endpoint_vpc_id
+  tags        = local.common_tags
+}
+
+resource "aws_vpc_security_group_ingress_rule" "loop_runtime_microvm_https" {
+  security_group_id            = aws_security_group.loop_runtime_microvm_endpoint.id
+  referenced_security_group_id = var.runtime_security_group_id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+  description                  = "Allow Loop runtime to access MicroVMs through PrivateLink."
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_endpoint" "loop_runtime_microvm" {
+  vpc_id              = var.endpoint_vpc_id
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.lambda-microvm"
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+  subnet_ids          = var.endpoint_subnet_ids
+  security_group_ids  = [aws_security_group.loop_runtime_microvm_endpoint.id]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = "*"
+      Action    = "lambda:ConnectMicrovm"
+      Resource  = "*"
+      Condition = {
+        StringEquals = {
+          "aws:ResourceAccount" = data.aws_caller_identity.current.account_id
+        }
+      }
+    }]
+  })
+  tags = local.common_tags
 }

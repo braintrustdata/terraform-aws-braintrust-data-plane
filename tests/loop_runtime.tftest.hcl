@@ -43,18 +43,6 @@ run "loop_private_endpoint" {
     error_message = "MicroVM egress must default to restricted."
   }
   assert {
-    condition     = aws_vpc_endpoint.loop_runtime_microvm[0].private_dns_enabled && aws_vpc_endpoint.loop_runtime_microvm[0].service_name == "com.amazonaws.us-east-1.lambda-microvm"
-    error_message = "Loop must use private DNS for the MicroVM data endpoint."
-  }
-  assert {
-    condition     = jsondecode(aws_vpc_endpoint.loop_runtime_microvm[0].policy).Statement[0].Condition.StringEquals["aws:ResourceAccount"] == "123456789012"
-    error_message = "The MicroVM endpoint must restrict connections to this account."
-  }
-  assert {
-    condition     = aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https[0].from_port == 443 && aws_vpc_security_group_ingress_rule.gateway_from_loop_runtime[0].from_port == 80
-    error_message = "Loop must use HTTPS for MicroVMs and HTTP for the private gateway."
-  }
-  assert {
     condition     = local.loop_runtime_ai_proxy_url == "http://private-gateway.example/v1/proxy"
     error_message = "Loop must send model requests directly to the private gateway."
   }
@@ -78,10 +66,6 @@ run "loop_with_existing_vpc" {
     existing_private_subnet_2_id = "subnet-22222222222222222"
     existing_private_subnet_3_id = "subnet-33333333333333333"
     existing_public_subnet_1_id  = "subnet-44444444444444444"
-  }
-  assert {
-    condition     = aws_vpc_endpoint.loop_runtime_microvm[0].vpc_id == "vpc-1234567890abcdef0"
-    error_message = "The MicroVM endpoint must use the supplied main VPC."
   }
 }
 

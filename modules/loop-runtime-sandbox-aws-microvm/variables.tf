@@ -166,3 +166,18 @@ variable "existing_subnet_ids" {
     error_message = "existing_subnet_ids must contain distinct, nonempty subnet IDs."
   }
 }
+
+variable "endpoint_vpc_id" {
+  type        = string
+  description = "Main VPC ID for runtime access to MicroVMs through PrivateLink."
+}
+
+variable "endpoint_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs in the main VPC for the MicroVM endpoint."
+}
+
+variable "runtime_security_group_id" {
+  type        = string
+  description = "Loop runtime security group that can access the MicroVM endpoint."
+}

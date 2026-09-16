@@ -11,11 +11,27 @@ mock_provider "http" {
   source = "./tests/mocks/http"
 }
 variables {
-  deployment_name     = "bt-test"
-  microvm_version_tag = "test"
+  deployment_name           = "bt-test"
+  microvm_version_tag       = "test"
+  endpoint_vpc_id           = "vpc-11111111111111111"
+  endpoint_subnet_ids       = ["subnet-11111111111111111", "subnet-22222222222222222"]
+  runtime_security_group_id = "sg-11111111111111111"
 }
 
 run "managed_isolation_by_default" {
+
+  assert {
+    condition     = aws_vpc_endpoint.loop_runtime_microvm.private_dns_enabled && aws_vpc_endpoint.loop_runtime_microvm.service_name == "com.amazonaws.us-east-1.lambda-microvm" && aws_vpc_endpoint.loop_runtime_microvm.vpc_id == var.endpoint_vpc_id
+    error_message = "The MicroVM endpoint must use private DNS in the main VPC."
+  }
+  assert {
+    condition     = jsondecode(aws_vpc_endpoint.loop_runtime_microvm.policy).Statement[0].Condition.StringEquals["aws:ResourceAccount"] == "123456789012"
+    error_message = "The MicroVM endpoint must restrict connections to this account."
+  }
+  assert {
+    condition     = aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https.from_port == 443 && aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https.to_port == 443 && aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https.referenced_security_group_id == var.runtime_security_group_id
+    error_message = "Only the runtime security group must receive HTTPS access to the endpoint."
+  }
   command = plan
   module {
     source = "./modules/loop-runtime-sandbox-aws-microvm"

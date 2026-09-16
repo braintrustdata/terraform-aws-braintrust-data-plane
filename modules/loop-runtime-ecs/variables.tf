@@ -387,3 +387,15 @@ variable "create_data_store_ingress_rules" {
   description = "Create all data store ingress rules when their security group IDs are unknown during the plan."
   default     = false
 }
+
+variable "create_gateway_ingress_rule" {
+  type        = bool
+  description = "Create the rule for runtime access to the private gateway."
+  default     = false
+}
+
+variable "gateway_alb_security_group_id" {
+  type        = string
+  description = "Private gateway security group for runtime access."
+  default     = null
+}

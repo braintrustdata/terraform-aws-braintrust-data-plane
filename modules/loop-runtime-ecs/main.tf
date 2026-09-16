@@ -624,7 +624,7 @@ resource "aws_ecs_service" "loop_runtime" {
     container_port   = local.container_port
   }
 
-  depends_on = [terraform_data.loop_runtime_http_listener, terraform_data.service_dependencies]
+  depends_on = [terraform_data.loop_runtime_http_listener, terraform_data.service_dependencies, aws_vpc_security_group_ingress_rule.gateway_from_loop_runtime]
 
   lifecycle {
     ignore_changes = [desired_count]
@@ -633,4 +633,16 @@ resource "aws_ecs_service" "loop_runtime" {
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime"
   }, local.common_tags)
+}
+
+resource "aws_vpc_security_group_ingress_rule" "gateway_from_loop_runtime" {
+  count = var.create_gateway_ingress_rule ? 1 : 0
+
+  security_group_id            = var.gateway_alb_security_group_id
+  referenced_security_group_id = aws_security_group.task.id
+  from_port                    = 80
+  to_port                      = 80
+  ip_protocol                  = "tcp"
+  description                  = "Allow Loop runtime to access the private gateway."
+  tags                         = local.common_tags
 }
