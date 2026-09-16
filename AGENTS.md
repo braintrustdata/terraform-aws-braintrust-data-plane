@@ -37,9 +37,29 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 ## Rules
 
+### Follow existing conventions
+
+Follow established repository conventions before you introduce a new pattern.
+Use nearby code and comparable modules as references.
+Match existing names, file organization, resource patterns, and validation style.
+Keep changes consistent with the surrounding code.
+
+### Prefer separate input variables
+
+Prefer multiple focused variables over a large configuration object.
+Use separate variables for distinct inputs, such as a VPC ID and subnet IDs.
+Use a shared prefix to group related variables.
+Add validation when related variables must be supplied together.
+Use an object only when the data represents one structured value or an established repository pattern requires it.
+Do not refactor existing object inputs solely to apply this preference.
+
 ### Do not name customers in public text
 
 Do not mention named customers in PRs, comments, docs, examples, or commit messages. Refer to them generically (private dataplane, hybrid, residency-sensitive, etc.).
+
+Keep public-facing text free of internal deployment names, environments, and rollout plans.
+Do not include private deployment details.
+Describe customer-visible behavior and configuration without internal operational context.
 
 ### Tag created AWS resources with the deployment name
 
@@ -126,8 +146,8 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
 Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
 peer the quarantine VPC to main for this path. Prefer PrivateLink to the
-private gateway when opted in. Loop Runtime stays on the AI Proxy Function
-URL; PrivateLink only affects quarantine when the flag is on.
+private gateway when opted in. Loop Runtime uses the private gateway ALB directly.
+This PrivateLink flag affects quarantine only.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 
@@ -217,3 +237,10 @@ mise run validate   # terraform init + validate (module + production example)
 ```
 
 Pre-commit hooks and `tflint` run automatically on commit. Run `mise run lint` to check before committing.
+
+### Loop sandbox network isolation
+
+Loop sandbox egress uses a dedicated third VPC by default. Keep its empty outbound security policy and DNS block.
+Prefer this module-managed VPC because it isolates untrusted code from internal networks.
+The existing sandbox VPC option supplies a VPC ID and private subnet IDs. The module retains its dedicated security group without outbound rules.
+The caller owns routes and DNS restrictions for a supplied VPC. Do not attach a VPC-wide DNS block to a supplied VPC automatically.

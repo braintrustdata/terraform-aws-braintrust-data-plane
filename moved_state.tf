@@ -330,3 +330,27 @@ moved {
   from = module.services_common.aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
 }
+
+# Preserve Loop network resources after their move into the existing modules.
+# Before a downgrade to the root addresses, reverse these state moves.
+# Otherwise, Terraform plans resource destruction and recreation.
+
+moved {
+  from = aws_security_group.loop_runtime_microvm_endpoint[0]
+  to   = module.loop_runtime_sandbox_aws_microvm[0].aws_security_group.loop_runtime_microvm_endpoint
+}
+
+moved {
+  from = aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https[0]
+  to   = module.loop_runtime_sandbox_aws_microvm[0].aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https
+}
+
+moved {
+  from = aws_vpc_endpoint.loop_runtime_microvm[0]
+  to   = module.loop_runtime_sandbox_aws_microvm[0].aws_vpc_endpoint.loop_runtime_microvm
+}
+
+moved {
+  from = aws_vpc_security_group_ingress_rule.gateway_from_loop_runtime[0]
+  to   = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.gateway_from_loop_runtime[0]
+}

@@ -53,6 +53,35 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
 
+## Loop runtime
+
+Loop runtime is optional. It requires `create_ai_gateway = true` (the default) and `enable_ai_gateway = true`.
+
+```hcl
+enable_loop_runtime = true
+enable_ai_gateway   = true
+```
+
+Loop runtime sends model requests directly to the private AI gateway. The runtime connects to MicroVM sandboxes through a PrivateLink endpoint in the main VPC.
+**PrivateLink does not disable the public MicroVM endpoint today due to AWS limitation.** 
+
+### Sandbox isolation
+
+**If you provide existing VPCs for Braintrust, it's prefered to use the module-managed sandbox VPC for the Lambda MicroVMs.** The default `loop_runtime_sandbox_egress_mode = "restricted"` creates a dedicated third VPC that blocks outbound connections and DNS.
+This isolation is intentional. The sandbox network is not for access to internal services.
+
+An existing dedicated VPC requires both inputs:
+
+```hcl
+loop_runtime_sandbox_existing_vpc_id     = "vpc-0123456789abcdef0"
+loop_runtime_sandbox_existing_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+```
+
+The module verifies subnet membership and creates a security group without outbound rules. Customers own the supplied VPC's routes and DNS restrictions.
+Security groups do not block AmazonProvidedDNS, so equivalent DNS controls remain necessary.
+
+Keep the supplied VPC isolated from the internet and internal networks. Configure DNS restrictions before you enable Loop.
+
 ## Useful scripts
 
 ### dump-logs.sh

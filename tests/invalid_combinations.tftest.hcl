@@ -19,6 +19,8 @@ run "rejects_ecs_api_with_external_eks" {
 
   variables {
     use_deployment_mode_external_eks = true
+    create_ai_gateway                = false
+    enable_ai_gateway                = false
     enable_ecs_api                   = true
   }
 

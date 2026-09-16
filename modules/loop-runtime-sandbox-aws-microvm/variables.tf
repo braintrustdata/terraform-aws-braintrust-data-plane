@@ -96,7 +96,7 @@ variable "ingress_network_connector_arns" {
 variable "sandbox_egress_mode" {
   type        = string
   description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector."
-  default     = "internet"
+  default     = "restricted"
 }
 
 variable "enable_microvm_runtime_logs" {
@@ -129,4 +129,55 @@ variable "custom_tags" {
   type        = map(string)
   description = "Tags to apply to created resources."
   default     = {}
+}
+
+variable "existing_vpc_id" {
+  type        = string
+  description = "Optional dedicated VPC for restricted sandbox egress. Prefer the module-managed isolated VPC. This network is not for internal connectivity. The caller owns routes and DNS restrictions."
+  default     = null
+
+  validation {
+    condition     = var.existing_vpc_id == null ? true : trimspace(var.existing_vpc_id) != ""
+    error_message = "existing_vpc_id must be null or a nonempty VPC ID."
+  }
+
+  validation {
+    condition     = var.existing_vpc_id == null || var.sandbox_egress_mode != "internet"
+    error_message = "existing_vpc_id requires restricted sandbox egress."
+  }
+}
+
+variable "existing_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs in the existing sandbox VPC. Supply these IDs together with existing_vpc_id."
+  default     = []
+  nullable    = false
+
+  validation {
+    condition     = (var.existing_vpc_id == null) == (length(var.existing_subnet_ids) == 0)
+    error_message = "existing_vpc_id and existing_subnet_ids must be supplied together."
+  }
+
+  validation {
+    condition = (
+      length(distinct(var.existing_subnet_ids)) == length(var.existing_subnet_ids) &&
+      alltrue([for id in var.existing_subnet_ids : try(trimspace(id) != "", false)])
+    )
+    error_message = "existing_subnet_ids must contain distinct, nonempty subnet IDs."
+  }
+}
+
+variable "endpoint_vpc_id" {
+  type        = string
+  description = "Main VPC ID for runtime access to MicroVMs through PrivateLink."
+}
+
+variable "endpoint_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs in the main VPC for the MicroVM endpoint."
+}
+
+variable "runtime_security_group_id" {
+  type        = string
+  description = "Loop runtime security group that can access the MicroVM endpoint."
 }
