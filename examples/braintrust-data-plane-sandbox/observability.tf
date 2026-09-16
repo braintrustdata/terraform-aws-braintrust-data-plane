@@ -111,6 +111,14 @@ data "aws_iam_policy_document" "observability_package_read" {
       "arn:aws:s3:::${module.braintrust-data-plane.code_bundle_s3_bucket_name}/${aws_s3_object.observability_package.key}",
     ]
   }
+
+  statement {
+    actions = [
+      "kms:Decrypt",
+      "kms:DescribeKey",
+    ]
+    resources = [module.braintrust-data-plane.kms_key_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "observability_package_read" {
