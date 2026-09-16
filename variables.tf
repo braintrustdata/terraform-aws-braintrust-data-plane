@@ -617,7 +617,7 @@ variable "ai_gateway_target_cpu_utilization" {
 variable "ai_gateway_target_memory_utilization" {
   description = "Target average memory utilization percentage for gateway ECS autoscaling"
   type        = number
-  default     = 75
+  default     = 65
 
   validation {
     condition     = var.ai_gateway_target_memory_utilization > 0 && var.ai_gateway_target_memory_utilization <= 100

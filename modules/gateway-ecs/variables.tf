@@ -104,7 +104,7 @@ variable "target_cpu_utilization" {
 variable "target_memory_utilization" {
   type        = number
   description = "Target average memory utilization percentage for gateway ECS service autoscaling."
-  default     = 75
+  default     = 65
 
   validation {
     condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
