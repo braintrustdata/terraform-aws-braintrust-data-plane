@@ -2,7 +2,8 @@ locals {
   # Loop runtime requires the ECS API data plane and Brainstore (it reads
   # module.brainstore[0] for the reader URL / SG). It is fronted by the shared
   # CloudFront distribution at /loop/runtime*.
-  create_loop_runtime = local.create_ecs_api && var.enable_loop_runtime
+  create_loop_runtime       = local.create_ecs_api && var.enable_loop_runtime
+  loop_runtime_ai_proxy_url = local.create_ai_gateway ? "${module.gateway_alb[0].gateway_url}/v1/proxy" : ""
 
   loop_runtime_version = (
     var.loop_runtime_version_override != null
@@ -47,6 +48,8 @@ module "loop_runtime_sandbox_aws_microvm" {
   microvm_auth_token_expiration_minutes = var.loop_runtime_microvm_auth_token_expiration_minutes
   enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
   sandbox_egress_mode                   = var.loop_runtime_sandbox_egress_mode
+  existing_vpc_id                       = var.loop_runtime_sandbox_existing_vpc_id
+  existing_subnet_ids                   = var.loop_runtime_sandbox_existing_subnet_ids
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags
@@ -97,7 +100,7 @@ module "loop_runtime_ecs" {
   code_bundle_bucket_arn           = module.storage.code_bundle_bucket_arn
 
   brainstore_reader_url = local.loop_runtime_brainstore_reader_url
-  ai_proxy_url          = local.self_hosted_ai_proxy_url
+  ai_proxy_url          = local.loop_runtime_ai_proxy_url
   braintrust_api_url    = module.ingress[0].api_url
 
   # Shared Brainstore WAL format + lock prefix — must match the API/Brainstore writers.
@@ -109,17 +112,25 @@ module "loop_runtime_ecs" {
   monitoring_telemetry   = var.monitoring_telemetry
 
   # SG ingress targets so tasks can reach Postgres / Redis / Brainstore
-  database_security_group_id   = module.database.rds_security_group_id
-  database_port                = module.database.postgres_database_port
-  redis_security_group_id      = module.redis.redis_security_group_id
-  redis_port                   = module.redis.redis_port
-  brainstore_security_group_id = module.brainstore[0].brainstore_elb_security_group_id
-  brainstore_port              = module.brainstore[0].port
+  create_data_store_ingress_rules = true
+  database_security_group_id      = module.database.rds_security_group_id
+  database_port                   = module.database.postgres_database_port
+  redis_security_group_id         = module.redis.redis_security_group_id
+  redis_port                      = module.redis.redis_port
+  brainstore_security_group_id    = module.brainstore[0].brainstore_elb_security_group_id
+  brainstore_port                 = module.brainstore[0].port
 
   # Runtime config
   org_name        = var.loop_runtime_org_name
   allowed_org_ids = var.allowed_org_ids
   extra_env_vars  = var.loop_runtime_extra_env_vars
+
+  service_dependency_ids = [
+    aws_vpc_endpoint.loop_runtime_microvm[0].id,
+    aws_vpc_security_group_ingress_rule.loop_runtime_microvm_https[0].id,
+    local.create_ai_gateway ? aws_vpc_security_group_ingress_rule.gateway_from_loop_runtime[0].id : "",
+    local.create_ai_gateway ? module.gateway_ecs[0].service_name : "",
+  ]
 
   # Observability
   internal_observability_enabled            = local.create_internal_observability_secret

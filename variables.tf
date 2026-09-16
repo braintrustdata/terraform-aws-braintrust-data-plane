@@ -538,11 +538,11 @@ variable "redis_apply_immediately" {
 variable "create_ai_gateway" {
   description = "Create the private gateway infrastructure (internal ALB and ECS gateway service)."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API to the private gateway. Defaults to false. Loop runtime requires this flag to be true. Both gateway flags can be enabled in one apply. Set enable_ai_gateway to false for a separate traffic cutover."
   type        = bool
   default     = false
 

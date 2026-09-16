@@ -14,6 +14,8 @@ variables {
   deployment_name                  = "bt-test"
   brainstore_license_key           = "test-license"
   use_deployment_mode_external_eks = true
+  create_ai_gateway                = false
+  enable_ai_gateway                = false
   enable_quarantine_vpc            = true
 }
 

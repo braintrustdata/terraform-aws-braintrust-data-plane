@@ -295,7 +295,7 @@ resource "aws_security_group_rule" "task_egress_all" {
 # Allow the Loop runtime tasks to reach Postgres, Redis and Brainstore by adding
 # ingress rules on those services' security groups.
 resource "aws_vpc_security_group_ingress_rule" "postgres_from_task" {
-  count = var.database_security_group_id == null ? 0 : 1
+  count = var.create_data_store_ingress_rules ? 1 : (var.database_security_group_id == null ? 0 : 1)
 
   from_port                    = var.database_port
   to_port                      = var.database_port
@@ -307,7 +307,7 @@ resource "aws_vpc_security_group_ingress_rule" "postgres_from_task" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "redis_from_task" {
-  count = var.redis_security_group_id == null ? 0 : 1
+  count = var.create_data_store_ingress_rules ? 1 : (var.redis_security_group_id == null ? 0 : 1)
 
   from_port                    = var.redis_port
   to_port                      = var.redis_port
@@ -319,7 +319,7 @@ resource "aws_vpc_security_group_ingress_rule" "redis_from_task" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "brainstore_from_task" {
-  count = var.brainstore_security_group_id == null ? 0 : 1
+  count = var.create_data_store_ingress_rules ? 1 : (var.brainstore_security_group_id == null ? 0 : 1)
 
   from_port                    = var.brainstore_port
   to_port                      = var.brainstore_port
@@ -590,6 +590,10 @@ resource "terraform_data" "loop_runtime_http_listener" {
   input = var.loop_runtime_http_listener_arn
 }
 
+resource "terraform_data" "service_dependencies" {
+  input = var.service_dependency_ids
+}
+
 resource "aws_ecs_service" "loop_runtime" {
   name                              = "${var.deployment_name}-loop-runtime"
   cluster                           = var.ecs_cluster_arn
@@ -620,7 +624,7 @@ resource "aws_ecs_service" "loop_runtime" {
     container_port   = local.container_port
   }
 
-  depends_on = [terraform_data.loop_runtime_http_listener]
+  depends_on = [terraform_data.loop_runtime_http_listener, terraform_data.service_dependencies]
 
   lifecycle {
     ignore_changes = [desired_count]

@@ -40,3 +40,15 @@ run "ai_gateway_plans" {
     error_message = "standard deployments should still create api_ecs alongside the gateway"
   }
 }
+
+run "gateway_opt_out" {
+  command = plan
+  variables {
+    create_ai_gateway = false
+    enable_ai_gateway = false
+  }
+  assert {
+    condition     = length(module.gateway_ecs) == 0 && !local.enable_ai_gateway
+    error_message = "Explicit opt-out must skip the gateway."
+  }
+}

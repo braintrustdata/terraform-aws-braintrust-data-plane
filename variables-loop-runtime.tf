@@ -4,6 +4,11 @@ variable "enable_loop_runtime" {
   default     = false
 
   validation {
+    condition     = !var.enable_loop_runtime || (var.create_ai_gateway && var.enable_ai_gateway)
+    error_message = "enable_loop_runtime requires create_ai_gateway = true and enable_ai_gateway = true."
+  }
+
+  validation {
     condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
     error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true (the Loop runtime requires the in-VPC ECS API data plane)."
   }
@@ -135,4 +140,40 @@ variable "loop_runtime_sandbox_egress_mode" {
   type        = string
   description = "Outbound-network mode for Loop runtime sandbox MicroVMs. Exactly \"internet\" uses AWS-managed Internet egress; any other value uses a restricted connector with no outbound network access."
   default     = "restricted"
+}
+
+variable "loop_runtime_sandbox_existing_vpc_id" {
+  type        = string
+  description = "Optional dedicated VPC for restricted sandbox egress. Prefer the module-managed isolated VPC. This network is not for internal connectivity. The caller owns routes and DNS restrictions."
+  default     = null
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
+    error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
+  }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || var.loop_runtime_sandbox_egress_mode != "internet"
+    error_message = "loop_runtime_sandbox_existing_vpc_id requires restricted sandbox egress."
+  }
+}
+
+variable "loop_runtime_sandbox_existing_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs in the existing sandbox VPC. Supply these IDs together with loop_runtime_sandbox_existing_vpc_id."
+  default     = []
+  nullable    = false
+
+  validation {
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (length(var.loop_runtime_sandbox_existing_subnet_ids) == 0)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_subnet_ids must be supplied together."
+  }
+
+  validation {
+    condition = (
+      length(distinct(var.loop_runtime_sandbox_existing_subnet_ids)) == length(var.loop_runtime_sandbox_existing_subnet_ids) &&
+      alltrue([for id in var.loop_runtime_sandbox_existing_subnet_ids : try(trimspace(id) != "", false)])
+    )
+    error_message = "loop_runtime_sandbox_existing_subnet_ids must contain distinct, nonempty subnet IDs."
+  }
 }

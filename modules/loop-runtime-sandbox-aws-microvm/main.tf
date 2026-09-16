@@ -23,7 +23,10 @@ locals {
 
   # Match CloudFormation's fail-closed behavior: only the exact value
   # "internet" permits public Internet egress from sandbox MicroVMs.
-  use_restricted_egress = var.sandbox_egress_mode != "internet"
+  use_restricted_egress        = var.sandbox_egress_mode != "internet"
+  create_restricted_egress_vpc = local.use_restricted_egress && var.existing_vpc_id == null
+  restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
+  restricted_egress_subnet_ids = var.existing_vpc_id != null ? var.existing_subnet_ids : aws_subnet.restricted_egress[*].id
   egress_connector_arns = local.use_restricted_egress ? [
     aws_cloudformation_stack.restricted_egress_connector[0].outputs["NetworkConnectorArn"]
   ] : [local.managed_egress_connector_arn]
@@ -152,12 +155,12 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
 }
 
 data "aws_availability_zones" "available" {
-  count = local.use_restricted_egress ? 1 : 0
+  count = local.create_restricted_egress_vpc ? 1 : 0
   state = "available"
 }
 
 resource "aws_vpc" "restricted_egress" {
-  count = local.use_restricted_egress ? 1 : 0
+  count = local.create_restricted_egress_vpc ? 1 : 0
 
   cidr_block           = "10.255.0.0/16"
   enable_dns_hostnames = true
@@ -169,7 +172,7 @@ resource "aws_vpc" "restricted_egress" {
 }
 
 resource "aws_route_table" "restricted_egress" {
-  count = local.use_restricted_egress ? 1 : 0
+  count = local.create_restricted_egress_vpc ? 1 : 0
 
   vpc_id = aws_vpc.restricted_egress[0].id
 
@@ -179,7 +182,7 @@ resource "aws_route_table" "restricted_egress" {
 }
 
 resource "aws_subnet" "restricted_egress" {
-  count = local.use_restricted_egress ? 3 : 0
+  count = local.create_restricted_egress_vpc ? 3 : 0
 
   availability_zone       = data.aws_availability_zones.available[0].names[count.index]
   cidr_block              = "10.255.${count.index + 1}.0/24"
@@ -192,14 +195,14 @@ resource "aws_subnet" "restricted_egress" {
 }
 
 resource "aws_route_table_association" "restricted_egress" {
-  count = local.use_restricted_egress ? 3 : 0
+  count = local.create_restricted_egress_vpc ? 3 : 0
 
   route_table_id = aws_route_table.restricted_egress[0].id
   subnet_id      = aws_subnet.restricted_egress[count.index].id
 }
 
 resource "aws_route53_resolver_firewall_domain_list" "restricted_egress" {
-  count = local.use_restricted_egress ? 1 : 0
+  count = local.create_restricted_egress_vpc ? 1 : 0
 
   domains = ["*."]
   name    = "bt-loop-${var.deployment_name}-dns-domains"
@@ -207,14 +210,14 @@ resource "aws_route53_resolver_firewall_domain_list" "restricted_egress" {
 }
 
 resource "aws_route53_resolver_firewall_rule_group" "restricted_egress" {
-  count = local.use_restricted_egress ? 1 : 0
+  count = local.create_restricted_egress_vpc ? 1 : 0
 
   name = "bt-loop-${var.deployment_name}-dns-rules"
   tags = local.common_tags
 }
 
 resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
-  count = local.use_restricted_egress ? 1 : 0
+  count = local.create_restricted_egress_vpc ? 1 : 0
 
   action                  = "BLOCK"
   block_response          = "NXDOMAIN"
@@ -225,7 +228,7 @@ resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
 }
 
 resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egress" {
-  count = local.use_restricted_egress ? 1 : 0
+  count = local.create_restricted_egress_vpc ? 1 : 0
 
   depends_on = [aws_route53_resolver_firewall_rule.restricted_egress]
 
@@ -242,7 +245,7 @@ resource "aws_security_group" "restricted_egress" {
   description = "Security group for restricted Loop runtime sandbox egress"
   egress      = []
   name        = "${var.deployment_name}-loop-runtime-restricted-egress"
-  vpc_id      = aws_vpc.restricted_egress[0].id
+  vpc_id      = local.restricted_egress_vpc_id
 
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-restricted-egress"
@@ -278,6 +281,7 @@ resource "aws_cloudformation_stack" "restricted_egress_connector" {
 
   depends_on = [
     aws_iam_role_policy_attachment.network_connector_operator,
+    data.aws_subnet.restricted_egress_existing,
     aws_route53_resolver_firewall_rule_group_association.restricted_egress,
   ]
 
@@ -285,7 +289,7 @@ resource "aws_cloudformation_stack" "restricted_egress_connector" {
     ConnectorName   = "bt-loop-${var.deployment_name}-restricted-egress"
     OperatorRoleArn = aws_iam_role.network_connector_operator[0].arn
     SecurityGroupId = aws_security_group.restricted_egress[0].id
-    SubnetIds       = join(",", aws_subnet.restricted_egress[*].id)
+    SubnetIds       = join(",", local.restricted_egress_subnet_ids)
   }
 
   template_body = <<-YAML
@@ -456,5 +460,18 @@ resource "aws_cloudformation_stack" "microvm_image" {
     create = "20m"
     update = "20m"
     delete = "20m"
+  }
+}
+
+data "aws_subnet" "restricted_egress_existing" {
+  count = local.use_restricted_egress && var.existing_vpc_id != null ? length(var.existing_subnet_ids) : 0
+
+  id = var.existing_subnet_ids[count.index]
+
+  lifecycle {
+    postcondition {
+      condition     = self.vpc_id == var.existing_vpc_id
+      error_message = "Each sandbox subnet must belong to the supplied sandbox VPC."
+    }
   }
 }

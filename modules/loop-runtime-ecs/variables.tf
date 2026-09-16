@@ -73,7 +73,7 @@ variable "ephemeral_storage_gib" {
   default     = null
 
   validation {
-    condition     = var.ephemeral_storage_gib == null || (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
+    condition     = var.ephemeral_storage_gib == null ? true : (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
     error_message = "ephemeral_storage_gib must be between 21 and 200 when set."
   }
 }
@@ -247,7 +247,7 @@ variable "brainstore_reader_url" {
 
 variable "ai_proxy_url" {
   type        = string
-  description = "AI proxy URL used by the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL)."
+  description = "Model endpoint URL for Loop runtime (LOOP_RUNTIME_AI_PROXY_URL), including /v1/proxy for the private gateway."
 }
 
 variable "brainstore_license_key" {
@@ -374,4 +374,16 @@ variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)
   default     = {}
+}
+
+variable "service_dependency_ids" {
+  type        = list(string)
+  description = "Resource identifiers that must exist before the Loop runtime service starts."
+  default     = []
+}
+
+variable "create_data_store_ingress_rules" {
+  type        = bool
+  description = "Create all data store ingress rules when their security group IDs are unknown during the plan."
+  default     = false
 }
