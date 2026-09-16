@@ -70,7 +70,7 @@ variable "cpu" {
 variable "memory" {
   type        = number
   description = "Memory (MiB) for the gateway task definition."
-  default     = 4096
+  default     = 8192
 }
 
 variable "min_capacity" {

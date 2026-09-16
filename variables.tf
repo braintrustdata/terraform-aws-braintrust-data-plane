@@ -583,7 +583,7 @@ variable "ai_gateway_cpu" {
 variable "ai_gateway_memory" {
   description = "Memory in MiB for the gateway ECS task definition"
   type        = number
-  default     = 4096
+  default     = 8192
 }
 
 variable "ai_gateway_min_capacity" {
