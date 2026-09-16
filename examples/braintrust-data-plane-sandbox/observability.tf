@@ -2,8 +2,9 @@ locals {
   observability_deployment_name = "evignanker-sb"
   observability_source_dir      = "/Users/brain_eugenevignanker/Workspace/area3/observability"
   observability_package_key     = "observability/${local.observability_deployment_name}/observability.zip"
-  observability_private_ip      = "10.175.1.18"
-  observability_otlp_endpoint   = "http://${local.observability_private_ip}:4318"
+  observability_dns_zone_name   = "${local.observability_deployment_name}.internal"
+  observability_dns_name        = "observability.${local.observability_dns_zone_name}"
+  observability_otlp_endpoint   = "http://${local.observability_dns_name}:4318"
   observability_brainstore_env_vars = var.enable_observability ? {
     BRAINSTORE_OTLP_HTTP_ENDPOINT = local.observability_otlp_endpoint
     BRAINSTORE_OTLP_TELEMETRY     = "logs,metrics,traces"
@@ -40,6 +41,17 @@ resource "aws_security_group" "observability" {
   name        = "${local.observability_deployment_name}-observability"
   description = "Observability host for the sandbox Brainstore deployment"
   vpc_id      = module.braintrust-data-plane.main_vpc_id
+
+  tags = local.observability_tags
+}
+
+resource "aws_route53_zone" "observability" {
+  count = var.enable_observability ? 1 : 0
+  name  = local.observability_dns_zone_name
+
+  vpc {
+    vpc_id = module.braintrust-data-plane.main_vpc_id
+  }
 
   tags = local.observability_tags
 }
@@ -157,7 +169,6 @@ resource "aws_instance" "observability" {
   ami                         = data.aws_ami.observability_ubuntu_24_04[0].id
   instance_type               = "t4g.large"
   subnet_id                   = module.braintrust-data-plane.main_vpc_private_subnet_1_id
-  private_ip                  = local.observability_private_ip
   vpc_security_group_ids      = [aws_security_group.observability[0].id]
   associate_public_ip_address = false
   iam_instance_profile        = aws_iam_instance_profile.observability[0].name
@@ -189,4 +200,13 @@ resource "aws_instance" "observability" {
   }
 
   tags = local.observability_tags
+}
+
+resource "aws_route53_record" "observability" {
+  count   = var.enable_observability ? 1 : 0
+  zone_id = aws_route53_zone.observability[0].zone_id
+  name    = local.observability_dns_name
+  type    = "A"
+  ttl     = 30
+  records = [aws_instance.observability[0].private_ip]
 }

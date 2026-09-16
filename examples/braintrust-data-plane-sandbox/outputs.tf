@@ -9,12 +9,12 @@ output "observability_instance_id" {
 }
 
 output "observability_private_dns" {
-  value       = try(aws_instance.observability[0].private_dns, null)
-  description = "Private DNS name for the sandbox observability host. Use this for Brainstore OTLP endpoint configuration."
+  value       = var.enable_observability ? local.observability_dns_name : null
+  description = "Stable private DNS name for the sandbox observability host. Use this for Brainstore OTLP endpoint configuration."
 }
 
 output "observability_grafana_url" {
-  value       = var.enable_observability ? "http://${aws_instance.observability[0].private_dns}:3001" : null
+  value       = var.enable_observability ? "http://${local.observability_dns_name}:3001" : null
   description = "Private Grafana URL. Use SSM port forwarding or VPC access to reach it."
 }
 
