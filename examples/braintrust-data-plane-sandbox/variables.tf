@@ -6,3 +6,9 @@ variable "brainstore_license_key" {
     error_message = "The brainstore_license_key must be set."
   }
 }
+
+variable "enable_observability" {
+  description = "Whether to create the sandbox Grafana/Loki/Prometheus/Tempo/OpenTelemetry EC2 host and wire Brainstore OTLP telemetry to it."
+  type        = bool
+  default     = true
+}
