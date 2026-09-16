@@ -19,7 +19,7 @@ output "observability_grafana_url" {
 }
 
 output "observability_otlp_http_endpoint" {
-  value       = "http://${aws_instance.observability.private_dns}:4318"
+  value       = local.observability_otlp_endpoint
   description = "Private OTLP HTTP endpoint for Brainstore telemetry."
 }
 

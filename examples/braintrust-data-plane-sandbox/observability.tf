@@ -2,6 +2,8 @@ locals {
   observability_deployment_name = "evignanker-sb"
   observability_source_dir      = "/Users/brain_eugenevignanker/Workspace/area3/observability"
   observability_package_key     = "observability/${local.observability_deployment_name}/observability.zip"
+  observability_private_ip      = "10.175.1.18"
+  observability_otlp_endpoint   = "http://${local.observability_private_ip}:4318"
   observability_tags = {
     Name                     = "${local.observability_deployment_name}-observability"
     BraintrustDeploymentName = local.observability_deployment_name
@@ -127,6 +129,7 @@ resource "aws_instance" "observability" {
   ami                         = data.aws_ami.observability_ubuntu_24_04.id
   instance_type               = "t4g.large"
   subnet_id                   = module.braintrust-data-plane.main_vpc_private_subnet_1_id
+  private_ip                  = local.observability_private_ip
   vpc_security_group_ids      = [aws_security_group.observability.id]
   associate_public_ip_address = false
   iam_instance_profile        = aws_iam_instance_profile.observability.name

@@ -186,4 +186,15 @@ module "braintrust-data-plane" {
   # (main and/or quarantine); does not modify customer-managed existing_* VPC endpoints.
   # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
   # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
+  brainstore_extra_env_vars_writer = {
+    BRAINSTORE_OTLP_HTTP_ENDPOINT = local.observability_otlp_endpoint
+    BRAINSTORE_OTLP_TELEMETRY     = "logs,metrics,traces"
+    BRAINSTORE_VERBOSE            = "1"
+  }
+
+  brainstore_extra_env_vars = {
+    BRAINSTORE_OTLP_HTTP_ENDPOINT = local.observability_otlp_endpoint
+    BRAINSTORE_OTLP_TELEMETRY     = "logs,metrics,traces"
+    BRAINSTORE_VERBOSE            = "1"
+  }
 }
