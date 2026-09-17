@@ -1,0 +1,309 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyAccountAndOrganizationAdministration",
+      "Effect": "Deny",
+      "Action": [
+        "account:CloseAccount",
+        "account:Put*",
+        "billing:*",
+        "controltower:*",
+        "identitystore:*",
+        "organizations:*",
+        "payments:*",
+        "sso:*",
+        "sso-directory:*",
+        "tax:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyBraintrustAuditTampering",
+      "Effect": "Deny",
+      "Action": [
+        "access-analyzer:ApplyArchiveRule",
+        "access-analyzer:CreateArchiveRule",
+        "access-analyzer:Delete*",
+        "access-analyzer:UpdateArchiveRule",
+        "cloudtrail:Delete*",
+        "cloudtrail:Put*",
+        "cloudtrail:StartLogging",
+        "cloudtrail:Stop*",
+        "cloudtrail:Update*",
+        "config:Delete*",
+        "config:Put*",
+        "config:Stop*",
+        "guardduty:Delete*",
+        "guardduty:Disable*",
+        "guardduty:Disassociate*",
+        "guardduty:Update*",
+        "securityhub:BatchDisable*",
+        "securityhub:Delete*",
+        "securityhub:Disable*",
+        "securityhub:Disassociate*",
+        "securityhub:Update*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentRoleCreationOutsidePrefix",
+      "Effect": "Deny",
+      "Action": "iam:CreateRole",
+      "NotResource": "arn:aws:iam::<ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "RequireRuntimeBoundary",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateRole",
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "ArnNotEquals": {
+          "iam:PermissionsBoundary": "<RUNTIME_BOUNDARY_ARN>"
+        }
+      }
+    },
+    {
+      "Sid": "ProtectRuntimeBoundary",
+      "Effect": "Deny",
+      "Action": "iam:DeleteRolePermissionsBoundary",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "RestrictPassRole",
+      "Effect": "Deny",
+      "Action": "iam:PassRole",
+      "NotResource": "arn:aws:iam::<ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "RestrictPassRoleServices",
+      "Effect": "Deny",
+      "Action": "iam:PassRole",
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "StringNotEquals": {
+          "iam:PassedToService": [
+            "ec2.amazonaws.com",
+            "ecs-tasks.amazonaws.com",
+            "events.amazonaws.com",
+            "lambda.amazonaws.com",
+            "monitoring.rds.amazonaws.com",
+            "spot.amazonaws.com",
+            "vpc-flow-logs.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ProtectBootstrapIam",
+      "Effect": "Deny",
+      "Action": "iam:*",
+      "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/*",
+        "arn:aws:iam::<ACCOUNT_ID>:policy/braintrust-byoc/*"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentDirectObjectReads",
+      "Effect": "Deny",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectAttributes",
+        "s3:GetObjectVersion"
+      ],
+      "NotResource": [
+        "arn:aws:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*",
+        "arn:aws:s3:::braintrust-assets-*/*"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentUnmanagedSecretReads",
+      "Effect": "Deny",
+      "Action": "secretsmanager:GetSecretValue",
+      "NotResource": [
+        "<LICENSE_SECRET_ARN>",
+        "arn:aws:secretsmanager:*:<ACCOUNT_ID>:secret:<MANAGED_RESOURCE_PREFIX>*"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentDecryptOutsideServices",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Decrypt",
+        "kms:ReEncryptFrom"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "StringNotEquals": {
+          "kms:ViaService": [
+            "secretsmanager.<AWS_REGION>.amazonaws.com",
+            "s3.<AWS_REGION>.amazonaws.com",
+            "lambda.<AWS_REGION>.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentDecryptOutsideReviewedKeys",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Decrypt",
+        "kms:ReEncryptFrom"
+      ],
+      "NotResource": [
+        "<DATA_PLANE_KMS_KEY_ARN>",
+        "<LICENSE_SECRET_KMS_KEY_ARN>",
+        "<STATE_KMS_KEY_ARN>",
+        "<OPERATION_LOG_KMS_KEY_ARN>"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentDecryptOfOtherSecrets",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Decrypt",
+        "kms:ReEncryptFrom"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "StringEquals": {
+          "kms:ViaService": "secretsmanager.<AWS_REGION>.amazonaws.com"
+        },
+        "StringNotLike": {
+          "kms:EncryptionContext:SecretARN": [
+            "<LICENSE_SECRET_ARN>",
+            "arn:aws:secretsmanager:<AWS_REGION>:<ACCOUNT_ID>:secret:<MANAGED_RESOURCE_PREFIX>*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentDecryptOfOtherObjects",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Decrypt",
+        "kms:ReEncryptFrom"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "StringEquals": {
+          "kms:ViaService": "s3.<AWS_REGION>.amazonaws.com"
+        },
+        "StringNotLike": {
+          "kms:EncryptionContext:aws:s3:arn": [
+            "arn:aws:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*",
+            "arn:aws:s3:::<OPERATION_LOG_BUCKET_NAME>/braintrust-byoc/operations/<BOOTSTRAP_NAME>/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyLambdaDecryptOutsideDataPlaneKey",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Decrypt",
+        "kms:ReEncryptFrom"
+      ],
+      "NotResource": "<DATA_PLANE_KMS_KEY_ARN>",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "StringEquals": {
+          "kms:ViaService": "lambda.<AWS_REGION>.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentDirectKeyGrants",
+      "Effect": "Deny",
+      "Action": "kms:CreateGrant",
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "BoolIfExists": {
+          "kms:GrantIsForAWSResource": "false"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentInteractiveAccess",
+      "Effect": "Deny",
+      "Action": [
+        "ec2-instance-connect:OpenTunnel",
+        "ec2-instance-connect:SendSSHPublicKey",
+        "ecs:ExecuteCommand",
+        "eks:AccessKubernetesApi",
+        "ssm:SendCommand",
+        "ssm:StartSession",
+        "sts:AssumeRole"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    }
+  ]
+}

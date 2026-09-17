@@ -1,0 +1,110 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OperatePrefixedEcsServices",
+      "Effect": "Allow",
+      "Action": "ecs:UpdateService",
+      "Resource": "arn:<AWS_PARTITION>:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:service/<MANAGED_RESOURCE_PREFIX>*/*",
+      "Condition": {
+        "ArnLikeIfExists": {
+          "ecs:task-definition": "arn:<AWS_PARTITION>:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:task-definition/<MANAGED_RESOURCE_PREFIX>*:*"
+        },
+        "BoolIfExists": {
+          "ecs:enable-execute-command": "false"
+        },
+        "StringEqualsIfExists": {
+          "ecs:auto-assign-public-ip": "false"
+        }
+      }
+    },
+    {
+      "Sid": "RollBackPrefixedEcsDeployments",
+      "Effect": "Allow",
+      "Action": "ecs:StopServiceDeployment",
+      "Resource": [
+        "arn:<AWS_PARTITION>:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:service/<MANAGED_RESOURCE_PREFIX>*/*",
+        "arn:<AWS_PARTITION>:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:service-deployment/<MANAGED_RESOURCE_PREFIX>*/*/*"
+      ]
+    },
+    {
+      "Sid": "StopPrefixedEcsTasks",
+      "Effect": "Allow",
+      "Action": "ecs:StopTask",
+      "Resource": "arn:<AWS_PARTITION>:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:task/<MANAGED_RESOURCE_PREFIX>*/*"
+    },
+    {
+      "Sid": "OperatePrefixedAutoScalingGroups",
+      "Effect": "Allow",
+      "Action": [
+        "autoscaling:CancelInstanceRefresh",
+        "autoscaling:SetDesiredCapacity",
+        "autoscaling:SetInstanceHealth"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:autoscaling:<AWS_REGION>:<AWS_ACCOUNT_ID>:autoScalingGroup:*:autoScalingGroupName/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "StringLike": {
+          "autoscaling:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "TuneEcsApplicationAutoScaling",
+      "Effect": "Allow",
+      "Action": [
+        "application-autoscaling:PutScalingPolicy",
+        "application-autoscaling:RegisterScalableTarget"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "application-autoscaling:scalable-dimension": "ecs:service:DesiredCount",
+          "application-autoscaling:service-namespace": "ecs",
+          "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
+    },
+    {
+      "Sid": "TunePrefixedLambdaConcurrency",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:PutFunctionConcurrency",
+        "lambda:DeleteFunctionConcurrency",
+        "lambda:PutProvisionedConcurrencyConfig",
+        "lambda:DeleteProvisionedConcurrencyConfig"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "PauseAndResumeModuleSchedules",
+      "Effect": "Allow",
+      "Action": [
+        "events:DisableRule",
+        "events:EnableRule"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:events:<AWS_REGION>:<AWS_ACCOUNT_ID>:rule/<MANAGED_RESOURCE_PREFIX>*-automation-cron-schedule",
+        "arn:<AWS_PARTITION>:events:<AWS_REGION>:<AWS_ACCOUNT_ID>:rule/<MANAGED_RESOURCE_PREFIX>*-billing-cron-schedule",
+        "arn:<AWS_PARTITION>:events:<AWS_REGION>:<AWS_ACCOUNT_ID>:rule/<MANAGED_RESOURCE_PREFIX>*-catchup-etl-schedule"
+      ]
+    },
+    {
+      "Sid": "OperatePrefixedRdsInstances",
+      "Effect": "Allow",
+      "Action": "rds:RebootDBInstance",
+      "Resource": "arn:<AWS_PARTITION>:rds:<AWS_REGION>:<AWS_ACCOUNT_ID>:db:<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "TunePrefixedRdsParameterGroups",
+      "Effect": "Allow",
+      "Action": "rds:ModifyDBParameterGroup",
+      "Resource": "arn:<AWS_PARTITION>:rds:<AWS_REGION>:<AWS_ACCOUNT_ID>:pg:<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "OperatePrefixedElastiCacheClusters",
+      "Effect": "Allow",
+      "Action": "elasticache:RebootCacheCluster",
+      "Resource": "arn:<AWS_PARTITION>:elasticache:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster:<MANAGED_RESOURCE_PREFIX>*"
+    }
+  ]
+}
