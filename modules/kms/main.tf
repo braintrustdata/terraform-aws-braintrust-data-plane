@@ -87,6 +87,29 @@ resource "aws_kms_key" "braintrust" {
           }
         },
         {
+          Sid    = "Allow VPC Flow Logs S3 delivery to use the key"
+          Effect = "Allow"
+          Principal = {
+            Service = "delivery.logs.amazonaws.com"
+          }
+          Action = [
+            "kms:Encrypt",
+            "kms:Decrypt",
+            "kms:ReEncrypt*",
+            "kms:GenerateDataKey*",
+            "kms:DescribeKey",
+          ]
+          Resource = "*"
+          Condition = {
+            StringEquals = {
+              "aws:SourceAccount" : data.aws_caller_identity.current.account_id
+            }
+            ArnLike = {
+              "aws:SourceArn" : "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:*"
+            }
+          }
+        },
+        {
           Sid    = "Allow generate data key access for Fargate tasks"
           Effect = "Allow"
           Principal = {
@@ -153,4 +176,5 @@ resource "aws_kms_alias" "braintrust" {
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
 data "aws_region" "current" {}

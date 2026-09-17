@@ -171,6 +171,12 @@ variable "service_token_secret_arn" {
   description = "The ARN of the Secrets Manager secret containing SERVICE_TOKEN_SECRET_KEY."
 }
 
+variable "custom_ca_bundle_secret_arn" {
+  type        = string
+  description = "Optional ARN of the secret containing a PEM-encoded custom CA bundle."
+  default     = null
+}
+
 variable "ai_proxy_url_ssm_parameter" {
   type        = string
   description = "Selector for the SSM parameter holding the URL Brainstore uses for BRAINSTORE_AI_PROXY_URL. Either a bare \"<name>\" or a version-pinned \"<name>:<version>\". When a version is pinned, it is baked into user_data so a URL change forces a rolling instance refresh."

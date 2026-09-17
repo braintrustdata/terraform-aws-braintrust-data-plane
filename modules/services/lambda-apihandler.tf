@@ -126,7 +126,6 @@ resource "aws_lambda_function" "api_handler" {
     log_group  = "/braintrust/${var.deployment_name}/${local.api_handler_function_name}"
   }
 
-  # See https://github.com/tobilg/duckdb-nodejs-layer
   layers = concat(
     [local.duckdb_nodejs_arm64_layer_arn],
     local.observability_enabled ? [local.datadog_node_layer_arn, local.datadog_extension_arm_layer_arn] : []

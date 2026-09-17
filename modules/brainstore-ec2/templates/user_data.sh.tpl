@@ -128,16 +128,45 @@ systemctl daemon-reload
 systemctl start amazon-cloudwatch-agent
 systemctl enable amazon-cloudwatch-agent
 
+get_secret_value_with_retry() {
+  local secret_id="$1"
+  local attempt
+  local retry_delay
+
+  for attempt in 1 2 3 4 5; do
+    if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
+      return 0
+    fi
+
+    if [ "$attempt" -eq 5 ]; then
+      echo "Failed to retrieve secret $secret_id from Secrets Manager after $attempt attempts. Exiting with failure." >&2
+      return 1
+    fi
+
+    retry_delay=$((1 << (attempt - 1)))
+    echo "Failed to retrieve secret $secret_id from Secrets Manager. Retrying in $retry_delay seconds." >&2
+    sleep "$retry_delay"
+  done
+}
+
 # Get database credentials from Secrets Manager
-DB_CREDS=$(aws secretsmanager get-secret-value --secret-id ${database_secret_arn} --query SecretString --output text)
+if ! DB_CREDS=$(get_secret_value_with_retry "${database_secret_arn}"); then
+  exit 1
+fi
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
 
 # Get the function tools secret used by Brainstore as SERVICE_TOKEN_SECRET_KEY from Secrets Manager
-if ! SERVICE_TOKEN_SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id ${service_token_secret_arn} --query SecretString --output text); then
-  echo "Failed to retrieve SERVICE_TOKEN_SECRET_KEY from Secrets Manager. Exiting with failure."
+if ! SERVICE_TOKEN_SECRET_KEY=$(get_secret_value_with_retry "${service_token_secret_arn}"); then
   exit 1
 fi
+
+%{ if custom_ca_bundle_secret_arn != "" ~}
+if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bundle_secret_arn}"); then
+  exit 1
+fi
+export BRAINTRUST_CUSTOM_CA_BUNDLE
+%{ endif ~}
 
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
@@ -267,6 +296,9 @@ docker run -d \
   --network host \
   --name brainstore \
   --env-file /etc/brainstore.env \
+%{ if custom_ca_bundle_secret_arn != "" ~}
+  --env BRAINTRUST_CUSTOM_CA_BUNDLE \
+%{ endif ~}
   --restart always \
   --ulimit nofile=65535:65535 \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \

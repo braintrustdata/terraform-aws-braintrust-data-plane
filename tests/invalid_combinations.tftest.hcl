@@ -77,3 +77,34 @@ run "rejects_external_brainstore_kms_key_without_arn" {
     var.existing_brainstore_s3_bucket_kms_key_arn,
   ]
 }
+
+run "rejects_invalid_flow_log_traffic_type" {
+  command = plan
+
+  variables {
+    main_vpc_flow_log = {
+      enabled      = true
+      traffic_type = "DENIED"
+    }
+  }
+
+  expect_failures = [
+    var.main_vpc_flow_log,
+  ]
+}
+
+run "rejects_invalid_cloudwatch_retention" {
+  command = plan
+
+  variables {
+    main_vpc_flow_log = {
+      enabled           = true
+      destination_type  = "cloud-watch-logs"
+      retention_in_days = 45
+    }
+  }
+
+  expect_failures = [
+    var.main_vpc_flow_log,
+  ]
+}

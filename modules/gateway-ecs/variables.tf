@@ -49,6 +49,18 @@ variable "container_image" {
   }
 }
 
+variable "custom_ca_bundle_secret_arn" {
+  type        = string
+  description = "Optional ARN of the secret containing a PEM-encoded custom CA bundle."
+  default     = null
+}
+
+variable "custom_ca_bundle_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret."
+  default     = null
+}
+
 variable "cpu" {
   type        = number
   description = "CPU units for the gateway task definition."

@@ -90,6 +90,35 @@ This module creates two VPCs by default:
 - `main` VPC: This is the main VPC that contains the Braintrust services.
 - `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
 
+#### VPC endpoints
+
+The module creates these AWS service endpoints in VPCs it manages:
+
+| Service | Type | Created when | Private DNS |
+| --- | --- | --- | --- |
+| S3 | Gateway | Always, in both main and quarantine VPCs when created; attached to their private route tables | Not applicable |
+| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) | Enabled |
+| Secrets Manager | Interface | Main VPC with `create_secrets_manager_vpc_endpoint = true` (default `true`) | Enabled |
+
+SSM and Secrets Manager endpoints span all three private subnets and share a
+security group allowing HTTPS (TCP 443) from the VPC CIDR. Private DNS lets
+existing SDK and CLI calls use the endpoints without URL overrides. Interface
+endpoint charges apply.
+
+Secrets Manager is enabled by default independently of SSM. Upgrading a deployment
+with a module-managed main VPC adds the endpoint and redirects regional Secrets
+Manager calls through it. Set `create_secrets_manager_vpc_endpoint = false` to
+retain the previous network path and avoid the additional endpoint charges.
+The option has no effect when `create_vpc = false`.
+The module does not create these AWS service endpoints inside supplied existing
+VPCs. With `create_vpc = false`, it can still create an S3 endpoint in a separate,
+module-managed quarantine VPC.
+
+Separately, `use_private_gateway_quarantine_proxy` can create an interface endpoint
+in quarantine for the private gateway when both VPCs are module-managed and the
+private gateway is enabled for this path. It uses its endpoint-specific DNS name
+with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+
 ### Tagging and Naming
 
 If you have requirements to add custom tags to resources created by the module, you can do so by setting the `default_tags` variable on the AWS provider. The example directory [`examples/braintrust-data-plane`](examples/braintrust-data-plane) shows how to do this.
@@ -113,6 +142,33 @@ The `deployment_name` variable is also used to prefix the names of the resources
 If you need to enable CloudFront standard access logging, you can configure it independently by referencing the `cloudfront_distribution_arn` output from the module. This approach gives you full flexibility over the logging configuration without requiring changes to the module itself.
 
 See the [`examples/cloudfront-logging`](examples/cloudfront-logging) directory for a complete example showing how to set up V2 logging to S3.
+
+### VPC Flow Logs
+
+VPC Flow Logs are disabled by default and only apply to VPCs this module creates (`create_vpc = true` / a module-managed quarantine VPC). Configure the main and quarantine VPCs separately via `main_vpc_flow_log` and `quarantine_vpc_flow_log`.
+
+When enabled, logs go to one of:
+
+- **Customer S3 bucket** — set `destination_arn` to the bucket ARN. Attach a destination policy that grants `delivery.logs.amazonaws.com` `s3:PutObject` and `s3:GetBucketAcl` *before* enabling Flow Logs. `CreateFlowLogs` can succeed even when delivery is denied, so a missing policy looks like an empty bucket.
+- **Module-managed S3 bucket** — leave `destination_arn` null. The module creates a `bucket_prefix` bucket with Bucket owner enforced ownership, SSE-KMS using the data-plane key, a log-delivery policy (no `x-amz-acl` condition), and object expiration from `retention_in_days` (set `0` to skip expiration). This bucket does not set `force_destroy`. After Flow Logs have written objects, setting `enabled = false`, changing destination, or destroying the stack fails with `BucketNotEmpty`. That is intentional: the module will not empty audit logs. To delete the logs, empty the bucket (or wait for lifecycle expiration) and apply. To keep the logs when disabling or changing destination (stack stays up), remove the managed bucket and its companion resources from Terraform state, then apply. The data-plane KMS key is left in place, so the objects stay readable.
+
+  Full stack destroy is different. The module-created key uses a 7-day pending-deletion window and is unusable while pending, so retained objects become permanently unreadable unless you also keep that key. Before destroy, remove the key and its alias from state (`module.kms[0].aws_kms_key.braintrust` and `module.kms[0].aws_kms_alias.braintrust` when this module is the root) along with the bucket. Or encrypt the destination with an externally managed CMK from the start (`kms_key_arn` on the flow-log object, or this module's `kms_key_arn` input). Or copy/re-encrypt the objects to another key before destroy.
+- **CloudWatch Logs** — set `destination_type = "cloud-watch-logs"`. Pass a bare log-group ARN if you bring your own (no trailing `:*`; the module strips that suffix if present). The module creates an IAM role with an inline delivery policy, matching the rest of this module.
+
+Module-managed destinations are encrypted with the data-plane KMS key (`kms_key_arn` input, or the key this module creates). You do not pass this module's `kms_key_arn` output back into `main_vpc_flow_log` — that is a cycle. Override `kms_key_arn` on the flow-log object only when using a different CMK. That custom key must allow the service principal for the destination: `delivery.logs.amazonaws.com` for S3, or `logs.<region>.amazonaws.com` for a CloudWatch log group. Otherwise delivery fails after `CreateFlowLogs` succeeds.
+
+```hcl
+main_vpc_flow_log = {
+  enabled         = true
+  traffic_type    = "ALL"
+  destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
+}
+
+quarantine_vpc_flow_log = {
+  enabled          = true
+  destination_type = "cloud-watch-logs"
+}
+```
 
 ### S3 Server Access Logging
 
