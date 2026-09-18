@@ -48,6 +48,12 @@ variable "database_secret_arn" {
   type        = string
 }
 
+variable "use_redis_replication_group" {
+  description = "Use a TLS Redis URL for the support bastion when using a replication group"
+  type        = bool
+  default     = false
+}
+
 variable "redis_host" {
   description = "Hostname of the Redis instance"
   type        = string

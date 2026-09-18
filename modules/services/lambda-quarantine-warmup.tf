@@ -43,6 +43,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
       QUARANTINE_PUB_PRIVATE_VPC_DEFAULT_SECURITY_GROUP = var.use_quarantine_vpc && var.quarantine_lambda_security_group_id != null ? var.quarantine_lambda_security_group_id : ""
       QUARANTINE_PUB_PRIVATE_VPC_ID                     = var.use_quarantine_vpc ? var.quarantine_vpc_id : ""
       },
+      local.redis_extra_env_vars,
       var.extra_env_vars.QuarantineWarmupFunction,
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.quarantine_warmup_base_function_name
