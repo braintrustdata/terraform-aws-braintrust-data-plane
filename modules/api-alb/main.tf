@@ -1,3 +1,14 @@
+locals {
+  common_tags = merge({
+    BraintrustDeploymentName = var.deployment_name
+  }, var.custom_tags)
+
+  container_port = 8000
+  https_enabled  = var.certificate_arn != null && var.custom_domain != null
+  listener_port  = local.https_enabled ? 443 : 80
+  api_ecs_url    = local.https_enabled ? "https://${var.custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
+}
+
 resource "aws_security_group" "alb" {
   name        = "${var.deployment_name}-api-ecs-alb"
   description = "Security group for API ECS ALB"
@@ -11,8 +22,8 @@ resource "aws_security_group_rule" "alb_ingress_http_from_authorized_security_gr
   for_each = var.authorized_security_groups
 
   type                     = "ingress"
-  from_port                = local.alb_listener_port
-  to_port                  = local.alb_listener_port
+  from_port                = local.listener_port
+  to_port                  = local.listener_port
   protocol                 = "tcp"
   source_security_group_id = each.value
   description              = "Allow inbound traffic from ${each.key}."
@@ -23,8 +34,8 @@ resource "aws_security_group_rule" "alb_ingress_http_from_authorized_cidr_blocks
   for_each = toset(var.authorized_cidr_blocks)
 
   type              = "ingress"
-  from_port         = local.alb_listener_port
-  to_port           = local.alb_listener_port
+  from_port         = local.listener_port
+  to_port           = local.listener_port
   protocol          = "tcp"
   cidr_blocks       = [each.value]
   description       = "Allow inbound traffic from authorized CIDR ${each.value}."
@@ -38,8 +49,8 @@ data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
 resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_cloudfront" {
   security_group_id = aws_security_group.alb.id
   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id
-  from_port         = local.alb_listener_port
-  to_port           = local.alb_listener_port
+  from_port         = local.listener_port
+  to_port           = local.listener_port
   ip_protocol       = "tcp"
   description       = "Allow inbound traffic from CloudFront VPC origins."
 }
@@ -56,8 +67,8 @@ resource "aws_security_group_rule" "alb_egress_all" {
 
 resource "aws_security_group_rule" "task_ingress_from_alb" {
   type                     = "ingress"
-  from_port                = 8000
-  to_port                  = 8000
+  from_port                = local.container_port
+  to_port                  = local.container_port
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.alb.id
   description              = "Allow inbound traffic from API ECS ALB to API ECS tasks."
@@ -77,7 +88,7 @@ resource "aws_lb" "api_ecs" {
   enable_http2                     = true
   desync_mitigation_mode           = "defensive"
   enable_cross_zone_load_balancing = true
-  drop_invalid_header_fields       = var.alb_drop_invalid_header_fields
+  drop_invalid_header_fields       = var.drop_invalid_header_fields
 
   tags = merge({
     Name = "${var.deployment_name}-api-ecs"
@@ -86,12 +97,12 @@ resource "aws_lb" "api_ecs" {
 
 resource "aws_lb_target_group" "braintrust_api" {
   name        = "${var.deployment_name}-api"
-  port        = 8000
+  port        = local.container_port
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = var.vpc_id
 
-  deregistration_delay = var.target_group_deregistration_delay_seconds
+  deregistration_delay = var.deregistration_delay
 
   health_check {
     path                = "/"
@@ -109,12 +120,12 @@ resource "aws_lb_target_group" "braintrust_api" {
 
 resource "aws_lb_target_group" "braintrust_api_ingest" {
   name        = "${var.deployment_name}-api-ingest"
-  port        = 8000
+  port        = local.container_port
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = var.vpc_id
 
-  deregistration_delay = var.target_group_deregistration_delay_seconds
+  deregistration_delay = var.deregistration_delay
 
   health_check {
     path                = "/"
@@ -132,12 +143,12 @@ resource "aws_lb_target_group" "braintrust_api_ingest" {
 
 resource "aws_lb_target_group" "braintrust_api_background" {
   name        = "${var.deployment_name}-api-bg"
-  port        = 8000
+  port        = local.container_port
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = var.vpc_id
 
-  deregistration_delay = var.target_group_deregistration_delay_seconds
+  deregistration_delay = var.deregistration_delay
 
   health_check {
     path                = "/"
@@ -155,12 +166,12 @@ resource "aws_lb_target_group" "braintrust_api_background" {
 
 resource "aws_lb_listener" "api_ecs_http" {
   load_balancer_arn = aws_lb.api_ecs.arn
-  port              = local.alb_listener_port
-  protocol          = local.alb_https_enabled ? "HTTPS" : "HTTP"
+  port              = local.listener_port
+  protocol          = local.https_enabled ? "HTTPS" : "HTTP"
 
-  # This must be a policy that support TLS 1.2 since Cloudfront does not support TLS 1.3 for origins yet.
-  ssl_policy      = local.alb_https_enabled ? "ELBSecurityPolicy-TLS13-1-2-2021-06" : null
-  certificate_arn = local.alb_https_enabled ? var.alb_certificate_arn : null
+  # This must support TLS 1.2 because CloudFront does not support TLS 1.3 for origins yet.
+  ssl_policy      = local.https_enabled ? "ELBSecurityPolicy-TLS13-1-2-2021-06" : null
+  certificate_arn = local.https_enabled ? var.certificate_arn : null
 
   # Unmatched traffic goes to braintrust-api. Ingest/background traffic is routed
   # by the path rules in alb-path-routes.tf.

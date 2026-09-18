@@ -660,46 +660,6 @@ variable "brainstore_license_key" {
   default     = null
 }
 
-variable "authorized_security_groups" {
-  type        = map(string)
-  description = "Map of security group names to IDs authorized to access the API ECS ALB."
-  default     = {}
-}
-
-variable "authorized_cidr_blocks" {
-  type        = list(string)
-  description = "CIDR blocks authorized to access the API ECS ALB."
-  default     = []
-
-  validation {
-    condition     = alltrue([for cidr in var.authorized_cidr_blocks : can(cidrnetmask(cidr))])
-    error_message = "authorized_cidr_blocks must contain valid CIDR blocks."
-  }
-}
-
-variable "alb_certificate_arn" {
-  type        = string
-  description = "Optional ACM certificate ARN for the API ECS ALB. When set together with alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80."
-  default     = null
-}
-
-variable "alb_custom_domain" {
-  type        = string
-  description = "Optional custom domain served by the API ECS ALB. Must be covered by alb_certificate_arn. When set together with alb_certificate_arn, the ALB serves HTTPS on port 443 and the API URL becomes https://<alb_custom_domain>."
-  default     = null
-
-  validation {
-    condition     = (var.alb_custom_domain == null) == (var.alb_certificate_arn == null)
-    error_message = "alb_custom_domain and alb_certificate_arn must both be set or both be null."
-  }
-}
-
-variable "alb_drop_invalid_header_fields" {
-  type        = bool
-  description = "Whether the API ECS ALB removes HTTP headers with invalid header names before routing requests."
-  default     = false
-}
-
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources."
   type        = map(string)
@@ -712,15 +672,40 @@ variable "enable_execute_command" {
   default     = false
 }
 
-variable "target_group_deregistration_delay_seconds" {
-  type        = number
-  description = "Seconds for the API ECS target group to wait before deregistering draining targets."
-  default     = 300
+variable "target_group_arns" {
+  type        = map(string)
+  description = "API target group ARNs created by the api-alb module."
 
   validation {
-    condition     = var.target_group_deregistration_delay_seconds >= 0 && var.target_group_deregistration_delay_seconds <= 3600
-    error_message = "target_group_deregistration_delay_seconds must be between 0 and 3600."
+    condition = length(setsubtract(
+      toset(["braintrust_api", "braintrust_api_ingest", "braintrust_api_background"]),
+      toset(keys(var.target_group_arns)),
+    )) == 0
+    error_message = "target_group_arns must include braintrust_api, braintrust_api_ingest, and braintrust_api_background."
   }
+}
+
+variable "target_group_arn_suffixes" {
+  type        = map(string)
+  description = "API target group ARN suffixes created by the api-alb module."
+
+  validation {
+    condition = length(setsubtract(
+      toset(["braintrust_api", "braintrust_api_ingest", "braintrust_api_background"]),
+      toset(keys(var.target_group_arn_suffixes)),
+    )) == 0
+    error_message = "target_group_arn_suffixes must include braintrust_api, braintrust_api_ingest, and braintrust_api_background."
+  }
+}
+
+variable "alb_http_listener_arn" {
+  type        = string
+  description = "ARN of the API ALB listener; orders primary ECS service registration after the listener exists."
+}
+
+variable "alb_path_listener_rule_arns" {
+  type        = map(string)
+  description = "ARNs of the API ALB path rules; orders ingest and background ECS service registration after routing exists."
 }
 
 variable "task_role_arn" {
