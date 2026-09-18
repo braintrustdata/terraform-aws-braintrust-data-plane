@@ -479,6 +479,28 @@ module "gateway_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 }
 
+module "api_alb" {
+  source = "./modules/api-alb"
+  count  = local.create_ecs_api ? 1 : 0
+
+  deployment_name        = var.deployment_name
+  vpc_id                 = local.main_vpc_id
+  private_subnet_ids     = local.main_vpc_private_subnet_ids
+  task_security_group_id = module.services_common.api_security_group_id
+  authorized_security_groups = merge(
+    {
+      "API"        = module.services_common.api_security_group_id
+      "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    },
+    var.braintrust_api_authorized_security_groups,
+  )
+  authorized_cidr_blocks     = var.braintrust_api_authorized_cidr_blocks
+  certificate_arn            = var.braintrust_api_alb_certificate_arn
+  custom_domain              = var.braintrust_api_alb_custom_domain
+  drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
+  custom_tags                = local.all_custom_tags
+}
+
 module "api_ecs" {
   source = "./modules/api-ecs"
   count  = local.create_ecs_api ? 1 : 0
@@ -570,20 +592,12 @@ module "api_ecs" {
   quarantine_proxy_url                = local.api_ecs_quarantine_proxy_url
 
   # Networking
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
-  authorized_security_groups = merge(
-    {
-      "API"        = module.services_common.api_security_group_id
-      "Brainstore" = module.services_common.brainstore_instance_security_group_id
-    },
-    var.braintrust_api_authorized_security_groups,
-  )
-  authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
-
-  alb_certificate_arn            = var.braintrust_api_alb_certificate_arn
-  alb_custom_domain              = var.braintrust_api_alb_custom_domain
-  alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
+  vpc_id                      = local.main_vpc_id
+  private_subnet_ids          = local.main_vpc_private_subnet_ids
+  target_group_arns           = module.api_alb[0].target_group_arns
+  target_group_arn_suffixes   = module.api_alb[0].target_group_arn_suffixes
+  alb_http_listener_arn       = module.api_alb[0].http_listener_arn
+  alb_path_listener_rule_arns = module.api_alb[0].path_listener_rule_arns
 
   kms_key_arn              = local.kms_key_arn
   permissions_boundary_arn = var.permissions_boundary_arn
@@ -615,9 +629,9 @@ module "ingress" {
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api
-  api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
-  api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
-  api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled
+  api_ecs_alb_arn                     = module.api_alb[0].alb_arn
+  api_ecs_alb_domain                  = module.api_alb[0].alb_domain
+  api_ecs_alb_https_enabled           = module.api_alb[0].alb_https_enabled
 
   enable_loop_runtime                     = local.create_loop_runtime
   loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null
