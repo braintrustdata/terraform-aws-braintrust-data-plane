@@ -1,16 +1,19 @@
 output "dns_name" {
   description = "The DNS name of the Brainstore NLB"
   value       = aws_lb.brainstore.dns_name
+  depends_on  = [terraform_data.rollout_complete]
 }
 
 output "writer_dns_name" {
   description = "The DNS name of the Brainstore writer NLB, if enabled"
   value       = one(aws_lb.brainstore_writer[*].dns_name)
+  depends_on  = [terraform_data.rollout_complete]
 }
 
 output "fast_reader_dns_name" {
   description = "The DNS name of the Brainstore fast reader NLB, if enabled"
   value       = one(aws_lb.brainstore_fast_reader[*].dns_name)
+  depends_on  = [terraform_data.rollout_complete]
 }
 
 output "port" {
@@ -21,6 +24,11 @@ output "port" {
 output "brainstore_elb_security_group_id" {
   description = "The ID of the security group for the Brainstore ELB"
   value       = aws_security_group.brainstore_elb.id
+}
+
+output "rollout_complete" {
+  description = "Token that changes after all Brainstore ASG replacements have completed."
+  value       = terraform_data.rollout_complete.id
 }
 
 output "monitoring_targets" {

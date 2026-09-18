@@ -169,12 +169,3 @@ resource "aws_lb_listener" "api_ecs_http" {
     target_group_arn = aws_lb_target_group.braintrust_api.arn
   }
 }
-
-resource "aws_ssm_parameter" "api_url" {
-  name        = "/braintrust/${var.deployment_name}/ecs-api-url"
-  type        = "String"
-  value       = local.api_ecs_url
-  description = "API ECS URL for Brainstore"
-
-  tags = local.common_tags
-}
