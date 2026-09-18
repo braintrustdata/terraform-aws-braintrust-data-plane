@@ -44,6 +44,7 @@ resource "aws_instance" "bastion" {
     region               = data.aws_region.current.region
     database_host        = var.database_host
     database_secret_arn  = var.database_secret_arn
+    redis_scheme         = var.use_redis_replication_group ? "rediss" : "redis"
     redis_host           = var.redis_host
     redis_port           = var.redis_port
     lambda_function_arns = var.lambda_function_arns
