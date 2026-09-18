@@ -59,5 +59,12 @@ def main():
     with open(gateway_ecs_versions_path, "w") as f:
         json.dump({"gateway": version_tag}, f, indent=4)
 
+    # Write Loop runtime version to loop-runtime-ecs/VERSIONS.json
+    print("Writing Loop runtime version to modules/loop-runtime-ecs/VERSIONS.json...")
+    loop_runtime_versions_path = f"{script_dir}/modules/loop-runtime-ecs/VERSIONS.json"
+    os.makedirs(os.path.dirname(loop_runtime_versions_path), exist_ok=True)
+    with open(loop_runtime_versions_path, "w") as f:
+        json.dump({"loop-runtime": version_tag}, f, indent=4)
+
 if __name__ == "__main__":
     main()
