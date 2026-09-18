@@ -150,7 +150,7 @@ resource "aws_lb_target_group" "brainstore" {
     healthy_threshold   = 3
     unhealthy_threshold = 3
     timeout             = 10
-    interval            = 30
+    interval            = 15
   }
 
   tags = local.common_tags
