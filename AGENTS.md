@@ -113,10 +113,10 @@ Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assu
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
 Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
-- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`).
-- **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API. Requires `create_ai_gateway`.
+- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists, so the path is ready before cutover.
+- **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
 
-Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL`, e.g. hosted gateway). Set both true for single-apply wiring on greenfield deployments.
+Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL` and Loop's hosted/CloudFront proxy URL). Set both true for single-apply wiring on greenfield deployments.
 
 ### Quarantine LLM proxy URL
 
@@ -127,10 +127,9 @@ header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
 Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
 peer the quarantine VPC to main for this path. Prefer PrivateLink to the
 private gateway when opted in. Loop Runtime uses the
-private gateway ALB `/v1/proxy` when `create_ai_gateway` (in-VPC). Without a
-private gateway it uses the hosted gateway origin or CloudFront API
-`/v1/proxy`, not the AI Proxy Function URL. PrivateLink only affects
-quarantine when the flag is on.
+private gateway ALB `/v1/proxy` when `enable_ai_gateway`. When enable is
+false it uses the hosted gateway origin or CloudFront API `/v1/proxy`.
+PrivateLink only affects quarantine when the flag is on.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 

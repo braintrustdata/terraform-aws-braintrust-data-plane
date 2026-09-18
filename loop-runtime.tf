@@ -16,16 +16,16 @@ locals {
     module.brainstore[0].port,
   ) : ""
 
-  # Loop ECS task model proxy. Prefer the in-VPC private gateway ALB
-  # when it exists; otherwise hosted gateway or CloudFront API /v1/proxy.
-  # Do not use the AI Proxy Function URL — that hop is for internet-mode /
-  # quarantine callers, not Loop.
+  # Loop ECS task model proxy. Same cutover as GATEWAY_URL: private gateway
+  # ALB /v1/proxy when enable_ai_gateway; otherwise hosted gateway or
+  # CloudFront API /v1/proxy. SG ingress to the gateway ALB is opened when
+  # create_ai_gateway so the path exists before the flip.
   hosted_ai_gateway_proxy_url = format(
     "https://%s/v1/proxy",
     trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
   )
   loop_runtime_ai_proxy_url = (
-    local.create_ai_gateway
+    local.enable_ai_gateway
     ? "${one(module.gateway_alb[*].gateway_url)}/v1/proxy"
     : (
       var.use_global_ai_gateway_origin
@@ -147,4 +147,7 @@ module "loop_runtime_ecs" {
   internal_observability_region             = var.internal_observability_region
 
   custom_tags = local.all_custom_tags
+
+  # Greenfield both-flags-true: do not roll Loop before gateway ECS is up.
+  depends_on = [module.gateway_ecs]
 }
