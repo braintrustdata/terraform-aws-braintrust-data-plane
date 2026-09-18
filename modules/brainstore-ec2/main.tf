@@ -145,7 +145,7 @@ resource "aws_lb_target_group" "brainstore" {
   health_check {
     protocol            = "HTTP"
     port                = "traffic-port"
-    path                = "/status"
+    path                = "/"
     matcher             = "200"
     healthy_threshold   = 3
     unhealthy_threshold = 3
