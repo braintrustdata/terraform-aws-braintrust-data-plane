@@ -84,12 +84,12 @@ locals {
 
   # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
   # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
-  # version, changes the launch template, and triggers a rolling instance
-  # refresh. Lambda mode passes just the bare name. one() keeps this
+  # version, changes the launch template, and replaces the Brainstore ASGs.
+  # Lambda mode passes just the bare name. one() keeps this
   # index-safe when api_ecs is absent.
   brainstore_ai_proxy_url_ssm_parameter = (
     local.enable_ecs_api
-    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
+    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(aws_ssm_parameter.api_ecs_url[*].version)}"
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 

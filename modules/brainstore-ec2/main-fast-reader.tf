@@ -122,12 +122,14 @@ resource "aws_lb_target_group" "brainstore_fast_reader" {
 
   connection_termination = true
   health_check {
-    protocol            = "TCP"
-    port                = var.port
+    protocol            = "HTTP"
+    port                = "traffic-port"
+    path                = "/status"
+    matcher             = "200"
     healthy_threshold   = 3
     unhealthy_threshold = 3
     timeout             = 10
-    interval            = 10
+    interval            = 30
   }
 
   tags = local.common_tags
@@ -157,6 +159,7 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_fast_reader[0].arn]
   wait_for_elb_capacity     = var.fast_reader_instance_count
+  wait_for_capacity_timeout = "30m"
   launch_template {
     id      = aws_launch_template.brainstore_fast_reader[0].id
     version = aws_launch_template.brainstore_fast_reader[0].latest_version
@@ -164,15 +167,9 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
 
   lifecycle {
     create_before_destroy = true
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200
-    }
-    triggers = ["tag"]
+    replace_triggered_by = [
+      aws_launch_template.brainstore_fast_reader[count.index].latest_version,
+    ]
   }
 
   tag {

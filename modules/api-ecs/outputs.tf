@@ -97,16 +97,6 @@ output "quarantine_proxy_url" {
   value       = local.quarantine_proxy_url
 }
 
-output "url_ssm_parameter_name" {
-  description = "Name of the SSM parameter containing the API ECS URL."
-  value       = aws_ssm_parameter.api_url.name
-}
-
-output "url_ssm_parameter_version" {
-  description = "Version of the SSM parameter containing the API ECS URL. Increments whenever the URL changes (e.g. HTTP -> HTTPS), so consumers can pin to it and force a refresh."
-  value       = aws_ssm_parameter.api_url.version
-}
-
 output "cloudwatch_log_groups" {
   description = "Names of the cloudwatch log groups created for ECS."
   value = {
