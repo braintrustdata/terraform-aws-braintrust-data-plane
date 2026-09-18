@@ -83,12 +83,6 @@ variable "loop_runtime_alb_deregistration_delay" {
   default     = 900
 }
 
-variable "loop_runtime_org_name" {
-  type        = string
-  description = "Org this Loop runtime serves (ORG_NAME). '*' allows any."
-  default     = "*"
-}
-
 variable "loop_runtime_extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables merged into the Loop runtime container."

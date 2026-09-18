@@ -117,7 +117,7 @@ module "loop_runtime_ecs" {
   brainstore_port              = module.brainstore[0].port
 
   # Runtime config
-  org_name        = var.loop_runtime_org_name
+  org_name        = var.braintrust_org_name
   allowed_org_ids = var.allowed_org_ids
   extra_env_vars  = var.loop_runtime_extra_env_vars
 
