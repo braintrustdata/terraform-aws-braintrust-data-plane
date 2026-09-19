@@ -267,14 +267,9 @@ resource "aws_iam_role_policy" "brainstore_ssm_parameter_access" {
       {
         Effect = "Allow"
         Action = "ssm:GetParameter"
-        Resource = concat(
-          [
-            "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/braintrust/${var.deployment_name}/ai-proxy-url",
-          ],
-          var.enable_ecs ? [
-            "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/braintrust/${var.deployment_name}/ecs-api-url",
-          ] : []
-        )
+        Resource = [
+          "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/braintrust/${var.deployment_name}/ai-proxy-url",
+        ]
       }
     ]
   })

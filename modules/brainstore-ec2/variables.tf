@@ -177,9 +177,24 @@ variable "custom_ca_bundle_secret_arn" {
   default     = null
 }
 
+variable "ai_proxy_url" {
+  type        = string
+  description = "Direct URL Brainstore uses for BRAINSTORE_AI_PROXY_URL. Prefer this when the endpoint can be referenced without creating a dependency cycle."
+  default     = null
+
+  validation {
+    condition = (
+      (try(trimspace(var.ai_proxy_url), "") != "") !=
+      (try(trimspace(var.ai_proxy_url_ssm_parameter), "") != "")
+    )
+    error_message = "Exactly one of ai_proxy_url or ai_proxy_url_ssm_parameter must be set."
+  }
+}
+
 variable "ai_proxy_url_ssm_parameter" {
   type        = string
-  description = "Selector for the SSM parameter holding the URL Brainstore uses for BRAINSTORE_AI_PROXY_URL. Either a bare \"<name>\" or a version-pinned \"<name>:<version>\". When a version is pinned, it is baked into user_data so a URL change replaces the Brainstore ASGs."
+  description = "Optional SSM parameter selector holding BRAINSTORE_AI_PROXY_URL. Used when directly referencing the endpoint would create a dependency cycle."
+  default     = null
 }
 
 variable "brainstore_s3_bucket_arn" {

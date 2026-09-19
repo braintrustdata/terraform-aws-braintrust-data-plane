@@ -72,26 +72,19 @@ locals {
     : module.database.postgres_database_url_secret_arn
   )
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  create_ai_gateway                          = var.create_ai_gateway
-  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
-  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
-  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
-  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  create_ecs_api                       = !var.use_deployment_mode_external_eks
+  enable_ecs_api                       = local.create_ecs_api && var.enable_ecs_api
+  create_ai_gateway                    = var.create_ai_gateway
+  enable_ai_gateway                    = local.create_ai_gateway && var.enable_ai_gateway
+  enable_internal_observability        = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  create_internal_observability_secret = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
+  ai_proxy_url_ssm_parameter_name      = "/braintrust/${var.deployment_name}/ai-proxy-url"
 
-  # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
-  # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
-  # version, changes the launch template, and replaces the Brainstore ASGs.
-  # Lambda mode passes just the bare name. one() keeps this
-  # index-safe when api_ecs is absent.
-  brainstore_ai_proxy_url_ssm_parameter = (
-    local.enable_ecs_api
-    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(aws_ssm_parameter.api_ecs_url[*].version)}"
-    : local.brainstore_ai_proxy_url_ssm_parameter_name
-  )
+  # ECS mode bakes the independently managed ALB URL directly into Brainstore's
+  # launch templates. Lambda mode retains the SSM lookup because referencing the
+  # Lambda URL directly would recreate the services <-> Brainstore cycle.
+  brainstore_ai_proxy_url               = local.enable_ecs_api ? module.api_alb[0].http_url : null
+  brainstore_ai_proxy_url_ssm_parameter = local.enable_ecs_api ? null : local.ai_proxy_url_ssm_parameter_name
 
   # Loop Runtime uses the self-hosted AI Proxy Lambda Function URL.
   # one() keeps this index-safe when services is absent.
@@ -695,6 +688,7 @@ module "brainstore" {
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
+  ai_proxy_url                          = local.brainstore_ai_proxy_url
   ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = local.postgres_host
