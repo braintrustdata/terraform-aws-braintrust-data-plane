@@ -331,13 +331,6 @@ moved {
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
 }
 
-# The API URL parameter is foundational input to Brainstore. Keeping it at the
-# root lets Brainstore deploy before the API ECS services without a module cycle.
-moved {
-  from = module.api_ecs[0].aws_ssm_parameter.api_url
-  to   = aws_ssm_parameter.api_ecs_url[0]
-}
-
 # API load balancing moved out of api-ecs so the ALB can exist before
 # Brainstore, while the ECS services continue to consume Brainstore outputs.
 moved {
