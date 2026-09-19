@@ -72,26 +72,19 @@ locals {
     : module.database.postgres_database_url_secret_arn
   )
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  create_ai_gateway                          = var.create_ai_gateway
-  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
-  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
-  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
-  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  create_ecs_api                       = !var.use_deployment_mode_external_eks
+  enable_ecs_api                       = local.create_ecs_api && var.enable_ecs_api
+  create_ai_gateway                    = var.create_ai_gateway
+  enable_ai_gateway                    = local.create_ai_gateway && var.enable_ai_gateway
+  enable_internal_observability        = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  create_internal_observability_secret = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
+  ai_proxy_url_ssm_parameter_name      = "/braintrust/${var.deployment_name}/ai-proxy-url"
 
-  # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
-  # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
-  # version, changes the launch template, and triggers a rolling instance
-  # refresh. Lambda mode passes just the bare name. one() keeps this
-  # index-safe when api_ecs is absent.
-  brainstore_ai_proxy_url_ssm_parameter = (
-    local.enable_ecs_api
-    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
-    : local.brainstore_ai_proxy_url_ssm_parameter_name
-  )
+  # ECS mode bakes the independently managed ALB URL directly into Brainstore's
+  # launch templates. Lambda mode retains the SSM lookup because referencing the
+  # Lambda URL directly would recreate the services <-> Brainstore cycle.
+  brainstore_ai_proxy_url               = local.enable_ecs_api ? module.api_alb[0].http_url : null
+  brainstore_ai_proxy_url_ssm_parameter = local.enable_ecs_api ? null : local.ai_proxy_url_ssm_parameter_name
 
   # Loop Runtime uses the self-hosted AI Proxy Lambda Function URL.
   # one() keeps this index-safe when services is absent.
@@ -479,6 +472,28 @@ module "gateway_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 }
 
+module "api_alb" {
+  source = "./modules/api-alb"
+  count  = local.create_ecs_api ? 1 : 0
+
+  deployment_name        = var.deployment_name
+  vpc_id                 = local.main_vpc_id
+  private_subnet_ids     = local.main_vpc_private_subnet_ids
+  task_security_group_id = module.services_common.api_security_group_id
+  authorized_security_groups = merge(
+    {
+      "API"        = module.services_common.api_security_group_id
+      "Brainstore" = module.services_common.brainstore_instance_security_group_id
+    },
+    var.braintrust_api_authorized_security_groups,
+  )
+  authorized_cidr_blocks     = var.braintrust_api_authorized_cidr_blocks
+  certificate_arn            = var.braintrust_api_alb_certificate_arn
+  custom_domain              = var.braintrust_api_alb_custom_domain
+  drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
+  custom_tags                = local.all_custom_tags
+}
+
 module "api_ecs" {
   source = "./modules/api-ecs"
   count  = local.create_ecs_api ? 1 : 0
@@ -570,20 +585,12 @@ module "api_ecs" {
   quarantine_proxy_url                = local.api_ecs_quarantine_proxy_url
 
   # Networking
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
-  authorized_security_groups = merge(
-    {
-      "API"        = module.services_common.api_security_group_id
-      "Brainstore" = module.services_common.brainstore_instance_security_group_id
-    },
-    var.braintrust_api_authorized_security_groups,
-  )
-  authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
-
-  alb_certificate_arn            = var.braintrust_api_alb_certificate_arn
-  alb_custom_domain              = var.braintrust_api_alb_custom_domain
-  alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
+  vpc_id                      = local.main_vpc_id
+  private_subnet_ids          = local.main_vpc_private_subnet_ids
+  target_group_arns           = module.api_alb[0].target_group_arns
+  target_group_arn_suffixes   = module.api_alb[0].target_group_arn_suffixes
+  alb_http_listener_arn       = module.api_alb[0].http_listener_arn
+  alb_path_listener_rule_arns = module.api_alb[0].path_listener_rule_arns
 
   kms_key_arn              = local.kms_key_arn
   permissions_boundary_arn = var.permissions_boundary_arn
@@ -615,9 +622,9 @@ module "ingress" {
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api
-  api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
-  api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
-  api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled
+  api_ecs_alb_arn                     = module.api_alb[0].alb_arn
+  api_ecs_alb_domain                  = module.api_alb[0].alb_domain
+  api_ecs_alb_https_enabled           = module.api_alb[0].alb_https_enabled
 
   enable_loop_runtime                     = local.create_loop_runtime
   loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null
@@ -681,6 +688,7 @@ module "brainstore" {
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
+  ai_proxy_url                          = local.brainstore_ai_proxy_url
   ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                  = var.monitoring_telemetry
   database_host                         = local.postgres_host
