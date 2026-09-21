@@ -107,9 +107,6 @@ locals {
     (var.brainstore_wal_footer_version != "" || var.skip_pg_for_brainstore_objects != "") ? {
       BRAINSTORE_WAL_USE_EFFICIENT_FORMAT = "true"
     } : {},
-    var.brainstore_enable_export ? {
-      BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
-    } : {},
     # Attachments bucket, wired into all API services when configured. Omitted
     # when unconfigured so the app falls back to its default behavior.
     var.attachment_bucket_name != null ? {
