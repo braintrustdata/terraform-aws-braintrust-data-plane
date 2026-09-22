@@ -280,11 +280,12 @@ module "redis" {
     ),
     local.bastion_security_group,
   )
-  use_redis_replication_group = var.use_redis_replication_group
-  redis_instance_type         = var.redis_instance_type
-  redis_version               = var.redis_version
-  apply_immediately           = var.redis_apply_immediately
-  custom_tags                 = local.all_custom_tags
+  use_redis_replication_group         = var.use_redis_replication_group
+  redis_rg_auth_token_update_strategy = var.redis_rg_auth_token_update_strategy
+  redis_instance_type                 = var.redis_instance_type
+  redis_version                       = var.redis_version
+  apply_immediately                   = var.redis_apply_immediately
+  custom_tags                         = local.all_custom_tags
 }
 
 module "storage" {
@@ -320,6 +321,7 @@ module "services" {
   postgres_port     = module.database.postgres_database_port
 
   use_redis_replication_group = var.use_redis_replication_group
+  redis_auth_token            = module.redis.redis_auth_token
   redis_host                  = module.redis.redis_endpoint
   redis_port                  = module.redis.redis_port
 
@@ -452,8 +454,7 @@ module "gateway_ecs" {
   target_memory_utilization    = var.ai_gateway_target_memory_utilization
   log_retention_days           = var.ai_gateway_log_retention_days
   permissions_boundary_arn     = var.permissions_boundary_arn
-  use_redis_replication_group  = var.use_redis_replication_group
-  redis_host                   = module.redis.redis_endpoint
+  redis_url_secret_arn         = module.redis.redis_url_secret_arn
   redis_port                   = module.redis.redis_port
   redis_security_group_id      = module.redis.redis_security_group_id
   target_group_arn             = module.gateway_alb[0].gateway_target_group_arn
@@ -687,9 +688,7 @@ module "brainstore" {
   database_host                         = local.postgres_host
   database_port                         = module.database.postgres_database_port
   database_secret_arn                   = local.postgres_credentials_secret_arn
-  use_redis_replication_group           = var.use_redis_replication_group
-  redis_host                            = module.redis.redis_endpoint
-  redis_port                            = module.redis.redis_port
+  redis_url_secret_arn                  = module.redis.redis_url_secret_arn
   service_token_secret_arn              = module.services_common.function_tools_secret_arn
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
