@@ -82,6 +82,7 @@ locals {
       { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = var.redis_url_secret_arn },
       { name = "BRAINSTORE_REDIS_URI", valueFrom = var.redis_url_secret_arn },
       { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
+      { name = "FUNCTION_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
     ],
     local.use_object_store_locks ? [] : [
       { name = "BRAINSTORE_LOCKS_URI", valueFrom = var.redis_url_secret_arn },
