@@ -247,7 +247,7 @@ variable "brainstore_reader_url" {
 
 variable "ai_proxy_url" {
   type        = string
-  description = "AI proxy URL used by the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL)."
+  description = "Model proxy URL for the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL). Root module sets this to the private gateway /v1/proxy when enable_ai_gateway; otherwise hosted gateway or CloudFront API /v1/proxy."
 }
 
 variable "brainstore_license_key" {
@@ -303,6 +303,18 @@ variable "brainstore_port" {
   type        = number
   description = "Brainstore service port."
   default     = 4000
+}
+
+variable "gateway_security_group_id" {
+  type        = string
+  description = "Security group ID of the private gateway ALB; an ingress rule from the task SG is added when set."
+  default     = null
+}
+
+variable "gateway_port" {
+  type        = number
+  description = "Private gateway ALB listener port."
+  default     = 80
 }
 
 # --- Runtime config ---
