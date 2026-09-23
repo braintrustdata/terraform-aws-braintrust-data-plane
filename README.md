@@ -16,6 +16,21 @@ Each major version may include required configuration changes or a multi-step ap
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
 
+### Brainstore and API upgrades
+
+When the same upgrade changes Brainstore instances and API ECS services or Lambda functions, use two Terraform applies if the old Brainstore ASGs must be gone before the API changes. A single apply can wait for all replacement Brainstore targets to become healthy, but Terraform may update the API before deleting the old ASGs when the ASGs use `create_before_destroy`.
+
+From the directory containing your deployment configuration, with the new module version and inputs already selected:
+
+```sh
+terraform plan -target='module.braintrust-data-plane.module.brainstore[0]' -out=brainstore.tfplan
+terraform apply brainstore.tfplan
+terraform plan -out=api.tfplan
+terraform apply api.tfplan
+```
+
+Review the first plan before applying it: it must include the intended Brainstore ASG replacements and must not include API ECS service or Lambda function updates. The first apply must complete successfully before planning the second one. Do not apply a full plan saved before the Brainstore apply. Adjust the target address if your root module has a different name.
+
 ## How to use this module
 
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
