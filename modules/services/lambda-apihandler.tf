@@ -16,10 +16,6 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
-  redis_extra_env_vars = var.use_redis_replication_group ? {
-    REDIS_URL = "rediss://${var.redis_host}:${var.redis_port}"
-  } : {}
-
   # Shared between the AI Proxy and API Handler
   api_common_env_vars = merge({
     ORG_NAME                   = var.braintrust_org_name

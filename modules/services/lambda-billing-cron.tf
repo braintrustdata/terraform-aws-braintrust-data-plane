@@ -33,6 +33,7 @@ resource "aws_lambda_function" "billing_cron" {
       TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
       SERVICE_TOKEN_SECRET_KEY      = var.function_tools_secret_key
       },
+      local.redis_extra_env_vars,
       var.extra_env_vars.BillingCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.billing_cron_base_function_name
