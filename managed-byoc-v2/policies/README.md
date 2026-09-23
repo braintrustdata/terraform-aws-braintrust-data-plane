@@ -9,7 +9,7 @@ placeholders before implementation:
 | `<AWS_ACCOUNT_ID>` | Dedicated customer AWS account ID |
 | `<AWS_REGION>` | Data plane AWS Region |
 | `<BOOTSTRAP_NAME>` | Short identifier for this customer access contract |
-| `<MANAGED_RESOURCE_PREFIX>` | Exact approved Terraform `deployment_name` prefix for the data plane |
+| `<MANAGED_RESOURCE_PREFIX>` | Exact configured Terraform `deployment_name` prefix for the data plane |
 | `<RUNTIME_BOUNDARY_ARN>` | ARN of `runtime-permissions-boundary.json` after creation |
 | `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
 | `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
@@ -31,7 +31,7 @@ Bootstrap keys must be distinct from the data plane key managed by the module an
 must not carry the module's `BraintrustDeploymentName` tag. Their policies stay
 under customer control. The S3 KMS examples use object ARN encryption context;
 keep S3 Bucket Keys disabled for these two buckets. Enabling Bucket Keys changes
-the context to a bucket ARN and requires a reviewed policy change.
+the context to a bucket ARN and requires an explicit policy update.
 
 The KMS decrypt permission for operation records supports multipart uploads; it
 does not grant S3 object reads. Retain bucket versioning and consider Object Lock
@@ -104,7 +104,7 @@ S3, KMS, or other service calls. External resources therefore need exact source
 policy scope and matching destination resource or key policies. Add
 service-specific controls and audit coverage for each enabled feature.
 
-## Incident operations
+## Support operations
 
 Support uses existing module resource names and tags. Brainstore operations
 require both the name prefix and `BraintrustDeploymentName` tag. Lambda concurrency

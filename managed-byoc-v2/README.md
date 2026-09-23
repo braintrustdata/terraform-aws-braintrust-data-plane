@@ -142,8 +142,8 @@ including metrics, alarms, deployments, scaling settings, and schedules.
 Neither role can read Terraform state, secrets, application data, or application
 log bodies, or open a shell.
 
-Support can also make incident changes to ECS services and tasks, Brainstore
-scaling within existing limits and instance health, Lambda concurrency, and
+Support can also make maintenance or incident changes to ECS services and tasks,
+Brainstore scaling within existing limits and instance health, Lambda concurrency, and
 scheduled jobs. It can reboot databases or caches and tune database parameters.
 It cannot define workloads, change IAM, or pass roles. Instance types,
 database capacity, and network changes use the deployment workflow.
@@ -254,21 +254,21 @@ deletion of operation records. The deprovisioning workflow must detach those
 resources from Terraform state before destroying serving infrastructure.
 
 Terraform continues to manage the Brainstore lifecycle configuration during
-normal operation. AWS IAM cannot distinguish an approved lifecycle change from
+normal operation. AWS IAM cannot distinguish an intended lifecycle change from
 one that introduces an unsafe expiration rule. Customers should alert on every
 `PutBucketLifecycleConfiguration` call and rely on bucket versioning, recovery
-testing, reviewed plans, and their chosen retention controls. This limitation is
+testing, and their chosen retention controls. This limitation is
 explicit rather than presenting `retain-data` as an absolute IAM guarantee.
 
 ## Important limitation
 
-Deployment automation can change data plane workloads. IAM removes standing
-direct data reads and common paths for privilege escalation, but cannot prove
-that privileged deployment code could never construct an indirect path through
-a workload with data access. Support's permitted workload changes also require
-operational review and attribution. Reviewed Terraform plans, immutable module
-versions, temporary operation credentials, audit evidence owned by the customer,
-monitoring, and customer revocation are therefore part of the security boundary.
+Deployment automation can change data plane workloads. IAM limits direct data
+access and common paths to privilege escalation, but cannot rule out indirect
+access through a workload with data access. Support changes are attributable
+to named sessions and customer-owned audit logs; Braintrust reverts temporary
+changes or reconciles lasting ones through the deployment workflow. Versioned
+deployment inputs, temporary credentials, monitoring, and customer-controlled
+revocation provide additional safeguards.
 
 ## Reviewing the files
 

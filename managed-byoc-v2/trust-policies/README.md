@@ -14,8 +14,8 @@
   authenticated employee, not let employees select another person's identity.
 - Machine sessions require `byoc-operation-<operation-id>` as their source
   identity. Trust enforces the prefix; the deployment service validates the
-  operation ID and records it with the reviewed plan and module version. Session
-  names/tags can add incident or change IDs; they do not grant permissions.
+  operation ID and records it with the deployment operation and module version.
+  Session names or tags can add change references; they do not grant permissions.
 - The AWS console cannot supply an External ID during role switching, so the
   human roles trust exact source roles instead.
 

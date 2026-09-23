@@ -69,7 +69,7 @@ The deny for account and organization administration intentionally covers every
 member account identity. Other statements apply only to matching principals.
 SCPs do not constrain AWS service-linked roles; the deployment policy allows
 creation only for listed services, and those roles do not receive the runtime
-boundary. Review that exception when enabling a new service.
+boundary. Account for that exception when enabling a new service.
 
 ## External AWS access
 
