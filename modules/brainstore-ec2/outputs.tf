@@ -27,7 +27,7 @@ output "brainstore_elb_security_group_id" {
 }
 
 output "rollout_complete" {
-  description = "Token that changes after all Brainstore ASG replacements have completed."
+  description = "Token that changes after the replacement Brainstore ASGs have healthy NLB capacity. Old ASG deletion may still be pending."
   value       = terraform_data.rollout_complete.id
 }
 
