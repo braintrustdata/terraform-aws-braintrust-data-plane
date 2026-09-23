@@ -2,12 +2,13 @@
 
 Status: design preview for customer security review
 
-This package documents Braintrust's current design for the AWS access model and
-customer controls in our new managed BYOC offering. It is provided to customers
-participating in early access for security review and feedback. It is not a
-deployment template or an agreement specific to one customer; the production
-bootstrap will implement Braintrust's finalized and validated BYOC security
-model.
+This package describes Braintrust's intended standard AWS access model and
+customer controls for managed BYOC. We welcome security feedback from early
+access customers and may incorporate improvements that benefit the standard
+model. The core roles and guardrails are consistent across deployments;
+account-specific identifiers and enabled features vary. This design preview
+is not a deployment template. The production bootstrap will implement the
+validated model.
 
 The AWS account must be dedicated to infrastructure managed by Braintrust. A
 single Braintrust data plane may serve multiple customer teams and use cases,
@@ -15,11 +16,11 @@ and the account may host multiple Braintrust data plane deployments. Customer
 applications and infrastructure unrelated to Braintrust BYOC must reside in
 separate AWS accounts.
 
-## Proposed roles
+## BYOC roles
 
 | Role | Principal | Purpose | Standing data access |
 | --- | --- | --- | --- |
-| `BraintrustDeploymentRole` | Braintrust deployment service | Reviewed Terraform plan/apply operations | State, artifacts, license/module secrets, and workload configuration needed by Terraform |
+| `BraintrustDeploymentRole` | Braintrust deployment service | Versioned Terraform deployment operations | State, artifacts, license/module secrets, and workload configuration needed by Terraform |
 | `BraintrustSupportRole` | Named Braintrust support personnel | Bounded incident response and operational changes | No standing direct access |
 | `BraintrustObserverRole` | Named Braintrust personnel | Broad infrastructure diagnostics | None |
 
@@ -80,7 +81,7 @@ flowchart LR
 | Reboot databases/caches or tune the database parameter group | Yes | Scoped | No |
 | Create or replace infrastructure definitions | Yes | No | No |
 | Create data plane IAM roles | Yes, with the required boundary | No | No |
-| Pass data plane roles to AWS services | Approved roles and services only | No | No |
+| Pass data plane roles to AWS services | Specified roles and services only | No | No |
 | Change the three BYOC roles or guardrails | No | No | No |
 | Delete retained customer data | No | No | No |
 
@@ -104,7 +105,7 @@ outputs, and task overrides visible through diagnostic APIs.
 
 ## Policy set
 
-The proposed policies are standalone JSON under `policies/`. The deployment
+The policy files in this preview are standalone JSON under `policies/`. The deployment
 permissions are split into two identity policies because AWS limits each managed
 policy document to 6,144 characters. The split follows a useful review boundary
 rather than creating one policy per AWS service.
@@ -113,10 +114,10 @@ rather than creating one policy per AWS service.
 | --- | --- | --- | --- |
 | `deployment-infrastructure-policy.json` | Deployment role | AWS service, scoped IAM, and tagged KMS key administration | Evolves with the data plane module |
 | `deployment-data-policy.json` | Deployment role | State, artifacts, operational records, secrets, S3, and KMS | Evolves with storage and secret handling |
-| `deployment-permissions-boundary.json` | Deployment role | Stable maximum permissions for automation | Rare; customer security review |
-| `runtime-permissions-boundary.json` | Every runtime role created by Terraform | Baseline maximum for workload identities | Rare; customer security review |
-| `observer-policy.json` | Observer and Support roles | Broad diagnostic metadata with explicit denials for content and interactive access | Explicitly reviewed additions only |
-| `support-policy.json` | Support role | Operations limited to matching resources | Explicitly reviewed additions only |
+| `deployment-permissions-boundary.json` | Deployment role | Stable maximum permissions for automation | Rare; versioned bootstrap update |
+| `runtime-permissions-boundary.json` | Every runtime role created by Terraform | Baseline maximum for workload identities | Rare; versioned bootstrap update |
+| `observer-policy.json` | Observer and Support roles | Broad diagnostic metadata with explicit denials for content and interactive access | Internally reviewed additions |
+| `support-policy.json` | Support role | Operations limited to matching resources | Internally reviewed additions |
 
 The trust policies under `trust-policies/` restrict each customer role to one
 exact Braintrust principal. Machine sessions additionally require a unique
@@ -129,14 +130,10 @@ see [`trust-policies/README.md`](trust-policies/README.md).
 
 The data plane is an evolving product and must be able to add, update, and
 remove runtime IAM roles and policies. The deployment role can manage only IAM
-resources whose names begin with the reviewed managed resource prefix. Every
+resources whose names begin with the configured managed resource prefix. Every
 created role must carry the runtime permissions boundary owned by the customer.
-`iam:PassRole` is limited to matching roles and an approved list of AWS
+`iam:PassRole` is limited to matching roles and a specified list of AWS
 services. The deployment role cannot assume runtime roles itself.
-
-This first contract uses the naming prefix already supported by the current
-module and does not require an IAM path refactor. An enforced IAM path remains
-a useful future hardening step.
 
 ## Human operations model
 
@@ -159,36 +156,36 @@ deployment workflow.
 
 ## Customer guardrails
 
-The example SCPs under `guardrails/` are applied by the customer's AWS
+The two SCPs under `guardrails/` are applied by the customer's AWS
 Organizations administrators. They do not grant access. They reinforce the
-runtime boundary requirement, IAM prefix, approved `PassRole` services,
+runtime boundary requirement, IAM prefix, specified `PassRole` services,
 bootstrap role protection, data access restrictions, retained data protections,
 and audit control protection independently of Braintrust identity policies.
 
-Recommended customer controls:
+The access guarantees described here require the complete policy set,
+including both SCPs. Customers retain control of the license secret, bootstrap
+policies and trust, state and operation log buckets, and any customer-managed
+encryption keys.
 
-1. Apply the reviewed SCPs to the dedicated account or its dedicated OU.
-2. Send organization CloudTrail events to a customer log archive account that
+Recommended monitoring and recovery controls:
+
+1. Send organization CloudTrail events to a customer log archive account that
    Braintrust roles cannot modify.
-3. Enable management events and the targeted data events listed in the alerting
+2. Enable management events and the targeted data events listed in the alerting
    guide, including S3, Lambda, DynamoDB, and SQS where used.
-4. Implement the minimum event alerts in
+3. Implement the minimum event alerts in
    [`guardrails/cloudtrail-alerting.md`](guardrails/cloudtrail-alerting.md),
    including alerts for role assumption, human mutations, identity control
    changes, attempts to access sensitive data, retained data deletion, public
    exposure, interactive access, and audit tampering.
-5. Keep the license secret, bootstrap policies, trust policies, state bucket,
-   operation log bucket, and any encryption key managed by the customer under
-   customer ownership.
-6. Retain a recovery path controlled by the customer outside the Braintrust
+4. Retain a recovery path controlled by the customer outside the Braintrust
    trust chain.
 
 The KMS controls separate key administration from data use: deployment grants
 are limited to grants created by AWS services, and explicit denials restrict
-decryption to reviewed keys and the documented Secrets Manager, S3, and Lambda
+decryption to specified keys and the documented Secrets Manager, S3, and Lambda
 configuration paths. Customer bootstrap keys and storage settings are protected
-from deployment changes. These guarantees require the complete policy set,
-including both SCPs.
+from deployment changes.
 
 ## Access outside the BYOC account
 
@@ -198,7 +195,12 @@ The intended boundary depends on who is making the request:
 | Access path | Default | External access |
 | --- | --- | --- |
 | Deployment, Support, and Observer roles | Operate in the BYOC account | Deployment reads the named Braintrust-hosted software bucket; the customer SCP blocks access to other externally owned S3 buckets |
-| Data plane workloads | Use resources in the BYOC account | An enabled feature may require an exact external role or resource, such as a Bedrock access role or an S3 export destination |
+| Data plane workloads | Use resources in the BYOC account | An enabled feature may require an exact external role or resource |
+
+For example, the Bedrock integration can require the Gateway to assume a scoped
+role in another account to call a configured model. S3 export can require the
+data plane to assume a scoped role to write requested exports to a
+customer-designated S3 bucket, including one in another account.
 
 Runtime roles cannot assume another role under the baseline boundary. A feature
 that needs this access requires an explicit destination role ARN in the workload
