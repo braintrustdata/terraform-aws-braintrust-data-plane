@@ -199,11 +199,14 @@ locals {
       ],
     )
     healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      command = [
+        "CMD-SHELL",
+        "curl --silent --fail --output /dev/null --max-time 5 --write-out '{\"msg\":\"API health check result\",\"event\":\"ecs_health_check\",\"curl\":%%{json}}\\n' http://localhost:8000/ >> /proc/1/fd/1"
+      ]
       interval    = 30
       retries     = 3
       startPeriod = 10
-      timeout     = 5
+      timeout     = 6
     }
     mountPoints    = []
     systemControls = []
