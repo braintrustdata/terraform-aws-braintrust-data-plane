@@ -82,25 +82,26 @@ identity policy grants only read operations on that bucket. This is not a
 universal cross-account deny for every AWS service.
 
 The customer-owned runtime boundary denies all role assumption by default.
-Before enabling an integration that assumes a role in another account, change
-that statement to a deny using `NotResource` with only the exact approved role
-ARNs. Also set the source workload's role allowlist to those ARNs and restrict
-each destination role's trust and permissions to the intended workload. The
-shared boundary exception is not specific to one workload, so the source
-policy and destination trust remain essential. When no integration is enabled,
-keep the default deny. The current Terraform module treats an empty
-Bedrock or S3 export role allowlist as `Resource: "*"`; the boundary prevents
-role assumption in this preview, but explicit source allowlists are required
-before an integration is enabled.
+Before enabling a feature that assumes a role in another account, change
+that statement to a deny using `NotResource` with only the exact destination
+role ARNs required by the feature. Also set the source workload's role allowlist
+to those ARNs and restrict each destination role's trust and permissions to the
+intended workload. The shared boundary allowance is not specific to one
+workload, so the source policy and destination trust remain essential. When no
+integration is enabled, keep the default deny. The current Terraform module
+treats an empty Bedrock or S3 export role allowlist as `Resource: "*"`; the
+boundary prevents role assumption in this preview, but explicit source
+allowlists are required before an integration is enabled.
 
-Direct access to a customer-approved external resource, such as an existing S3
-bucket or KMS key, needs an exact resource and owner-account review. The
-customer's destination resource policy remains a separate gate. The S3 SCP
-above covers management roles, not runtime identities; the runtime boundary
-does not yet impose a universal resource-owner cap on direct API calls. New
-AWS services may need service-specific controls because `aws:ResourceAccount`
-is not available for every action. Record each enabled external path and review
-its permissions and audit coverage when it changes.
+Direct access to a configured external resource, such as an existing S3 bucket
+or KMS key, requires the exact resource and owner-account scope documented for
+the feature. The customer's destination resource policy remains a separate
+gate. The S3 SCP above covers management roles, not runtime identities; the
+runtime boundary does not yet impose a universal resource-owner cap on direct
+API calls. New AWS services may need service-specific controls because
+`aws:ResourceAccount` is not available for every action. Document each
+supported external path and update its permissions and audit coverage when the
+feature changes.
 
 Braintrust will validate the policies in a test account before production use.
 Keep a recovery role controlled by the customer or a path through the management

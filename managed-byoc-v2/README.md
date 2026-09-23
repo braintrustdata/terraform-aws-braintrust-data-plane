@@ -33,7 +33,6 @@ flowchart LR
         M[BYOC deployment service]
         H[Support SSO]
         O[Observer SSO]
-        B[(Deployment artifacts)]
     end
 
     subgraph Customer AWS account
@@ -46,8 +45,8 @@ flowchart LR
         A[(Application data)]
     end
 
-    subgraph Approved external account
-        X[Integration role or resource]
+    subgraph External account for enabled feature
+        X[Required role or resource]
     end
 
     M -->|temporary operation session| D
@@ -55,12 +54,11 @@ flowchart LR
     O -->|named human session| R
     D -->|read / write| T
     D -->|write only| L
-    D -->|read named artifacts| B
     D --> I
     S -->|bounded, audited operations| I
     R -->|inspect configuration, health, metrics, alarms| I
     I --> A
-    I -->|approved runtime integration| X
+    I -->|feature-required access| X
 ```
 
 ## Effective access
@@ -142,46 +140,22 @@ a useful future hardening step.
 
 ## Human operations model
 
-Observer inspects infrastructure configuration, health, metrics, and alarms.
-Both human roles can also inspect ECS deployment history, Lambda concurrency,
-DNS resolver configuration, VPC Flow Log settings, and module schedule targets.
-This metadata does not include application log bodies or function credentials.
+Observer and Support can inspect infrastructure configuration and health,
+including metrics, alarms, deployments, scaling settings, and schedules.
+Neither role can read Terraform state, secrets, application data, or application
+log bodies, or open a shell.
 
-Support can make incident changes directly:
+Support can also make incident changes to ECS services and tasks, Brainstore
+scaling within existing limits and instance health, Lambda concurrency, and
+scheduled jobs. It can reboot databases or caches and tune database parameters.
+It cannot define workloads, change IAM, or pass roles. Instance types,
+database capacity, and network changes use the deployment workflow.
 
-- Restart ECS tasks, update existing services, roll back an ongoing deployment,
-  and tune ECS scaling targets and policies, including suspending automatic scaling.
-- Scale Brainstore within existing group limits, mark an unhealthy instance for
-  replacement, or cancel an instance refresh. Cancellation stops further rollout;
-  it does not undo replacements already completed.
-- Adjust Lambda reserved and provisioned concurrency, or remove a temporary
-  concurrency override.
-- Pause and resume the module's automation, billing, and catchup ETL schedules.
-- Reboot databases/caches and adjust database parameters.
-
-These operations can affect availability, cost, and other data planes sharing
-capacity. Replace Brainstore instances one at a time after checking recovery
-health. Cache reboots can discard cached contents. Record changes against an
-incident, coordinate with active deployments, and restore temporary overrides
-after recovery. Persist lasting changes in Terraform configuration and reconcile
-through the deployment workflow; a state refresh alone does not preserve them.
-
-Neither human role can read Terraform state, secret values, application data,
-or application log bodies, or open a shell. Support cannot author workload
-definitions, change IAM, or pass roles. Instance types, Brainstore group limits,
-database capacity, and network infrastructure changes use the deployment workflow.
-Application diagnosis may still require telemetry outside these roles. The policy
-attachment table above identifies the exact files used by each role.
-
-ECS service and Auto Scaling group operations are limited to matching deployment
-prefixes. ECS Application Auto Scaling applies across the account in the configured
-Region; some diagnostic APIs also apply across the account. The dedicated account
-is an isolation boundary, not a guarantee of isolation between its data planes.
-
-`UpdateService` remains a broad API: it can change service configuration as well
-as task count. The policy restricts task definition references and blocks requests
-to enable ECS Exec or public IP assignment, but does not limit every request
-field. Customers should inspect service changes through the CloudTrail checks.
+These permissions can affect availability and cost. ECS service updates can
+change more than task count, and ECS Application Auto Scaling permissions apply
+across the account in the configured Region. Record and monitor support changes,
+restore temporary overrides, and reconcile lasting changes through the
+deployment workflow.
 
 ## Customer guardrails
 
@@ -221,33 +195,38 @@ including both SCPs.
 A dedicated account does not mean the data plane never uses another AWS account.
 The intended boundary depends on who is making the request:
 
-| Access path | Default | Reviewed exception |
+| Access path | Default | External access |
 | --- | --- | --- |
-| Deployment, Support, and Observer roles | Operate in the BYOC account | Deployment reads the named Braintrust artifact bucket; the customer SCP blocks access to other externally owned S3 buckets |
-| Data plane workloads | Use resources in the BYOC account | An enabled integration may use an exact external role or resource, such as a Bedrock access role or an S3 export destination |
+| Deployment, Support, and Observer roles | Operate in the BYOC account | Deployment reads the named Braintrust-hosted software bucket; the customer SCP blocks access to other externally owned S3 buckets |
+| Data plane workloads | Use resources in the BYOC account | An enabled feature may require an exact external role or resource, such as a Bedrock access role or an S3 export destination |
 
-Runtime roles cannot assume another role under the baseline boundary. Enabling
-that kind of integration requires an explicit destination role ARN in the
-workload policy, a customer-controlled boundary exception, and a destination
-trust policy limited to the intended workload role. Direct access to an
-external bucket, key, or other resource also requires a reviewed resource and
-owner-account exception. These exceptions do not grant access on their own.
+Runtime roles cannot assume another role under the baseline boundary. A feature
+that needs this access requires an explicit destination role ARN in the workload
+policy, a feature-specific allowance in the customer-controlled boundary,
+and a destination trust policy limited to the intended workload role. Direct
+access to an external bucket, key, or other resource likewise requires
+feature-specific resource and owner-account scope. These boundary changes do
+not grant access on their own.
 The sample policies do not yet impose an account-owner limit on every runtime
 service API; direct external access needs controls specific to that integration.
 
-Each new cross-account integration must identify its source workload, destination,
-purpose, required actions, customer-controlled changes, and audit events before
-it is enabled. Normal updates within the existing boundary do not require a new
-cross-account exception. AWS does not supply resource-owner context for every
-API, so the S3 owner-account SCP is one concrete guardrail, not a claim that a
-single condition protects every AWS service. Once a workload assumes a role in
-another account, that role's permissions and the destination account's controls
-govern its subsequent calls.
+For each feature with external access, Braintrust will document the source
+workload, destination, purpose, required actions, customer configuration, and
+audit events. Customers configure the documented access to use the feature;
+otherwise that feature remains unavailable. Exact destinations vary by
+installation, but the permission pattern is a published feature requirement,
+not a case-by-case approval process. Normal updates within the existing
+boundary need no new cross-account configuration. AWS does not supply
+resource-owner context for every API, so the S3 owner-account SCP is one
+concrete guardrail, not a claim that a single condition protects every AWS
+service. Once a workload assumes a role in another account, that role's
+permissions and the destination account's controls govern its subsequent calls.
 
 ## Stable guardrails and evolving permissions
 
 Deployment allow policies will change as the Terraform module gains or removes
-features. Those changes should be versioned and presented for customer review.
+features. Those changes will be versioned with the required customer
+configuration.
 The trust policies, permissions boundaries, SCP, audit ownership, and data
 access invariants are the more stable security contract.
 
@@ -299,10 +278,11 @@ also use IAM Access Analyzer when AWS credentials are available.
 
 ## Preview change history
 
-This table records material changes to the customer review package, not changes
+This table records customer-visible changes to the review package, not changes
 deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-09-23 | Simplified the access diagram and human operations summary; clarified that external access is a documented feature requirement, not a case-by-case approval. No permissions changed. | Role access and operating boundaries are unchanged. |
 | 2026-09-23 | Added the external access model, an S3 owner-account guardrail for Braintrust roles, exact artifact bucket scope, default-deny runtime role assumption, and cross-account audit guidance. | Review the boundary between routine BYOC operations and explicitly enabled runtime integrations. |
 | 2026-09-17 | Published the initial AWS BYOC v2 role, policy, and customer guardrail preview. | Baseline for subsequent feedback. |

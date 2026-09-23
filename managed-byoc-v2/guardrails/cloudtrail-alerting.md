@@ -40,7 +40,7 @@ boundaries, and SCPs; they do not prevent an action that is otherwise authorized
 | Critical | Public exposure | Security group ingress changes, S3 public access or bucket policy changes, an ECS update requesting public IP assignment, or an RDS update requesting public accessibility |
 | High | Uncorrelated human mutation | A Support mutation has no approved incident/change identifier, unexpected source identity, unexpected target data plane, or occurs outside the approved operating window |
 | High | Unexpected deployment session | Deployment role assumption or mutation cannot be correlated with a reviewed deployment operation and module version |
-| High | Unexpected external access | A Braintrust role assumes an unapproved destination role or accesses an external resource outside a documented integration, whether allowed or denied; correlate approved runtime assumptions with destination-account activity |
+| High | Unexpected external access | A Braintrust role assumes a destination role or accesses an external resource outside an enabled feature's documented access, whether allowed or denied; correlate expected runtime assumptions with destination-account activity |
 | High | Sensitive authorization failure | `AccessDenied`, `UnauthorizedOperation`, or equivalent from a Braintrust principal for IAM, STS, S3 object, Secrets Manager, KMS, interactive access, retained data, or audit control APIs |
 | Audit | Human role assumption | Every successful and failed `AssumeRole` attempt for Support and Observer; notify according to the customer's operating model |
 | Audit | Support mutation | Every successful event in the Support mutation set below; preserve it with the incident/change record |

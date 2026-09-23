@@ -55,11 +55,11 @@ The deployment boundary is not a grant: an action must be allowed by an
 identity policy and the boundary, and must not be denied by the SCP. The
 runtime boundary similarly caps policies that the Terraform module creates for
 individual workloads. It denies runtime `sts:AssumeRole` by default. An enabled
-external integration requires a reviewed exception for exact destination role
+external feature requires a boundary allowance for its exact destination role
 ARNs, a matching allow in the source workload policy, and restricted trust and
 permissions on the destination role. An exception to the boundary never grants
 access by itself. Direct access to an external resource, such as a caller-provided
-S3 bucket or KMS key, requires its own review and controls.
+S3 bucket or KMS key, requires feature-specific scope and customer-side controls.
 
 AWS limits each managed policy document to 6,144 characters, excluding
 whitespace. The validation script checks templates and documents rendered with
