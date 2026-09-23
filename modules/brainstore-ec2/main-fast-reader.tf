@@ -122,6 +122,9 @@ resource "aws_lb_target_group" "brainstore_fast_reader" {
   target_type = "instance"
 
   connection_termination = true
+  # Auto Scaling waits for NLB deregistration before terminating an instance.
+  # Keep the drain window explicit so provider or AWS defaults cannot shorten it.
+  deregistration_delay = 300
   health_check {
     protocol            = "HTTP"
     port                = "traffic-port"
@@ -161,6 +164,7 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
   target_group_arns         = [aws_lb_target_group.brainstore_fast_reader[0].arn]
   wait_for_elb_capacity     = var.fast_reader_instance_count
   wait_for_capacity_timeout = "30m"
+  force_delete              = false
   launch_template {
     id      = aws_launch_template.brainstore_fast_reader[0].id
     version = aws_launch_template.brainstore_fast_reader[0].latest_version
@@ -186,5 +190,9 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
       value               = tag.value
       propagate_at_launch = true
     }
+  }
+
+  timeouts {
+    delete = "30m"
   }
 }

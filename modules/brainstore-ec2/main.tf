@@ -143,6 +143,9 @@ resource "aws_lb_target_group" "brainstore" {
   target_type = "instance"
 
   connection_termination = true
+  # Auto Scaling waits for NLB deregistration before terminating an instance.
+  # Keep the drain window explicit so provider or AWS defaults cannot shorten it.
+  deregistration_delay = 300
   health_check {
     protocol            = "HTTP"
     port                = "traffic-port"
@@ -182,6 +185,7 @@ resource "aws_autoscaling_group" "brainstore" {
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
   wait_for_elb_capacity     = var.instance_count
   wait_for_capacity_timeout = "30m"
+  force_delete              = false
   launch_template {
     id      = aws_launch_template.brainstore.id
     version = aws_launch_template.brainstore.latest_version
@@ -209,6 +213,10 @@ resource "aws_autoscaling_group" "brainstore" {
       value               = tag.value
       propagate_at_launch = true
     }
+  }
+
+  timeouts {
+    delete = "30m"
   }
 }
 
