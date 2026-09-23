@@ -54,12 +54,7 @@ service context and provider refresh behavior before production use.
 The deployment boundary is not a grant: an action must be allowed by an
 identity policy and the boundary, and must not be denied by the SCP. The
 runtime boundary similarly caps policies that the Terraform module creates for
-individual workloads. It denies runtime `sts:AssumeRole` by default. An enabled
-external feature requires a boundary allowance for its exact destination role
-ARNs, a matching allow in the source workload policy, and restricted trust and
-permissions on the destination role. An exception to the boundary never grants
-access by itself. Direct access to an external resource, such as a caller-provided
-S3 bucket or KMS key, requires feature-specific scope and customer-side controls.
+individual workloads. External feature scope is detailed below.
 
 AWS limits each managed policy document to 6,144 characters, excluding
 whitespace. The validation script checks templates and documents rendered with
@@ -89,6 +84,25 @@ Some identifiers, including the retained data plane key ARN, exist only after
 creation. Before production use, the implementation must validate how it binds
 these values into controls owned by the customer without exposing a running data
 plane before protection is effective.
+
+## External feature policy notes
+
+The management-role S3 SCP uses `aws:ResourceAccount` only when AWS supplies
+owner context; it does not cap every S3 API or other AWS services. The deployment
+identity policy grants read-only access to the named Braintrust software bucket.
+
+The current module uses `Resource: "*"` when its Bedrock or S3 export role
+allowlist is empty. The baseline runtime boundary's `sts:AssumeRole` deny blocks
+those paths. Before enabling either feature, set exact destination role ARNs in
+the source workload policy and exclude only those ARNs from the boundary deny.
+That boundary change does not grant access on its own: restrict destination
+trust and permissions to the intended workload. The shared boundary exception
+is not workload-specific.
+
+The runtime boundary does not impose a universal owner-account limit on direct
+S3, KMS, or other service calls. External resources therefore need exact source
+policy scope and matching destination resource or key policies. Add
+service-specific controls and audit coverage for each enabled feature.
 
 ## Incident operations
 

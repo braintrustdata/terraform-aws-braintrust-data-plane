@@ -1,16 +1,15 @@
 # Customer service control policies
 
-The example SCPs in this directory provide additional controls for the dedicated
-AWS account. The customer owns these controls. Customer AWS Organizations
-administrators review, customize, test, and attach both policies to the
-dedicated account or OU.
+The two SCPs in this preview are customer-owned guardrails for the dedicated
+AWS account. Customer AWS Organizations administrators fill in account-specific
+values, test, and attach both policies to the account or OU.
 
 `customer-service-control-policy.json` protects the access model. Its
 main controls are:
 
 - require the runtime boundary owned by the customer when deployment automation
   creates a role;
-- constrain role creation and `PassRole` to the reviewed resource prefix;
+- constrain role creation and `PassRole` to the configured resource prefix;
 - prevent the deployment role from editing bootstrap roles and policies;
 - prevent Braintrust roles from disabling customer audit controls;
 - deny direct application object and secret reads outside documented machine
@@ -43,7 +42,7 @@ Replace every placeholder before use:
 | `<ACCOUNT_ID>` | Dedicated AWS account ID |
 | `<AWS_REGION>` | Data plane AWS Region |
 | `<BOOTSTRAP_NAME>` | Short identifier for this customer access contract |
-| `<MANAGED_RESOURCE_PREFIX>` | Exact approved Terraform `deployment_name` prefix; enumerate multiple safe prefixes when needed |
+| `<MANAGED_RESOURCE_PREFIX>` | Exact Terraform `deployment_name` prefix; enumerate multiple safe prefixes when needed |
 | `<RUNTIME_BOUNDARY_ARN>` | ARN of the runtime boundary created by the customer |
 | `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
 | `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
@@ -74,42 +73,13 @@ boundary. Review that exception when enabling a new service.
 
 ## External AWS access
 
-The S3 owner-account deny applies to the three Braintrust management roles. It
-checks `aws:ResourceAccount` only when AWS supplies it, so account-level S3 APIs
-without a resource owner remain governed by their identity policies. The exact
-artifact bucket is excluded because deployment must read it; the deployment
-identity policy grants only read operations on that bucket. This is not a
-universal cross-account deny for every AWS service.
+The S3 guardrail restricts Braintrust's Deployment, Support, and Observer roles
+from accessing buckets owned outside the BYOC account, except the named
+Braintrust software bucket needed for deployment. It applies when AWS supplies
+the bucket owner's account; identity policies govern other S3 requests.
 
-The customer-owned runtime boundary denies all role assumption by default.
-Before enabling a feature that assumes a role in another account, change
-that statement to a deny using `NotResource` with only the exact destination
-role ARNs required by the feature. Also set the source workload's role allowlist
-to those ARNs and restrict each destination role's trust and permissions to the
-intended workload. The shared boundary allowance is not specific to one
-workload, so the source policy and destination trust remain essential. When no
-integration is enabled, keep the default deny. The current Terraform module
-treats an empty Bedrock or S3 export role allowlist as `Resource: "*"`; the
-boundary prevents role assumption in this preview, but explicit source
-allowlists are required before an integration is enabled.
-
-Direct access to a configured external resource, such as an existing S3 bucket
-or KMS key, requires the exact resource and owner-account scope documented for
-the feature. The customer's destination resource policy remains a separate
-gate. The S3 SCP above covers management roles, not runtime identities; the
-runtime boundary does not yet impose a universal resource-owner cap on direct
-API calls. New AWS services may need service-specific controls because
-`aws:ResourceAccount` is not available for every action. Document each
-supported external path and update its permissions and audit coverage when the
-feature changes.
-
-Braintrust will validate the policies in a test account before production use.
-Keep a recovery role controlled by the customer or a path through the management
-account outside the Braintrust trust chain. Permanent erasure requires the
-customer to remove or amend the SCP that protects retained data before using an
-explicitly authorized erasure workflow.
-
-The SCP that protects retained data does not deny Brainstore lifecycle updates
-because the Terraform module manages that configuration during normal operation
-and IAM cannot inspect the proposed lifecycle rules. Alert on every lifecycle
-change and review it as a data disposition event.
+Runtime role assumption is denied by default. A feature such as Bedrock access
+or S3 export can use an external role or resource only with its documented
+destination and permissions, a matching workload policy, and the required
+destination-side controls. The [policy guide](../policies/README.md#external-feature-policy-notes)
+explains the implementation limits.
