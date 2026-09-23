@@ -193,7 +193,7 @@ variable "redis_url_secret_arn" {
 
 variable "function_tools_secret_arn" {
   type        = string
-  description = "Secrets Manager ARN of the function-tools/service-token secret (SERVICE_TOKEN_SECRET_KEY)."
+  description = "Secrets Manager ARN of the function-tools/service-token secret (SERVICE_TOKEN_SECRET_KEY / FUNCTION_SECRET_KEY)."
 }
 
 variable "brainstore_s3_bucket_name" {
