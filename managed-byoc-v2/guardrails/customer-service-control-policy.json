@@ -52,6 +52,26 @@
       }
     },
     {
+      "Sid": "DenyBraintrustS3OutsideAccountExceptArtifacts",
+      "Effect": "Deny",
+      "Action": "s3:*",
+      "NotResource": [
+        "arn:aws:s3:::<BRAINTRUST_ARTIFACT_BUCKET_NAME>",
+        "arn:aws:s3:::<BRAINTRUST_ARTIFACT_BUCKET_NAME>/*"
+      ],
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
+        },
+        "StringNotEquals": {
+          "aws:ResourceAccount": "<ACCOUNT_ID>"
+        },
+        "Null": {
+          "aws:ResourceAccount": "false"
+        }
+      }
+    },
+    {
       "Sid": "DenyDeploymentRoleCreationOutsidePrefix",
       "Effect": "Deny",
       "Action": "iam:CreateRole",
@@ -147,7 +167,7 @@
       ],
       "NotResource": [
         "arn:aws:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*",
-        "arn:aws:s3:::braintrust-assets-*/*"
+        "arn:aws:s3:::<BRAINTRUST_ARTIFACT_BUCKET_NAME>/*"
       ],
       "Condition": {
         "ArnEquals": {

@@ -64,6 +64,7 @@ render_policy() {
     -e 's|<RUNTIME_BOUNDARY_ARN>|arn:aws:iam::111122223333:policy/braintrust-byoc/BraintrustRuntimeBoundary-review|g' \
     -e 's|<STATE_BUCKET_NAME>|customer-review-state|g' \
     -e 's|<OPERATION_LOG_BUCKET_NAME>|customer-review-operations|g' \
+    -e 's|<BRAINTRUST_ARTIFACT_BUCKET_NAME>|braintrust-assets-us-east-1|g' \
     -e 's|<BRAINSTORE_BUCKET_NAME>|braintrust-review-brainstore|g' \
     -e 's|<DATA_PLANE_KMS_KEY_ARN>|arn:aws:kms:us-east-1:111122223333:key/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee|g' \
     -e 's|<RETAINED_RDS_SNAPSHOT_PREFIX>|braintrust-main-final-snapshot-|g' \

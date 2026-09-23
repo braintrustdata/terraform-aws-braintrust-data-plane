@@ -15,6 +15,8 @@ main controls are:
 - prevent Braintrust roles from disabling customer audit controls;
 - deny direct application object and secret reads outside documented machine
   exceptions, and cap KMS decryption by key, service, and encryption context;
+- deny Braintrust management roles access to S3 buckets owned outside the BYOC
+  account, except the exact Braintrust deployment artifact bucket;
 - restrict KMS grants to requests made by integrated AWS services; and
 - deny shell, session, and role chaining paths.
 
@@ -45,6 +47,7 @@ Replace every placeholder before use:
 | `<RUNTIME_BOUNDARY_ARN>` | ARN of the runtime boundary created by the customer |
 | `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
 | `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
+| `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust deployment artifact bucket for the data plane Region |
 | `<BRAINSTORE_BUCKET_NAME>` | Exact Brainstore data bucket |
 | `<DATA_PLANE_KMS_KEY_ARN>` | Exact KMS key retained with customer data |
 | `<LICENSE_SECRET_KMS_KEY_ARN>` | Resolved license secret key ARN, including a key managed by AWS if used |
@@ -68,6 +71,36 @@ member account identity. Other statements apply only to matching principals.
 SCPs do not constrain AWS service-linked roles; the deployment policy allows
 creation only for listed services, and those roles do not receive the runtime
 boundary. Review that exception when enabling a new service.
+
+## External AWS access
+
+The S3 owner-account deny applies to the three Braintrust management roles. It
+checks `aws:ResourceAccount` only when AWS supplies it, so account-level S3 APIs
+without a resource owner remain governed by their identity policies. The exact
+artifact bucket is excluded because deployment must read it; the deployment
+identity policy grants only read operations on that bucket. This is not a
+universal cross-account deny for every AWS service.
+
+The customer-owned runtime boundary denies all role assumption by default.
+Before enabling an integration that assumes a role in another account, change
+that statement to a deny using `NotResource` with only the exact approved role
+ARNs. Also set the source workload's role allowlist to those ARNs and restrict
+each destination role's trust and permissions to the intended workload. The
+shared boundary exception is not specific to one workload, so the source
+policy and destination trust remain essential. When no integration is enabled,
+keep the default deny. The current Terraform module treats an empty
+Bedrock or S3 export role allowlist as `Resource: "*"`; the boundary prevents
+role assumption in this preview, but explicit source allowlists are required
+before an integration is enabled.
+
+Direct access to a customer-approved external resource, such as an existing S3
+bucket or KMS key, needs an exact resource and owner-account review. The
+customer's destination resource policy remains a separate gate. The S3 SCP
+above covers management roles, not runtime identities; the runtime boundary
+does not yet impose a universal resource-owner cap on direct API calls. New
+AWS services may need service-specific controls because `aws:ResourceAccount`
+is not available for every action. Record each enabled external path and review
+its permissions and audit coverage when it changes.
 
 Braintrust will validate the policies in a test account before production use.
 Keep a recovery role controlled by the customer or a path through the management

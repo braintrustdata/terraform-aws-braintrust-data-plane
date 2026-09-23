@@ -13,6 +13,7 @@ placeholders before implementation:
 | `<RUNTIME_BOUNDARY_ARN>` | ARN of `runtime-permissions-boundary.json` after creation |
 | `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
 | `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
+| `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust deployment artifact bucket for the data plane Region |
 | `<STATE_KMS_KEY_ARN>` | State bucket key owned by the customer, if SSE-KMS is used |
 | `<OPERATION_LOG_KMS_KEY_ARN>` | Operation log key owned by the customer, if SSE-KMS is used |
 | `<BRAINSTORE_BUCKET_NAME>` | Exact Brainstore data bucket created by the module |
@@ -53,7 +54,12 @@ service context and provider refresh behavior before production use.
 The deployment boundary is not a grant: an action must be allowed by an
 identity policy and the boundary, and must not be denied by the SCP. The
 runtime boundary similarly caps policies that the Terraform module creates for
-individual workloads.
+individual workloads. It denies runtime `sts:AssumeRole` by default. An enabled
+external integration requires a reviewed exception for exact destination role
+ARNs, a matching allow in the source workload policy, and restricted trust and
+permissions on the destination role. An exception to the boundary never grants
+access by itself. Direct access to an external resource, such as a caller-provided
+S3 bucket or KMS key, requires its own review and controls.
 
 AWS limits each managed policy document to 6,144 characters, excluding
 whitespace. The validation script checks templates and documents rendered with

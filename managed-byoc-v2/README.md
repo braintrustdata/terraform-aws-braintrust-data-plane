@@ -33,6 +33,7 @@ flowchart LR
         M[BYOC deployment service]
         H[Support SSO]
         O[Observer SSO]
+        B[(Deployment artifacts)]
     end
 
     subgraph Customer AWS account
@@ -45,15 +46,21 @@ flowchart LR
         A[(Application data)]
     end
 
+    subgraph Approved external account
+        X[Integration role or resource]
+    end
+
     M -->|temporary operation session| D
     H -->|named human session| S
     O -->|named human session| R
     D -->|read / write| T
     D -->|write only| L
+    D -->|read named artifacts| B
     D --> I
     S -->|bounded, audited operations| I
     R -->|inspect configuration, health, metrics, alarms| I
     I --> A
+    I -->|approved runtime integration| X
 ```
 
 ## Effective access
@@ -209,6 +216,34 @@ configuration paths. Customer bootstrap keys and storage settings are protected
 from deployment changes. These guarantees require the complete policy set,
 including both SCPs.
 
+## Access outside the BYOC account
+
+A dedicated account does not mean the data plane never uses another AWS account.
+The intended boundary depends on who is making the request:
+
+| Access path | Default | Reviewed exception |
+| --- | --- | --- |
+| Deployment, Support, and Observer roles | Operate in the BYOC account | Deployment reads the named Braintrust artifact bucket; the customer SCP blocks access to other externally owned S3 buckets |
+| Data plane workloads | Use resources in the BYOC account | An enabled integration may use an exact external role or resource, such as a Bedrock access role or an S3 export destination |
+
+Runtime roles cannot assume another role under the baseline boundary. Enabling
+that kind of integration requires an explicit destination role ARN in the
+workload policy, a customer-controlled boundary exception, and a destination
+trust policy limited to the intended workload role. Direct access to an
+external bucket, key, or other resource also requires a reviewed resource and
+owner-account exception. These exceptions do not grant access on their own.
+The sample policies do not yet impose an account-owner limit on every runtime
+service API; direct external access needs controls specific to that integration.
+
+Each new cross-account integration must identify its source workload, destination,
+purpose, required actions, customer-controlled changes, and audit events before
+it is enabled. Normal updates within the existing boundary do not require a new
+cross-account exception. AWS does not supply resource-owner context for every
+API, so the S3 owner-account SCP is one concrete guardrail, not a claim that a
+single condition protects every AWS service. Once a workload assumes a role in
+another account, that role's permissions and the destination account's controls
+govern its subsequent calls.
+
 ## Stable guardrails and evolving permissions
 
 Deployment allow policies will change as the Terraform module gains or removes
@@ -261,3 +296,13 @@ using any policy. `policies/README.md` lists them and explains the attachment
 model. `guardrails/README.md` explains the SCP and rollout precautions. Run
 `./validate.sh` to check JSON syntax and AWS policy size limits. The script can
 also use IAM Access Analyzer when AWS credentials are available.
+
+## Preview change history
+
+This table records material changes to the customer review package, not changes
+deployed to any AWS account. New entries appear first.
+
+| Date | Change | What to review |
+| --- | --- | --- |
+| 2026-09-23 | Added the external access model, an S3 owner-account guardrail for Braintrust roles, exact artifact bucket scope, default-deny runtime role assumption, and cross-account audit guidance. | Review the boundary between routine BYOC operations and explicitly enabled runtime integrations. |
+| 2026-09-17 | Published the initial AWS BYOC v2 role, policy, and customer guardrail preview. | Baseline for subsequent feedback. |

@@ -16,6 +16,9 @@ boundaries, and SCPs; they do not prevent an action that is otherwise authorized
   DynamoDB tables (`AWS::DynamoDB::Table`), and SQS queues (`AWS::SQS::Queue`).
   Use advanced selectors for SQS. Select the read/write categories needed for
   invocation and record/message reads; management events alone do not cover them.
+- For an enabled integration into another customer-owned account, collect
+  CloudTrail there as well. Include the destination role's activity and data
+  events for any bucket or other supported resource used by the integration.
 - Send alerts to an EventBridge bus, SIEM, or security operations destination
   controlled by the customer and outside the Braintrust trust chain.
 - Retain the role ARN, session name, source identity, source IP, user agent,
@@ -37,6 +40,7 @@ boundaries, and SCPs; they do not prevent an action that is otherwise authorized
 | Critical | Public exposure | Security group ingress changes, S3 public access or bucket policy changes, an ECS update requesting public IP assignment, or an RDS update requesting public accessibility |
 | High | Uncorrelated human mutation | A Support mutation has no approved incident/change identifier, unexpected source identity, unexpected target data plane, or occurs outside the approved operating window |
 | High | Unexpected deployment session | Deployment role assumption or mutation cannot be correlated with a reviewed deployment operation and module version |
+| High | Unexpected external access | A Braintrust role assumes an unapproved destination role or accesses an external resource outside a documented integration, whether allowed or denied; correlate approved runtime assumptions with destination-account activity |
 | High | Sensitive authorization failure | `AccessDenied`, `UnauthorizedOperation`, or equivalent from a Braintrust principal for IAM, STS, S3 object, Secrets Manager, KMS, interactive access, retained data, or audit control APIs |
 | Audit | Human role assumption | Every successful and failed `AssumeRole` attempt for Support and Observer; notify according to the customer's operating model |
 | Audit | Support mutation | Every successful event in the Support mutation set below; preserve it with the incident/change record |
@@ -90,6 +94,9 @@ changes. Inspect request parameters where available:
 - `CreateGrant`: unexpected grantees, operations, or absence of a matching
   service provisioning operation. A grant created by an AWS service is expected;
   arbitrary direct grant creation is not.
+- `AssumeRole` by a runtime identity: source workload role, exact destination
+  role ARN and account, enabled integration, and activity under the resulting
+  destination session.
 - Security control update APIs: disabling a GuardDuty detector, narrowing Config
   recording, disabling Security Hub controls, changing CloudTrail collection, or
   adding an Access Analyzer archive rule can weaken detection without deletion.

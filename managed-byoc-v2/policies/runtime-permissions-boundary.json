@@ -113,6 +113,12 @@
       }
     },
     {
+      "Sid": "DenyRuntimeRoleAssumptionByDefault",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "Resource": "*"
+    },
+    {
       "Sid": "DenyBootstrapRoleAssumption",
       "Effect": "Deny",
       "Action": "sts:AssumeRole",
