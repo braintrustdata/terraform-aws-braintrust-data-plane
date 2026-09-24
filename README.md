@@ -31,6 +31,28 @@ terraform apply api.tfplan
 
 Review the first plan before applying it: it must include the intended Brainstore ASG replacements and must not include API ECS service or Lambda function updates. The first apply must complete successfully before planning the second one. Do not apply a full plan saved before the Brainstore apply. Adjust the target address if your root module has a different name.
 
+On the first upgrade that moves the API ALB out of `api_ecs`, Terraform also requires the moved ALB resources to be included in the first targeted plan. Otherwise it reports `Moved resource instances excluded by targeting`; a full plan can instead report a cycle between the old Brainstore ASGs and API task definitions. For that one-time upgrade, replace the first `terraform plan` command above with:
+
+```sh
+terraform plan \
+  -target='module.braintrust-data-plane.module.brainstore[0]' \
+  -target='module.braintrust-data-plane.module.api_alb[0]' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb.api_ecs' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_listener.api_ecs_http' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_listener_rule.alb_path_routes' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_target_group.braintrust_api' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_target_group.braintrust_api_background' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_target_group.braintrust_api_ingest' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group.alb' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group_rule.alb_egress_all' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group_rule.alb_ingress_http_from_authorized_security_groups' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group_rule.task_ingress_from_alb' \
+  -target='module.braintrust-data-plane.module.api_ecs[0].aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront' \
+  -out=brainstore.tfplan
+```
+
+Review that plan for state-only ALB moves and Brainstore changes, with no API ECS service or Lambda updates. Apply it, then create a fresh full plan as shown above. This extra set of targets is only needed while migrating the ALB state into the new module.
+
 ## How to use this module
 
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
