@@ -31,7 +31,7 @@ DB_PASSWORD=$(echo "$DB_CREDS" | jq -r .password)
 cat <<EOF > /etc/braintrust.env
 export AWS_REGION=$TPL_REGION
 export AWS_DEFAULT_REGION=$TPL_REGION
-export REDIS_URL=redis://$TPL_REDIS_HOST:$TPL_REDIS_PORT
+export REDIS_URL=${redis_scheme}://$TPL_REDIS_HOST:$TPL_REDIS_PORT
 export PG_URL=postgres://$DB_USERNAME:$DB_PASSWORD@$TPL_DATABASE_HOST/postgres
 EOF
 

@@ -82,6 +82,7 @@ locals {
       { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = var.redis_url_secret_arn },
       { name = "BRAINSTORE_REDIS_URI", valueFrom = var.redis_url_secret_arn },
       { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
+      { name = "FUNCTION_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
     ],
     local.use_object_store_locks ? [] : [
       { name = "BRAINSTORE_LOCKS_URI", valueFrom = var.redis_url_secret_arn },
@@ -292,8 +293,8 @@ resource "aws_security_group_rule" "task_egress_all" {
   security_group_id = aws_security_group.task.id
 }
 
-# Allow the Loop runtime tasks to reach Postgres, Redis and Brainstore by adding
-# ingress rules on those services' security groups.
+# Allow the Loop runtime tasks to reach Postgres, Redis, Brainstore, and the
+# private gateway ALB by adding ingress rules on those services' security groups.
 resource "aws_vpc_security_group_ingress_rule" "postgres_from_task" {
   count = var.database_security_group_id == null ? 0 : 1
 
@@ -327,6 +328,18 @@ resource "aws_vpc_security_group_ingress_rule" "brainstore_from_task" {
   referenced_security_group_id = aws_security_group.task.id
   description                  = "Allow inbound traffic from Loop runtime tasks."
   security_group_id            = var.brainstore_security_group_id
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_ingress_rule" "gateway_from_task" {
+  count = var.gateway_security_group_id == null ? 0 : 1
+
+  from_port                    = var.gateway_port
+  to_port                      = var.gateway_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.task.id
+  description                  = "Allow inbound traffic from Loop runtime tasks."
+  security_group_id            = var.gateway_security_group_id
   tags                         = local.common_tags
 }
 

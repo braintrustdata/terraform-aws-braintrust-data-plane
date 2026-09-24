@@ -1,4 +1,8 @@
 locals {
+  redis_extra_env_vars = var.use_redis_replication_group ? {
+    REDIS_URL = "rediss://${var.redis_host}:${var.redis_port}"
+  } : {}
+
   # Lambdas can only be deployed from s3 buckets in the same region. These are
   # the regions where we currently host our lambda code.
   # Contact support if you need a new region to be supported.
