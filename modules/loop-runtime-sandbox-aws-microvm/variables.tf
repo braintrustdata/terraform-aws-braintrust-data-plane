@@ -96,7 +96,7 @@ variable "ingress_network_connector_arns" {
 variable "sandbox_egress_mode" {
   type        = string
   description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector."
-  default     = "internet"
+  default     = "restricted"
 }
 
 variable "enable_microvm_runtime_logs" {

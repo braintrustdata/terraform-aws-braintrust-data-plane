@@ -12,7 +12,7 @@ module "braintrust-data-plane" {
 
   # The optional Loop runtime is disabled by default.
   enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "internet"
+  loop_runtime_sandbox_egress_mode = "restricted"
 
   # Optional networking inputs, including create_secrets_manager_vpc_endpoint,
   # and URL-security inputs are shown in examples/braintrust-data-plane/main.tf.
