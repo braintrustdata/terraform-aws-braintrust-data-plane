@@ -3,7 +3,11 @@
 
 mock_data "aws_availability_zones" {
   defaults = {
-    names = ["us-east-1a", "us-east-1b", "us-east-1c"]
+    # names and zone_ids must be parallel — main.tf zipmaps them for CloudFront
+    # VPC-origin AZ filtering. Keep these zone IDs off the excluded list
+    # (use1-az3 / usw1-az2 / apne1-az3 / cac1-az3) so default plans keep 3 AZs.
+    names    = ["us-east-1a", "us-east-1b", "us-east-1c"]
+    zone_ids = ["use1-az1", "use1-az2", "use1-az4"]
   }
 }
 
