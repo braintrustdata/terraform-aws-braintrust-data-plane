@@ -9,7 +9,8 @@ ROLE_NAME="${ROLE_NAME:-BraintrustManagementRole}"
 PROFILE="${AWS_PROFILE:-default}"
 INLINE_POLICY_NAME="${INLINE_POLICY_NAME:-BraintrustManagementRolePolicy}"
 EXTERNAL_ID=""
-MAX_SESSION_DURATION_SECONDS=14400
+MANAGEMENT_ROLE_ARN=""
+MAX_SESSION_DURATION_SECONDS=3600
 
 usage() {
   cat <<'EOF'
@@ -18,7 +19,8 @@ Usage:
 
 Options:
   --profile, -p    AWS profile to use (default: AWS_PROFILE env var, else "default")
-  --role-name, -r  IAM role name to create (default: BraintrustManagementRole)
+  --role-name, -r  IAM role name to create or update (default: BraintrustManagementRole).
+                   When updating an existing installation, pass the role's current name.
   --help, -h       Show this help
 
 Environment:
@@ -54,7 +56,7 @@ resolve_external_id() {
     existing="$(aws iam get-role \
       --profile "$PROFILE" \
       --role-name "$ROLE_NAME" \
-      --output json | jq -r '.Role.AssumeRolePolicyDocument | fromjson | .Statement[0].Condition.StringEquals."sts:ExternalId" // empty')"
+      --output json | jq -r '.Role.AssumeRolePolicyDocument | (if type == "string" then fromjson else . end) | .Statement[0].Condition.StringEquals."sts:ExternalId" // empty')"
     if [[ -n "$existing" && "$existing" != "null" ]]; then
       EXTERNAL_ID="$existing"
       return
@@ -67,6 +69,24 @@ build_trust_policy() {
   jq --arg external_id "$EXTERNAL_ID" \
     '.Statement[0].Condition = {"StringEquals": {"sts:ExternalId": $external_id}}' \
     "$TRUST_POLICY_PATH"
+}
+
+# Renders the inline policy, replacing {{management_role_arn}} with the
+# exact ARN AWS returned for this role so the self-modification deny targets it.
+build_role_policy() {
+  if [[ "$MANAGEMENT_ROLE_ARN" != arn:* ]]; then
+    echo "Failed to resolve management role ARN (got '$MANAGEMENT_ROLE_ARN')." >&2
+    exit 1
+  fi
+  local rendered
+  rendered="$(jq --arg role_arn "$MANAGEMENT_ROLE_ARN" \
+    '(.Statement[] | select(.Resource == "{{management_role_arn}}") | .Resource) = $role_arn' \
+    "$ROLE_POLICY_PATH")"
+  if grep -qF '{{management_role_arn}}' <<<"$rendered" || ! grep -qF "\"$MANAGEMENT_ROLE_ARN\"" <<<"$rendered"; then
+    echo "Failed to inject management role ARN into $ROLE_POLICY_PATH." >&2
+    exit 1
+  fi
+  printf '%s\n' "$rendered"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -139,32 +159,40 @@ if aws iam get-role --profile "$PROFILE" --role-name "$ROLE_NAME" >/dev/null 2>&
     --role-name "$ROLE_NAME" \
     --policy-document "$TRUST_POLICY_DOCUMENT" \
     >/dev/null
-  echo "Updating max session duration to 4 hours..."
+  echo "Updating max session duration to 1 hour..."
   aws iam update-role \
     --profile "$PROFILE" \
     --role-name "$ROLE_NAME" \
     --max-session-duration "$MAX_SESSION_DURATION_SECONDS" \
     >/dev/null
+  MANAGEMENT_ROLE_ARN="$(aws iam get-role \
+    --profile "$PROFILE" \
+    --role-name "$ROLE_NAME" \
+    --query 'Role.Arn' \
+    --output text)"
 else
   echo "Creating role '$ROLE_NAME'..."
-  aws iam create-role \
+  MANAGEMENT_ROLE_ARN="$(aws iam create-role \
     --profile "$PROFILE" \
     --role-name "$ROLE_NAME" \
     --assume-role-policy-document "$TRUST_POLICY_DOCUMENT" \
     --max-session-duration "$MAX_SESSION_DURATION_SECONDS" \
-    >/dev/null
+    --query 'Role.Arn' \
+    --output text)"
 fi
+
+ROLE_POLICY_DOCUMENT="$(build_role_policy)"
 
 echo "Applying inline permissions policy '$INLINE_POLICY_NAME'..."
 aws iam put-role-policy \
   --profile "$PROFILE" \
   --role-name "$ROLE_NAME" \
   --policy-name "$INLINE_POLICY_NAME" \
-  --policy-document "file://$ROLE_POLICY_PATH" \
+  --policy-document "$ROLE_POLICY_DOCUMENT" \
   >/dev/null
 
 echo "Done. Role '$ROLE_NAME' is configured in account $ACCOUNT_ID."
-echo "Role ARN: arn:aws:iam::$ACCOUNT_ID:role/$ROLE_NAME"
+echo "Role ARN: $MANAGEMENT_ROLE_ARN"
 echo
 echo "Share this External ID with Braintrust:"
 echo "  $EXTERNAL_ID"
