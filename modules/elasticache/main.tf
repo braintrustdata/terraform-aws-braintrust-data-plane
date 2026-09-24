@@ -57,7 +57,7 @@ resource "aws_elasticache_replication_group" "main" {
   num_cache_clusters = 1
   port               = 6379
 
-  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  subnet_group_name  = local.elasticache_subnet_group_name
   security_group_ids = local.elasticache_security_group_ids
 
   transit_encryption_enabled = true
