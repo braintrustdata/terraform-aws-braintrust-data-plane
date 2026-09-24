@@ -73,7 +73,7 @@ variable "ephemeral_storage_gib" {
   default     = null
 
   validation {
-    condition     = var.ephemeral_storage_gib == null || (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
+    condition     = var.ephemeral_storage_gib == null ? true : (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
     error_message = "ephemeral_storage_gib must be between 21 and 200 when set."
   }
 }
@@ -266,55 +266,6 @@ variable "monitoring_telemetry" {
   type        = string
   description = "Value for BRAINSTORE_CONTROL_PLANE_TELEMETRY."
   default     = "status,metrics,usage,traces,logs"
-}
-
-# --- Service-side SG ingress targets ---
-variable "database_security_group_id" {
-  type        = string
-  description = "Security group ID of Postgres; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "database_port" {
-  type        = number
-  description = "Postgres port."
-  default     = 5432
-}
-
-variable "redis_security_group_id" {
-  type        = string
-  description = "Security group ID of Redis; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "redis_port" {
-  type        = number
-  description = "Redis port."
-  default     = 6379
-}
-
-variable "brainstore_security_group_id" {
-  type        = string
-  description = "Security group ID of Brainstore instances; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "brainstore_port" {
-  type        = number
-  description = "Brainstore service port."
-  default     = 4000
-}
-
-variable "gateway_security_group_id" {
-  type        = string
-  description = "Security group ID of the private gateway ALB; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "gateway_port" {
-  type        = number
-  description = "Private gateway ALB listener port."
-  default     = 80
 }
 
 # --- Runtime config ---

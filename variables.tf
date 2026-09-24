@@ -729,6 +729,175 @@ variable "url_security_allow_cidrs" {
   default     = ""
 }
 
+variable "enable_loop_runtime" {
+  type        = bool
+  description = "Deploy the dedicated Loop runtime ECS/Fargate service and its MicroVM sandbox. Requires the ECS API data plane and Brainstore."
+  default     = false
+
+  validation {
+    condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
+    error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true. The Loop runtime requires the in-VPC ECS API data plane."
+  }
+}
+
+variable "loop_runtime_version_override" {
+  type        = string
+  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  default     = null
+}
+
+variable "loop_runtime_task_cpu" {
+  type        = number
+  description = "CPU units for the Loop runtime ECS task."
+  default     = 2048
+}
+
+variable "loop_runtime_task_memory" {
+  type        = number
+  description = "Memory in MiB for the Loop runtime ECS task."
+  default     = 8192
+}
+
+variable "loop_runtime_ephemeral_storage_gib" {
+  type        = number
+  description = "Task ephemeral storage in GiB for the Loop runtime. Set 21 through 200. Null uses the Fargate default of 20."
+  default     = null
+}
+
+variable "loop_runtime_min_capacity" {
+  type        = number
+  description = "Minimum number of Loop runtime ECS tasks."
+  default     = 1
+}
+
+variable "loop_runtime_max_capacity" {
+  type        = number
+  description = "Maximum number of Loop runtime ECS tasks."
+  default     = 4
+}
+
+variable "loop_runtime_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU use percentage for Loop runtime autoscaling."
+  default     = 40
+}
+
+variable "loop_runtime_target_memory_utilization" {
+  type        = number
+  description = "Target average memory use percentage for Loop runtime autoscaling."
+  default     = 50
+}
+
+variable "loop_runtime_log_retention_days" {
+  type        = number
+  description = "CloudWatch log retention days for Loop runtime container logs."
+  default     = 14
+
+  validation {
+    condition = contains([
+      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.loop_runtime_log_retention_days)
+    error_message = "loop_runtime_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
+}
+
+variable "loop_runtime_enable_execute_command" {
+  type        = bool
+  description = "Enable ECS Exec on the Loop runtime service."
+  default     = false
+}
+
+variable "loop_runtime_alb_deregistration_delay" {
+  type        = number
+  description = "Deregistration delay in seconds for the Loop runtime ALB target group."
+  default     = 900
+}
+
+variable "loop_runtime_extra_env_vars" {
+  type        = map(string)
+  description = "Extra environment variables for the Loop runtime container."
+  default     = {}
+}
+
+variable "loop_runtime_microvm_minimum_memory_mib" {
+  type        = number
+  description = "Minimum memory in MiB for sandbox MicroVMs."
+  default     = 2048
+}
+
+variable "loop_runtime_microvm_max_idle_duration_seconds" {
+  type        = number
+  description = "Idle seconds before a sandbox MicroVM suspends."
+  default     = 900
+}
+
+variable "loop_runtime_microvm_suspended_duration_seconds" {
+  type        = number
+  description = "Seconds that a suspended sandbox MicroVM remains available before termination."
+  default     = 28800
+}
+
+variable "loop_runtime_microvm_maximum_duration_seconds" {
+  type        = number
+  description = "Maximum sandbox MicroVM lifetime in active or suspended states."
+  default     = 28800
+}
+
+variable "loop_runtime_microvm_auth_token_expiration_minutes" {
+  type        = number
+  description = "Endpoint authentication token lifetime in minutes for sandbox MicroVM requests."
+  default     = 30
+}
+
+variable "enable_loop_runtime_microvm_runtime_logs" {
+  type        = bool
+  description = "Export Loop runtime MicroVM output to CloudWatch. Sandbox output can contain sensitive data."
+  default     = false
+}
+
+variable "loop_runtime_sandbox_egress_mode" {
+  type        = string
+  description = "Outbound network mode for Loop runtime sandbox MicroVMs. The value internet permits public access. Every other value blocks outbound access."
+  default     = "restricted"
+}
+
+variable "loop_runtime_sandbox_existing_vpc_id" {
+  type        = string
+  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and DNS restrictions."
+  default     = null
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
+    error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
+  }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || var.loop_runtime_sandbox_egress_mode != "internet"
+    error_message = "loop_runtime_sandbox_existing_vpc_id requires restricted sandbox egress."
+  }
+}
+
+variable "loop_runtime_sandbox_existing_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs in the supplied sandbox VPC. Supply these IDs with loop_runtime_sandbox_existing_vpc_id."
+  default     = []
+  nullable    = false
+
+  validation {
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (length(var.loop_runtime_sandbox_existing_subnet_ids) == 0)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_subnet_ids must be supplied together."
+  }
+
+  validation {
+    condition = (
+      length(distinct(var.loop_runtime_sandbox_existing_subnet_ids)) == length(var.loop_runtime_sandbox_existing_subnet_ids) &&
+      alltrue([for id in var.loop_runtime_sandbox_existing_subnet_ids : try(trimspace(id) != "", false)])
+    )
+    error_message = "loop_runtime_sandbox_existing_subnet_ids must contain distinct, nonempty subnet IDs."
+  }
+}
+
 variable "braintrust_api_version_override" {
   type        = string
   description = "Optional API ECS image tag override. If unset, uses modules/api-ecs/VERSIONS.json."
