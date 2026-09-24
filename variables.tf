@@ -1749,9 +1749,15 @@ variable "enable_brainstore_ec2_ssm" {
 }
 
 variable "custom_tags" {
-  description = "Custom tags to apply to all created resources"
+  description = "Custom tags to apply to all created resources. An aws-apn-id entry is ignored; use enable_apn_partner_tag to control that tag."
   type        = map(string)
   default     = {}
+}
+
+variable "enable_apn_partner_tag" {
+  description = "Optional. Tag resources this module creates with the AWS Partner Network identifier (aws-apn-id) so AWS can attribute the deployment. Defaults to true. Set to false to omit the tag. Brainstore ASGs treat tag changes as an instance-refresh trigger, so turning this off rolls Brainstore instances. Running instances keep tags already propagated until they are replaced."
+  type        = bool
+  default     = true
 }
 
 variable "brainstore_custom_post_install_script" {

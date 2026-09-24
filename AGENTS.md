@@ -46,7 +46,7 @@ Do not mention named customers in PRs, comments, docs, examples, or commit messa
 When this module creates AWS resources, tag them with
 `BraintrustDeploymentName = var.deployment_name` wherever the resource type
 supports tags. In submodules, use `local.common_tags`. At the root, merge that
-key with `local.all_custom_tags` (so APN tags stay). Skip resource types that
+key with `local.all_custom_tags`. `enable_apn_partner_tag` (default true) controls whether `aws-apn-id` is included; when false, that key is also stripped from `var.custom_tags`. Skip resource types that
 cannot be tagged.
 
 ### Keep examples in sync with variables

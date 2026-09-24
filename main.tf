@@ -8,17 +8,20 @@ module "kms" {
 }
 
 locals {
-  # AWS Partner Network (APN) resource tag identifying Braintrust as the partner
-  # for every resource this module deploys. This lets AWS provide and route
-  # support and billing questions related to the deployment. It is applied to
-  # all resources — including EC2 instances launched from the Brainstore ASGs,
-  # which flow it through custom_tags -> common_tags with propagate_at_launch.
-  # Merged after var.custom_tags so the partner identifier always wins and
-  # cannot be accidentally overridden by a caller-supplied tag of the same key.
-  apn_partner_tags = {
-    "aws-apn-id" = "pc:8ebp76p17b7i08cjqrxaoj0y8"
+  # AWS Partner Network identifier. Applied to every taggable resource this
+  # module creates, including EC2 instances launched from the Brainstore ASGs
+  # (custom_tags -> common_tags, propagate_at_launch). A caller-supplied
+  # aws-apn-id is always dropped: the module value is used when the tag is
+  # enabled, and the key stays absent when enable_apn_partner_tag is false.
+  apn_partner_tag_key   = "aws-apn-id"
+  apn_partner_tag_value = "pc:8ebp76p17b7i08cjqrxaoj0y8"
+  custom_tags_without_apn_partner_tag = {
+    for key, value in var.custom_tags : key => value if key != local.apn_partner_tag_key
   }
-  all_custom_tags = merge(var.custom_tags, local.apn_partner_tags)
+  apn_partner_tags = var.enable_apn_partner_tag ? {
+    (local.apn_partner_tag_key) = local.apn_partner_tag_value
+  } : {}
+  all_custom_tags = merge(local.custom_tags_without_apn_partner_tag, local.apn_partner_tags)
 
   kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
   bastion_security_group = var.enable_braintrust_support_shell_access ? {

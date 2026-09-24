@@ -150,6 +150,11 @@ module "braintrust-data-plane" {
   # custom_tags = {
   #   CustomTagKey = "SomeValue"
   # }
+  #
+  # Resources are tagged with the AWS Partner Network identifier (aws-apn-id).
+  # Set this to false to omit that tag. An aws-apn-id entry in custom_tags is ignored.
+  # Turning this off rolls Brainstore instances.
+  # enable_apn_partner_tag = false
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
   # Use s3_additional_allowed_origins to apply the same origins to both buckets,

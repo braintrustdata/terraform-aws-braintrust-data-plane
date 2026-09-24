@@ -137,6 +137,8 @@ provider "aws" {
 
 The `deployment_name` variable is also used to prefix the names of the resources created by the module wherever possible. It will also be applied as a tag named `BraintrustDeploymentName` to all resources created by the module.
 
+Resources also receive an AWS Partner Network tag, `aws-apn-id`, so AWS can attribute the deployment. Set `enable_apn_partner_tag = false` to omit it. A value for that key in `custom_tags` is ignored: the module identifier is used when the tag is enabled, and the key is dropped when it is disabled. Turning the tag off changes Brainstore autoscaling-group tags, which starts an instance refresh. Instances already running keep the tag until they are replaced.
+
 ### CloudFront Access Logging
 
 If you need to enable CloudFront standard access logging, you can configure it independently by referencing the `cloudfront_distribution_arn` output from the module. This approach gives you full flexibility over the logging configuration without requiring changes to the module itself.

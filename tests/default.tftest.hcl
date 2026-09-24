@@ -52,4 +52,9 @@ run "default_plans" {
     condition     = module.quarantine_vpc[0].flow_log_id == null
     error_message = "quarantine VPC Flow Logs should be disabled by default"
   }
+
+  assert {
+    condition     = local.all_custom_tags["aws-apn-id"] == "pc:8ebp76p17b7i08cjqrxaoj0y8"
+    error_message = "the AWS Partner Network tag should be applied by default"
+  }
 }

@@ -41,6 +41,11 @@ module "braintrust-data-plane" {
   #   Owner = "Your Name"
   #   Team  = "Your Team"
   # }
+  #
+  # Resources are tagged with the AWS Partner Network identifier (aws-apn-id).
+  # Set this to false to omit that tag. An aws-apn-id entry in custom_tags is ignored.
+  # Turning this off rolls Brainstore instances.
+  # enable_apn_partner_tag = false
 
   ### Postgres configuration
   # Optional connection override. Omit either field to keep using the

@@ -114,6 +114,11 @@ module "braintrust-data-plane" {
   #    CustomTagKey = "SomeValue"
   #  }
   #
+  # Resources are tagged with the AWS Partner Network identifier (aws-apn-id).
+  # Set this to false to omit that tag. An aws-apn-id entry in custom_tags is ignored.
+  # Turning this off rolls Brainstore instances.
+  # enable_apn_partner_tag = false
+
 
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.
