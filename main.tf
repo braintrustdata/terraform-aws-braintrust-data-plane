@@ -93,8 +93,8 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # AI Proxy Lambda Function URL. Quarantine UDF fallback (and similar
-  # internet-reachable callers). Loop Runtime does not use this.
+  # AI Proxy Lambda Function URL. Null on external EKS and when enable_ecs_api
+  # removes the function. Quarantine falls back to this only while it exists.
   # one() keeps this index-safe when services is absent.
   self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
 
@@ -102,8 +102,9 @@ locals {
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
   # use_global) with module-managed VPCs → else AI Proxy Function URL.
-  # Do not hairpin via API ECS ALB or CloudFront; do not use gateway ALB DNS
-  # from quarantine (no peering — reach via VPCE only).
+  # In ECS mode the Function URL does not exist, so this falls through to null
+  # and API ECS omits QUARANTINE_PROXY_URL. Do not hairpin via the API ECS ALB
+  # or CloudFront; do not use gateway ALB DNS from quarantine.
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
   # Off when use_global_ai_gateway_origin (no PrivateLink).
   wire_quarantine_to_private_gateway = (
@@ -309,6 +310,7 @@ module "services" {
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
+  enable_ecs_api              = local.enable_ecs_api
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry

@@ -195,7 +195,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, otherwise AI Proxy Function URL)"
+  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, otherwise the AI Proxy Function URL when that Lambda exists). Null when omitted."
 }
 
 output "api_ecs_task_security_group_id" {
@@ -278,7 +278,7 @@ output "monitoring_contract" {
     }
 
     api_gateway = {
-      enabled = !var.use_deployment_mode_external_eks
+      enabled = !var.use_deployment_mode_external_eks && !var.enable_ecs_api
       name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
       stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
     }

@@ -140,7 +140,9 @@ existing stacks are unchanged until operators explicitly enable it.
 
 - **`false`**: do **not** auto-set from PrivateLink / private gateway; do
   **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
-  if set; otherwise the AI Proxy Lambda Function URL.
+  if set; otherwise the AI Proxy Lambda Function URL when `enable_ecs_api`
+  is false. When `enable_ecs_api` is true and this override is unset, the
+  env var is omitted.
 - **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
   quarantine VPC are both enabled, creates PrivateLink and sets
   `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
@@ -156,7 +158,9 @@ existing stacks are unchanged until operators explicitly enable it.
 2. else `http://<vpce-dns>/v1/proxy` when
    `use_private_gateway_quarantine_proxy` wires PrivateLink (module-managed
    VPCs; not `use_global_ai_gateway_origin`)
-3. else AI Proxy Lambda Function URL
+3. else AI Proxy Lambda Function URL when `enable_ecs_api` is false. When
+   `enable_ecs_api` is true that URL does not exist, so `QUARANTINE_PROXY_URL`
+   is omitted unless an earlier rule set it.
 
 #### Networking (PrivateLink; only when the flag wires to private gateway)
 

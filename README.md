@@ -15,6 +15,7 @@ Always upgrade **one major version at a time**. For example, go from v4 â†’ v5 â
 Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
+- [Migrating from v6 to v7](MIGRATION_V7.md)
 
 ## How to use this module
 

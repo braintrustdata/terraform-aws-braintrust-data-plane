@@ -82,6 +82,11 @@ resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
   function_name = aws_lambda_function.quarantine_warmup[0].function_name
   input         = jsonencode({})
   triggers = {
-    function_version = aws_lambda_function.api_handler.version
+    # Lambda mode re-warms when APIHandler is published. ECS mode has no
+    # APIHandler; track the warmup function itself so the reference stays valid.
+    function_version = coalesce(
+      one(aws_lambda_function.api_handler[*].version),
+      aws_lambda_function.quarantine_warmup[0].version,
+    )
   }
 }
