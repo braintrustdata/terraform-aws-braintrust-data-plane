@@ -5,7 +5,7 @@ locals {
 }
 
 resource "aws_lambda_function" "catchup_etl" {
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
 
   function_name = local.catchup_etl_function_name
   s3_bucket     = local.lambda_s3_bucket

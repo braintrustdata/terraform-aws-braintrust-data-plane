@@ -479,3 +479,9 @@ variable "internal_observability_trace_disabled_plugins" {
   type        = string
   default     = ""
 }
+
+variable "brainstore_deployment_id" {
+  description = "Dependency on the completed Brainstore deployment."
+  type        = string
+  default     = null
+}
