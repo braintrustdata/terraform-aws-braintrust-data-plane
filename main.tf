@@ -189,6 +189,7 @@ module "main_vpc" {
   private_subnet_3_cidr                = cidrsubnet(var.vpc_cidr, 3, 3)
   private_subnet_3_az                  = local.private_subnet_3_az
   create_secrets_manager_vpc_endpoint  = var.create_secrets_manager_vpc_endpoint
+  create_ssm_vpc_endpoints            = var.create_ssm_vpc_endpoints
   enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
@@ -268,6 +269,7 @@ module "redis" {
   ]
   vpc_id      = local.main_vpc_id
   kms_key_arn = local.kms_key_arn
+  existing_elasticache_subnet_group_name = var.existing_elasticache_subnet_group_name
   authorized_security_groups = merge(
     merge(
       {
