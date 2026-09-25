@@ -18,40 +18,13 @@ Each major version may include required configuration changes or a multi-step ap
 
 ### Brainstore and API upgrades
 
-When the same upgrade changes Brainstore instances and API ECS services or Lambda functions, use two Terraform applies if the old Brainstore ASGs must be gone before the API changes. A single apply can wait for all replacement Brainstore targets to become healthy, but Terraform may update the API before deleting the old ASGs when the ASGs use `create_before_destroy`.
+A normal `terraform apply` rolls out all enabled Brainstore fleets before updating the API ECS services and the API, catchup ETL, automation, and billing Lambda functions. Launch-template updates keep the existing ASGs and use a deployment Lambda to start and wait for instance refreshes. Terraform does not start a second, asynchronous refresh.
 
-From the directory containing your deployment configuration, with the new module version and inputs already selected:
+The gate checks the exact numbered launch-template version, ASG and target health, and termination of old instances for every enabled fleet. Healthy instances from the previous version do not satisfy it. Refreshes can temporarily double capacity to preserve availability. API deployments remain blocked if a refresh fails, health checks fail, or the gate reaches its approximately 30-minute waiting budget. Fix the reported condition and rerun `terraform apply`; the gate rechecks AWS state and resumes an active refresh. Completed Terraform invocations retain their continuation state, so a retry may resume with a shorter waiting budget.
 
-```sh
-terraform plan -target='module.braintrust-data-plane.module.brainstore[0]' -out=brainstore.tfplan
-terraform apply brainstore.tfplan
-terraform plan -out=api.tfplan
-terraform apply api.tfplan
-```
+The module installs the deployment Lambda from a separately pinned, regional Braintrust artifact. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
 
-Review the first plan before applying it: it must include the intended Brainstore ASG replacements and must not include API ECS service or Lambda function updates. The first apply must complete successfully before planning the second one. Do not apply a full plan saved before the Brainstore apply. Adjust the target address if your root module has a different name.
-
-On the first upgrade that moves the API ALB out of `api_ecs`, Terraform also requires the moved ALB resources to be included in the first targeted plan. Otherwise it reports `Moved resource instances excluded by targeting`; a full plan can instead report a cycle between the old Brainstore ASGs and API task definitions. For that one-time upgrade, replace the first `terraform plan` command above with:
-
-```sh
-terraform plan \
-  -target='module.braintrust-data-plane.module.brainstore[0]' \
-  -target='module.braintrust-data-plane.module.api_alb[0]' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb.api_ecs' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_listener.api_ecs_http' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_listener_rule.alb_path_routes' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_target_group.braintrust_api' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_target_group.braintrust_api_background' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_lb_target_group.braintrust_api_ingest' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group.alb' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group_rule.alb_egress_all' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group_rule.alb_ingress_http_from_authorized_security_groups' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_security_group_rule.task_ingress_from_alb' \
-  -target='module.braintrust-data-plane.module.api_ecs[0].aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront' \
-  -out=brainstore.tfplan
-```
-
-Review that plan for state-only ALB moves and Brainstore changes, with no API ECS service or Lambda updates. Apply it, then create a fresh full plan as shown above. This extra set of targets is only needed while migrating the ALB state into the new module.
+This ordering applies to module-managed Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
 ## How to use this module
 

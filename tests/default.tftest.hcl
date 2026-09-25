@@ -44,6 +44,11 @@ run "default_plans" {
   }
 
   assert {
+    condition     = length(module.brainstore_deployment) == 1 && toset([for fleet in module.brainstore[0].deployment_fleets : fleet.role]) == toset(["reader", "writer", "fast-reader"])
+    error_message = "The default rollout gate must include all three Brainstore fleets."
+  }
+
+  assert {
     condition     = module.main_vpc[0].flow_log_id == null
     error_message = "VPC Flow Logs should be disabled by default"
   }
@@ -51,5 +56,17 @@ run "default_plans" {
   assert {
     condition     = module.quarantine_vpc[0].flow_log_id == null
     error_message = "quarantine VPC Flow Logs should be disabled by default"
+  }
+}
+
+run "reader_only_plans" {
+  command = plan
+  variables {
+    brainstore_writer_instance_count      = 0
+    brainstore_fast_reader_instance_count = 0
+  }
+  assert {
+    condition     = length(module.brainstore[0].deployment_fleets) == 1 && module.brainstore[0].deployment_fleets[0].role == "reader"
+    error_message = "Disabled writer and fast-reader fleets must not be included in the rollout request."
   }
 }

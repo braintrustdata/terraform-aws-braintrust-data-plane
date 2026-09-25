@@ -160,7 +160,7 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
   desired_capacity          = var.fast_reader_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
-  health_check_grace_period = 60
+  health_check_grace_period = 900
   target_group_arns         = [aws_lb_target_group.brainstore_fast_reader[0].arn]
   wait_for_elb_capacity     = var.fast_reader_instance_count
   wait_for_capacity_timeout = "30m"
@@ -172,9 +172,6 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
 
   lifecycle {
     create_before_destroy = true
-    replace_triggered_by = [
-      aws_launch_template.brainstore_fast_reader[count.index].latest_version,
-    ]
   }
 
   tag {

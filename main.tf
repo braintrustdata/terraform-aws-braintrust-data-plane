@@ -300,6 +300,8 @@ module "services" {
   source = "./modules/services"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
+  brainstore_deployment_id = module.brainstore_deployment[0].completion_id
+
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
 
@@ -498,6 +500,8 @@ module "api_alb" {
 module "api_ecs" {
   source = "./modules/api-ecs"
   count  = local.create_ecs_api ? 1 : 0
+
+  brainstore_deployment_id = module.brainstore_deployment[0].completion_id
 
   deployment_name      = var.deployment_name
   api_version_override = var.braintrust_api_version_override

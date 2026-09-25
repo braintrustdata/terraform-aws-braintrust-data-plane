@@ -14,6 +14,8 @@ variable "permissions_boundary_arn" {
   default     = null
 }
 
+# Retained for callers from before the ALB moved to modules/api-alb.
+# tflint-ignore: terraform_unused_declarations
 variable "vpc_id" {
   type        = string
   description = "VPC ID where ECS resources are deployed."
@@ -716,4 +718,10 @@ variable "task_role_arn" {
 variable "task_security_group_id" {
   type        = string
   description = "Security group ID to attach to API ECS tasks."
+}
+
+variable "brainstore_deployment_id" {
+  description = "Dependency on the completed Brainstore deployment."
+  type        = string
+  default     = null
 }

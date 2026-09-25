@@ -69,7 +69,7 @@ resource "aws_ecs_service" "braintrust_api_ingest" {
 
   # Path rules associate this target group with the ALB, which ECS requires
   # before CreateService will attach the service.
-  depends_on = [terraform_data.alb_path_listener_rules]
+  depends_on = [terraform_data.brainstore_deployment, terraform_data.alb_path_listener_rules]
 
   lifecycle {
     create_before_destroy = false
