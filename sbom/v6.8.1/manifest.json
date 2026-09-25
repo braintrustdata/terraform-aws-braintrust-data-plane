@@ -1,0 +1,44 @@
+{
+  "release": "v6.8.1",
+  "source": "https://github.com/braintrustdata/terraform-aws-braintrust-data-plane/releases/tag/v6.8.1",
+  "registry": "public.ecr.aws/braintrust",
+  "platform": "linux/arm64",
+  "format": "CycloneDX 1.7",
+  "generated_by": "Trivy 0.74.0",
+  "scan_mode": "package inventory only",
+  "vulnerability_data_included": false,
+  "notes": [
+    "loop-runtime is referenced by the release as the mutable latest-2.x tag; its SBOM is pinned to the digest associated with that tag when generated.",
+    "External sidecars from public.ecr.aws/datadog and public.ecr.aws/aws-observability are intentionally excluded."
+  ],
+  "images": [
+    {
+      "repository": "standalone-api",
+      "release_tag": "v2.14.0",
+      "digest": "sha256:9fdb5b8b8535384b5d5c6b43c588e168e7569cf744a0cc4b40e7d1dd45f17ba4",
+      "sbom": "standalone-api-linux-arm64.cdx.json",
+      "package_count": 354
+    },
+    {
+      "repository": "brainstore",
+      "release_tag": "v2.14.0",
+      "digest": "sha256:755c104b34b226223a4b9d970aab8bccdf0797734107eb3eb955cf225be6e766",
+      "sbom": "brainstore-linux-arm64.cdx.json",
+      "package_count": 121
+    },
+    {
+      "repository": "gateway",
+      "release_tag": "v2.14.0",
+      "digest": "sha256:0461ad7458acf5d08d12b5df8108b23e29627a03e194c8f0b7ca6ff3ee46af0b",
+      "sbom": "gateway-linux-arm64.cdx.json",
+      "package_count": 104
+    },
+    {
+      "repository": "loop-runtime",
+      "release_tag": "latest-2.x",
+      "digest": "sha256:f21032a823dad49e8ad091b9ef157566f180d83e9b2c4fa8e7ae5da3327a4752",
+      "sbom": "loop-runtime-linux-arm64.cdx.json",
+      "package_count": 521
+    }
+  ]
+}
