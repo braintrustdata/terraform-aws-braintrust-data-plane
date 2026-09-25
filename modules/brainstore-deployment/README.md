@@ -15,4 +15,6 @@ Only the API ECS service resources and API-related Lambda functions depend on `c
 
 Mock tests cover wiring and failure propagation. They cannot validate AWS authorization, eventual consistency, or actual instance boot timing. The helper has read permissions plus `StartInstanceRefresh` restricted by both ASG name and deployment tag; it uses the configuration Terraform has already installed and does not require `iam:PassRole` or ASG update permissions.
 
+The function depends on its IAM policy, but a successful policy attachment does not guarantee immediate propagation to every AWS service. The helper retries authorization errors during the first two minutes of each invocation, within its existing time budget. Persistent permission errors still stop the apply with the original AWS error.
+
 A failed final invocation is not recorded as a completed deployment. Rerunning apply resumes through live AWS inspection; it does not require state surgery. Terraform's usual deployment state lock must remain enabled. The invocation resources use the default `CREATE_ONLY` lifecycle, so deleting the module does not invoke the helper.
