@@ -53,6 +53,43 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
 
+## Loop runtime
+
+Loop runtime is optional. Enable it with this input:
+
+```hcl
+enable_loop_runtime = true
+```
+
+When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
+Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
+
+Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
+The endpoint policy allows connections only to MicroVMs in the deployment account.
+The public MicroVM endpoint remains available because AWS does not support its removal.
+
+### Sandbox isolation
+
+The default `loop_runtime_sandbox_egress_mode = "restricted"` creates a dedicated VPC for sandbox egress.
+The VPC has no outbound route and blocks DNS requests.
+This network isolates untrusted sandbox code from internal networks.
+
+You can supply a dedicated sandbox VPC with these inputs:
+
+```hcl
+loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+```
+
+The module verifies that each subnet belongs to the supplied VPC.
+The module also creates a security group without outbound rules.
+The caller controls routes and DNS restrictions in the supplied VPC.
+
+Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
+Configure equivalent DNS restrictions before you enable Loop with a supplied VPC.
+
 ## Useful scripts
 
 ### dump-logs.sh

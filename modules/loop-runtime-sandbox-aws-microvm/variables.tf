@@ -96,7 +96,7 @@ variable "ingress_network_connector_arns" {
 variable "sandbox_egress_mode" {
   type        = string
   description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector."
-  default     = "internet"
+  default     = "restricted"
 }
 
 variable "enable_microvm_runtime_logs" {
@@ -129,4 +129,77 @@ variable "custom_tags" {
   type        = map(string)
   description = "Tags to apply to created resources."
   default     = {}
+}
+
+variable "existing_vpc_id" {
+  type        = string
+  description = "Optional dedicated VPC for restricted sandbox egress. Prefer the module-managed isolated VPC. This network is not for internal connectivity. The caller owns routes and DNS restrictions."
+  default     = null
+
+  validation {
+    condition     = var.existing_vpc_id == null ? true : trimspace(var.existing_vpc_id) != ""
+    error_message = "existing_vpc_id must be null or a nonempty VPC ID."
+  }
+
+  validation {
+    condition     = var.existing_vpc_id == null || var.sandbox_egress_mode != "internet"
+    error_message = "existing_vpc_id requires restricted sandbox egress."
+  }
+}
+
+variable "existing_private_subnet_1_id" {
+  type        = string
+  description = "ID of existing private subnet 1 in the sandbox VPC. Required with existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_1_id == null)
+    error_message = "existing_vpc_id and existing_private_subnet_1_id must be supplied together."
+  }
+}
+
+variable "existing_private_subnet_2_id" {
+  type        = string
+  description = "ID of existing private subnet 2 in the sandbox VPC. Required with existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_2_id == null)
+    error_message = "existing_vpc_id and existing_private_subnet_2_id must be supplied together."
+  }
+}
+
+variable "existing_private_subnet_3_id" {
+  type        = string
+  description = "ID of existing private subnet 3 in the sandbox VPC. Required with existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_3_id == null)
+    error_message = "existing_vpc_id and existing_private_subnet_3_id must be supplied together."
+  }
+
+  validation {
+    condition = var.existing_vpc_id == null || length(distinct([
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id,
+    ])) == 3
+    error_message = "The existing private subnet IDs must be distinct."
+  }
+}
+
+variable "endpoint_vpc_id" {
+  type        = string
+  description = "Main VPC ID for runtime access to MicroVMs through PrivateLink."
+}
+
+variable "endpoint_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs in the main VPC for the MicroVM endpoint."
+}
+
+variable "runtime_security_group_id" {
+  type        = string
+  description = "Loop runtime security group that can access the MicroVM endpoint."
 }
