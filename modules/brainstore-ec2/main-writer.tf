@@ -65,8 +65,7 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_cache_file_size      = local.brainstore_writer_cache_file_size
     skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
     brainstore_enable_export        = var.brainstore_enable_export
-    ai_proxy_url                    = var.ai_proxy_url == null ? "" : var.ai_proxy_url
-    ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter == null ? "" : var.ai_proxy_url_ssm_parameter
+    ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
   }))
 
   tags = merge({
@@ -122,18 +121,13 @@ resource "aws_lb_target_group" "brainstore_writer" {
   target_type = "instance"
 
   connection_termination = true
-  # Auto Scaling waits for NLB deregistration before terminating an instance.
-  # Keep the drain window explicit so provider or AWS defaults cannot shorten it.
-  deregistration_delay = 300
   health_check {
-    protocol            = "HTTP"
-    port                = "traffic-port"
-    path                = "/"
-    matcher             = "200"
+    protocol            = "TCP"
+    port                = var.port
     healthy_threshold   = 3
     unhealthy_threshold = 3
     timeout             = 10
-    interval            = 15
+    interval            = 10
   }
 
   tags = local.common_tags
@@ -160,11 +154,9 @@ resource "aws_autoscaling_group" "brainstore_writer" {
   desired_capacity          = var.writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
-  health_check_grace_period = 900
+  health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_writer[0].arn]
   wait_for_elb_capacity     = var.writer_instance_count
-  wait_for_capacity_timeout = "30m"
-  force_delete              = false
   launch_template {
     id      = aws_launch_template.brainstore_writer[0].id
     version = aws_launch_template.brainstore_writer[0].latest_version
@@ -187,9 +179,5 @@ resource "aws_autoscaling_group" "brainstore_writer" {
       value               = tag.value
       propagate_at_launch = true
     }
-  }
-
-  timeouts {
-    delete = "30m"
   }
 }

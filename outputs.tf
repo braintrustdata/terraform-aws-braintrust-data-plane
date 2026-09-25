@@ -174,22 +174,22 @@ output "api_ecs_service_name" {
 }
 
 output "api_ecs_alb_arn" {
-  value       = local.create_ecs_api ? module.api_alb[0].alb_arn : null
+  value       = local.create_ecs_api ? module.api_ecs[0].alb_arn : null
   description = "ARN of the private API ECS ALB"
 }
 
 output "api_ecs_target_group_arn" {
-  value       = local.create_ecs_api ? module.api_alb[0].target_group_arn : null
+  value       = local.create_ecs_api ? module.api_ecs[0].target_group_arn : null
   description = "ARN of the API ECS ALB target group"
 }
 
 output "api_ecs_alb_security_group_id" {
-  value       = local.create_ecs_api ? module.api_alb[0].alb_security_group_id : null
+  value       = local.create_ecs_api ? module.api_ecs[0].alb_security_group_id : null
   description = "ID of the security group attached to the private API ECS ALB"
 }
 
 output "api_ecs_http_url" {
-  value       = local.create_ecs_api ? module.api_alb[0].http_url : null
+  value       = local.create_ecs_api ? module.api_ecs[0].http_url : null
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
 }
 
@@ -301,7 +301,7 @@ output "monitoring_contract" {
         local.create_ecs_api ? {
           for role, target in module.api_ecs[0].monitoring_targets : role => merge(
             target,
-            { lb_arn_suffix = module.api_alb[0].alb_arn_suffix },
+            { lb_arn_suffix = module.api_ecs[0].alb_arn_suffix },
           )
         } : {},
         local.create_ai_gateway ? {
