@@ -69,7 +69,7 @@ resource "aws_ecs_service" "braintrust_api" {
 
   # The listener default action associates this target group with the ALB,
   # which ECS requires before CreateService will attach the service.
-  depends_on = [aws_lb_listener.api_ecs_http]
+  depends_on = [terraform_data.brainstore_deployment, aws_lb_listener.api_ecs_http]
 
   lifecycle {
     create_before_destroy = false
