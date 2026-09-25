@@ -5,6 +5,7 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  create_ssm_vpc_endpoints = var.enable_brainstore_ec2_ssm && var.create_ssm_vpc_endpoints
   ssm_vpc_endpoint_services = {
     "ssm" : "com.amazonaws.${data.aws_region.current.region}.ssm",
     "ssmmessages" : "com.amazonaws.${data.aws_region.current.region}.ssmmessages",
@@ -273,7 +274,7 @@ resource "aws_vpc_endpoint" "s3" {
 }
 
 resource "aws_security_group" "vpc_endpoints_tls" {
-  count       = var.enable_brainstore_ec2_ssm || var.create_secrets_manager_vpc_endpoint ? 1 : 0
+  count       = local.create_ssm_vpc_endpoints || var.create_secrets_manager_vpc_endpoint ? 1 : 0
   name        = "${var.deployment_name}-${var.vpc_name}-vpc-endpoints"
   description = "Allow TLS inbound traffic from within VPC"
   vpc_id      = aws_vpc.vpc.id
@@ -292,7 +293,7 @@ resource "aws_security_group" "vpc_endpoints_tls" {
 }
 
 resource "aws_vpc_endpoint" "ec2_ssm_endpoint" {
-  for_each          = var.enable_brainstore_ec2_ssm ? local.ssm_vpc_endpoint_services : {}
+  for_each          = local.create_ssm_vpc_endpoints ? local.ssm_vpc_endpoint_services : {}
   vpc_id            = aws_vpc.vpc.id
   service_name      = each.value
   vpc_endpoint_type = "Interface"
