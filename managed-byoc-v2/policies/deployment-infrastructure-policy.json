@@ -12,13 +12,10 @@
         "autoscaling:*",
         "cloudfront:*",
         "cloudwatch:*",
-        "dynamodb:*",
-        "ec2-instance-connect:*",
         "ec2:*",
         "ecr-public:*",
         "ecr:*",
         "ecs:*",
-        "eks:*",
         "elasticache:*",
         "elasticfilesystem:*",
         "elasticloadbalancing:*",
@@ -59,6 +56,7 @@
         "cloudtrail:Get*",
         "cloudtrail:List*",
         "cloudtrail:LookupEvents",
+        "eks:DescribeCluster",
         "sts:GetCallerIdentity"
       ],
       "Resource": "*"
@@ -77,7 +75,7 @@
       ],
       "Resource": [
         "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:parameter/<MANAGED_RESOURCE_PREFIX>*",
-        "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:parameter/braintrust/<MANAGED_RESOURCE_PREFIX>/*"
+        "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:parameter/braintrust/<MANAGED_RESOURCE_PREFIX>*/*"
       ]
     },
     {
@@ -226,7 +224,6 @@
         "kms:CancelKeyDeletion",
         "kms:CreateAlias",
         "kms:DescribeKey",
-        "kms:DisableKey",
         "kms:DisableKeyRotation",
         "kms:EnableKey",
         "kms:EnableKeyRotation",
@@ -237,7 +234,6 @@
         "kms:ListResourceTags",
         "kms:PutKeyPolicy",
         "kms:RevokeGrant",
-        "kms:ScheduleKeyDeletion",
         "kms:TagResource",
         "kms:UntagResource",
         "kms:UpdateAlias",

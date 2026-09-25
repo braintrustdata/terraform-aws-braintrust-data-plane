@@ -16,6 +16,11 @@ and the account may host multiple Braintrust data plane deployments. Customer
 applications and infrastructure unrelated to Braintrust BYOC must reside in
 separate AWS accounts.
 
+Each bootstrap reserves a unique, non-overlapping name prefix in that account.
+Every data plane it manages uses a `deployment_name` beginning with that
+prefix. This lets the same safeguards cover additional data planes without
+binding generated bucket names or key IDs after creation.
+
 ## BYOC roles
 
 | Role | Principal | Purpose | Standing data access |
@@ -126,6 +131,12 @@ source identity established by Braintrust's identity provider or access broker.
 The attribution flow, including console access, must be validated before use;
 see [`trust-policies/README.md`](trust-policies/README.md).
 
+The deployment role policies describe the maximum access across all data
+planes under one bootstrap. They do not implement narrower IAM credentials for
+each deployment operation; credential brokering and session scope require
+separate implementation validation. Assess this preview against the role-wide
+permissions, not an assumed per-operation restriction.
+
 ## IAM creation and `PassRole`
 
 The data plane is an evolving product and must be able to add, update, and
@@ -156,16 +167,15 @@ deployment workflow.
 
 ## Customer guardrails
 
-The two SCPs under `guardrails/` are applied by the customer's AWS
-Organizations administrators. They do not grant access. They reinforce the
-runtime boundary requirement, IAM prefix, specified `PassRole` services,
-bootstrap role protection, data access restrictions, retained data protections,
-and audit control protection independently of Braintrust identity policies.
-
-The access guarantees described here require the complete policy set,
-including both SCPs. Customers retain control of the license secret, bootstrap
-policies and trust, state and operation log buckets, and any customer-managed
-encryption keys.
+The two SCPs under `guardrails/` illustrate customer-owned safeguards. They
+do not grant access. They reinforce the runtime boundary requirement, IAM
+prefix, specified `PassRole` services, bootstrap role protection, data access
+restrictions, retained data protections, and audit control protection
+independently of Braintrust identity policies. The effective safeguards are
+part of this model; customers can provide equivalent organization controls
+instead of copying these example SCPs if the combined behavior is validated.
+Customers retain control of the license secret, bootstrap policies and trust,
+state and operation log buckets, and any customer-managed encryption keys.
 
 Recommended monitoring and recovery controls:
 
@@ -247,11 +257,12 @@ customer disposition. The Terraform state bucket and operation log bucket also
 remain under customer control. Permanent workload data erasure is not part of
 this customer package.
 
-The deployment boundary and the SCP that protects retained data together deny
-deletion of the exact Brainstore bucket and its objects, disablement or scheduled
-deletion of the retained KMS key, deletion of matching final RDS snapshots, and
-deletion of operation records. The deprovisioning workflow must detach those
-resources from Terraform state before destroying serving infrastructure.
+The deployment boundary and retained-data guardrail together deny deletion of
+module-named Brainstore buckets and their objects, disablement or scheduled
+deletion of KMS keys in the dedicated account, deletion of module-named final
+RDS snapshots, and deletion of operation records. They also protect data plane
+key aliases. The deprovisioning workflow must detach retained resources from
+Terraform state before destroying serving infrastructure.
 
 Terraform continues to manage the Brainstore lifecycle configuration during
 normal operation. AWS IAM cannot distinguish an intended lifecycle change from
@@ -285,6 +296,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-09-25 | Extended the bootstrap scope to multiple data planes under one reserved prefix; protected retained keys without a post-creation key ARN; removed unused broad deployment grants and denied CloudWatch Logs routing/export. Clarified equivalent customer controls and the role-wide permission ceiling. | Review naming scope, KMS and retained-data safeguards, log routing restrictions, and the distinction between role access and per-operation credentials. |
 | 2026-09-23 | Simplified the access diagram and human operations summary; clarified that external access is a documented feature requirement, not a case-by-case approval. No permissions changed. | Role access and operating boundaries are unchanged. |
 | 2026-09-23 | Added the external access model, an S3 owner-account guardrail for Braintrust roles, exact artifact bucket scope, default-deny runtime role assumption, and cross-account audit guidance. | Review the boundary between routine BYOC operations and explicitly enabled runtime integrations. |
 | 2026-09-17 | Published the initial AWS BYOC v2 role, policy, and customer guardrail preview. | Baseline for subsequent feedback. |

@@ -10,8 +10,8 @@
         "s3:DeleteObjectVersion"
       ],
       "Resource": [
-        "arn:aws:s3:::<BRAINSTORE_BUCKET_NAME>",
-        "arn:aws:s3:::<BRAINSTORE_BUCKET_NAME>/*"
+        "arn:aws:s3:::<MANAGED_RESOURCE_PREFIX>*-brainstore-*",
+        "arn:aws:s3:::<MANAGED_RESOURCE_PREFIX>*-brainstore-*/*"
       ],
       "Condition": {
         "ArnLike": {
@@ -29,8 +29,8 @@
         "kms:UpdateAlias"
       ],
       "Resource": [
-        "<DATA_PLANE_KMS_KEY_ARN>",
-        "arn:aws:kms:<AWS_REGION>:<ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>"
+        "arn:aws:kms:<AWS_REGION>:<ACCOUNT_ID>:key/*",
+        "arn:aws:kms:<AWS_REGION>:<ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
       ],
       "Condition": {
         "ArnLike": {
@@ -42,7 +42,7 @@
       "Sid": "ProtectRetainedDatabaseSnapshots",
       "Effect": "Deny",
       "Action": "rds:DeleteDBSnapshot",
-      "Resource": "arn:aws:rds:<AWS_REGION>:<ACCOUNT_ID>:snapshot:<RETAINED_RDS_SNAPSHOT_PREFIX>*",
+      "Resource": "arn:aws:rds:<AWS_REGION>:<ACCOUNT_ID>:snapshot:<MANAGED_RESOURCE_PREFIX>*-main-final-snapshot-*",
       "Condition": {
         "ArnLike": {
           "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"

@@ -50,7 +50,7 @@
       }
     },
     {
-      "Sid": "DenyAccountAndOrganizationAdministration",
+      "Sid": "DenyOrgAccountAdmin",
       "Effect": "Deny",
       "Action": [
         "account:CloseAccount",
@@ -68,7 +68,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyAuditAndSecurityControlTampering",
+      "Sid": "DenyAuditTampering",
       "Effect": "Deny",
       "Action": [
         "access-analyzer:ApplyArchiveRule",
@@ -96,7 +96,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyHumanIdentityAdministration",
+      "Sid": "DenyHumanIdentityAdmin",
       "Effect": "Deny",
       "Action": [
         "iam:*AccessKey*",
@@ -109,7 +109,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyBootstrapIamChanges",
+      "Sid": "DenyBootstrapIAM",
       "Effect": "Deny",
       "Action": "iam:*",
       "Resource": [
@@ -130,21 +130,29 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyApplicationLogContents",
+      "Sid": "DenyLogReadAndRouting",
       "Effect": "Deny",
       "Action": [
+        "logs:CreateDelivery",
+        "logs:CreateExportTask",
         "logs:FilterLogEvents",
         "logs:GetLogEvents",
         "logs:GetLogGroupFields",
         "logs:GetLogRecord",
         "logs:GetQueryResults",
+        "logs:PutAccountPolicy",
+        "logs:PutDeliveryDestination",
+        "logs:PutDeliverySource",
+        "logs:PutDestination",
+        "logs:PutSubscriptionFilter",
         "logs:StartLiveTail",
-        "logs:StartQuery"
+        "logs:StartQuery",
+        "logs:UpdateDeliveryConfiguration"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "DenyDirectWorkloadAndDatabaseReads",
+      "Sid": "DenyWorkloadDataReads",
       "Effect": "Deny",
       "Action": [
         "dynamodb:BatchGetItem",
@@ -165,12 +173,12 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyInvocationExceptDeploymentHooks",
+      "Sid": "DenyOtherInvocations",
       "Effect": "Deny",
       "Action": "lambda:InvokeFunction",
       "NotResource": [
-        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>-MigrateDatabaseFunction",
-        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>-QuarantineWarmupFunction"
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-MigrateDatabaseFunction",
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-QuarantineWarmupFunction"
       ]
     },
     {
@@ -185,7 +193,7 @@
       }
     },
     {
-      "Sid": "DenyDecryptOutsideDocumentedServices",
+      "Sid": "DenyDirectDecrypt",
       "Effect": "Deny",
       "Action": [
         "kms:Decrypt",
@@ -203,7 +211,7 @@
       }
     },
     {
-      "Sid": "DenyEc2DataExportAndTrafficMirroring",
+      "Sid": "DenyEC2DataExport",
       "Effect": "Deny",
       "Action": [
         "ec2:*ImageAttribute",
@@ -216,7 +224,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyRdsSnapshotExportAndSharing",
+      "Sid": "DenyRDSSnapshotExport",
       "Effect": "Deny",
       "Action": [
         "rds:CopyDBClusterSnapshot",
@@ -228,7 +236,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "RestrictBootstrapBucketListing",
+      "Sid": "RestrictBootstrapListing",
       "Effect": "Deny",
       "Action": "s3:ListBucket",
       "Resource": [
@@ -261,7 +269,7 @@
       ]
     },
     {
-      "Sid": "ProtectRetainedBrainstoreData",
+      "Sid": "ProtectBrainstoreData",
       "Effect": "Deny",
       "Action": [
         "s3:DeleteBucket",
@@ -269,12 +277,12 @@
         "s3:DeleteObjectVersion"
       ],
       "Resource": [
-        "arn:<AWS_PARTITION>:s3:::<BRAINSTORE_BUCKET_NAME>",
-        "arn:<AWS_PARTITION>:s3:::<BRAINSTORE_BUCKET_NAME>/*"
+        "arn:<AWS_PARTITION>:s3:::<MANAGED_RESOURCE_PREFIX>*-brainstore-*",
+        "arn:<AWS_PARTITION>:s3:::<MANAGED_RESOURCE_PREFIX>*-brainstore-*/*"
       ]
     },
     {
-      "Sid": "ProtectRetainedDataPlaneKey",
+      "Sid": "ProtectKeysAndAliases",
       "Effect": "Deny",
       "Action": [
         "kms:DisableKey",
@@ -283,15 +291,15 @@
         "kms:UpdateAlias"
       ],
       "Resource": [
-        "<DATA_PLANE_KMS_KEY_ARN>",
-        "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>"
+        "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
+        "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
       ]
     },
     {
-      "Sid": "ProtectRetainedDatabaseSnapshots",
+      "Sid": "ProtectRDSSnapshots",
       "Effect": "Deny",
       "Action": "rds:DeleteDBSnapshot",
-      "Resource": "arn:<AWS_PARTITION>:rds:<AWS_REGION>:<AWS_ACCOUNT_ID>:snapshot:<RETAINED_RDS_SNAPSHOT_PREFIX>*"
+      "Resource": "arn:<AWS_PARTITION>:rds:<AWS_REGION>:<AWS_ACCOUNT_ID>:snapshot:<MANAGED_RESOURCE_PREFIX>*-main-final-snapshot-*"
     }
   ]
 }

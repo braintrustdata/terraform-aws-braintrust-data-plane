@@ -63,7 +63,7 @@
       }
     },
     {
-      "Sid": "ReadBraintrustDeploymentArtifacts",
+      "Sid": "ReadDeploymentArtifacts",
       "Effect": "Allow",
       "Action": [
         "s3:GetBucketLocation",
@@ -77,7 +77,7 @@
       ]
     },
     {
-      "Sid": "ManagePrefixedBucketsWithoutReadingObjects",
+      "Sid": "ManagePrefixedBuckets",
       "Effect": "Allow",
       "Action": [
         "s3:CreateBucket",
@@ -161,7 +161,7 @@
       "Resource": "<LICENSE_SECRET_ARN>"
     },
     {
-      "Sid": "ReadSecretsManagerContext",
+      "Sid": "ReadSecretContext",
       "Effect": "Allow",
       "Action": [
         "secretsmanager:GetRandomPassword",
@@ -174,7 +174,6 @@
       "Effect": "Allow",
       "Action": [
         "kms:CreateAlias",
-        "kms:DeleteAlias",
         "kms:UpdateAlias"
       ],
       "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
@@ -189,21 +188,24 @@
       "Resource": "*"
     },
     {
-      "Sid": "ManageLambdaConfigurationEncryption",
+      "Sid": "UseLambdaConfigKey",
       "Effect": "Allow",
       "Action": [
         "kms:Decrypt",
         "kms:Encrypt"
       ],
-      "Resource": "<DATA_PLANE_KMS_KEY_ARN>",
+      "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
       "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
+        },
         "StringEquals": {
           "kms:ViaService": "lambda.<AWS_REGION>.amazonaws.com"
         }
       }
     },
     {
-      "Sid": "EncryptAndDecryptManagedSecrets",
+      "Sid": "UseManagedSecretsKey",
       "Effect": "Allow",
       "Action": [
         "kms:Decrypt",

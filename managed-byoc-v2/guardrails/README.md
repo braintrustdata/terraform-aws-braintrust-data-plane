@@ -1,8 +1,9 @@
 # Customer service control policies
 
-The two SCPs in this preview are customer-owned guardrails for the dedicated
-AWS account. Customer AWS Organizations administrators fill in account-specific
-values, test, and attach both policies to the account or OU.
+The two SCPs are reference implementations for the dedicated AWS account.
+Customers can use equivalent existing organization controls if those controls
+provide the same effective safeguards. Validate the combined controls before
+production use; the JSON need not be copied byte-for-byte.
 
 `customer-service-control-policy.json` protects the access model. Its
 main controls are:
@@ -12,8 +13,10 @@ main controls are:
 - constrain role creation and `PassRole` to the configured resource prefix;
 - prevent the deployment role from editing bootstrap roles and policies;
 - prevent Braintrust roles from disabling customer audit controls;
+- prevent deployment automation from routing or exporting application logs;
 - deny direct application object and secret reads outside documented machine
-  exceptions, and cap KMS decryption by key, service, and encryption context;
+  exceptions, and cap KMS decryption by key identity or managed tag, service,
+  and encryption context;
 - deny Braintrust management roles access to S3 buckets owned outside the BYOC
   account, except the exact Braintrust deployment artifact bucket;
 - restrict KMS grants to requests made by integrated AWS services; and
@@ -23,8 +26,9 @@ main controls are:
 resources preserved by the default `retain-data` workflow and independently
 reinforces restrictions on human data and shell access:
 
-- Brainstore bucket and objects;
-- data plane KMS key and alias created by the module;
+- module-named Brainstore buckets and objects across data planes;
+- all KMS keys in the dedicated account against deployment-role disablement or
+  scheduled deletion, plus module-named aliases;
 - matching final RDS snapshots;
 - the operation records bucket and objects owned by the customer;
 - bootstrap storage and key configuration and state deletion (except lock files);
@@ -42,17 +46,14 @@ Replace every placeholder before use:
 | `<ACCOUNT_ID>` | Dedicated AWS account ID |
 | `<AWS_REGION>` | Data plane AWS Region |
 | `<BOOTSTRAP_NAME>` | Short identifier for this customer access contract |
-| `<MANAGED_RESOURCE_PREFIX>` | Exact Terraform `deployment_name` prefix; enumerate multiple safe prefixes when needed |
+| `<MANAGED_RESOURCE_PREFIX>` | Reserved, non-overlapping prefix for every `deployment_name` under this bootstrap |
 | `<RUNTIME_BOUNDARY_ARN>` | ARN of the runtime boundary created by the customer |
 | `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
 | `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust deployment artifact bucket for the data plane Region |
-| `<BRAINSTORE_BUCKET_NAME>` | Exact Brainstore data bucket |
-| `<DATA_PLANE_KMS_KEY_ARN>` | Exact KMS key retained with customer data |
 | `<LICENSE_SECRET_KMS_KEY_ARN>` | Resolved license secret key ARN, including a key managed by AWS if used |
 | `<STATE_KMS_KEY_ARN>` | State key owned by the customer, if used |
 | `<OPERATION_LOG_KMS_KEY_ARN>` | Operation log key owned by the customer, if used |
-| `<RETAINED_RDS_SNAPSHOT_PREFIX>` | Prefix for retained final RDS snapshots |
 | `<LICENSE_SECRET_ARN>` | Exact ARN of the license secret owned by the customer |
 
 Follow the optional key and S3 Bucket Key instructions in

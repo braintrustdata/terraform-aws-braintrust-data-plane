@@ -52,6 +52,32 @@
       }
     },
     {
+      "Sid": "DenyDeploymentLogRoutingAndExport",
+      "Effect": "Deny",
+      "Action": [
+        "logs:AssociateSourceToS3TableIntegration",
+        "logs:CreateDelivery",
+        "logs:CreateExportTask",
+        "logs:PutAccountPolicy",
+        "logs:PutDeliveryDestination",
+        "logs:PutDeliveryDestinationPolicy",
+        "logs:PutDeliverySource",
+        "logs:PutDestination",
+        "logs:PutDestinationPolicy",
+        "logs:PutIntegration",
+        "logs:PutResourcePolicy",
+        "logs:PutSubscriptionFilter",
+        "logs:PutSyslogConfiguration",
+        "logs:UpdateDeliveryConfiguration"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
       "Sid": "DenyBraintrustS3OutsideAccountExceptArtifacts",
       "Effect": "Deny",
       "Action": "s3:*",
@@ -211,14 +237,13 @@
       }
     },
     {
-      "Sid": "DenyDeploymentDecryptOutsideReviewedKeys",
+      "Sid": "DenyDeploymentDecryptOutsideBootstrapAndManagedKeys",
       "Effect": "Deny",
       "Action": [
         "kms:Decrypt",
         "kms:ReEncryptFrom"
       ],
       "NotResource": [
-        "<DATA_PLANE_KMS_KEY_ARN>",
         "<LICENSE_SECRET_KMS_KEY_ARN>",
         "<STATE_KMS_KEY_ARN>",
         "<OPERATION_LOG_KMS_KEY_ARN>"
@@ -226,6 +251,9 @@
       "Condition": {
         "ArnEquals": {
           "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "StringNotLikeIfExists": {
+          "aws:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
         }
       }
     },
@@ -276,19 +304,53 @@
       }
     },
     {
-      "Sid": "DenyLambdaDecryptOutsideDataPlaneKey",
+      "Sid": "DenyLambdaDecryptOutsideManagedKeys",
       "Effect": "Deny",
       "Action": [
         "kms:Decrypt",
         "kms:ReEncryptFrom"
       ],
-      "NotResource": "<DATA_PLANE_KMS_KEY_ARN>",
+      "Resource": "*",
       "Condition": {
         "ArnEquals": {
           "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
         },
         "StringEquals": {
           "kms:ViaService": "lambda.<AWS_REGION>.amazonaws.com"
+        },
+        "StringNotLikeIfExists": {
+          "aws:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "KeepManagedKmsOwnershipTag",
+      "Effect": "Deny",
+      "Action": "kms:UntagResource",
+      "Resource": "arn:aws:kms:<AWS_REGION>:<ACCOUNT_ID>:key/*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "ForAnyValue:StringEquals": {
+          "aws:TagKeys": "BraintrustDeploymentName"
+        }
+      }
+    },
+    {
+      "Sid": "KeepManagedKmsTagWithinPrefix",
+      "Effect": "Deny",
+      "Action": "kms:TagResource",
+      "Resource": "arn:aws:kms:<AWS_REGION>:<ACCOUNT_ID>:key/*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "ForAnyValue:StringEquals": {
+          "aws:TagKeys": "BraintrustDeploymentName"
+        },
+        "StringNotLikeIfExists": {
+          "aws:RequestTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
         }
       }
     },

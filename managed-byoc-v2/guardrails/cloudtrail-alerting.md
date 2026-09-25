@@ -36,12 +36,14 @@ boundaries, and SCPs; they do not prevent an action that is otherwise authorized
 | Critical | Audit or security control tampering | `StopLogging`, `DeleteTrail`, `PutEventSelectors`, `UpdateTrail`, `StopConfigurationRecorder`, configuration recorder or delivery channel deletion, GuardDuty disable/delete/disassociation, Security Hub disable/disassociation, or Access Analyzer deletion |
 | Critical | Human access to protected content | A Support or Observer session calls S3 `GetObject*`, Secrets Manager `GetSecretValue`, KMS `Decrypt`, DynamoDB read APIs, SQS `ReceiveMessage`, RDS log download APIs, or Lambda invocation APIs, whether allowed or denied |
 | Critical | Retained data disposition | `DeleteBucket`, `DeleteObject*`, `PutBucketLifecycleConfiguration`, `ScheduleKeyDeletion`, `DisableKey`, `DeleteDBSnapshot`, snapshot sharing/export, or an unexpected `DeleteDBInstance` against a protected resource |
+| Critical | Application log export or routing | Deployment-role `CreateExportTask`, `PutSubscriptionFilter`, `CreateDelivery`, `PutDelivery*`, `PutDestination*`, or `PutAccountPolicy`, including denied attempts |
 | Critical | Interactive access | `StartSession`, `SendCommand`, `ExecuteCommand`, `SendSSHPublicKey`, `OpenTunnel`, or `AccessKubernetesApi` by a Braintrust principal |
 | Critical | Public exposure | Security group ingress changes, S3 public access or bucket policy changes, an ECS update requesting public IP assignment, or an RDS update requesting public accessibility |
 | High | Unexpected Support activity | A Support mutation has an unexpected source identity, target data plane, or request parameters |
 | High | Unexpected deployment session | Deployment role assumption or mutation has an unexpected source principal or a missing or malformed operation source identity |
 | High | Unexpected external access | A Braintrust role assumes a destination role or accesses an external resource outside an enabled feature's documented access, whether allowed or denied; correlate expected runtime assumptions with destination-account activity |
 | High | Sensitive authorization failure | `AccessDenied`, `UnauthorizedOperation`, or equivalent from a Braintrust principal for IAM, STS, S3 object, Secrets Manager, KMS, interactive access, retained data, or audit control APIs |
+| High | KMS ownership tag change | `TagResource` or `UntagResource` affecting `BraintrustDeploymentName`, other than the expected tag on key creation |
 | Audit | Human role assumption | Every successful and failed `AssumeRole` attempt for Support and Observer; notify according to the customer's operating model |
 | Audit | Support mutation | Every successful event in the Support mutation set below; preserve it in the customer audit archive |
 

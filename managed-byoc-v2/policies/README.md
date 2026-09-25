@@ -9,16 +9,13 @@ placeholders before implementation:
 | `<AWS_ACCOUNT_ID>` | Dedicated customer AWS account ID |
 | `<AWS_REGION>` | Data plane AWS Region |
 | `<BOOTSTRAP_NAME>` | Short identifier for this customer access contract |
-| `<MANAGED_RESOURCE_PREFIX>` | Exact configured Terraform `deployment_name` prefix for the data plane |
+| `<MANAGED_RESOURCE_PREFIX>` | Reserved prefix shared by the `deployment_name` values under this bootstrap; include a trailing separator |
 | `<RUNTIME_BOUNDARY_ARN>` | ARN of `runtime-permissions-boundary.json` after creation |
 | `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
 | `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust deployment artifact bucket for the data plane Region |
 | `<STATE_KMS_KEY_ARN>` | State bucket key owned by the customer, if SSE-KMS is used |
 | `<OPERATION_LOG_KMS_KEY_ARN>` | Operation log key owned by the customer, if SSE-KMS is used |
-| `<BRAINSTORE_BUCKET_NAME>` | Exact Brainstore data bucket created by the module |
-| `<DATA_PLANE_KMS_KEY_ARN>` | Exact KMS key created by the module and retained with customer data |
-| `<RETAINED_RDS_SNAPSHOT_PREFIX>` | Prefix used for encrypted final RDS snapshots retained during deprovisioning |
 | `<LICENSE_SECRET_ARN>` | Exact ARN of the license secret owned by the customer |
 | `<LICENSE_SECRET_KMS_KEY_ARN>` | Resolved license secret key ARN; see handling for keys managed by AWS below |
 
@@ -27,7 +24,7 @@ the resolved `alias/aws/secretsmanager` **key ARN** in the SCP decrypt exception
 For an SSE-S3 bucket, remove its `Use...KeyThroughS3` statement and corresponding
 key entries from the SCPs. Never replace an unused key placeholder with `*`.
 
-Bootstrap keys must be distinct from the data plane key managed by the module and
+Bootstrap keys must be distinct from data plane keys created by the module and
 must not carry the module's `BraintrustDeploymentName` tag. Their policies stay
 under customer control. The S3 KMS examples use object ARN encryption context;
 keep S3 Bucket Keys disabled for these two buckets. Enabling Bucket Keys changes
@@ -38,9 +35,39 @@ does not grant S3 object reads. Retain bucket versioning and consider Object Loc
 for operation records: `PutObject` can otherwise replace the current version.
 
 Terraform also needs [KMS access for encrypted Lambda environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars-encryption.html).
-This deployment permission applies only through Lambda and only to the data
-plane key; it does not permit direct KMS decryption. Confirm the forwarded
+This deployment permission applies only through Lambda and only to module-tagged
+data plane keys; it does not permit direct KMS decryption. Confirm the forwarded
 service context and provider refresh behavior before production use.
+
+## Naming and scope
+
+One bootstrap can cover multiple data planes. Reserve a managed prefix with a
+trailing separator (for example, `bt-a-`); every Terraform `deployment_name`
+under that bootstrap must begin with it. Prefixes for different bootstraps in
+the account must not overlap or match the same deployment name. The module
+limits `deployment_name` to 18 characters.
+
+The retained-data patterns match the module's
+`<deployment_name>-brainstore-<generated suffix>` buckets and
+`<deployment_name>-main-final-snapshot-<generated suffix>` snapshots. The two
+Lambda deployment hooks and `/braintrust/<deployment_name>/` parameters use
+the same reserved prefix. New matching data planes are covered without adding
+their generated bucket names or KMS key ARNs to the bootstrap policies.
+
+The module tags each key it creates with
+`BraintrustDeploymentName = deployment_name`; BYOC configuration must not
+override that reserved tag. The deployment policy requires a
+matching tag at key creation and for ordinary key administration. The retained
+data deny covers key disablement and scheduled deletion throughout this
+dedicated account, without relying on that tag; the customer guardrail also
+prevents the deployment role from removing the ownership tag or changing it
+outside the reserved prefix. Externally supplied data plane keys require a
+separately documented bootstrap configuration; these samples cover keys
+created by the module.
+Before production use, test key creation, Lambda and Secrets Manager use,
+ordinary non-ownership tag updates, denied changes to
+`BraintrustDeploymentName`, and key deletion protection against the rendered
+policies.
 
 ## Role attachment model
 
@@ -69,21 +96,9 @@ Support operations policy.
 role also receives `support-policy.json`; the Observer role does not. Explicit
 denies in the shared policy therefore remain effective for both roles.
 
-If one access contract covers multiple data planes whose `deployment_name`
-values do not share a safe prefix, enumerate their ARN patterns and tag values
-instead of replacing this placeholder with a broad wildcard.
-
-The ARNs for the two deployment Lambda hooks and the
-`/braintrust/<deployment_name>/` SSM path use an exact deployment name. Enumerate
-these for multiple data planes.
 The state example uses a separate backend prefix per deployment and S3 lock
 files (`*.tflock`), not Terraform workspace deletion. The implementation must
 verify backend discovery/list requests without granting access to other state.
-
-Some identifiers, including the retained data plane key ARN, exist only after
-creation. Before production use, the implementation must validate how it binds
-these values into controls owned by the customer without exposing a running data
-plane before protection is effective.
 
 ## External feature policy notes
 
