@@ -4,7 +4,7 @@ This internal module deploys the `BrainstoreDeployment` Lambda built in the Brai
 
 The helper owns instance refreshes. Do not add a native `instance_refresh` block to the ASGs or restore launch-template-triggered ASG replacement. Terraform waits for healthy capacity when creating an ASG, but healthy old capacity does not prove that an update has rolled out. The helper checks the actual instance versions, target health, refresh status, and termination of old instances. Existing ASG identities and Terraform resource addresses stay unchanged during routine updates.
 
-Only the API ECS service resources and API-related Lambda functions depend on `completion_id`. Do not put a dependency on the entire services module: Brainstore needs bootstrap resources from that module and the API ALB, which would create a dependency cycle.
+Only the API ECS service resources and API-related Lambda functions depend on `completion_id`. Keep bootstrap resources and the API ALB outside that dependency. Brainstore retains the existing SSM proxy URL lookup; the ECS URL's parameter-version reference targets the specific module instance to avoid depending on the entire API module.
 
 ## Release coordination
 

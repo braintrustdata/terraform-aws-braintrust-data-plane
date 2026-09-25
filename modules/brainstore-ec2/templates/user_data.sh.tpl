@@ -202,9 +202,11 @@ ${env_key}=${env_value}
 %{ endfor ~}
 EOF
 
-%{ if ai_proxy_url != "" ~}
-echo "BRAINSTORE_AI_PROXY_URL=${ai_proxy_url}" >> /etc/brainstore.env
-%{ else ~}
+# ai_proxy_url_ssm_parameter is either a bare "<name>" or a version-pinned
+# "<name>:<version>" selector. When a version is pinned, it is baked into
+# user_data, so a value change (e.g. the API URL switching from HTTP to HTTPS)
+# bumps the version, changes the launch template, and triggers a rolling
+# instance refresh.
 BRAINSTORE_AI_PROXY_URL=""
 for attempt in $(seq 1 30); do
   BRAINSTORE_AI_PROXY_URL=$(aws ssm get-parameter \
@@ -223,7 +225,6 @@ else
   echo "ERROR: Failed to resolve BRAINSTORE_AI_PROXY_URL from ${ai_proxy_url_ssm_parameter}, aborting" >&2
   exit 1
 fi
-%{ endif ~}
 
 if [ -n "${internal_observability_api_key}" ]; then
   if [ -n "${internal_observability_env_name}" ]; then
