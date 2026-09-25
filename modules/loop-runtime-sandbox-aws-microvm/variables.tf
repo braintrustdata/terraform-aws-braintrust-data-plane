@@ -147,23 +147,45 @@ variable "existing_vpc_id" {
   }
 }
 
-variable "existing_subnet_ids" {
-  type        = list(string)
-  description = "Private subnet IDs in the existing sandbox VPC. Supply these IDs together with existing_vpc_id."
-  default     = []
-  nullable    = false
+variable "existing_private_subnet_1_id" {
+  type        = string
+  description = "ID of existing private subnet 1 in the sandbox VPC. Required with existing_vpc_id."
+  default     = null
 
   validation {
-    condition     = (var.existing_vpc_id == null) == (length(var.existing_subnet_ids) == 0)
-    error_message = "existing_vpc_id and existing_subnet_ids must be supplied together."
+    condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_1_id == null)
+    error_message = "existing_vpc_id and existing_private_subnet_1_id must be supplied together."
+  }
+}
+
+variable "existing_private_subnet_2_id" {
+  type        = string
+  description = "ID of existing private subnet 2 in the sandbox VPC. Required with existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_2_id == null)
+    error_message = "existing_vpc_id and existing_private_subnet_2_id must be supplied together."
+  }
+}
+
+variable "existing_private_subnet_3_id" {
+  type        = string
+  description = "ID of existing private subnet 3 in the sandbox VPC. Required with existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_3_id == null)
+    error_message = "existing_vpc_id and existing_private_subnet_3_id must be supplied together."
   }
 
   validation {
-    condition = (
-      length(distinct(var.existing_subnet_ids)) == length(var.existing_subnet_ids) &&
-      alltrue([for id in var.existing_subnet_ids : try(trimspace(id) != "", false)])
-    )
-    error_message = "existing_subnet_ids must contain distinct, nonempty subnet IDs."
+    condition = var.existing_vpc_id == null || length(distinct([
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id,
+    ])) == 3
+    error_message = "The existing private subnet IDs must be distinct."
   }
 }
 

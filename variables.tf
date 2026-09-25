@@ -878,23 +878,45 @@ variable "loop_runtime_sandbox_existing_vpc_id" {
   }
 }
 
-variable "loop_runtime_sandbox_existing_subnet_ids" {
-  type        = list(string)
-  description = "Private subnet IDs in the supplied sandbox VPC. Supply these IDs with loop_runtime_sandbox_existing_vpc_id."
-  default     = []
-  nullable    = false
+variable "loop_runtime_sandbox_existing_private_subnet_1_id" {
+  type        = string
+  description = "ID of existing private subnet 1 in the Loop runtime sandbox VPC. Required with loop_runtime_sandbox_existing_vpc_id."
+  default     = null
 
   validation {
-    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (length(var.loop_runtime_sandbox_existing_subnet_ids) == 0)
-    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_subnet_ids must be supplied together."
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_1_id == null)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_1_id must be supplied together."
+  }
+}
+
+variable "loop_runtime_sandbox_existing_private_subnet_2_id" {
+  type        = string
+  description = "ID of existing private subnet 2 in the Loop runtime sandbox VPC. Required with loop_runtime_sandbox_existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_2_id == null)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_2_id must be supplied together."
+  }
+}
+
+variable "loop_runtime_sandbox_existing_private_subnet_3_id" {
+  type        = string
+  description = "ID of existing private subnet 3 in the Loop runtime sandbox VPC. Required with loop_runtime_sandbox_existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_3_id == null)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_3_id must be supplied together."
   }
 
   validation {
-    condition = (
-      length(distinct(var.loop_runtime_sandbox_existing_subnet_ids)) == length(var.loop_runtime_sandbox_existing_subnet_ids) &&
-      alltrue([for id in var.loop_runtime_sandbox_existing_subnet_ids : try(trimspace(id) != "", false)])
-    )
-    error_message = "loop_runtime_sandbox_existing_subnet_ids must contain distinct, nonempty subnet IDs."
+    condition = var.loop_runtime_sandbox_existing_vpc_id == null || length(distinct([
+      var.loop_runtime_sandbox_existing_private_subnet_1_id,
+      var.loop_runtime_sandbox_existing_private_subnet_2_id,
+      var.loop_runtime_sandbox_existing_private_subnet_3_id,
+    ])) == 3
+    error_message = "The Loop runtime sandbox private subnet IDs must be distinct."
   }
 }
 

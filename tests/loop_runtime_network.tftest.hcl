@@ -36,7 +36,9 @@ run "loop_private_endpoint" {
 run "loop_with_existing_sandbox_vpc" {
   command = plan
   variables {
-    loop_runtime_sandbox_existing_vpc_id     = "vpc-0123456789abcdef0"
-    loop_runtime_sandbox_existing_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+    loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
 }

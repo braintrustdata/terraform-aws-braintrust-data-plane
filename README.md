@@ -77,8 +77,10 @@ This network isolates untrusted sandbox code from internal networks.
 You can supply a dedicated sandbox VPC with these inputs:
 
 ```hcl
-loop_runtime_sandbox_existing_vpc_id     = "vpc-0123456789abcdef0"
-loop_runtime_sandbox_existing_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
 ```
 
 The module verifies that each subnet belongs to the supplied VPC.

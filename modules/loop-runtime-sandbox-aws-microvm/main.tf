@@ -27,7 +27,12 @@ locals {
   use_restricted_egress        = var.sandbox_egress_mode != "internet"
   create_restricted_egress_vpc = local.use_restricted_egress && var.existing_vpc_id == null
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
-  restricted_egress_subnet_ids = var.existing_vpc_id != null ? var.existing_subnet_ids : aws_subnet.restricted_egress[*].id
+  existing_private_subnet_ids = [
+    var.existing_private_subnet_1_id,
+    var.existing_private_subnet_2_id,
+    var.existing_private_subnet_3_id,
+  ]
+  restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
   egress_connector_arns = local.use_restricted_egress ? [
     aws_cloudformation_stack.restricted_egress_connector[0].outputs["NetworkConnectorArn"]
   ] : [local.managed_egress_connector_arn]
@@ -465,9 +470,9 @@ resource "aws_cloudformation_stack" "microvm_image" {
 }
 
 data "aws_subnet" "restricted_egress_existing" {
-  count = local.use_restricted_egress && var.existing_vpc_id != null ? length(var.existing_subnet_ids) : 0
+  count = local.use_restricted_egress && var.existing_vpc_id != null ? length(local.existing_private_subnet_ids) : 0
 
-  id = var.existing_subnet_ids[count.index]
+  id = local.existing_private_subnet_ids[count.index]
 
   lifecycle {
     postcondition {

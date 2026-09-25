@@ -57,8 +57,10 @@ run "existing_vpc_keeps_customer_network" {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
-    existing_vpc_id     = "vpc-0123456789abcdef0"
-    existing_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
   assert {
     condition     = length(aws_vpc.restricted_egress) == 0 && length(aws_subnet.restricted_egress) == 0 && length(aws_route_table.restricted_egress) == 0 && length(aws_route_table_association.restricted_egress) == 0
@@ -73,7 +75,7 @@ run "existing_vpc_keeps_customer_network" {
     error_message = "The supplied VPC must retain a dedicated security group without outbound rules."
   }
   assert {
-    condition     = aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1"
+    condition     = aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2"
     error_message = "The connector must use the supplied subnets."
   }
 }
@@ -98,23 +100,26 @@ run "rejects_existing_vpc_with_internet" {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
-    existing_vpc_id     = "vpc-0123456789abcdef0"
-    existing_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
-    sandbox_egress_mode = "internet"
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+    sandbox_egress_mode          = "internet"
   }
   expect_failures = [var.existing_vpc_id]
 }
 
-run "rejects_empty_subnets" {
+run "rejects_missing_subnet" {
   command = plan
   module {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
-    existing_vpc_id     = "vpc-0123456789abcdef0"
-    existing_subnet_ids = []
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
   }
-  expect_failures = [var.existing_subnet_ids]
+  expect_failures = [var.existing_private_subnet_3_id]
 }
 
 run "rejects_subnet_from_another_vpc" {
@@ -123,8 +128,10 @@ run "rejects_subnet_from_another_vpc" {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
-    existing_vpc_id     = "vpc-0123456789abcdef0"
-    existing_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
   override_data {
     target = data.aws_subnet.restricted_egress_existing[0]
@@ -139,9 +146,9 @@ run "rejects_subnets_without_vpc" {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
-    existing_subnet_ids = ["subnet-0123456789abcdef0"]
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
   }
-  expect_failures = [var.existing_subnet_ids]
+  expect_failures = [var.existing_private_subnet_1_id]
 }
 
 run "rejects_duplicate_subnets" {
@@ -150,8 +157,10 @@ run "rejects_duplicate_subnets" {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
-    existing_vpc_id     = "vpc-0123456789abcdef0"
-    existing_subnet_ids = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef0"]
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
-  expect_failures = [var.existing_subnet_ids]
+  expect_failures = [var.existing_private_subnet_3_id]
 }

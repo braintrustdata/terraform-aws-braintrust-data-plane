@@ -554,7 +554,9 @@ module "loop_runtime_sandbox_aws_microvm" {
   enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
   sandbox_egress_mode                   = var.loop_runtime_sandbox_egress_mode
   existing_vpc_id                       = var.loop_runtime_sandbox_existing_vpc_id
-  existing_subnet_ids                   = var.loop_runtime_sandbox_existing_subnet_ids
+  existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
+  existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id
+  existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags
