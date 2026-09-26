@@ -35,7 +35,7 @@ resource "terraform_data" "ecs_quarantine_proxy_requirements" {
       condition = (
         local.api_ecs_quarantine_proxy_url == null ? false : trimspace(local.api_ecs_quarantine_proxy_url) != ""
       )
-      error_message = "enable_ecs_api removes the AI Proxy Function URL that quarantine UDFs used. Set quarantine_proxy_url explicitly (for example to your API domain's /v1/proxy), or enable use_private_gateway_quarantine_proxy on module-managed VPCs. use_global_ai_gateway_origin does not set QUARANTINE_PROXY_URL."
+      error_message = "enable_ecs_api removes the AI Proxy Function URL that quarantine UDFs used. Set quarantine_proxy_url to a proxy other than api-ts, or enable use_private_gateway_quarantine_proxy on module-managed VPCs. In plain ECS mode the public API domain's /v1/proxy is api-ts. use_global_ai_gateway_origin does not set QUARANTINE_PROXY_URL."
     }
   }
 }

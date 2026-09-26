@@ -23,21 +23,22 @@ Quarantine UDFs do not. On v6 they used the AI Proxy Function URL, reached throu
 ## Upgrade steps
 
 1. Finish the [v6 ECS cutover](MIGRATION_V6.md) if this deployment should run on ECS. That cutover is `enable_ecs_api = true` on v6, while APIHandler and AIProxy still exist.
-2. If quarantine is enabled, set a proxy the quarantine functions can reach and apply **on v6**, before the bump:
-   - `quarantine_proxy_url = "https://<api domain>/v1/proxy"` when the quarantine VPC has internet egress. A module-managed quarantine VPC does: it uses the same NAT gateway as the main VPC. In ECS mode CloudFront already sends `/v1/proxy` to the API, and the UDF already carries an API key.
-   - `use_private_gateway_quarantine_proxy` with `create_ai_gateway` when this module creates both VPCs and the private path is what you want.
-   - A quarantine VPC you supply (`existing_quarantine_vpc_id`) may have no internet egress. A public URL will not work then. See [Existing VPCs](#existing-vpcs).
+2. If quarantine is enabled, choose one of the [quarantine proxy options](#quarantine-proxy-after-the-function-url) and apply it on **v6.7.0 or later**, before the bump. `quarantine_proxy_url` and `use_private_gateway_quarantine_proxy` first shipped in v6.7.0. v6.0 through v6.6 have neither input.
 3. Bump to v7.
    - Already on ECS (`enable_ecs_api = true`): apply deletes APIHandler, AIProxy, and API Gateway.
    - Still on Lambda: keep `enable_ecs_api = false` for this apply. It only moves Lambda and API Gateway state to count indexes. A later apply that sets `enable_ecs_api = true` deletes them, and must include the quarantine proxy from step 2.
 
-## Existing VPCs
+## Quarantine proxy after the Function URL
 
-`use_private_gateway_quarantine_proxy` creates PrivateLink only when this module creates both the main VPC and the quarantine VPC. If you supply either VPC, the module creates no PrivateLink resources and `quarantine_gateway_privatelink_service_name` is null.
+A module-managed quarantine VPC has a NAT gateway, so it can reach public HTTPS. That does not make every public URL a replacement for the AI Proxy Function URL. In plain ECS mode, CloudFront sends `/v1/proxy` to api-ts on the API load balancer. `https://<api domain>/v1/proxy` is that path. The module does not use it for quarantine.
 
-On v6 those deployments still reached models through the public AI Proxy Function URL. The same public path still works when the quarantine VPC has internet egress: set `quarantine_proxy_url` to `https://<api domain>/v1/proxy`. The module does not choose that URL itself, because ingress and API ECS would depend on each other.
+Set one of these instead:
 
-A customer-supplied quarantine VPC may have no internet egress. The module cannot tell. A public URL will not work in that case. Stand up a network load balancer, endpoint service, and quarantine interface endpoint yourself, and set `quarantine_proxy_url` to `http://<vpce-dns>/v1/proxy`. Do not point that URL at the API ECS load balancer or the gateway load balancer. Those are private to the main VPC. Apply the URL on v6, then bump.
+- **PrivateLink to the private gateway.** `use_private_gateway_quarantine_proxy` with `create_ai_gateway`, and only when this module creates both VPCs. Traffic stays in the account and off the public internet. This adds an internal network load balancer. If you supply either VPC, the module creates no PrivateLink resources.
+- **Hosted gateway.** Set `quarantine_proxy_url` to the hosted gateway `/v1/proxy` URL. Reachable through the NAT. Prompt traffic leaves the account. `use_global_ai_gateway_origin` does not do this for you; it only changes where CloudFront sends `/v1/proxy`.
+- **Public API domain, only when `/v1/proxy` is the gateway.** `use_private_ai_gateway_origin` or `use_global_ai_gateway_origin` sends that CloudFront behavior to the gateway, so the API domain is not api-ts. In plain ECS mode it is api-ts, and it is not a supported quarantine proxy.
+
+A customer-supplied quarantine VPC (`existing_quarantine_vpc_id`) may have no internet egress. The module cannot tell. A public URL will not work then. Stand up a private endpoint yourself and set `quarantine_proxy_url` to `http://<vpce-dns>/v1/proxy`. Do not point that URL at the API load balancer or the gateway load balancer. Those are private to the main VPC.
 
 ## Rollback
 

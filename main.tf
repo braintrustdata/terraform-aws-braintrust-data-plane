@@ -106,10 +106,9 @@ locals {
   # ecs_quarantine_proxy_requirements rejects a null URL so API ECS does not
   # omit QUARANTINE_PROXY_URL (api-ts would then hand the quarantine Lambda
   # http://localhost:8000/v1/proxy). Do not auto-fill the CloudFront domain
-  # (cycle with ingress). Do not use the API ECS ALB or gateway ALB DNS:
-  # those are private to the main VPC, and quarantine is not peered to it.
-  # An operator-set public API URL is fine; a module-managed quarantine VPC
-  # reaches it through its NAT gateway.
+  # (cycle with ingress). In plain ECS mode that domain's /v1/proxy is
+  # api-ts, which is the hairpin. Do not use the API ECS ALB or gateway ALB
+  # DNS: those are private to the main VPC, and quarantine is not peered to it.
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
   # Off when use_global_ai_gateway_origin (no PrivateLink).
   wire_quarantine_to_private_gateway = (
