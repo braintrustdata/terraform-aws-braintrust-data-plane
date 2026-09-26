@@ -102,8 +102,10 @@ locals {
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
   # use_global) with module-managed VPCs → else AI Proxy Function URL.
-  # In ECS mode the Function URL does not exist, so this falls through to null
-  # and API ECS omits QUARANTINE_PROXY_URL. Do not hairpin via the API ECS ALB
+  # In ECS mode the Function URL does not exist. With quarantine enabled,
+  # ecs_quarantine_proxy_requirements rejects a null URL so API ECS does not
+  # omit QUARANTINE_PROXY_URL (api-ts would then hand the quarantine Lambda
+  # http://localhost:8000/v1/proxy). Do not hairpin via the API ECS ALB
   # or CloudFront; do not use gateway ALB DNS from quarantine.
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
   # Off when use_global_ai_gateway_origin (no PrivateLink).

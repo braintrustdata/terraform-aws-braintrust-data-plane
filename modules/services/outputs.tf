@@ -11,16 +11,14 @@ output "api_handler_arn" {
 output "monitoring_functions" {
   description = "Core Lambda functions keyed by stable logical role for monitoring integrations."
   value = merge(
-    one(aws_lambda_function.api_handler[*].function_name) == null ? {} : {
+    var.enable_ecs_api ? {} : {
       api-handler = {
-        function_name   = one(aws_lambda_function.api_handler[*].function_name)
-        timeout_seconds = one(aws_lambda_function.api_handler[*].timeout)
+        function_name   = aws_lambda_function.api_handler[0].function_name
+        timeout_seconds = aws_lambda_function.api_handler[0].timeout
       }
-    },
-    one(aws_lambda_function.ai_proxy[*].function_name) == null ? {} : {
       ai-proxy = {
-        function_name   = one(aws_lambda_function.ai_proxy[*].function_name)
-        timeout_seconds = one(aws_lambda_function.ai_proxy[*].timeout)
+        function_name   = aws_lambda_function.ai_proxy[0].function_name
+        timeout_seconds = aws_lambda_function.ai_proxy[0].timeout
       }
     },
     {

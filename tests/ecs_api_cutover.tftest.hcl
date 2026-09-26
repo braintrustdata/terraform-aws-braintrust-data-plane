@@ -20,6 +20,7 @@ variables {
   brainstore_license_key = "test-license"
   enable_quarantine_vpc  = true
   enable_ecs_api         = true
+  quarantine_proxy_url   = "https://proxy.example.com/v1/proxy"
 }
 
 run "ecs_api_cutover_plans" {
@@ -59,4 +60,21 @@ run "ecs_api_cutover_plans" {
     condition     = module.ingress[0].api_gateway_name == null
     error_message = "ECS mode should not create API Gateway"
   }
+
+  assert {
+    condition     = output.quarantine_proxy_url == "https://proxy.example.com/v1/proxy"
+    error_message = "ECS mode should keep the explicit quarantine proxy URL"
+  }
+}
+
+run "rejects_ecs_quarantine_without_proxy_url" {
+  command = plan
+
+  variables {
+    quarantine_proxy_url = null
+  }
+
+  expect_failures = [
+    terraform_data.ecs_quarantine_proxy_requirements,
+  ]
 }

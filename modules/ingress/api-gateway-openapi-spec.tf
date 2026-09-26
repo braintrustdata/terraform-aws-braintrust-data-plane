@@ -19,6 +19,8 @@ locals {
     consumes = ["application/json", "text/plain"]
   })
   snippet_api_gateway_integration = {
+    # This local is evaluated even when API Gateway is not created. The placeholder
+    # ARN is unused in that case; the REST API that consumes this spec has count 0.
     "uri"                 = "arn:aws:apigateway:${data.aws_region.current.region}:lambda:path/2015-03-31/functions/${coalesce(var.api_handler_function_arn, "arn:aws:lambda:us-east-1:000000000000:function:unused")}/invocations"
     "type"                = "aws_proxy"
     "httpMethod"          = "POST"

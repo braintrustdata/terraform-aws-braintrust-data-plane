@@ -22,6 +22,21 @@ locals {
   }, local.all_custom_tags)
 }
 
+# ECS mode deletes the AI Proxy Function URL. Quarantine UDFs then inherit
+# API ECS's own proxy URL (http://localhost:8000/v1/proxy) unless a URL they
+# can actually reach is set. Hosted CloudFront / global gateway origins are
+# not that URL.
+resource "terraform_data" "ecs_quarantine_proxy_requirements" {
+  count = local.enable_ecs_api && var.enable_quarantine_vpc ? 1 : 0
+
+  lifecycle {
+    precondition {
+      condition     = local.api_ecs_quarantine_proxy_url != null
+      error_message = "enable_ecs_api removes the AI Proxy Function URL that quarantine UDFs used. Set quarantine_proxy_url, or enable use_private_gateway_quarantine_proxy on module-managed VPCs, before removing it. use_global_ai_gateway_origin does not provide a URL the quarantine VPC can call."
+    }
+  }
+}
+
 # Fail when the flag is on but this module cannot create PrivateLink and there
 # is no URL override. use_global_ai_gateway_origin stays a documented no-op.
 resource "terraform_data" "quarantine_privatelink_requirements" {
