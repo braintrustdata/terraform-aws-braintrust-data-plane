@@ -118,8 +118,15 @@ locals {
     "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
     null
   )
+  # Whitespace-only is unset. API ECS trims the same way; a raw "   " would
+  # pass a null check and then be omitted, which brings back the localhost fallback.
+  quarantine_proxy_url_override = (
+    var.quarantine_proxy_url == null ? null : (
+      trimspace(var.quarantine_proxy_url) != "" ? trimspace(var.quarantine_proxy_url) : null
+    )
+  )
   api_ecs_quarantine_proxy_url = (
-    var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
+    local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
       local.quarantine_gateway_privatelink_proxy_url != null
       ? local.quarantine_gateway_privatelink_proxy_url
       : local.self_hosted_ai_proxy_url

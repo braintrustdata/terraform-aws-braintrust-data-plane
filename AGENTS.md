@@ -103,6 +103,7 @@ Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are m
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
 - Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
 - `create_*` flags own resource lifetime; `enable_*` flags own routing.
+  Exception: from v7, `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false recreates them. See `MIGRATION_V7.md`.
 
 ### Private gateway ALB relocation
 

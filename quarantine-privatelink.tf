@@ -31,7 +31,10 @@ resource "terraform_data" "ecs_quarantine_proxy_requirements" {
 
   lifecycle {
     precondition {
-      condition     = local.api_ecs_quarantine_proxy_url != null
+      # Ternary, not &&: trimspace(null) errors when the URL is a known null.
+      condition = (
+        local.api_ecs_quarantine_proxy_url == null ? false : trimspace(local.api_ecs_quarantine_proxy_url) != ""
+      )
       error_message = "enable_ecs_api removes the AI Proxy Function URL that quarantine UDFs used. Set quarantine_proxy_url, or enable use_private_gateway_quarantine_proxy on module-managed VPCs, before removing it. use_global_ai_gateway_origin does not provide a URL the quarantine VPC can call."
     }
   }
@@ -46,7 +49,7 @@ resource "terraform_data" "quarantine_privatelink_requirements" {
     precondition {
       condition = (
         var.use_global_ai_gateway_origin ||
-        var.quarantine_proxy_url != null ||
+        local.quarantine_proxy_url_override != null ||
         local.create_quarantine_gateway_privatelink
       )
       error_message = "use_private_gateway_quarantine_proxy is true, but this module cannot create PrivateLink. Set quarantine_proxy_url to your endpoint URL, or use module-managed main and quarantine VPCs."

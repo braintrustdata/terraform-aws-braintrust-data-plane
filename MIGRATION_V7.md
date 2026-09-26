@@ -30,6 +30,12 @@ Quarantine UDFs do not. On v6 they used the AI Proxy Function URL. v7 removes th
    - Already on ECS (`enable_ecs_api = true`): apply deletes APIHandler, AIProxy, and API Gateway.
    - Still on Lambda: keep `enable_ecs_api = false` for this apply. It only moves Lambda and API Gateway state to count indexes. A later apply that sets `enable_ecs_api = true` deletes them, and must include the quarantine proxy from step 2.
 
+## Existing VPCs
+
+`use_private_gateway_quarantine_proxy` creates PrivateLink only when this module creates both the main VPC and the quarantine VPC. On v6, quarantine on any other VPC still reached models through the AI Proxy Function URL, with no extra network. v7 removes that URL.
+
+If you supply either VPC, the module creates no PrivateLink resources and `quarantine_gateway_privatelink_service_name` is null. Quarantine cannot call CloudFront, the hosted gateway, or the API load balancer. Before the bump, stand up a network load balancer, endpoint service, and quarantine interface endpoint yourself (or any other proxy the quarantine subnets can reach) and set `quarantine_proxy_url` to that URL, for example `http://<vpce-dns>/v1/proxy`. Apply that on v6, then bump.
+
 ## Rollback
 
 Setting `enable_ecs_api` back to `false` recreates APIHandler, AIProxy (including a new public Function URL hostname), provisioned concurrency, and API Gateway. It is not a CloudFront-only flip. Brainstore's AI proxy SSM selector also changes back to the bare `/braintrust/<deployment>/ai-proxy-url` name in that same apply, while the parameter is being recreated. Replacement Brainstore instances can boot before the parameter exists.

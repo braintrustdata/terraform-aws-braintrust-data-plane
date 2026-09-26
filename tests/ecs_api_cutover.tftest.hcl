@@ -67,6 +67,18 @@ run "ecs_api_cutover_plans" {
   }
 }
 
+run "rejects_whitespace_quarantine_proxy_url_in_ecs_mode" {
+  command = plan
+
+  variables {
+    quarantine_proxy_url = "   "
+  }
+
+  expect_failures = [
+    var.quarantine_proxy_url,
+  ]
+}
+
 run "rejects_ecs_quarantine_without_proxy_url" {
   command = plan
 

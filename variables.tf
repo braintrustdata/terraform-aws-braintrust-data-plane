@@ -1239,8 +1239,9 @@ variable "quarantine_proxy_url" {
   default     = null
 
   validation {
-    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
-    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+    # Ternary so trimspace is not called when the value is null.
+    condition     = var.quarantine_proxy_url == null ? true : trimspace(var.quarantine_proxy_url) != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL. Whitespace-only values are rejected."
   }
 }
 
