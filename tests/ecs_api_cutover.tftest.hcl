@@ -79,14 +79,18 @@ run "rejects_whitespace_quarantine_proxy_url_in_ecs_mode" {
   ]
 }
 
-run "rejects_ecs_quarantine_without_proxy_url" {
+# No quarantine_proxy_url: the plan must still succeed. The CloudFront
+# distribution hostname is unknown until apply, so the fallback URL cannot
+# be compared here. A null fallback would fail ecs_quarantine_proxy_requirements.
+run "ecs_mode_defaults_quarantine_to_cloudfront" {
   command = plan
 
   variables {
     quarantine_proxy_url = null
   }
 
-  expect_failures = [
-    terraform_data.ecs_quarantine_proxy_requirements,
-  ]
+  assert {
+    condition     = module.services[0].ai_proxy_url == null
+    error_message = "ECS mode should still remove the AI Proxy Function URL when the quarantine URL is left unset"
+  }
 }

@@ -22,10 +22,10 @@ locals {
   }, local.all_custom_tags)
 }
 
-# ECS mode deletes the AI Proxy Function URL. Quarantine UDFs then inherit
-# API ECS's own proxy URL (http://localhost:8000/v1/proxy) unless some other
-# URL is set. use_global_ai_gateway_origin only changes CloudFront's
-# /v1/proxy origin; it does not set QUARANTINE_PROXY_URL.
+# Last-resort guard. ECS mode defaults QUARANTINE_PROXY_URL to the CloudFront
+# /v1/proxy URL, so this fails only when that URL and every earlier source
+# are missing. An omitted variable makes api-ts hand the quarantine Lambda
+# http://localhost:8000/v1/proxy.
 resource "terraform_data" "ecs_quarantine_proxy_requirements" {
   count = local.enable_ecs_api && var.enable_quarantine_vpc ? 1 : 0
 
@@ -35,7 +35,7 @@ resource "terraform_data" "ecs_quarantine_proxy_requirements" {
       condition = (
         local.api_ecs_quarantine_proxy_url == null ? false : trimspace(local.api_ecs_quarantine_proxy_url) != ""
       )
-      error_message = "enable_ecs_api removes the AI Proxy Function URL that quarantine UDFs used. Set quarantine_proxy_url to a proxy other than api-ts, or enable use_private_gateway_quarantine_proxy on module-managed VPCs. In plain ECS mode the public API domain's /v1/proxy is api-ts. use_global_ai_gateway_origin does not set QUARANTINE_PROXY_URL."
+      error_message = "enable_ecs_api removes the AI Proxy Function URL, and no CloudFront, PrivateLink, or quarantine_proxy_url value is available. Refusing to omit QUARANTINE_PROXY_URL, because api-ts would then hand the quarantine Lambda http://localhost:8000/v1/proxy."
     }
   }
 }

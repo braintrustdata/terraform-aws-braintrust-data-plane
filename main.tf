@@ -101,14 +101,12 @@ locals {
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
-  # use_global) with module-managed VPCs → else AI Proxy Function URL.
-  # In ECS mode the Function URL does not exist. With quarantine enabled,
-  # ecs_quarantine_proxy_requirements rejects a null URL so API ECS does not
-  # omit QUARANTINE_PROXY_URL (api-ts would then hand the quarantine Lambda
-  # http://localhost:8000/v1/proxy). Do not auto-fill the CloudFront domain
-  # (cycle with ingress). In plain ECS mode that domain's /v1/proxy is
-  # api-ts, which is the hairpin. Do not use the API ECS ALB or gateway ALB
-  # DNS: those are private to the main VPC, and quarantine is not peered to it.
+  # use_global) with module-managed VPCs → else AI Proxy Function URL →
+  # else the CloudFront API URL /v1/proxy once that Function URL is gone.
+  # Quarantine reaches CloudFront through the quarantine VPC NAT gateway.
+  # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
+  # main VPC, and quarantine is not peered to it. Do not build this URL from
+  # a request Host header.
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
   # Off when use_global_ai_gateway_origin (no PrivateLink).
   wire_quarantine_to_private_gateway = (
@@ -127,11 +125,22 @@ locals {
       trimspace(var.quarantine_proxy_url) != "" ? trimspace(var.quarantine_proxy_url) : null
     )
   )
+  # Distribution hostname (https://*.cloudfront.net), not a custom alias.
+  # Same value Loop uses. Append /v1/proxy so getRuntimeEnv does not rewrite
+  # it to /v1. Only referenced once the Function URL is gone, so ingress is
+  # not an input to API ECS while the Lambda path is still active.
+  cloudfront_quarantine_proxy_url = (
+    local.enable_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
+  )
   api_ecs_quarantine_proxy_url = (
     local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
       local.quarantine_gateway_privatelink_proxy_url != null
       ? local.quarantine_gateway_privatelink_proxy_url
-      : local.self_hosted_ai_proxy_url
+      : (
+        local.self_hosted_ai_proxy_url != null
+        ? local.self_hosted_ai_proxy_url
+        : local.cloudfront_quarantine_proxy_url
+      )
     )
   )
   gateway_env_vars = local.enable_ai_gateway ? {
