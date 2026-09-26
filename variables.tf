@@ -742,7 +742,7 @@ variable "braintrust_api_version_override" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "Route traffic to the API ECS ALB instead of API Gateway and Lambdas. API ECS infra is always created for standard (non-external-EKS) deployments; this flag only controls traffic. Default false keeps Lambda as the active path while ECS stays warm for cutover."
+  description = "Route traffic to the API ECS ALB instead of API Gateway and the APIHandler and AIProxy Lambdas. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via its NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. API ECS infra is always created for standard (non-external-EKS) deployments. Default false keeps Lambda as the active path while ECS stays warm for cutover."
   default     = false
 
   validation {
@@ -1239,13 +1239,14 @@ variable "quarantine_proxy_url" {
   default     = null
 
   validation {
-    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
-    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+    # Ternary so trimspace is not called when the value is null.
+    condition     = var.quarantine_proxy_url == null ? true : trimspace(var.quarantine_proxy_url) != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL. Whitespace-only values are rejected."
   }
 }
 
 variable "use_private_gateway_quarantine_proxy" {
-  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; does not fail). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
+  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL while that Lambda exists, else the CloudFront /v1/proxy URL when enable_ecs_api has removed that Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; that flag does not set QUARANTINE_PROXY_URL). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
   type        = bool
   default     = false
 

@@ -106,41 +106,47 @@ resource "aws_cloudfront_distribution" "dataplane" {
   price_class  = var.cloudfront_price_class
   aliases      = var.custom_domain != null ? [var.custom_domain] : null
 
-  origin {
-    origin_id   = local.cloudfront_APIGatewayOrigin
-    origin_path = "/api"
-    domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${data.aws_region.current.region}.amazonaws.com"
+  dynamic "origin" {
+    for_each = var.enable_ecs_api ? [] : [1]
+    content {
+      origin_id   = local.cloudfront_APIGatewayOrigin
+      origin_path = "/api"
+      domain_name = "${aws_api_gateway_rest_api.api[0].id}.execute-api.${data.aws_region.current.region}.amazonaws.com"
 
-    custom_origin_config {
-      origin_protocol_policy   = "https-only"
-      origin_read_timeout      = var.cloudfront_origin_read_timeout
-      origin_keepalive_timeout = 60
-      https_port               = 443
-      http_port                = 80
-      origin_ssl_protocols     = ["TLSv1.2"]
-    }
+      custom_origin_config {
+        origin_protocol_policy   = "https-only"
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+        origin_keepalive_timeout = 60
+        https_port               = 443
+        http_port                = 80
+        origin_ssl_protocols     = ["TLSv1.2"]
+      }
 
-    # This is required so that the MCP server can redirect to the correct domain
-    dynamic "custom_header" {
-      for_each = var.custom_domain != null ? [1] : []
-      content {
-        name  = "X-CloudFront-Domain"
-        value = var.custom_domain
+      # This is required so that the MCP server can redirect to the correct domain
+      dynamic "custom_header" {
+        for_each = var.custom_domain != null ? [1] : []
+        content {
+          name  = "X-CloudFront-Domain"
+          value = var.custom_domain
+        }
       }
     }
   }
 
-  origin {
-    domain_name = trimsuffix(trimprefix(var.ai_proxy_function_url, "https://"), "/")
-    origin_id   = local.cloudfront_AIProxyOrigin
+  dynamic "origin" {
+    for_each = var.enable_ecs_api ? [] : [1]
+    content {
+      domain_name = trimsuffix(trimprefix(var.ai_proxy_function_url, "https://"), "/")
+      origin_id   = local.cloudfront_AIProxyOrigin
 
-    custom_origin_config {
-      origin_protocol_policy   = "https-only"
-      origin_read_timeout      = var.cloudfront_origin_read_timeout
-      origin_keepalive_timeout = 60
-      https_port               = 443
-      http_port                = 80
-      origin_ssl_protocols     = ["TLSv1.2"]
+      custom_origin_config {
+        origin_protocol_policy   = "https-only"
+        origin_read_timeout      = var.cloudfront_origin_read_timeout
+        origin_keepalive_timeout = 60
+        https_port               = 443
+        http_port                = 80
+        origin_ssl_protocols     = ["TLSv1.2"]
+      }
     }
   }
 

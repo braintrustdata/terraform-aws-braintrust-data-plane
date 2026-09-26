@@ -88,17 +88,29 @@ variable "global_ai_gateway_origin_domain" {
 }
 
 variable "ai_proxy_function_url" {
-  description = "The function URL of the AI proxy lambda function"
+  description = "The function URL of the AI proxy lambda function. Required when enable_ecs_api is false."
   type        = string
+  default     = null
+
+  validation {
+    condition     = var.enable_ecs_api || try(trimspace(var.ai_proxy_function_url) != "", false)
+    error_message = "ai_proxy_function_url is required when enable_ecs_api is false."
+  }
 }
 
 variable "api_handler_function_arn" {
-  description = "The ARN of the API handler lambda function"
+  description = "The ARN of the API handler lambda function. Required when enable_ecs_api is false."
   type        = string
+  default     = null
+
+  validation {
+    condition     = var.enable_ecs_api || try(trimspace(var.api_handler_function_arn) != "", false)
+    error_message = "api_handler_function_arn is required when enable_ecs_api is false."
+  }
 }
 
 variable "enable_ecs_api" {
-  description = "Route CloudFront API and AI Proxy traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda."
+  description = "Route CloudFront API and AI Proxy traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda. When true, API Gateway and the AI Proxy CloudFront origin are not created."
   type        = bool
   default     = false
 }

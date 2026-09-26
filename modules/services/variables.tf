@@ -317,6 +317,12 @@ variable "url_security_allow_cidrs" {
   default     = ""
 }
 
+variable "enable_ecs_api" {
+  type        = bool
+  description = "When true, do not create APIHandler or AIProxy. CloudFront is already routing that traffic to ECS. Quarantine, database migration, CatchupETL, and the cron Lambdas stay."
+  default     = false
+}
+
 variable "brainstore_enable_export" {
   type        = bool
   description = "If true, sets BRAINSTORE_EXPORT_MIGRATION_ENABLED=true on the API Handler Lambda."

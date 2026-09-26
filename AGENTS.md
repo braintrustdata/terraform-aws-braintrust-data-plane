@@ -103,6 +103,7 @@ Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are m
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
 - Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
 - `create_*` flags own resource lifetime; `enable_*` flags own routing.
+  Exception: from v7, `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false recreates them. See `MIGRATION_V7.md`.
 
 ### Private gateway ALB relocation
 
@@ -124,9 +125,17 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 `QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
 `*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
 header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
-Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
-peer the quarantine VPC to main for this path. Prefer PrivateLink to the
-private gateway when opted in. Loop Runtime uses the
+A module-managed quarantine VPC uses the same `modules/vpc` NAT gateway as
+the main VPC, so quarantine functions can reach public HTTPS. That is how
+the AI Proxy Function URL is reached. When `enable_ecs_api` removes that
+URL, the default replacement is `https://<cloudfront-domain>/v1/proxy`
+(`module.ingress.api_url`), reached the same way. In plain ECS mode
+CloudFront serves that path from the API service. Do **not** build this
+from a request Host header. Do **not** use the API ECS ALB or gateway ALB
+DNS directly. Those addresses are private to the main VPC, and quarantine
+is not peered to it.
+Do **not** peer the quarantine VPC to main for this path. Prefer PrivateLink
+to the private gateway when opted in. Loop Runtime uses the
 private gateway ALB `/v1/proxy` when `enable_ai_gateway`. When enable is
 false it uses the hosted gateway origin or CloudFront API `/v1/proxy`.
 PrivateLink only affects quarantine when the flag is on.
@@ -140,7 +149,12 @@ existing stacks are unchanged until operators explicitly enable it.
 
 - **`false`**: do **not** auto-set from PrivateLink / private gateway; do
   **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
-  if set; otherwise the AI Proxy Lambda Function URL.
+  if set; otherwise the AI Proxy Lambda Function URL when `enable_ecs_api`
+  is false. When `enable_ecs_api` is true and neither an override nor
+  PrivateLink set a URL, the CloudFront API URL `/v1/proxy` is used.
+  Omitting `QUARANTINE_PROXY_URL` entirely makes api-ts fall back to
+  `http://localhost:8000/v1/proxy`, which the quarantine Lambda cannot call,
+  so apply fails if the CloudFront URL is also missing.
 - **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
   quarantine VPC are both enabled, creates PrivateLink and sets
   `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
@@ -156,7 +170,10 @@ existing stacks are unchanged until operators explicitly enable it.
 2. else `http://<vpce-dns>/v1/proxy` when
    `use_private_gateway_quarantine_proxy` wires PrivateLink (module-managed
    VPCs; not `use_global_ai_gateway_origin`)
-3. else AI Proxy Lambda Function URL
+3. else AI Proxy Lambda Function URL when `enable_ecs_api` is false
+4. else `https://<cloudfront-domain>/v1/proxy` when `enable_ecs_api` is true.
+   `use_global_ai_gateway_origin` does not select this URL; it only changes
+   which origin serves that CloudFront path.
 
 #### Networking (PrivateLink; only when the flag wires to private gateway)
 
@@ -177,13 +194,13 @@ Uses an NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
 
 Automated only for **module-managed** main + quarantine VPCs
 (`create_vpc` and `enable_quarantine_vpc` without `existing_quarantine_vpc_id`).
-Existing VPC / existing quarantine / quarantine disabled: Terraform fails
-unless you set `quarantine_proxy_url`, or `use_global_ai_gateway_origin` is
-true (documented no-op; Function URL, no PrivateLink). For existing VPCs,
-create an interface endpoint to
-`quarantine_gateway_privatelink_service_name` (when the provider side exists
-in a module-managed stack, or stand up equivalent NLB/service yourself) and
-set `quarantine_proxy_url` to `http://<your-vpce-dns>/v1/proxy`.
+If either VPC is supplied by the caller, the module creates no PrivateLink
+resources and `quarantine_gateway_privatelink_service_name` is null.
+`use_global_ai_gateway_origin` makes this flag a no-op; it does not set a
+quarantine URL. A customer-supplied quarantine VPC
+(`existing_quarantine_vpc_id`) may have no internet egress. A public URL
+will not work then; stand up a private endpoint and point
+`quarantine_proxy_url` at `http://<vpce-dns>/v1/proxy`.
 
 **Cost / AZ notes**: PrivateLink adds an internal NLB (hourly + LCU) plus
 interface endpoint hourly/GB charges. Place NLB and VPCE ENIs across the

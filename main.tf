@@ -93,17 +93,20 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # AI Proxy Lambda Function URL. Quarantine UDF fallback (and similar
-  # internet-reachable callers). Loop Runtime does not use this.
+  # AI Proxy Lambda Function URL. Null on external EKS and when enable_ecs_api
+  # removes the function. Quarantine falls back to this only while it exists.
   # one() keeps this index-safe when services is absent.
   self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
 
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
-  # use_global) with module-managed VPCs → else AI Proxy Function URL.
-  # Do not hairpin via API ECS ALB or CloudFront; do not use gateway ALB DNS
-  # from quarantine (no peering — reach via VPCE only).
+  # use_global) with module-managed VPCs → else AI Proxy Function URL →
+  # else the CloudFront API URL /v1/proxy once that Function URL is gone.
+  # Quarantine reaches CloudFront through the quarantine VPC NAT gateway.
+  # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
+  # main VPC, and quarantine is not peered to it. Do not build this URL from
+  # a request Host header.
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
   # Off when use_global_ai_gateway_origin (no PrivateLink).
   wire_quarantine_to_private_gateway = (
@@ -115,11 +118,29 @@ locals {
     "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
     null
   )
+  # Whitespace-only is unset. API ECS trims the same way; a raw "   " would
+  # pass a null check and then be omitted, which brings back the localhost fallback.
+  quarantine_proxy_url_override = (
+    var.quarantine_proxy_url == null ? null : (
+      trimspace(var.quarantine_proxy_url) != "" ? trimspace(var.quarantine_proxy_url) : null
+    )
+  )
+  # Distribution hostname (https://*.cloudfront.net), not a custom alias.
+  # Same value Loop uses. Append /v1/proxy so getRuntimeEnv does not rewrite
+  # it to /v1. Only referenced once the Function URL is gone, so ingress is
+  # not an input to API ECS while the Lambda path is still active.
+  cloudfront_quarantine_proxy_url = (
+    local.enable_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
+  )
   api_ecs_quarantine_proxy_url = (
-    var.quarantine_proxy_url != null ? var.quarantine_proxy_url : (
+    local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
       local.quarantine_gateway_privatelink_proxy_url != null
       ? local.quarantine_gateway_privatelink_proxy_url
-      : local.self_hosted_ai_proxy_url
+      : (
+        local.self_hosted_ai_proxy_url != null
+        ? local.self_hosted_ai_proxy_url
+        : local.cloudfront_quarantine_proxy_url
+      )
     )
   )
   gateway_env_vars = local.enable_ai_gateway ? {
@@ -309,6 +330,7 @@ module "services" {
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = var.lambda_version_tag_override
+  enable_ecs_api              = local.enable_ecs_api
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry
