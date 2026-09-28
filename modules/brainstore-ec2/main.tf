@@ -158,6 +158,8 @@ resource "aws_lb_target_group" "brainstore" {
   connection_termination = true
   health_check {
     protocol            = "TCP"
+    matcher             = ""
+    path                = ""
     port                = var.port
     healthy_threshold   = 3
     unhealthy_threshold = 3
