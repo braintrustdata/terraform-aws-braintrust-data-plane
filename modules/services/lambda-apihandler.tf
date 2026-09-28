@@ -62,6 +62,9 @@ locals {
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
     BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
   } : {}
+  api_fast_writer_env_vars = local.using_brainstore_fast_writer ? {
+    BRAINSTORE_FAST_WRITER_URL = local.brainstore_fast_writer_url
+  } : {}
   btql_audit_log_env_vars = merge(
     length(var.btql_audit_logs_strict_org_ids) > 0 ? {
       BTQL_AUDIT_LOGS_STRICT_ORG_IDS = join(",", var.btql_audit_logs_strict_org_ids)
@@ -134,6 +137,7 @@ resource "aws_lambda_function" "api_handler" {
   environment {
     variables = merge(
       local.api_common_env_vars,
+      local.api_fast_writer_env_vars,
       local.api_fast_reader_env_vars,
       local.api_handler_specific_env_vars,
       var.extra_env_vars.APIHandler,

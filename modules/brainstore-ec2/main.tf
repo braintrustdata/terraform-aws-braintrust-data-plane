@@ -5,6 +5,7 @@ locals {
   }, var.custom_tags)
   architecture          = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes      = var.writer_instance_count > 0
+  has_fast_writer_nodes = var.fast_writer_instance_count > 0
   has_fast_reader_nodes = var.fast_reader_instance_count > 0
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id    = split(":::", var.brainstore_s3_bucket_arn)[1]
@@ -18,6 +19,7 @@ locals {
   # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
   brainstore_cache_file_size             = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
   brainstore_writer_cache_file_size      = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
+  brainstore_fast_writer_cache_file_size = var.cache_file_size_fast_writer != null ? var.cache_file_size_fast_writer : "${floor(data.aws_ec2_instance_type.brainstore_fast_writer.total_instance_storage * 0.9)}gb"
   brainstore_fast_reader_cache_file_size = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage * 0.9)}gb"
 }
 
@@ -251,6 +253,17 @@ data "aws_ec2_instance_type" "brainstore_writer" {
     postcondition {
       condition     = self.total_instance_storage != null
       error_message = "Writer instance type ${var.writer_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
+    }
+  }
+}
+
+data "aws_ec2_instance_type" "brainstore_fast_writer" {
+  instance_type = var.fast_writer_instance_type
+
+  lifecycle {
+    postcondition {
+      condition     = self.total_instance_storage != null
+      error_message = "Fast writer instance type ${var.fast_writer_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
     }
   }
 }

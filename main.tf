@@ -327,6 +327,7 @@ module "services" {
   brainstore_default              = var.brainstore_default
   brainstore_hostname             = module.brainstore[0].dns_name
   brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_writer_hostname = var.brainstore_fast_writer_instance_count > 0 ? module.brainstore[0].fast_writer_dns_name : null
   brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
   brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
   brainstore_port                 = module.brainstore[0].port
@@ -504,6 +505,7 @@ module "api_ecs" {
   # Brainstore
   brainstore_hostname             = module.brainstore[0].dns_name
   brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_writer_hostname = var.brainstore_fast_writer_instance_count > 0 ? module.brainstore[0].fast_writer_dns_name : null
   brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
   brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
   brainstore_port                 = module.brainstore[0].port
@@ -678,6 +680,10 @@ module "brainstore" {
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
   writer_instance_type                  = var.brainstore_writer_instance_type
+  fast_writer_instance_count            = var.brainstore_fast_writer_instance_count
+  fast_writer_instance_type             = var.brainstore_fast_writer_instance_type
+  extra_env_vars_fast_writer            = var.brainstore_extra_env_vars_fast_writer
+  cache_file_size_fast_writer           = var.brainstore_cache_file_size_fast_writer
   fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader

@@ -476,6 +476,12 @@ variable "brainstore_writer_hostname" {
   default     = null
 }
 
+variable "brainstore_fast_writer_hostname" {
+  type        = string
+  description = "Optional Brainstore fast writer hostname."
+  default     = null
+}
+
 variable "brainstore_fast_reader_hostname" {
   type        = string
   description = "Optional Brainstore fast reader hostname."
