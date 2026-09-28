@@ -887,6 +887,11 @@ variable "loop_runtime_sandbox_existing_private_subnet_1_id" {
     condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_1_id == null)
     error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_1_id must be supplied together."
   }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_private_subnet_1_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_private_subnet_1_id) != ""
+    error_message = "loop_runtime_sandbox_existing_private_subnet_1_id must be null or a nonempty subnet ID."
+  }
 }
 
 variable "loop_runtime_sandbox_existing_private_subnet_2_id" {
@@ -898,6 +903,11 @@ variable "loop_runtime_sandbox_existing_private_subnet_2_id" {
     condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_2_id == null)
     error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_2_id must be supplied together."
   }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_private_subnet_2_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_private_subnet_2_id) != ""
+    error_message = "loop_runtime_sandbox_existing_private_subnet_2_id must be null or a nonempty subnet ID."
+  }
 }
 
 variable "loop_runtime_sandbox_existing_private_subnet_3_id" {
@@ -908,6 +918,11 @@ variable "loop_runtime_sandbox_existing_private_subnet_3_id" {
   validation {
     condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_3_id == null)
     error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_3_id must be supplied together."
+  }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_private_subnet_3_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_private_subnet_3_id) != ""
+    error_message = "loop_runtime_sandbox_existing_private_subnet_3_id must be null or a nonempty subnet ID."
   }
 
   validation {

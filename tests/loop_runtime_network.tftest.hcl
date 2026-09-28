@@ -42,3 +42,36 @@ run "loop_with_existing_sandbox_vpc" {
     loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
 }
+
+run "rejects_empty_existing_sandbox_subnet_1_id" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_1_id = ""
+    loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+  }
+  expect_failures = [var.loop_runtime_sandbox_existing_private_subnet_1_id]
+}
+
+run "rejects_empty_existing_sandbox_subnet_2_id" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_2_id = " "
+    loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+  }
+  expect_failures = [var.loop_runtime_sandbox_existing_private_subnet_2_id]
+}
+
+run "rejects_empty_existing_sandbox_subnet_3_id" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    loop_runtime_sandbox_existing_private_subnet_3_id = "  "
+  }
+  expect_failures = [var.loop_runtime_sandbox_existing_private_subnet_3_id]
+}

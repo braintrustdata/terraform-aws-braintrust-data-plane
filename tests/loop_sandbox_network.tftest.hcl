@@ -122,6 +122,48 @@ run "rejects_missing_subnet" {
   expect_failures = [var.existing_private_subnet_3_id]
 }
 
+run "rejects_empty_subnet_1_id" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = ""
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+  }
+  expect_failures = [var.existing_private_subnet_1_id]
+}
+
+run "rejects_empty_subnet_2_id" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = " "
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+  }
+  expect_failures = [var.existing_private_subnet_2_id]
+}
+
+run "rejects_empty_subnet_3_id" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id = "  "
+  }
+  expect_failures = [var.existing_private_subnet_3_id]
+}
+
 run "rejects_subnet_from_another_vpc" {
   command = plan
   module {

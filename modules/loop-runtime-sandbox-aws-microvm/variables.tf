@@ -156,6 +156,11 @@ variable "existing_private_subnet_1_id" {
     condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_1_id == null)
     error_message = "existing_vpc_id and existing_private_subnet_1_id must be supplied together."
   }
+
+  validation {
+    condition     = var.existing_private_subnet_1_id == null ? true : trimspace(var.existing_private_subnet_1_id) != ""
+    error_message = "existing_private_subnet_1_id must be null or a nonempty subnet ID."
+  }
 }
 
 variable "existing_private_subnet_2_id" {
@@ -167,6 +172,11 @@ variable "existing_private_subnet_2_id" {
     condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_2_id == null)
     error_message = "existing_vpc_id and existing_private_subnet_2_id must be supplied together."
   }
+
+  validation {
+    condition     = var.existing_private_subnet_2_id == null ? true : trimspace(var.existing_private_subnet_2_id) != ""
+    error_message = "existing_private_subnet_2_id must be null or a nonempty subnet ID."
+  }
 }
 
 variable "existing_private_subnet_3_id" {
@@ -177,6 +187,11 @@ variable "existing_private_subnet_3_id" {
   validation {
     condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_3_id == null)
     error_message = "existing_vpc_id and existing_private_subnet_3_id must be supplied together."
+  }
+
+  validation {
+    condition     = var.existing_private_subnet_3_id == null ? true : trimspace(var.existing_private_subnet_3_id) != ""
+    error_message = "existing_private_subnet_3_id must be null or a nonempty subnet ID."
   }
 
   validation {
