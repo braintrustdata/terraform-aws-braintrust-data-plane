@@ -31,6 +31,8 @@ locals {
     { path = "/attachment", method = "POST", priority = 120, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/attachment/status", method = "POST", priority = 130, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/logs3/overflow", method = "POST", priority = 140, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/logs2", method = "POST", priority = 150, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/logs", method = "POST", priority = 160, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
 
     # braintrust-api-background
     { path = "/v1/eval", method = "POST", priority = 200, target_group = aws_lb_target_group.braintrust_api_background.arn },
