@@ -140,6 +140,7 @@ locals {
   api_service_env_vars = {
     for service_name in local.api_service_names :
     service_name => merge(local.merged_env_vars, {
+      OTEL_SERVICE_NAME                  = service_name
       CLOUDWATCH_METRICS_SERVICE_NAME    = service_name
       CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
     })
