@@ -1,6 +1,6 @@
 # Brainstore deployment gate
 
-This internal module deploys the `BrainstoreDeployment` Lambda built in the Braintrust repository's `api-ts` project. Terraform updates the existing ASGs' numbered launch-template versions, then invokes the helper synchronously. Three sequential invocations carry continuation state across Lambda's execution limit. The final invocation must report completion; Lambda exceptions or a pending final result stop the apply before API services update.
+This internal module deploys the `BrainstoreDeployment` Lambda built in the Braintrust repository's `api-ts` project. Terraform updates the existing ASGs' numbered launch-template versions, then invokes the helper synchronously. One invocation waits up to 600 seconds and must return `{ "status": "complete" }`. Lambda exceptions or any other result stop the apply before API services update. No continuation payload is required.
 
 The helper owns instance refreshes. Do not add a native `instance_refresh` block to the ASGs or restore launch-template-triggered ASG replacement. Terraform waits for healthy capacity when creating an ASG, but healthy old capacity does not prove that an update has rolled out. The helper checks the actual instance versions, target health, refresh status, and termination of old instances. Existing ASG identities and Terraform resource addresses stay unchanged during routine updates.
 
@@ -17,4 +17,6 @@ Mock tests cover wiring and failure propagation. They cannot validate AWS author
 
 The function depends on its IAM policy, but a successful policy attachment does not guarantee immediate propagation to every AWS service. The helper retries authorization errors during the first two minutes of each invocation, within its existing time budget. Persistent permission errors still stop the apply with the original AWS error.
 
-A failed final invocation is not recorded as a completed deployment. Rerunning apply resumes through live AWS inspection; it does not require state surgery. Terraform's usual deployment state lock must remain enabled. The invocation resources use the default `CREATE_ONLY` lifecycle, so deleting the module does not invoke the helper.
+A failed invocation is not recorded as a completed deployment. Rerunning apply resumes through live AWS inspection; it does not require state surgery. Terraform's usual deployment state lock must remain enabled. The invocation resource uses the default `CREATE_ONLY` lifecycle, so deleting the module does not invoke the helper.
+
+The state move from `aws_lambda_invocation.first` to `aws_lambda_invocation.rollout` handles upgrades from the earlier draft, including partially applied deployments. The changed input causes one fresh readiness check. Any old `second` and `final` invocation records are removed without invoking the helper during deletion.

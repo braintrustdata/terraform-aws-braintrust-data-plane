@@ -11,7 +11,7 @@ mock_provider "aws" {
   }
   mock_resource "aws_lambda_invocation" {
     defaults = {
-      result = "{\"status\":\"complete\",\"continuation\":{\"deployment_id\":\"test\",\"fleets\":{}}}"
+      result = "{\"status\":\"complete\"}"
     }
   }
 }
@@ -32,15 +32,15 @@ variables {
   }]
 }
 
-run "reject_incomplete_final_slice" {
+run "reject_incomplete_rollout" {
   command = apply
   module { source = "./modules/brainstore-deployment" }
   variables {
     deployment_name = "bt-timeout"
   }
   override_resource {
-    target = aws_lambda_invocation.final
-    values = { result = "{\"status\":\"pending\",\"continuation\":{}}" }
+    target = aws_lambda_invocation.rollout
+    values = { result = "{\"status\":\"pending\"}" }
   }
-  expect_failures = [aws_lambda_invocation.final]
+  expect_failures = [aws_lambda_invocation.rollout]
 }

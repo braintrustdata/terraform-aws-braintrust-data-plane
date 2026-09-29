@@ -11,7 +11,7 @@ mock_provider "aws" {
   }
   mock_resource "aws_lambda_invocation" {
     defaults = {
-      result = "{\"status\":\"complete\",\"continuation\":{\"deployment_id\":\"test\",\"fleets\":{}}}"
+      result = "{\"status\":\"complete\"}"
     }
   }
 }
@@ -42,16 +42,23 @@ run "complete_rollout" {
   }
 
   assert {
-    condition     = jsondecode(aws_lambda_invocation.first.input).deployment.fleets == jsondecode(aws_lambda_invocation.final.input).deployment.fleets
-    error_message = "Every slice must check the same exact fleet configuration."
+    condition = aws_lambda_invocation.rollout.input == jsonencode({
+      deployment = {
+        schema_version  = 1
+        deployment_name = var.deployment_name
+        fleets          = var.fleets
+      }
+      wait_seconds = 600
+    })
+    error_message = "The single invocation must send only the desired deployment and wait budget."
   }
   assert {
-    condition     = jsondecode(aws_lambda_invocation.second.input).continuation == jsondecode(aws_lambda_invocation.first.result).continuation && jsondecode(aws_lambda_invocation.final.input).continuation == jsondecode(aws_lambda_invocation.second.result).continuation
-    error_message = "Each invocation must resume the previous slice's progress."
+    condition     = output.completion_id == aws_lambda_invocation.rollout.id && jsondecode(aws_lambda_invocation.rollout.result).status == "complete"
+    error_message = "The completion dependency must use the invocation that returns the helper's actual complete-only response."
   }
   assert {
-    condition     = jsondecode(aws_lambda_invocation.final.input).final && !jsondecode(aws_lambda_invocation.first.input).final && aws_lambda_function.waiter.timeout > jsondecode(aws_lambda_invocation.final.input).wait_seconds
-    error_message = "Only the final slice must require completion, with time left to report failure."
+    condition     = aws_lambda_function.waiter.timeout > jsondecode(aws_lambda_invocation.rollout.input).wait_seconds
+    error_message = "The Lambda must have time to report a timeout after the wait budget expires."
   }
   assert {
     condition     = jsondecode(aws_iam_role_policy.waiter.policy).Statement[1].Resource[0] == "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:*:autoScalingGroupName/bt-test-brainstore-123" && jsondecode(aws_iam_role_policy.waiter.policy).Statement[1].Condition.StringEquals["autoscaling:ResourceTag/BraintrustDeploymentName"] == "bt-test"
