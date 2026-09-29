@@ -773,7 +773,7 @@ variable "loop_runtime_min_capacity" {
 variable "loop_runtime_max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 4
+  default     = 50
 }
 
 variable "loop_runtime_target_cpu_utilization" {
@@ -786,6 +786,18 @@ variable "loop_runtime_target_memory_utilization" {
   type        = number
   description = "Target average memory use percentage for Loop runtime autoscaling."
   default     = 50
+}
+
+variable "loop_runtime_target_conversation_utilization" {
+  type        = number
+  description = "Target average claimed conversation use percentage for Loop runtime autoscaling."
+  default     = 50
+}
+
+variable "loop_runtime_drain_timeout_seconds" {
+  type        = number
+  description = "Maximum seconds active Loop runtime turns can finish during task shutdown. Must be between 1 and 105."
+  default     = 90
 }
 
 variable "loop_runtime_log_retention_days" {
