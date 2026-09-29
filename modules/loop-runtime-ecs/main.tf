@@ -11,10 +11,6 @@ locals {
   brainstore_s3_bucket     = var.brainstore_s3_bucket_name
   use_object_store_locks   = var.brainstore_object_store_locks
 
-  # ECS sends SIGKILL this long after SIGTERM. drain_timeout_seconds stays at
-  # least 15 seconds below it so the runtime can release claims and exit.
-  stop_timeout_seconds = 120
-
   capacity_metric_namespace = "Braintrust/LoopRuntime"
 
   # Normalize like modules/brainstore-ec2 so Loop uses the deployment's shared
@@ -128,11 +124,12 @@ locals {
   }))
 
   loop_runtime_container_definition = {
-    name        = local.container_name
-    image       = var.container_image
-    essential   = true
-    user        = "1000:1000"
-    stopTimeout = local.stop_timeout_seconds
+    name      = local.container_name
+    image     = var.container_image
+    essential = true
+    user      = "1000:1000"
+    # Leave at least 15 seconds after the runtime's maximum drain timeout.
+    stopTimeout = 120
     linuxParameters = {
       initProcessEnabled = true
       capabilities = {

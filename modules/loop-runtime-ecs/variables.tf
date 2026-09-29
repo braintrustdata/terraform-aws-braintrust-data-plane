@@ -328,6 +328,17 @@ variable "extra_env_vars" {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
     error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
   }
+
+  validation {
+    condition = alltrue([
+      for key in [
+        "LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE",
+        "LOOP_RUNTIME_CAPACITY_METRIC_CLUSTER_NAME",
+        "LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME",
+      ] : !contains(keys(var.extra_env_vars), key)
+    ])
+    error_message = "LOOP_RUNTIME_CAPACITY_METRIC_* variables are managed by the module and cannot be set in extra_env_vars."
+  }
 }
 
 # --- Observability ---

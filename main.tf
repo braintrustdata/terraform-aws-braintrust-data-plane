@@ -583,11 +583,11 @@ module "loop_runtime_ecs" {
   target_cpu_utilization    = var.loop_runtime_target_cpu_utilization
   target_memory_utilization = var.loop_runtime_target_memory_utilization
   log_retention_days        = var.loop_runtime_log_retention_days
+  permissions_boundary_arn  = var.permissions_boundary_arn
+  enable_execute_command    = var.loop_runtime_enable_execute_command
 
   target_conversation_utilization = var.loop_runtime_target_conversation_utilization
   drain_timeout_seconds           = var.loop_runtime_drain_timeout_seconds
-  permissions_boundary_arn        = var.permissions_boundary_arn
-  enable_execute_command          = var.loop_runtime_enable_execute_command
 
   target_group_arn               = module.loop_runtime_alb[0].loop_runtime_target_group_arn
   alb_security_group_id          = module.loop_runtime_alb[0].loop_runtime_alb_security_group_id

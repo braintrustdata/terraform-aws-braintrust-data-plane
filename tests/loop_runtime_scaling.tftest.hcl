@@ -149,3 +149,16 @@ run "rejects_conversation_target_out_of_range" {
   }
   expect_failures = [var.target_conversation_utilization]
 }
+
+run "rejects_capacity_metric_override" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-ecs"
+  }
+  variables {
+    extra_env_vars = {
+      LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME = "another-service"
+    }
+  }
+  expect_failures = [var.extra_env_vars]
+}
