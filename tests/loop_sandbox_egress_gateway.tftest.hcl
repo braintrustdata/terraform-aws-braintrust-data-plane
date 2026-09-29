@@ -231,6 +231,26 @@ run "egress_gateway_in_existing_vpc" {
   }
 }
 
+run "selects_one_main_subnet_per_zone" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[2]
+    values = { availability_zone = "us-east-1b" }
+  }
+
+  assert {
+    condition = (
+      toset(aws_lb.egress_gateway.subnets) == toset(slice(var.endpoint_subnet_ids, 0, 2))
+      && toset(aws_vpc_endpoint.loop_runtime_microvm.subnet_ids) == toset(slice(var.endpoint_subnet_ids, 0, 2))
+    )
+    error_message = "The main VPC endpoint and egress NLB must select one subnet per availability zone."
+  }
+}
+
 run "rejects_unsupported_endpoint_zones" {
   command = plan
   module {

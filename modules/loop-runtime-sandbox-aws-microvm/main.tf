@@ -33,6 +33,9 @@ locals {
   restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
   sandbox_subnet_azs           = var.existing_vpc_id != null ? data.aws_subnet.restricted_egress_existing[*].availability_zone : aws_subnet.restricted_egress[*].availability_zone
   egress_gateway_nlb_azs       = data.aws_subnet.egress_gateway_nlb[*].availability_zone
+  main_endpoint_subnet_ids = [
+    for az in distinct(local.egress_gateway_nlb_azs) : var.endpoint_subnet_ids[index(local.egress_gateway_nlb_azs, az)]
+  ]
   egress_gateway_subnet_ids = [
     for index, subnet_id in local.restricted_egress_subnet_ids : subnet_id
     if contains(local.egress_gateway_nlb_azs, local.sandbox_subnet_azs[index])
@@ -535,7 +538,7 @@ resource "aws_vpc_endpoint" "loop_runtime_microvm" {
   service_name        = "com.amazonaws.${data.aws_region.current.region}.lambda-microvm"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = var.endpoint_subnet_ids
+  subnet_ids          = local.main_endpoint_subnet_ids
   security_group_ids  = [aws_security_group.loop_runtime_microvm_endpoint.id]
 
   policy = jsonencode({
@@ -585,7 +588,7 @@ resource "aws_lb" "egress_gateway" {
   name                             = "${var.deployment_name}-loop-egress"
   internal                         = true
   load_balancer_type               = "network"
-  subnets                          = var.endpoint_subnet_ids
+  subnets                          = local.main_endpoint_subnet_ids
   security_groups                  = [aws_security_group.egress_gateway_nlb.id]
   enable_cross_zone_load_balancing = true
 
@@ -593,13 +596,6 @@ resource "aws_lb" "egress_gateway" {
   # sandbox endpoint security group. The sandbox subnets vary with
   # existing_vpc_id, so the NLB does not filter this traffic again.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
-
-  lifecycle {
-    precondition {
-      condition     = length(distinct(local.egress_gateway_nlb_azs)) == length(var.endpoint_subnet_ids)
-      error_message = "The egress gateway NLB subnets must be in distinct availability zones."
-    }
-  }
 
   tags = merge({
     Name = "${var.deployment_name}-loop-egress-gateway"
