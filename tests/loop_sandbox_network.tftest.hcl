@@ -19,6 +19,31 @@ variables {
   runtime_security_group_id = "sg-11111111111111111"
 }
 
+override_data {
+  target = data.aws_subnet.egress_gateway_nlb[0]
+  values = { availability_zone = "us-east-1a" }
+}
+
+override_data {
+  target = data.aws_subnet.egress_gateway_nlb[1]
+  values = { availability_zone = "us-east-1b" }
+}
+
+override_data {
+  target = data.aws_subnet.restricted_egress_existing[0]
+  values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
+}
+
+override_data {
+  target = data.aws_subnet.restricted_egress_existing[1]
+  values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1b" }
+}
+
+override_data {
+  target = data.aws_subnet.restricted_egress_existing[2]
+  values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1c" }
+}
+
 run "managed_isolation_by_default" {
   command = plan
   module {

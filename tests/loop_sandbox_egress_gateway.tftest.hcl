@@ -55,6 +55,21 @@ variables {
   runtime_security_group_id = "sg-11111111111111111"
 }
 
+override_data {
+  target = data.aws_subnet.egress_gateway_nlb[0]
+  values = { availability_zone = "us-east-1a" }
+}
+
+override_data {
+  target = data.aws_subnet.egress_gateway_nlb[1]
+  values = { availability_zone = "us-east-1b" }
+}
+
+override_data {
+  target = data.aws_subnet.egress_gateway_nlb[2]
+  values = { availability_zone = "us-east-1c" }
+}
+
 run "egress_gateway_in_managed_vpc" {
   command = apply
   module {
@@ -150,6 +165,11 @@ run "egress_gateway_in_managed_vpc" {
   }
 
   assert {
+    condition     = output.sandbox_env_vars["LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN"] == "0.0.0.0:4002"
+    error_message = "The runtime must listen for sandbox egress on port 4002."
+  }
+
+  assert {
     condition     = output.sandbox_env_vars["AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARNS"] == "arn:aws:lambda:us-east-1:123456789012:network-connector:bt-loop-bt-test-restricted-egress"
     error_message = "Sandboxes must use only the restricted egress connector."
   }
@@ -175,10 +195,25 @@ run "egress_gateway_in_existing_vpc" {
     existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
 
+  override_data {
+    target = data.aws_subnet.restricted_egress_existing[0]
+    values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
+  }
+
+  override_data {
+    target = data.aws_subnet.restricted_egress_existing[1]
+    values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1b" }
+  }
+
+  override_data {
+    target = data.aws_subnet.restricted_egress_existing[2]
+    values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1d" }
+  }
+
   assert {
     condition = (
       aws_vpc_endpoint.egress_gateway.vpc_id == var.existing_vpc_id
-      && toset(aws_vpc_endpoint.egress_gateway.subnet_ids) == toset(["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"])
+      && toset(aws_vpc_endpoint.egress_gateway.subnet_ids) == toset(["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"])
       && aws_security_group.egress_gateway_endpoint.vpc_id == var.existing_vpc_id
     )
     error_message = "The egress gateway endpoint must use the supplied sandbox VPC and subnets."
@@ -193,4 +228,26 @@ run "egress_gateway_in_existing_vpc" {
     condition     = output.egress_gateway_dns_name == "vpce-0123456789abcdef0-abcdefgh.vpce-svc-0123456789abcdef0.us-east-1.vpce.amazonaws.com"
     error_message = "The module must expose the endpoint name that a supplied VPC's DNS policy has to allow."
   }
+}
+
+run "rejects_unsupported_endpoint_zones" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[0]
+    values = { availability_zone = "us-east-1d" }
+  }
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[1]
+    values = { availability_zone = "us-east-1e" }
+  }
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[2]
+    values = { availability_zone = "us-east-1f" }
+  }
+
+  expect_failures = [aws_vpc_endpoint.egress_gateway]
 }

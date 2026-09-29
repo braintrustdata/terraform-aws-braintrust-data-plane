@@ -92,9 +92,6 @@ The sandbox security group allows outbound traffic only to that endpoint on port
 The endpoint connects through PrivateLink to the Loop runtime egress proxy, which authorizes each request.
 This network isolates untrusted sandbox code from internal networks.
 
-`loop_runtime_sandbox_egress_mode` is deprecated. The only accepted value is `"restricted"`.
-The module rejects `"internet"`.
-
 You can supply a dedicated sandbox VPC with these inputs:
 
 ```hcl
@@ -106,7 +103,7 @@ loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
 
 The module verifies that each subnet belongs to the supplied VPC.
 The module also creates the sandbox security group and the egress gateway endpoint in the supplied VPC.
-The sandbox security group allows outbound traffic only to that endpoint on port 4002.
+The endpoint uses supplied subnets in availability zones also used by the main VPC's private subnets; at least one zone must match.
 The caller controls routes and DNS restrictions in the supplied VPC.
 Sandboxes must resolve the endpoint name in the `loop_runtime_sandbox_egress_gateway_dns_name` output.
 

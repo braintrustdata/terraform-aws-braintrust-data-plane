@@ -44,11 +44,6 @@ run "serves_sandbox_egress_gateway" {
   }
 
   assert {
-    condition     = local.merged_env_vars["LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN"] == "0.0.0.0:4002"
-    error_message = "The runtime must listen for sandbox egress on port 4002."
-  }
-
-  assert {
     condition = anytrue([
       for lb in aws_ecs_service.loop_runtime.load_balancer :
       lb.target_group_arn == var.sandbox_egress_gateway_target_group_arn && lb.container_port == 4002 && lb.container_name == "loop-runtime"

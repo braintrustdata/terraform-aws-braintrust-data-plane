@@ -31,6 +31,12 @@ locals {
     var.existing_private_subnet_3_id,
   ]
   restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
+  sandbox_subnet_azs           = var.existing_vpc_id != null ? data.aws_subnet.restricted_egress_existing[*].availability_zone : aws_subnet.restricted_egress[*].availability_zone
+  egress_gateway_nlb_azs       = data.aws_subnet.egress_gateway_nlb[*].availability_zone
+  egress_gateway_subnet_ids = [
+    for index, subnet_id in local.restricted_egress_subnet_ids : subnet_id
+    if contains(local.egress_gateway_nlb_azs, local.sandbox_subnet_azs[index])
+  ]
   egress_connector_arns = [
     aws_cloudformation_stack.restricted_egress_connector.outputs["NetworkConnectorArn"]
   ]
@@ -103,6 +109,7 @@ locals {
     AWS_LAMBDA_MICROVM_MAXIMUM_DURATION_SECONDS       = tostring(var.microvm_maximum_duration_seconds)
     AWS_LAMBDA_MICROVM_AUTH_TOKEN_EXPIRATION_MINUTES  = tostring(var.microvm_auth_token_expiration_minutes)
     AWS_LAMBDA_MICROVM_RUNTIME_PORT                   = tostring(var.microvm_runtime_port)
+    LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN         = "0.0.0.0:${local.egress_gateway_port}"
     LOOP_RUNTIME_SANDBOX_EGRESS_GATEWAY_URL           = "http://${local.egress_gateway_dns_name}:${local.egress_gateway_port}"
     },
     var.enable_microvm_runtime_logs ? {
@@ -500,6 +507,12 @@ data "aws_subnet" "restricted_egress_existing" {
   }
 }
 
+data "aws_subnet" "egress_gateway_nlb" {
+  count = length(var.endpoint_subnet_ids)
+
+  id = var.endpoint_subnet_ids[count.index]
+}
+
 resource "aws_security_group" "loop_runtime_microvm_endpoint" {
   name        = "${var.deployment_name}-loop-microvm-vpce"
   description = "Private MicroVM endpoint for Loop runtime"
@@ -579,6 +592,13 @@ resource "aws_lb" "egress_gateway" {
   # sandbox endpoint security group. The sandbox subnets vary with
   # existing_vpc_id, so the NLB does not filter this traffic again.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
+
+  lifecycle {
+    precondition {
+      condition     = length(distinct(local.egress_gateway_nlb_azs)) == length(var.endpoint_subnet_ids)
+      error_message = "The egress gateway NLB subnets must be in distinct availability zones."
+    }
+  }
 
   tags = merge({
     Name = "${var.deployment_name}-loop-egress-gateway"
@@ -662,8 +682,22 @@ resource "aws_vpc_endpoint" "egress_gateway" {
   service_name        = aws_vpc_endpoint_service.egress_gateway.service_name
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = false
-  subnet_ids          = local.restricted_egress_subnet_ids
+  subnet_ids          = local.egress_gateway_subnet_ids
   security_group_ids  = [aws_security_group.egress_gateway_endpoint.id]
+
+  lifecycle {
+    precondition {
+      condition     = length(local.egress_gateway_subnet_ids) > 0
+      error_message = "The sandbox VPC needs a subnet in an availability zone served by the egress gateway NLB."
+    }
+
+    precondition {
+      condition = length(distinct([
+        for az in local.sandbox_subnet_azs : az if contains(local.egress_gateway_nlb_azs, az)
+      ])) == length(local.egress_gateway_subnet_ids)
+      error_message = "The sandbox egress gateway endpoint subnets must be in distinct availability zones."
+    }
+  }
 
   tags = merge({
     Name = "${var.deployment_name}-loop-egress-gateway"
