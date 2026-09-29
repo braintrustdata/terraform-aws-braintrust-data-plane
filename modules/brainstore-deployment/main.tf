@@ -15,7 +15,7 @@ locals {
 }
 
 data "http" "artifact" {
-  url                = "https://${local.asset_bucket}.s3.${data.aws_region.current.region}.amazonaws.com/lambda/BrainstoreDeployment/version-${var.lambda_version_tag}"
+  url                = "https://${local.asset_bucket}.s3.${data.aws_region.current.region}.amazonaws.com/lambda/BrainstoreDeployment/version-${var.version_tag}"
   request_timeout_ms = 10000
   retry {
     attempts     = 5
@@ -25,7 +25,7 @@ data "http" "artifact" {
   lifecycle {
     postcondition {
       condition     = self.status_code == 200 && can(regex("^lambda/BrainstoreDeployment/versions/[a-f0-9]+\\.zip$", trimspace(self.response_body)))
-      error_message = "The BrainstoreDeployment artifact for API Lambda version ${var.lambda_version_tag} must be published in this region before using this module release."
+      error_message = "The BrainstoreDeployment artifact for API version ${var.version_tag} must be published in this region before using this module release."
     }
   }
 }

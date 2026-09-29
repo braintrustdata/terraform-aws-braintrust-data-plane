@@ -20,8 +20,8 @@ mock_provider "http" {
 }
 
 variables {
-  deployment_name    = "bt-test"
-  lambda_version_tag = "test-api-version"
+  deployment_name = "bt-test"
+  version_tag     = "test-api-version"
   fleets = [{
     role                    = "reader"
     asg_name                = "bt-test-brainstore-123"

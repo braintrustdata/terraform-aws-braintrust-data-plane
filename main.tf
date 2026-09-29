@@ -488,7 +488,7 @@ module "api_ecs" {
   brainstore_deployment_id = module.brainstore_deployment[0].completion_id
 
   deployment_name      = var.deployment_name
-  api_version_override = var.braintrust_api_version_override
+  api_version_override = local.api_version_tag
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry

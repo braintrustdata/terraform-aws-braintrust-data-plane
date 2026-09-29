@@ -9,7 +9,7 @@ Only the API ECS service resources and API-related Lambda functions depend on `c
 ## Release coordination
 
 1. Merge/build the helper implementation in the Braintrust repository. Its Bazel target is `//api-ts:lambda_brainstore_deployment_zip`, and the normal regional publisher stages it as `BrainstoreDeployment`.
-2. Publish the helper alongside the API Lambdas under the same release tag in all supported regional asset buckets. The root module resolves that shared tag from `lambda_version_tag_override` or `modules/services/VERSIONS.json`; the helper has no separate version pin.
+2. Publish the helper alongside the API Lambdas under the same release tag in all supported regional asset buckets. The root module selects the active API release: when `enable_ecs_api` is true, `braintrust_api_version_override` or `modules/api-ecs/VERSIONS.json`; otherwise, `lambda_version_tag_override` or `modules/services/VERSIONS.json`. The helper has no separate version pin. Both API ECS services and API Lambdas still wait for the gate in either mode.
 3. Validate a real non-production deployment using the generated IAM role: initial creation, a simultaneous Brainstore/API version update, failed refresh, and interruption/retry. Confirm API updates begin only after old Brainstore instances terminate.
 4. Release the Terraform module after the shared API release includes the helper artifact in every supported region.
 

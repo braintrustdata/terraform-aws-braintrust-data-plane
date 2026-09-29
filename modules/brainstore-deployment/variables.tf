@@ -2,8 +2,8 @@ variable "deployment_name" {
   type = string
 }
 
-variable "lambda_version_tag" {
-  description = "The release tag shared with the API Lambdas."
+variable "version_tag" {
+  description = "The release tag shared with the active API deployment."
   type        = string
 }
 
