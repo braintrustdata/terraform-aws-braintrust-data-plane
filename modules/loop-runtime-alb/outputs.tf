@@ -32,3 +32,8 @@ output "loop_runtime_cloudfront_vpc_origin_ingress_rule_id" {
   description = "Security group ingress rule allowing CloudFront VPC origins to reach the Loop runtime ALB."
   value       = try(aws_vpc_security_group_ingress_rule.loop_runtime_alb_from_cloudfront_vpc_origin[0].id, null)
 }
+
+output "alb_subnets_applied" {
+  description = "Fingerprint of Loop runtime ALB subnet membership after aws_lb apply."
+  value       = terraform_data.alb_subnets_applied.output
+}

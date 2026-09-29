@@ -57,6 +57,12 @@ variable "gateway_cloudfront_ingress_rule_id" {
   default     = null
 }
 
+variable "gateway_alb_subnets_applied" {
+  description = "Fingerprint of gateway ALB subnet membership after aws_lb apply. VPC origin resources reference this so origin create waits for ALB subnet shrinks."
+  type        = string
+  default     = null
+}
+
 variable "enable_loop_runtime" {
   description = "Add a LoopRuntimeOrigin VPC origin and route /loop/runtime[/*] to the Loop runtime ALB."
   type        = bool
@@ -77,6 +83,12 @@ variable "loop_runtime_alb_dns_name" {
 
 variable "loop_runtime_cloudfront_ingress_rule_id" {
   description = "ID of the Loop runtime ALB ingress rule for CloudFront VPC origins"
+  type        = string
+  default     = null
+}
+
+variable "loop_runtime_alb_subnets_applied" {
+  description = "Fingerprint of Loop runtime ALB subnet membership after aws_lb apply. VPC origin resources reference this so origin create waits for ALB subnet shrinks."
   type        = string
   default     = null
 }
@@ -116,6 +128,11 @@ variable "api_ecs_alb_domain" {
 variable "api_ecs_alb_https_enabled" {
   description = "Whether the API ECS ALB serves HTTPS. When true, CloudFront connects to the ALB origin over HTTPS; otherwise it connects over HTTP."
   type        = bool
+}
+
+variable "api_ecs_alb_subnets_applied" {
+  description = "Fingerprint of API ECS ALB subnet membership after aws_lb apply. VPC origin resources reference this so origin create waits for ALB subnet shrinks."
+  type        = string
 }
 
 variable "cloudfront_price_class" {
