@@ -167,6 +167,17 @@ variable "loop_runtime_http_listener_arn" {
   nullable    = true
 }
 
+variable "sandbox_egress_gateway_target_group_arn" {
+  type        = string
+  description = "ARN of the sandbox egress gateway NLB target group. The service registers the runtime's port 4002 with it."
+}
+
+variable "sandbox_egress_gateway_authorized_security_groups" {
+  type        = map(string)
+  description = "Security groups authorized to reach the Loop runtime tasks on the sandbox egress port 4002 (the egress gateway NLB)."
+  default     = {}
+}
+
 # --- Sandbox seam (from loop-runtime-sandbox-* module) ---
 variable "sandbox_env_vars" {
   type        = map(string)

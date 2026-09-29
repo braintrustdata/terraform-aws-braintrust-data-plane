@@ -3,12 +3,14 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name           = "loop-runtime"
-  container_port           = 4001
-  observability_enabled    = var.internal_observability_enabled
-  loop_runtime_version_tag = element(reverse(split(":", var.container_image)), 0)
-  brainstore_s3_bucket     = var.brainstore_s3_bucket_name
-  use_object_store_locks   = var.brainstore_object_store_locks
+  container_name = "loop-runtime"
+  container_port = 4001
+  # Sandbox egress proxy port, served to sandboxes through the egress gateway NLB.
+  sandbox_egress_gateway_port = 4002
+  observability_enabled       = var.internal_observability_enabled
+  loop_runtime_version_tag    = element(reverse(split(":", var.container_image)), 0)
+  brainstore_s3_bucket        = var.brainstore_s3_bucket_name
+  use_object_store_locks      = var.brainstore_object_store_locks
 
   # Normalize like modules/brainstore-ec2 so Loop uses the deployment's shared
   # lock prefix (the writers must acquire locks from the same S3 namespace).
@@ -33,26 +35,27 @@ locals {
   # from var.sandbox_env_vars so this module stays sandbox-agnostic.
   core_env = merge(
     {
-      BRAINTRUST_LEGACY_IDS              = "true"
-      LOOP_RUNTIME_HOST                  = "0.0.0.0"
-      LOOP_RUNTIME_PORT                  = tostring(local.container_port)
-      LOOP_RUNTIME_LIFECYCLE_LOG         = var.loop_runtime_lifecycle_log
-      LOOP_RUNTIME_REDIS_NAMESPACE       = "loop-runtime:${var.deployment_name}"
-      LOOP_RUNTIME_STATE_DIR             = "/mnt/tmp/loop-runtime"
-      ORG_NAME                           = var.org_name
-      BRAINTRUST_API_URL                 = var.braintrust_api_url
-      LOOP_RUNTIME_AI_PROXY_URL          = var.ai_proxy_url
-      LOOP_RUNTIME_BRAINSTORE_READER_URL = var.brainstore_reader_url
-      BRAINSTORE_VERBOSE                 = "1"
-      BRAINSTORE_INDEX_URI               = "s3://${local.brainstore_s3_bucket}/brainstore/index"
-      BRAINSTORE_REALTIME_WAL_URI        = "s3://${local.brainstore_s3_bucket}/brainstore/wal"
-      BRAINSTORE_CODE_BUNDLE_URI         = "s3://${var.code_bundle_bucket}"
-      BRAINSTORE_CACHE_DIR               = "/mnt/tmp/brainstore"
-      BRAINSTORE_CONTROL_PLANE_TELEMETRY = join(",", [var.monitoring_telemetry, "metrics", "traces"])
-      BRAINSTORE_DISABLE_STATUS_UPDATES  = var.brainstore_disable_status_updates
-      NO_COLOR                           = "1"
-      AWS_DEFAULT_REGION                 = data.aws_region.current.region
-      AWS_REGION                         = data.aws_region.current.region
+      BRAINTRUST_LEGACY_IDS                     = "true"
+      LOOP_RUNTIME_HOST                         = "0.0.0.0"
+      LOOP_RUNTIME_PORT                         = tostring(local.container_port)
+      LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN = "0.0.0.0:${local.sandbox_egress_gateway_port}"
+      LOOP_RUNTIME_LIFECYCLE_LOG                = var.loop_runtime_lifecycle_log
+      LOOP_RUNTIME_REDIS_NAMESPACE              = "loop-runtime:${var.deployment_name}"
+      LOOP_RUNTIME_STATE_DIR                    = "/mnt/tmp/loop-runtime"
+      ORG_NAME                                  = var.org_name
+      BRAINTRUST_API_URL                        = var.braintrust_api_url
+      LOOP_RUNTIME_AI_PROXY_URL                 = var.ai_proxy_url
+      LOOP_RUNTIME_BRAINSTORE_READER_URL        = var.brainstore_reader_url
+      BRAINSTORE_VERBOSE                        = "1"
+      BRAINSTORE_INDEX_URI                      = "s3://${local.brainstore_s3_bucket}/brainstore/index"
+      BRAINSTORE_REALTIME_WAL_URI               = "s3://${local.brainstore_s3_bucket}/brainstore/wal"
+      BRAINSTORE_CODE_BUNDLE_URI                = "s3://${var.code_bundle_bucket}"
+      BRAINSTORE_CACHE_DIR                      = "/mnt/tmp/brainstore"
+      BRAINSTORE_CONTROL_PLANE_TELEMETRY        = join(",", [var.monitoring_telemetry, "metrics", "traces"])
+      BRAINSTORE_DISABLE_STATUS_UPDATES         = var.brainstore_disable_status_updates
+      NO_COLOR                                  = "1"
+      AWS_DEFAULT_REGION                        = data.aws_region.current.region
+      AWS_REGION                                = data.aws_region.current.region
     },
     local.use_object_store_locks ? {
       BRAINSTORE_LOCKS_URI = "s3://${local.brainstore_s3_bucket}/${local.locks_s3_path}"
@@ -134,7 +137,12 @@ locals {
         containerPort = local.container_port
         hostPort      = local.container_port
         protocol      = "tcp"
-      }
+      },
+      {
+        containerPort = local.sandbox_egress_gateway_port
+        hostPort      = local.sandbox_egress_gateway_port
+        protocol      = "tcp"
+      },
     ]
     environment = [
       for key in sort(keys(local.merged_env_vars)) : {
@@ -281,6 +289,18 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   source_security_group_id = var.alb_security_group_id
   description              = "Allow inbound traffic from Loop runtime ALB to tasks"
   security_group_id        = aws_security_group.task.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "task_from_sandbox_egress_gateway" {
+  for_each = var.sandbox_egress_gateway_authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.sandbox_egress_gateway_port
+  to_port                      = local.sandbox_egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow sandbox egress traffic from ${each.key}."
+  tags                         = local.common_tags
 }
 
 resource "aws_security_group_rule" "task_egress_all" {
@@ -581,6 +601,12 @@ resource "aws_ecs_service" "loop_runtime" {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
     container_port   = local.container_port
+  }
+
+  load_balancer {
+    target_group_arn = var.sandbox_egress_gateway_target_group_arn
+    container_name   = local.container_name
+    container_port   = local.sandbox_egress_gateway_port
   }
 
   depends_on = [terraform_data.loop_runtime_http_listener]

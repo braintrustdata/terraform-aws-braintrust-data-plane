@@ -46,8 +46,8 @@ run "managed_isolation_by_default" {
     error_message = "The managed VPC must retain its DNS block."
   }
   assert {
-    condition     = length(aws_security_group.restricted_egress[0].egress) == 0
-    error_message = "The sandbox security group must have no outbound rules."
+    condition     = aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.from_port == 4002 && aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.to_port == 4002 && aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.ip_protocol == "tcp"
+    error_message = "The sandbox security group must only reach the egress gateway endpoint on port 4002."
   }
 }
 
@@ -67,46 +67,17 @@ run "existing_vpc_keeps_customer_network" {
     error_message = "The existing-VPC option must not create a VPC, subnets, or routes."
   }
   assert {
-    condition     = length(aws_route53_resolver_firewall_rule_group_association.restricted_egress) == 0 && length(aws_route53_resolver_firewall_rule.restricted_egress) == 0
+    condition     = length(aws_route53_resolver_firewall_rule_group_association.restricted_egress) == 0 && length(aws_route53_resolver_firewall_rule.restricted_egress) == 0 && length(aws_route53_resolver_firewall_rule.egress_gateway_allow) == 0
     error_message = "The module must not change DNS policy in a supplied VPC."
   }
   assert {
-    condition     = aws_security_group.restricted_egress[0].vpc_id == "vpc-0123456789abcdef0" && length(aws_security_group.restricted_egress[0].egress) == 0
-    error_message = "The supplied VPC must retain a dedicated security group without outbound rules."
+    condition     = aws_security_group.restricted_egress.vpc_id == "vpc-0123456789abcdef0" && aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.from_port == 4002
+    error_message = "The supplied VPC must retain a dedicated security group that only reaches the egress gateway."
   }
   assert {
-    condition     = aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2"
+    condition     = aws_cloudformation_stack.restricted_egress_connector.parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2"
     error_message = "The connector must use the supplied subnets."
   }
-}
-
-run "internet_mode_skips_restricted_network" {
-  command = plan
-  module {
-    source = "./modules/loop-runtime-sandbox-aws-microvm"
-  }
-  variables {
-    sandbox_egress_mode = "internet"
-  }
-  assert {
-    condition     = length(aws_vpc.restricted_egress) == 0 && length(aws_cloudformation_stack.restricted_egress_connector) == 0
-    error_message = "Explicit internet mode must skip the restricted network."
-  }
-}
-
-run "rejects_existing_vpc_with_internet" {
-  command = plan
-  module {
-    source = "./modules/loop-runtime-sandbox-aws-microvm"
-  }
-  variables {
-    existing_vpc_id              = "vpc-0123456789abcdef0"
-    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
-    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
-    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
-    sandbox_egress_mode          = "internet"
-  }
-  expect_failures = [var.existing_vpc_id]
 }
 
 run "rejects_missing_subnet" {

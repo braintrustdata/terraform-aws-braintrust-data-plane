@@ -856,10 +856,18 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   default     = false
 }
 
+# Kept only so existing configurations that set "restricted" still plan, and
+# so "internet" fails with a clear message. Nothing reads it.
+# tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
-  description = "Outbound network mode for Loop runtime sandbox MicroVMs. The value internet permits public access. Every other value blocks outbound access."
+  description = "Deprecated. Loop runtime sandboxes always use restricted egress: they can reach only the Loop egress gateway. The only accepted value is restricted. This input will be removed in a future major version."
   default     = "restricted"
+
+  validation {
+    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
+    error_message = "Loop runtime sandboxes no longer support internet egress. Remove loop_runtime_sandbox_egress_mode or set it to \"restricted\"."
+  }
 }
 
 variable "loop_runtime_sandbox_existing_vpc_id" {
@@ -870,11 +878,6 @@ variable "loop_runtime_sandbox_existing_vpc_id" {
   validation {
     condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
     error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
-  }
-
-  validation {
-    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || var.loop_runtime_sandbox_egress_mode != "internet"
-    error_message = "loop_runtime_sandbox_existing_vpc_id requires restricted sandbox egress."
   }
 }
 

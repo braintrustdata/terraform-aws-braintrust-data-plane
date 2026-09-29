@@ -27,10 +27,6 @@ run "loop_private_endpoint" {
     condition     = length(module.loop_runtime_ecs) == 1 && length(module.loop_runtime_sandbox_aws_microvm) == 1
     error_message = "Loop must create the runtime and MicroVM modules."
   }
-  assert {
-    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
-    error_message = "MicroVM egress must default to restricted."
-  }
 }
 
 run "loop_with_existing_sandbox_vpc" {
@@ -99,4 +95,19 @@ run "rejects_empty_existing_sandbox_subnet_3_id" {
     loop_runtime_sandbox_existing_private_subnet_3_id = "  "
   }
   expect_failures = [var.loop_runtime_sandbox_existing_private_subnet_3_id]
+}
+
+run "rejects_internet_sandbox_egress" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_egress_mode = "internet"
+  }
+  expect_failures = [var.loop_runtime_sandbox_egress_mode]
+}
+
+run "accepts_deprecated_restricted_sandbox_egress" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_egress_mode = "restricted"
+  }
 }
