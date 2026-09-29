@@ -20,7 +20,8 @@ mock_provider "http" {
 }
 
 variables {
-  deployment_name = "bt-test"
+  deployment_name    = "bt-test"
+  lambda_version_tag = "test-api-version"
   fleets = [{
     role                    = "reader"
     asg_name                = "bt-test-brainstore-123"
@@ -34,6 +35,11 @@ variables {
 run "complete_rollout" {
   command = apply
   module { source = "./modules/brainstore-deployment" }
+
+  assert {
+    condition     = endswith(data.http.artifact.url, "/lambda/BrainstoreDeployment/version-test-api-version")
+    error_message = "The deployment helper must use the supplied API Lambda release tag."
+  }
 
   assert {
     condition     = jsondecode(aws_lambda_invocation.first.input).deployment.fleets == jsondecode(aws_lambda_invocation.final.input).deployment.fleets

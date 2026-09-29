@@ -309,7 +309,7 @@ module "services" {
   brainstore_deployment_id = module.brainstore_deployment[0].completion_id
 
   deployment_name             = var.deployment_name
-  lambda_version_tag_override = var.lambda_version_tag_override
+  lambda_version_tag_override = local.lambda_version_tag
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry

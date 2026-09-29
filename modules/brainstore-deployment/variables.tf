@@ -2,6 +2,11 @@ variable "deployment_name" {
   type = string
 }
 
+variable "lambda_version_tag" {
+  description = "The release tag shared with the API Lambdas."
+  type        = string
+}
+
 variable "fleets" {
   type = list(object({
     role                    = string
