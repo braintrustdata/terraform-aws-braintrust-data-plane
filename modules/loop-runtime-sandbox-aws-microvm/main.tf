@@ -582,11 +582,12 @@ resource "aws_vpc_security_group_egress_rule" "egress_gateway_nlb_to_runtime" {
 }
 
 resource "aws_lb" "egress_gateway" {
-  name               = "${var.deployment_name}-loop-egress"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.endpoint_subnet_ids
-  security_groups    = [aws_security_group.egress_gateway_nlb.id]
+  name                             = "${var.deployment_name}-loop-egress"
+  internal                         = true
+  load_balancer_type               = "network"
+  subnets                          = var.endpoint_subnet_ids
+  security_groups                  = [aws_security_group.egress_gateway_nlb.id]
+  enable_cross_zone_load_balancing = true
 
   # PrivateLink traffic is limited by the endpoint service principals and the
   # sandbox endpoint security group. The sandbox subnets vary with

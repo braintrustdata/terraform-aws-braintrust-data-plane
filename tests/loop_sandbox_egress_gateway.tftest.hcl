@@ -80,6 +80,7 @@ run "egress_gateway_in_managed_vpc" {
     condition = (
       aws_lb.egress_gateway.load_balancer_type == "network"
       && aws_lb.egress_gateway.internal
+      && aws_lb.egress_gateway.enable_cross_zone_load_balancing
       && aws_lb.egress_gateway.enforce_security_group_inbound_rules_on_private_link_traffic == "off"
       && toset(aws_lb.egress_gateway.subnets) == toset(var.endpoint_subnet_ids)
       && aws_lb.egress_gateway.security_groups == toset([aws_security_group.egress_gateway_nlb.id])
