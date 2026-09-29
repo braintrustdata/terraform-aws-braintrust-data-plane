@@ -162,3 +162,16 @@ run "rejects_capacity_metric_override" {
   }
   expect_failures = [var.extra_env_vars]
 }
+
+run "rejects_drain_timeout_override" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-ecs"
+  }
+  variables {
+    extra_env_vars = {
+      LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS = "300"
+    }
+  }
+  expect_failures = [var.extra_env_vars]
+}

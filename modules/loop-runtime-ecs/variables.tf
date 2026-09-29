@@ -335,9 +335,10 @@ variable "extra_env_vars" {
         "LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE",
         "LOOP_RUNTIME_CAPACITY_METRIC_CLUSTER_NAME",
         "LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME",
+        "LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS",
       ] : !contains(keys(var.extra_env_vars), key)
     ])
-    error_message = "LOOP_RUNTIME_CAPACITY_METRIC_* variables are managed by the module and cannot be set in extra_env_vars."
+    error_message = "Do not set LOOP_RUNTIME_CAPACITY_METRIC_* or LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS in extra_env_vars; use the dedicated inputs."
   }
 }
 
