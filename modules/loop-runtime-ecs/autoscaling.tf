@@ -42,9 +42,7 @@ resource "aws_appautoscaling_policy" "loop_runtime_memory_target" {
   }
 }
 
-# The runtime publishes claimed thread utilization every 15 seconds. CPU and
-# memory stay low while tasks wait on model calls, so this policy adds tasks
-# before new conversations queue.
+# Runtime emits this every 15 seconds; CPU and memory stay low during model calls.
 resource "aws_appautoscaling_policy" "loop_runtime_conversation_target" {
   name               = "${var.deployment_name}-loop-runtime-conversation-target"
   policy_type        = "TargetTrackingScaling"

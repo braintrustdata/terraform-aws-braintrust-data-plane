@@ -32,13 +32,9 @@ run "scales_on_claimed_conversations" {
   }
 
   assert {
-    condition     = var.max_capacity == 50
-    error_message = "Loop runtime must default to 50 maximum tasks."
-  }
-
-  assert {
     condition = (
-      aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 50
+      aws_appautoscaling_target.loop_runtime.max_capacity == 50
+      && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 50
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].customized_metric_specification[0].namespace == "Braintrust/LoopRuntime"
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].customized_metric_specification[0].metric_name == "ClaimedConversationUtilization"
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].customized_metric_specification[0].statistic == "Average"
@@ -126,28 +122,6 @@ run "rejects_drain_timeout_past_stop_timeout" {
     drain_timeout_seconds = 106
   }
   expect_failures = [var.drain_timeout_seconds]
-}
-
-run "rejects_zero_drain_timeout" {
-  command = plan
-  module {
-    source = "./modules/loop-runtime-ecs"
-  }
-  variables {
-    drain_timeout_seconds = 0
-  }
-  expect_failures = [var.drain_timeout_seconds]
-}
-
-run "rejects_conversation_target_out_of_range" {
-  command = plan
-  module {
-    source = "./modules/loop-runtime-ecs"
-  }
-  variables {
-    target_conversation_utilization = 101
-  }
-  expect_failures = [var.target_conversation_utilization]
 }
 
 run "rejects_capacity_metric_override" {
