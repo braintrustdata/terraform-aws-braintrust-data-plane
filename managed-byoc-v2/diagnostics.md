@@ -86,6 +86,10 @@ capture process; transcripts are not a complete record of every system action.
 See the [monitoring guide](guardrails/cloudtrail-alerting.md).
 The [logging diagram](README.md#logging-and-operation-records) shows the separate
 evidence paths and their customer-owned destinations.
+Local collection is the default. For stronger separation, the customer can
+replicate transcripts to its audit archive account, with replication and
+retention controlled by its security team and no Braintrust management access
+to that archive.
 
 ## Customer revocation
 

@@ -49,7 +49,7 @@ flowchart LR
         S[Support role]
         R[Observer role]
         G[Diagnostics role]
-        C[(Diagnostic transcripts)]
+        C[CloudWatch diagnostic log group]
         T[(Terraform state)]
         L[(Operation records)]
         I[Data plane infrastructure]
@@ -234,6 +234,8 @@ records AWS API activity, CloudWatch stores diagnostic session commands and
 output, and operation records explain the deployment or access workflow.
 Operation records include deployment outcomes and, for Diagnostics, the
 authorizing actor, reason, scope, expiry, extensions, and cleanup result.
+Both session paths write to the protected log group
+`/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics` in the BYOC account.
 
 ```mermaid
 flowchart TB
@@ -245,26 +247,40 @@ flowchart TB
     subgraph CUSTOMER[Customer AWS environment]
         subgraph BYOC[BYOC account]
             API["AWS APIs<br/>Role assumptions, IAM changes,<br/>infrastructure inspection and updates"]
-            SESSION["Diagnostic sessions<br/>SSM shell and ECS Exec"]
-            CW[("CloudWatch diagnostic transcripts")]
+            SSM["SSM shell on EC2<br/>Logged session document"]
+            ECS["ECS Exec in containers<br/>Cluster logging: OVERRIDE"]
+            CW["Protected CloudWatch log group<br/>Diagnostic transcripts"]
             OPS[("S3 operation records")]
         end
         subgraph ARCHIVE[Customer audit archive account]
             CT[("Organization CloudTrail<br/>API event archive")]
+            COPY["CloudWatch log group<br/>Copied diagnostic transcripts"]
         end
     end
 
     DEP -->|deployment and activation APIs| API
     ENG -->|attributed role sessions| API
-    API -->|Diagnostics session APIs| SESSION
+    API -->|StartSession| SSM
+    API -->|ExecuteCommand| ECS
     API -.->|CloudTrail API events, not shell contents| CT
-    SESSION -->|commands and output| CW
+    SSM -->|commands and output| CW
+    ECS -->|commands and output| CW
+    CW -.->|optional customer-managed replication| COPY
     DEP -->|workflow summaries| OPS
 ```
 
 The customer manages organization CloudTrail and its archive. Bootstrap and
 module configuration must provide the diagnostic transcript destination and
 delivery permissions; these are not created by the policy files alone.
+
+For stronger evidence separation, customers can copy diagnostic transcripts to
+their audit archive account using
+[CloudWatch Logs centralization](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html)
+within their AWS Organization. The customer security team controls replication
+and archive retention, with no Braintrust management access to the archive.
+Local collection remains the default; the additional archive is a recommended
+customer control. Replication preserves delivered evidence but cannot prevent
+disruption of capture on the host.
 
 The guardrails protect the named audit resources and diagnostic logging settings;
 ordinary application logging remains deployment-managed. Operation records need
@@ -375,6 +391,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-09-30 | Distinguished SSM and ECS Exec transcript sources and labeled CloudWatch log groups explicitly. Added optional customer-managed replication to a separate audit archive account. No permissions changed. | Review local collection as the default and separate archival as a recommended customer control. |
 | 2026-09-30 | Added a logging diagram distinguishing CloudTrail API events, diagnostic transcripts, and operation records. Clarified storage ownership and the limits of logging protections. No permissions changed in this update. | Review the evidence destinations, configuration responsibilities, and distinction between protected audit resources and ordinary application logs. |
 | 2026-09-29 | Corrected internal runtime role assumptions; closed log-derived content paths and routine human role chaining; allowed bootstrap IAM inspection without weakening mutation controls. Standardized naming, added S3 ABAC and EKS access-entry tagging permissions, and strengthened rendered-policy checks. | Review the internal invocation exceptions, mandatory IAM paths and naming limits, regional scope, and unchanged separation between routine and activated Diagnostics access. |
 | 2026-09-29 | Added temporary Diagnostics access, exact activation permissions, and dedicated session logging safeguards. Added scoped EKS management and discovery permissions plus future Kubernetes role profiles. | Review data-capable troubleshooting, activation and logging controls, and the distinction between proposed Kubernetes permissions and an implemented access path. |
