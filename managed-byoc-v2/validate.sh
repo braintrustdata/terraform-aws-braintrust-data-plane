@@ -263,6 +263,10 @@ if [[ "$package_dir" == "$source_dir" ]]; then
   echo 'Multi-data-plane naming and retained-key scope checks passed.'
 
   runtime="$temporary_dir/runtime-permissions-boundary.json"
+  jq -e '.Statement[] | select(.Sid == "DenyWorkloadInitiatedInteractiveAccess") |
+    .Effect == "Deny" and .Resource == "*" and
+    (.Action | sort) == (["ssm:StartSession", "ssm:SendCommand",
+      "ecs:ExecuteCommand", "ec2-instance-connect:*"] | sort)' "$runtime" >/dev/null
   jq -e '.Statement[] | select(.Sid == "DenyOtherRuntimeRoleAssumptions") |
     .Effect == "Deny" and .Action == "sts:AssumeRole" and
     (.NotResource | sort) == ([
@@ -352,17 +356,55 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     echo 'EKS preparation must not create standing Diagnostics authorization.' >&2
     exit 1
   fi
-  for sid in ProtectDiagnosticSessionDocument ProtectDiagnosticTranscripts ProtectEcsExecConfiguration; do
+  for sid in ProtectDiagnosticSessionDocument ProtectDiagnosticTranscripts; do
     jq -e --arg sid "$sid" '.Statement[] | select(.Sid == $sid) |
       .Effect == "Deny" and (.Condition.ArnLike."aws:PrincipalArn" | length) == 2' \
       "$diagnostic_guardrail" >/dev/null
   done
+  jq -e '.Statement[] | select(.Sid == "RestrictEcsClusterUpdates") |
+    .Effect == "Deny" and .Action == "ecs:UpdateCluster" and
+    .Resource == "arn:aws:ecs:us-east-1:111122223333:cluster/bt-a-*" and
+    (.Condition.ArnLike."aws:PrincipalArn" | sort) == ([
+      "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustSupportRole-review",
+      "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustObserverRole-review",
+      "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDiagnosticsRole-review",
+      "arn:aws:iam::111122223333:role/bt-a-*"] | sort)' "$diagnostic_guardrail" >/dev/null
+  jq -e '.Statement[] | select(.Sid == "ManageDataPlaneServices") |
+    .Effect == "Allow" and (.Action | index("ecs:*") != null)' "$infrastructure" >/dev/null
+  jq -e '.Statement[] | select(.Sid == "DenyManagementTranscriptWrites") |
+    .Effect == "Deny" and
+    (.Action | sort) == (["logs:CreateLogStream", "logs:PutLogEvents"] | sort) and
+    .Resource == "arn:aws:logs:us-east-1:111122223333:log-group:/braintrust-byoc/review/diagnostics:*" and
+    .Condition == {"ArnLike": {"aws:PrincipalArn":
+      "arn:aws:iam::111122223333:role/braintrust-byoc/Braintrust*Role-review"}}' \
+    "$diagnostic_guardrail" >/dev/null
+  pattern="$(jq -r '.Statement[] | select(.Sid == "DenyManagementTranscriptWrites") |
+    .Condition.ArnLike."aws:PrincipalArn"' "$diagnostic_guardrail")"
+  for role_type in Deployment Support Observer Diagnostics; do
+    if [[ "arn:aws:iam::111122223333:role/braintrust-byoc/Braintrust${role_type}Role-review" != $pattern ]]; then
+      echo 'Transcript write denial must cover every management role.' >&2
+      exit 1
+    fi
+  done
+  # Instance/task roles must remain able to deliver transcripts.
+  for writer in bt-a-one-BrainstoreRole bt-a-two-APIHandlerRole; do
+    if [[ "arn:aws:iam::111122223333:role/${writer}" == $pattern ]]; then
+      echo 'Transcript write denial must not match runtime delivery roles.' >&2
+      exit 1
+    fi
+  done
+  pattern="$(jq -er '.Statement[] | select(.Sid == "ReadManagedApplicationLogs") |
+    .Resource[] | select(contains("/microvms/"))' "$diagnostics")"
+  assert_scope "$pattern" \
+    'arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/microvms/bt-loop-bt-a-one:*' \
+    'arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/microvms/bt-loop-bt-a-two:*' \
+    'arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/microvms/bt-loop-bt-b-one:*'
   for file in "$temporary_dir/observer-policy.json" "$retained"; do
     jq -e '[.Statement[] | select(.Effect == "Deny") | .Action | if type == "array" then .[] else . end] |
       index("ssm:StartSession") != null and index("ecs:ExecuteCommand") != null and
       index("logs:GetLogEvents") != null and index("sts:AssumeRole") != null' "$file" >/dev/null
   done
-  echo 'Diagnostics activation, logging guards, and EKS preparation checks passed (static checks only).'
+  echo 'Diagnostics activation, transcript-writer separation, workload access denials, Loop logs, and EKS preparation checks passed (static checks only).'
 fi
 
 if [[ "${VALIDATE_WITH_AWS:-0}" != "1" ]]; then

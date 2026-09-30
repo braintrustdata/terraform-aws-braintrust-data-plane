@@ -3,7 +3,7 @@
 The three SCPs are reference implementations for the dedicated AWS account.
 Customers can use equivalent existing organization controls if those controls
 provide the same effective safeguards. Validate the combined controls before
-production use; the JSON need not be copied byte-for-byte.
+production use; the JSON need not be copied exactly.
 
 `customer-service-control-policy.json` protects the access model. Its
 main controls are:
@@ -27,15 +27,15 @@ main controls are:
 resources preserved by the default `retain-data` workflow and independently
 reinforces restrictions on routine Support and Observer data and shell access:
 
-- module-named Brainstore buckets and objects across data planes;
-- all KMS keys in the configured account and Region against deployment-role disablement or
-  scheduled deletion, plus module-named aliases;
+- Brainstore buckets named by the module and their objects across data planes;
+- all KMS keys in the configured account and Region against disablement or
+  scheduled deletion by Deployment, plus aliases named by the module;
 - matching final RDS snapshots;
 - the operation records bucket and objects owned by the customer;
 - bootstrap storage and key configuration and state deletion (except lock files);
 - direct object, secret, database record, queue, and application log reads by
-  Support and Observer, including log-derived samples and reports;
-- deployment access to log-derived samples and reports; and
+  Support and Observer, including samples and reports derived from logs;
+- deployment access to samples and reports derived from logs; and
 - interactive SSM, ECS Exec, and EC2 Instance Connect access by those two roles,
   outbound role assumption, and access through the EKS console viewer.
   Kubernetes RBAC is separate.
@@ -45,23 +45,29 @@ safeguards:
 
 - protect the logged SSM shell document and diagnostic transcript configuration
   from both Braintrust management and matching runtime roles;
-- protect existing ECS Exec configuration by denying `ecs:UpdateCluster`;
+- deny management roles direct transcript stream creation and event writes,
+  while preserving delivery by instance and task roles;
+- deny `ecs:UpdateCluster` to Support, Observer, Diagnostics, and matching runtime
+  roles, while preserving Deployment's cluster management;
 - retain Diagnostics restrictions on identity administration, direct state and
   data APIs, alternative SSM documents, generic Run Command, and EC2 Instance Connect.
 
-We use logged Session Manager shells and ECS Exec, not SSH or port-forwarding
+We use logged Session Manager shells and ECS Exec, not SSH or port forwarding
 sessions. The diagnostic policy's positive grants further constrain the targets.
-Protecting logging configuration does not prove a privileged shell cannot affect
-capture on the host; see the [Diagnostics guide](../diagnostics.md).
+Deployment can change ECS Exec logging, so activation checks and monitoring are
+required. Protected destinations also do not prevent a privileged shell from
+affecting capture; see the [Diagnostics guide](../diagnostics.md).
 
 Three documents separate identity, retained data, and diagnostic safeguards
 while remaining within AWS policy size limits. All three apply to the baseline.
-Runtime access can still modify data through the application: retained-data
-denials for human AWS principals do not make a privileged shell read-only.
+Runtime access can still modify data through the application: restrictions
+protecting retained data from human AWS principals do not make a privileged
+shell read-only.
 
 Use the [shared placeholder definitions and mandatory IAM paths](../policies/README.md),
-including its optional-key and S3 Bucket Key instructions. A role outside the
-protected `/braintrust-byoc/` path will not match the management-role selectors.
+including its instructions for optional keys and S3 Bucket Keys. A role outside
+the protected `/braintrust-byoc/` path will not match the selectors for
+management roles.
 The examples target one configured Region in the `aws`
 partition. Deploy SCPs as minified JSON: AWS CLI/API submissions count
 whitespace against the [SCP size limit](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html).
@@ -88,5 +94,5 @@ Runtime role assumption is limited to the API handler's internal quarantine and
 AI Proxy invocation paths. A feature such as Bedrock access
 or S3 export can use an external role or resource only with its documented
 destination and permissions, a matching workload policy, and the required
-destination-side controls. The [policy guide](../policies/README.md#external-feature-policy-notes)
+controls at the destination. The [policy guide](../policies/README.md#external-feature-policy-notes)
 explains the implementation limits.

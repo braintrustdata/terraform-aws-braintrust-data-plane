@@ -50,14 +50,30 @@
       }
     },
     {
-      "Sid": "ProtectEcsExecConfiguration",
+      "Sid": "DenyManagementTranscriptWrites",
+      "Effect": "Deny",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics:*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "RestrictEcsClusterUpdates",
       "Effect": "Deny",
       "Action": "ecs:UpdateCluster",
       "Resource": "arn:aws:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
       "Condition": {
         "ArnLike": {
           "aws:PrincipalArn": [
-            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>",
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustObserverRole-<BOOTSTRAP_NAME>",
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>",
             "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
           ]
         }

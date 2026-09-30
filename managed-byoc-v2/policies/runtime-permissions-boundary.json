@@ -76,6 +76,17 @@
       "Resource": "*"
     },
     {
+      "Sid": "DenyWorkloadInitiatedInteractiveAccess",
+      "Effect": "Deny",
+      "Action": [
+        "ssm:StartSession",
+        "ssm:SendCommand",
+        "ecs:ExecuteCommand",
+        "ec2-instance-connect:*"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "DenyBootstrapStorageAccess",
       "Effect": "Deny",
       "Action": "s3:*",

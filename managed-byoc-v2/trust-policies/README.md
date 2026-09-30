@@ -5,7 +5,7 @@ all target roles. These additional placeholders configure the trusted sources:
 
 | Placeholder | Meaning |
 | --- | --- |
-| `<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>` | Exact bootstrap-specific Braintrust execution role ARN |
+| `<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>` | Exact Braintrust execution role ARN dedicated to this bootstrap |
 | `<BRAINTRUST_HUMAN_PRINCIPAL_ARN>` | Exact designated Braintrust source role ARN, resolved separately for each human role |
 | `<UNIQUE_EXTERNAL_ID>` | Random External ID unique to the deployment trust relationship |
 
@@ -22,9 +22,9 @@ complete rendered policies.
 - Generate a unique, cryptographically random External ID for each customer
   deployment trust relationship. It is required only for the machine role.
 - Set the target roles' maximum session duration to one hour. AWS role chaining
-  already caps chained sessions at one hour. The two-hour Diagnostics activation
-  window is separate; an engineer may obtain fresh credentials while it remains
-  active.
+  already caps chained sessions at one hour. The Diagnostics activation window
+  lasts two hours and is separate; an engineer may obtain fresh credentials while
+  it remains active.
 - Human sessions must already carry a source identity from the trusted
   Braintrust identity provider or access broker. The human trust policy rejects
   an upstream session without it. Upstream controls must bind that value to the

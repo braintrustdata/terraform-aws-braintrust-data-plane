@@ -121,7 +121,8 @@
       "Resource": [
         "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust/<MANAGED_RESOURCE_PREFIX>*:*",
         "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/ecs/<MANAGED_RESOURCE_PREFIX>*:*",
-        "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/aws/lambda/<MANAGED_RESOURCE_PREFIX>*:*"
+        "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/aws/lambda/<MANAGED_RESOURCE_PREFIX>*:*",
+        "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/aws/lambda/microvms/bt-loop-<MANAGED_RESOURCE_PREFIX>*:*"
       ]
     },
     {
