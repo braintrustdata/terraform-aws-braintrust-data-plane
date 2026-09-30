@@ -293,56 +293,6 @@ resource "aws_security_group_rule" "task_egress_all" {
   security_group_id = aws_security_group.task.id
 }
 
-# Allow the Loop runtime tasks to reach Postgres, Redis, Brainstore, and the
-# private gateway ALB by adding ingress rules on those services' security groups.
-resource "aws_vpc_security_group_ingress_rule" "postgres_from_task" {
-  count = var.database_security_group_id == null ? 0 : 1
-
-  from_port                    = var.database_port
-  to_port                      = var.database_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from Loop runtime tasks."
-  security_group_id            = var.database_security_group_id
-  tags                         = local.common_tags
-}
-
-resource "aws_vpc_security_group_ingress_rule" "redis_from_task" {
-  count = var.redis_security_group_id == null ? 0 : 1
-
-  from_port                    = var.redis_port
-  to_port                      = var.redis_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from Loop runtime tasks."
-  security_group_id            = var.redis_security_group_id
-  tags                         = local.common_tags
-}
-
-resource "aws_vpc_security_group_ingress_rule" "brainstore_from_task" {
-  count = var.brainstore_security_group_id == null ? 0 : 1
-
-  from_port                    = var.brainstore_port
-  to_port                      = var.brainstore_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from Loop runtime tasks."
-  security_group_id            = var.brainstore_security_group_id
-  tags                         = local.common_tags
-}
-
-resource "aws_vpc_security_group_ingress_rule" "gateway_from_task" {
-  count = var.gateway_security_group_id == null ? 0 : 1
-
-  from_port                    = var.gateway_port
-  to_port                      = var.gateway_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from Loop runtime tasks."
-  security_group_id            = var.gateway_security_group_id
-  tags                         = local.common_tags
-}
-
 # --- Task execution role (pulls secrets at container start) ---
 resource "aws_iam_role" "task_execution" {
   name                 = "${var.deployment_name}-loop-runtime-task-exec"

@@ -97,3 +97,17 @@ resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_ingress_from_a
   security_group_id = aws_security_group.elasticache[0].id
   tags              = local.common_tags
 }
+
+# Baseline clients must not wait for the Loop task security group to exist.
+resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_ingress_from_loop_runtime_security_groups" {
+  for_each = length(var.custom_security_group_ids) == 0 ? var.loop_runtime_security_groups : {}
+
+  from_port                    = 6379
+  to_port                      = 6379
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow TCP/6379 (Redis) inbound to Elasticache from ${each.key}."
+
+  security_group_id = aws_security_group.elasticache[0].id
+  tags              = local.common_tags
+}

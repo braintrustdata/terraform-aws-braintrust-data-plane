@@ -15,6 +15,9 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 │   ├── gateway-ecs/         # LLM Gateway (ECS Fargate)
 │   ├── ingress/             # CloudFront + API Gateway
 │   ├── kms/                 # Encryption keys
+│   ├── loop-runtime-alb/    # Loop Runtime internal ALB
+│   ├── loop-runtime-ecs/    # Loop Runtime ECS service
+│   ├── loop-runtime-sandbox-aws-microvm/ # Loop sandbox MicroVM network and image
 │   ├── services/            # Lambda and ECS services
 │   ├── services-common/     # Shared IAM, SGs, secrets (API/Brainstore/quarantine)
 │   ├── storage/             # S3 buckets
@@ -36,6 +39,99 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 - **`deployment_name`** prefixes all resource names. Must be unique per deployment in the same AWS account (max 18 characters).
 
 ## Rules
+
+### Start new infrastructure from existing module conventions
+
+Before implementation, inspect the closest existing modules and root-module call sites.
+
+- Do not implement until you identify precedents for every public input, network path, and shared-resource integration.
+- List resource owners, security group directions, and managed or existing VPC paths before edits.
+- Find at least two analogous implementations before you design a new interface.
+- Match existing names, input shapes, defaults, module boundaries, tags, and resource ownership.
+- Reuse established maps such as `authorized_security_groups` instead of parallel one-off inputs.
+- Prefer explicit Terraform that a reviewer can follow over compact abstractions or generic indirection.
+- Keep related resources beside their existing peers.
+- Place new root module calls beside analogous calls. Use `main.tf` when that category already lives there.
+- Place public root inputs in `variables.tf`.
+- Do not create feature-specific root files solely for convenience when peers use a canonical location.
+- Document every convention deviation in the PR before review.
+- Treat an unexplained convention deviation as a review blocker.
+
+### Optimize Terraform for human review
+
+Readable Terraform and readable plans are product requirements.
+
+- Use names that describe the resource purpose and owner.
+- Keep data flow visible from root inputs through child modules.
+- Prefer small explicit maps and locals over dependency tokens or hidden control inputs.
+- Do not add inputs such as `service_dependency_ids` to force normal Terraform ordering.
+- Let value references create dependencies.
+- Use `depends_on` only for a real dependency that no value reference expresses.
+- Do not add optional flags for resources that the enabled topology requires.
+- Keep sensitive values in Secrets Manager and use native ECS secret injection.
+- Do not place secret values in plaintext container environment lists.
+- Keep task definition plans readable unless the provider itself hides the value.
+
+### Use current security group resource patterns
+
+- Create security groups with `aws_security_group`.
+- Create new rules with `aws_vpc_security_group_ingress_rule` or `aws_vpc_security_group_egress_rule`.
+- Do not add inline `ingress` or `egress` blocks to `aws_security_group`.
+- Create one Terraform resource for each logical security group rule.
+- Let the destination service module own its inbound rules.
+- Pass source security group IDs into the destination module through an authorization map.
+- Do not pass destination security group IDs into a source service module.
+- Match the destination module's existing rule names, descriptions, tags, and map keys.
+- Use security group references instead of CIDR rules for service-to-service access.
+- Preserve a legacy rule type when the provider cannot migrate its live state safely.
+- Do not mix rule types for style alone when that change requires replacement.
+
+### Prefer private service connectivity
+
+- Use private service connections for internal traffic whenever AWS supports them.
+- Prefer direct private load balancers, VPC endpoints, or PrivateLink for cross-VPC traffic.
+- Do not route internal traffic through public endpoints, CloudFront, or NAT without a service requirement.
+- Keep a public path only when the application or AWS service requires it.
+- Document the public-path requirement and its security controls.
+- Restrict private listeners and endpoints to the exact caller security groups and ports.
+
+### Support existing VPCs for every feature VPC
+
+If a feature creates a VPC, also support a caller-provided VPC.
+
+- Match the root module's existing VPC input convention.
+- Use numbered private subnet inputs when equivalent root inputs are numbered.
+- Do not introduce a subnet list for the same public concept.
+- Require the same subnet count that the managed VPC creates.
+- Verify that every supplied subnet belongs to the supplied VPC.
+- Reject missing, empty, or duplicate subnet IDs.
+- Keep managed-VPC and existing-VPC service behavior equivalent.
+- Do not change routes or DNS controls in a caller-provided VPC unless the interface explicitly requests that change.
+- Document which network controls remain the caller's responsibility.
+
+### Design live-state migration before resource structure
+
+- Determine whether a released module already owns each remote object.
+- Preserve existing resource addresses when ownership does not change.
+- Add `moved` blocks when a same-type resource changes address.
+- Verify provider support before any cross-type `moved` block.
+- Do not infer move support from a provider method or an unfinished state mover.
+- Test the exact source schema, target type, and provider version.
+- Do not replace live network rules only to use a newer Terraform resource type.
+- Do not require manual state commands or multiple applies for a normal module upgrade.
+- Test upgrades against representative live state before merge.
+
+### Require design evidence before merge
+
+- Compare each new module interface with its closest existing interface.
+- Review both managed-resource and caller-provided-resource paths.
+- Review every enabled and disabled flag path.
+- Review the inverse of each `count` and `for_each` condition.
+- Inspect a representative Terraform plan for readable resource changes.
+- Verify that the plan does not replace unrelated resources.
+- Add focused tests for ownership, network access, validation, and existing VPC behavior.
+- Run `mise run lint` and `mise run validate` before merge.
+- Do not merge until upgrade behavior and state moves are clear.
 
 ### Do not name customers in public text
 

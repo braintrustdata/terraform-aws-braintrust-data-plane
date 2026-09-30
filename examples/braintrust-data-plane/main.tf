@@ -32,7 +32,7 @@ module "braintrust-data-plane" {
 
   # The optional Loop runtime is disabled by default.
   enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "internet"
+  loop_runtime_sandbox_egress_mode = "restricted"
 
   ### Postgres configuration
   # Optional connection override. Omit either field to keep using the

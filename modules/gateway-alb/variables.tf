@@ -35,6 +35,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop runtime security groups authorized to reach the gateway ALB on port 80. Kept separate to preserve existing rule state."
+  default     = {}
+}
+
 variable "enable_cloudfront_vpc_origin_ingress" {
   type        = bool
   description = "Allow inbound HTTP to the gateway ALB from the CloudFront VPC origin managed prefix list."

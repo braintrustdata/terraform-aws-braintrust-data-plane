@@ -33,7 +33,7 @@ module "braintrust-data-plane" {
 
   # The optional Loop runtime is disabled by default.
   enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "internet"
+  loop_runtime_sandbox_egress_mode = "restricted"
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
