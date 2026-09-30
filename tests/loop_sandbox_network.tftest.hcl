@@ -50,6 +50,16 @@ run "managed_isolation_by_default" {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
 
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[0]
+    values = { availability_zone = "us-east-1d" }
+  }
+
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[1]
+    values = { availability_zone = "us-east-1e" }
+  }
+
   assert {
     condition     = aws_vpc_endpoint.loop_runtime_microvm.private_dns_enabled && aws_vpc_endpoint.loop_runtime_microvm.service_name == "com.amazonaws.us-east-1.lambda-microvm" && aws_vpc_endpoint.loop_runtime_microvm.vpc_id == var.endpoint_vpc_id
     error_message = "The MicroVM endpoint must use private DNS in the main VPC."
@@ -65,6 +75,10 @@ run "managed_isolation_by_default" {
   assert {
     condition     = length(aws_vpc.restricted_egress) == 1 && length(aws_subnet.restricted_egress) == 3
     error_message = "Restricted mode must create a dedicated VPC and three subnets by default."
+  }
+  assert {
+    condition     = aws_subnet.restricted_egress[*].availability_zone == ["us-east-1d", "us-east-1e", "us-east-1d"]
+    error_message = "Managed sandbox subnets must use the main VPC's endpoint zones."
   }
   assert {
     condition     = length(aws_route53_resolver_firewall_rule_group_association.restricted_egress) == 1 && aws_route53_resolver_firewall_rule.restricted_egress[0].action == "BLOCK" && aws_route53_resolver_firewall_domain_list.restricted_egress[0].domains == toset(["*."])

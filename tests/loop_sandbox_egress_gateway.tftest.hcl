@@ -6,7 +6,7 @@ mock_provider "aws" {
     defaults = { partition = "aws" }
   }
   mock_data "aws_subnet" {
-    defaults = { vpc_id = "vpc-0123456789abcdef0" }
+    defaults = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
   mock_resource "aws_cloudformation_stack" {
     defaults = {
@@ -233,6 +233,12 @@ run "rejects_unsupported_endpoint_zones" {
   command = plan
   module {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
 
   override_data {

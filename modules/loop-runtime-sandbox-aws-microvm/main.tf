@@ -172,11 +172,6 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
   }
 }
 
-data "aws_availability_zones" "available" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
-  state = "available"
-}
-
 resource "aws_vpc" "restricted_egress" {
   count = local.create_restricted_egress_vpc ? 1 : 0
 
@@ -202,7 +197,7 @@ resource "aws_route_table" "restricted_egress" {
 resource "aws_subnet" "restricted_egress" {
   count = local.create_restricted_egress_vpc ? 3 : 0
 
-  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
+  availability_zone       = element(local.egress_gateway_nlb_azs, count.index)
   cidr_block              = "10.255.${count.index + 1}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
