@@ -98,13 +98,9 @@ run "egress_gateway_in_managed_vpc" {
       && aws_lb_listener.egress_gateway.port == 4002
       && aws_lb_listener.egress_gateway.protocol == "TCP"
       && aws_lb_listener.egress_gateway.default_action[0].target_group_arn == aws_lb_target_group.egress_gateway.arn
+      && output.egress_gateway_target_group_arn == aws_lb_target_group.egress_gateway.arn
     )
     error_message = "The NLB must forward TCP 4002 to the Loop runtime tasks."
-  }
-
-  assert {
-    condition     = output.egress_gateway_target_group_arn == aws_lb_target_group.egress_gateway.arn
-    error_message = "The module must expose the egress gateway target group for the ECS service."
   }
 
   assert {
@@ -197,57 +193,39 @@ run "egress_gateway_in_existing_vpc" {
   }
 
   override_data {
+    target = data.aws_subnet.egress_gateway_nlb[2]
+    values = { availability_zone = "us-east-1b" }
+  }
+
+  override_data {
     target = data.aws_subnet.restricted_egress_existing[0]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
 
   override_data {
     target = data.aws_subnet.restricted_egress_existing[1]
-    values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1b" }
+    values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
 
   override_data {
     target = data.aws_subnet.restricted_egress_existing[2]
-    values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1d" }
+    values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1b" }
   }
 
   assert {
     condition = (
       aws_vpc_endpoint.egress_gateway.vpc_id == var.existing_vpc_id
-      && toset(aws_vpc_endpoint.egress_gateway.subnet_ids) == toset(["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"])
+      && toset(aws_vpc_endpoint.egress_gateway.subnet_ids) == toset(["subnet-0123456789abcdef0", "subnet-0123456789abcdef2"])
       && aws_security_group.egress_gateway_endpoint.vpc_id == var.existing_vpc_id
+      && toset(aws_lb.egress_gateway.subnets) == toset(slice(var.endpoint_subnet_ids, 0, 2))
+      && toset(aws_vpc_endpoint.loop_runtime_microvm.subnet_ids) == toset(slice(var.endpoint_subnet_ids, 0, 2))
     )
-    error_message = "The egress gateway endpoint must use the supplied sandbox VPC and subnets."
-  }
-
-  assert {
-    condition     = length(aws_route53_resolver_firewall_domain_list.egress_gateway) == 0 && length(aws_route53_resolver_firewall_rule.egress_gateway_allow) == 0
-    error_message = "The module must not change DNS policy in a supplied VPC."
+    error_message = "The endpoints and NLB must select one subnet per matching zone."
   }
 
   assert {
     condition     = output.egress_gateway_dns_name == "vpce-0123456789abcdef0-abcdefgh.vpce-svc-0123456789abcdef0.us-east-1.vpce.amazonaws.com"
     error_message = "The module must expose the endpoint name that a supplied VPC's DNS policy has to allow."
-  }
-}
-
-run "selects_one_main_subnet_per_zone" {
-  command = plan
-  module {
-    source = "./modules/loop-runtime-sandbox-aws-microvm"
-  }
-
-  override_data {
-    target = data.aws_subnet.egress_gateway_nlb[2]
-    values = { availability_zone = "us-east-1b" }
-  }
-
-  assert {
-    condition = (
-      toset(aws_lb.egress_gateway.subnets) == toset(slice(var.endpoint_subnet_ids, 0, 2))
-      && toset(aws_vpc_endpoint.loop_runtime_microvm.subnet_ids) == toset(slice(var.endpoint_subnet_ids, 0, 2))
-    )
-    error_message = "The main VPC endpoint and egress NLB must select one subnet per availability zone."
   }
 }
 

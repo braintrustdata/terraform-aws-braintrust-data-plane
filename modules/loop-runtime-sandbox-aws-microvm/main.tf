@@ -37,8 +37,8 @@ locals {
     for az in distinct(local.egress_gateway_nlb_azs) : var.endpoint_subnet_ids[index(local.egress_gateway_nlb_azs, az)]
   ]
   egress_gateway_subnet_ids = [
-    for index, subnet_id in local.restricted_egress_subnet_ids : subnet_id
-    if contains(local.egress_gateway_nlb_azs, local.sandbox_subnet_azs[index])
+    for az in distinct(local.sandbox_subnet_azs) : local.restricted_egress_subnet_ids[index(local.sandbox_subnet_azs, az)]
+    if contains(local.egress_gateway_nlb_azs, az)
   ]
   egress_connector_arns = [
     aws_cloudformation_stack.restricted_egress_connector.outputs["NetworkConnectorArn"]
@@ -686,13 +686,6 @@ resource "aws_vpc_endpoint" "egress_gateway" {
     precondition {
       condition     = length(local.egress_gateway_subnet_ids) > 0
       error_message = "The sandbox VPC needs a subnet in an availability zone served by the egress gateway NLB."
-    }
-
-    precondition {
-      condition = length(distinct([
-        for az in local.sandbox_subnet_azs : az if contains(local.egress_gateway_nlb_azs, az)
-      ])) == length(local.egress_gateway_subnet_ids)
-      error_message = "The sandbox egress gateway endpoint subnets must be in distinct availability zones."
     }
   }
 

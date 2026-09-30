@@ -3,14 +3,13 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  container_name = "loop-runtime"
-  container_port = 4001
-  # Sandbox egress proxy port, served to sandboxes through the egress gateway NLB.
-  sandbox_egress_gateway_port = 4002
-  observability_enabled       = var.internal_observability_enabled
-  loop_runtime_version_tag    = element(reverse(split(":", var.container_image)), 0)
-  brainstore_s3_bucket        = var.brainstore_s3_bucket_name
-  use_object_store_locks      = var.brainstore_object_store_locks
+  container_name           = "loop-runtime"
+  container_port           = 4001
+  egress_gateway_port      = 4002
+  observability_enabled    = var.internal_observability_enabled
+  loop_runtime_version_tag = element(reverse(split(":", var.container_image)), 0)
+  brainstore_s3_bucket     = var.brainstore_s3_bucket_name
+  use_object_store_locks   = var.brainstore_object_store_locks
 
   # Normalize like modules/brainstore-ec2 so Loop uses the deployment's shared
   # lock prefix (the writers must acquire locks from the same S3 namespace).
@@ -138,8 +137,8 @@ locals {
         protocol      = "tcp"
       },
       {
-        containerPort = local.sandbox_egress_gateway_port
-        hostPort      = local.sandbox_egress_gateway_port
+        containerPort = local.egress_gateway_port
+        hostPort      = local.egress_gateway_port
         protocol      = "tcp"
       },
     ]
@@ -295,8 +294,8 @@ resource "aws_vpc_security_group_ingress_rule" "task_from_sandbox_egress_gateway
 
   security_group_id            = aws_security_group.task.id
   referenced_security_group_id = each.value
-  from_port                    = local.sandbox_egress_gateway_port
-  to_port                      = local.sandbox_egress_gateway_port
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
   ip_protocol                  = "tcp"
   description                  = "Allow sandbox egress traffic from ${each.key}."
   tags                         = local.common_tags
@@ -605,7 +604,7 @@ resource "aws_ecs_service" "loop_runtime" {
   load_balancer {
     target_group_arn = var.sandbox_egress_gateway_target_group_arn
     container_name   = local.container_name
-    container_port   = local.sandbox_egress_gateway_port
+    container_port   = local.egress_gateway_port
   }
 
   depends_on = [terraform_data.loop_runtime_http_listener]
