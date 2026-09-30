@@ -335,38 +335,20 @@ moved {
 # security groups. These moves preserve the existing AWS rules during upgrade.
 moved {
   from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.postgres_from_task[0]
-  to   = module.database.aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_authorized_security_groups["Loop Runtime"]
+  to   = module.database.aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
 }
 
 moved {
   from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.redis_from_task[0]
-  to   = module.redis.aws_vpc_security_group_ingress_rule.elasticache_allow_ingress_from_authorized_security_groups["Loop Runtime"]
+  to   = module.redis.aws_vpc_security_group_ingress_rule.elasticache_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
 }
 
 moved {
   from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.brainstore_from_task[0]
-  to   = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups["Loop Runtime"]
+  to   = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
 }
 
 moved {
   from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.gateway_from_task[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_ingress_from_loop_runtime_security_groups["Loop Runtime"]
-}
-
-# Keep these as chained moves so both the original Loop-owned rule addresses
-# above and the shared-map addresses used during development upgrade in place.
-# Loop rules now have independent dependencies from baseline service ingress.
-moved {
-  from = module.database.aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_authorized_security_groups["Loop Runtime"]
-  to   = module.database.aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
-}
-
-moved {
-  from = module.redis.aws_vpc_security_group_ingress_rule.elasticache_allow_ingress_from_authorized_security_groups["Loop Runtime"]
-  to   = module.redis.aws_vpc_security_group_ingress_rule.elasticache_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
-}
-
-moved {
-  from = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups["Loop Runtime"]
-  to   = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
 }

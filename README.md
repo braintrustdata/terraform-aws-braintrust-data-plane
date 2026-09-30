@@ -78,9 +78,9 @@ migration Lambda's own database access until after migration succeeds.
 The database connection address waits for baseline ingress, but not Loop
 ingress. This changes creation order without broadening network permissions.
 
-Chained state moves preserve existing Loop rules from both their original
-Loop-module addresses and the shared-map addresses. Downgrading after these
-moves is not safe without a reviewed state migration: older versions can
+State moves preserve existing Loop rules from their original Loop-module
+addresses. Downgrading after these moves is not safe without a reviewed state
+migration: older versions can
 destroy/recreate the rules. These address changes require a major release and
 the corresponding migration guide before publication.
 
