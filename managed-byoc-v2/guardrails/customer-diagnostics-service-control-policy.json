@@ -1,0 +1,110 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ProtectDiagnosticSessionDocument",
+      "Effect": "Deny",
+      "Action": [
+        "ssm:CreateDocument",
+        "ssm:DeleteDocument",
+        "ssm:UpdateDocument",
+        "ssm:UpdateDocumentDefaultVersion",
+        "ssm:UpdateDocumentMetadata",
+        "ssm:ModifyDocumentPermission"
+      ],
+      "Resource": "arn:aws:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:document/BraintrustDiagnosticsShell-<BOOTSTRAP_NAME>",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>",
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ProtectDiagnosticTranscripts",
+      "Effect": "Deny",
+      "Action": [
+        "logs:DeleteLogGroup",
+        "logs:DeleteLogStream",
+        "logs:DeleteRetentionPolicy",
+        "logs:PutRetentionPolicy",
+        "logs:AssociateKmsKey",
+        "logs:DisassociateKmsKey",
+        "logs:PutDataProtectionPolicy",
+        "logs:DeleteDataProtectionPolicy",
+        "logs:PutSubscriptionFilter"
+      ],
+      "Resource": [
+        "arn:aws:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics",
+        "arn:aws:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics:*"
+      ],
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>",
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ProtectEcsExecConfiguration",
+      "Effect": "Deny",
+      "Action": "ecs:UpdateCluster",
+      "Resource": "arn:aws:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>",
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyDiagnosticAdministrationAndBypass",
+      "Effect": "Deny",
+      "Action": [
+        "iam:*",
+        "sts:AssumeRole",
+        "ec2-instance-connect:*",
+        "ssm:SendCommand",
+        "s3:*",
+        "secretsmanager:GetSecretValue",
+        "ssm:GetParameter*",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "rds-data:*",
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:PartiQLSelect",
+        "sqs:ReceiveMessage",
+        "lambda:Invoke*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "<DIAGNOSTICS_ROLE_ARN>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyOtherDiagnosticSessionPaths",
+      "Effect": "Deny",
+      "Action": "ssm:StartSession",
+      "NotResource": [
+        "arn:aws:ec2:<AWS_REGION>:<AWS_ACCOUNT_ID>:instance/*",
+        "arn:aws:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:document/BraintrustDiagnosticsShell-<BOOTSTRAP_NAME>"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "<DIAGNOSTICS_ROLE_ARN>"
+        }
+      }
+    }
+  ]
+}

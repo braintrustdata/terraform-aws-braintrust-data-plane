@@ -113,10 +113,27 @@
       }
     },
     {
-      "Sid": "DenyRuntimeRoleAssumptionByDefault",
+      "Sid": "DenyOtherRuntimeRoleAssumptions",
       "Effect": "Deny",
       "Action": "sts:AssumeRole",
-      "Resource": "*"
+      "NotResource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-QuarantineInvokeRole",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-AIProxyInvokeRole"
+      ]
+    },
+    {
+      "Sid": "RestrictInternalInvokeCallers",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-QuarantineInvokeRole",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-AIProxyInvokeRole"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-APIHandlerRole"
+        }
+      }
     },
     {
       "Sid": "DenyBootstrapRoleAssumption",

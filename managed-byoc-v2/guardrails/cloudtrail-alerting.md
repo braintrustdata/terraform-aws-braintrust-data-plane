@@ -32,20 +32,24 @@ boundaries, and SCPs; they do not prevent an action that is otherwise authorized
 
 | Severity | Signal | Events or evaluation |
 | --- | --- | --- |
-| Critical | Bootstrap identity or guardrail change | `UpdateAssumeRolePolicy`, `AttachRolePolicy`, `DetachRolePolicy`, `PutRolePolicy`, `DeleteRolePolicy`, `PutRolePermissionsBoundary`, `DeleteRolePermissionsBoundary`, `CreatePolicyVersion`, `SetDefaultPolicyVersion`, or relevant Organizations policy changes targeting the BYOC roles, boundaries, or SCPs |
+| Critical | Bootstrap identity or guardrail change, excluding the recorded Diagnostics activation pair below | `UpdateAssumeRolePolicy`, `AttachRolePolicy`, `DetachRolePolicy`, `PutRolePolicy`, `DeleteRolePolicy`, `PutRolePermissionsBoundary`, `DeleteRolePermissionsBoundary`, `CreatePolicyVersion`, `SetDefaultPolicyVersion`, or relevant Organizations policy changes targeting the BYOC roles, boundaries, or SCPs |
 | Critical | Audit or security control tampering | `StopLogging`, `DeleteTrail`, `PutEventSelectors`, `UpdateTrail`, `StopConfigurationRecorder`, configuration recorder or delivery channel deletion, GuardDuty disable/delete/disassociation, Security Hub disable/disassociation, or Access Analyzer deletion |
 | Critical | Human access to protected content | A Support or Observer session calls S3 `GetObject*`, Secrets Manager `GetSecretValue`, KMS `Decrypt`, DynamoDB read APIs, SQS `ReceiveMessage`, RDS log download APIs, or Lambda invocation APIs, whether allowed or denied |
 | Critical | Retained data disposition | `DeleteBucket`, `DeleteObject*`, `PutBucketLifecycleConfiguration`, `ScheduleKeyDeletion`, `DisableKey`, `DeleteDBSnapshot`, snapshot sharing/export, or an unexpected `DeleteDBInstance` against a protected resource |
 | Critical | Application log export or routing | Deployment-role `CreateExportTask`, `PutSubscriptionFilter`, `CreateDelivery`, `PutDelivery*`, `PutDestination*`, or `PutAccountPolicy`, including denied attempts |
-| Critical | Interactive access | `StartSession`, `SendCommand`, `ExecuteCommand`, `SendSSHPublicKey`, `OpenTunnel`, or `AccessKubernetesApi` by a Braintrust principal |
+| Critical | Log-derived content access | Deployment, Support, or Observer attempts `PutInsightRule`, `PutManagedInsightRules`, `GetInsightRuleReport`, `CreateLogAnomalyDetector`, `ListAnomalies`, or `GetLookupTable`; collect supported events for these APIs |
+| Critical | Unexpected interactive access | `StartSession` or `ExecuteCommand` outside an active Diagnostics window, from another role, or against another bootstrap; any `SendCommand`, `SendSSHPublicKey`, or `OpenTunnel` by a Braintrust management role |
 | Critical | Public exposure | Security group ingress changes, S3 public access or bucket policy changes, an ECS update requesting public IP assignment, or an RDS update requesting public accessibility |
 | High | Unexpected Support activity | A Support mutation has an unexpected source identity, target data plane, or request parameters |
 | High | Unexpected deployment session | Deployment role assumption or mutation has an unexpected source principal or a missing or malformed operation source identity |
-| High | Unexpected external access | A Braintrust role assumes a destination role or accesses an external resource outside an enabled feature's documented access, whether allowed or denied; correlate expected runtime assumptions with destination-account activity |
+| High | Unexpected role assumption or external access | Any outbound `AssumeRole` by Deployment, Support, Observer, or Diagnostics; a runtime assumption outside its internal invocation paths or an enabled feature's exact destination; unexpected external resource access |
 | High | Sensitive authorization failure | `AccessDenied`, `UnauthorizedOperation`, or equivalent from a Braintrust principal for IAM, STS, S3 object, Secrets Manager, KMS, interactive access, retained data, or audit control APIs |
 | High | KMS ownership tag change | `TagResource` or `UntagResource` affecting `BraintrustDeploymentName`, other than the expected tag on key creation |
-| Audit | Human role assumption | Every successful and failed `AssumeRole` attempt for Support and Observer; notify according to the customer's operating model |
+| Audit | Human role assumption | Every successful and failed `AssumeRole` attempt for Support, Observer, and Diagnostics; notify according to the customer's operating model |
 | Audit | Support mutation | Every successful event in the Support mutation set below; preserve it in the customer audit archive |
+| Audit | Diagnostics activation and closure | Exact `AttachRolePolicy` / `DetachRolePolicy` pair, actor, reason, scope, expiry, and cleanup result from operation records; escalate unmatched or overdue activity |
+| Audit | Diagnostic session | `StartSession`, `ResumeSession`, `TerminateSession`, and `ExecuteCommand`; correlate named role session, target, activation, and CloudWatch transcript |
+| Critical | Diagnostic logging changes | Protected SSM document updates/deletion, transcript group deletion or retention/configuration changes, and ECS Exec configuration changes, including denied attempts |
 
 ## Support mutation set
 
@@ -73,6 +77,14 @@ parameters. Routine maintenance does not require an incident ID or fixed window.
 Event names alone are insufficient for APIs that accept both safe and unsafe
 changes. Inspect request parameters where available:
 
+- Diagnostics `AttachRolePolicy` / `DetachRolePolicy`: exact role and policy ARN,
+  deployment principal, operation source identity, authorization, and activation
+  expiry. Do not exclude all policy attachments from identity-change alerts.
+- `StartSession`: exact logged document, matching Brainstore target, and engineer
+  identity. `ExecuteCommand`: matching cluster, task, and container. Compare both
+  with the active bootstrap-wide window.
+- `TerminateSession`: expected diagnostic ownership and cleanup result. Alert
+  when sessions remain after closure, transcripts are missing, or cleanup fails.
 - `UpdateService`: task definition, network configuration, public IP,
   load balancer changes, and ECS Exec enablement.
 - `StopServiceDeployment`: target service/deployment, stop type, and the previous
@@ -97,8 +109,9 @@ changes. Inspect request parameters where available:
   service provisioning operation. A grant created by an AWS service is expected;
   arbitrary direct grant creation is not.
 - `AssumeRole` by a runtime identity: source workload role, exact destination
-  role ARN and account, enabled integration, and activity under the resulting
-  destination session.
+  role ARN and account, internal invocation path or enabled integration, and
+  activity under the resulting destination session. Internal quarantine and
+  AI Proxy invocation should originate from the API handler for that data plane.
 - Security control update APIs: disabling a GuardDuty detector, narrowing Config
   recording, disabling Security Hub controls, changing CloudTrail collection, or
   adding an Access Analyzer archive rule can weaken detection without deletion.
@@ -121,4 +134,8 @@ and [CloudTrail data events](https://docs.aws.amazon.com/awscloudtrail/latest/us
 Verify delivery using both allowed and denied test requests. CloudTrail coverage
 varies by service and rejection path; an alert rule is not evidence that every
 denied request will produce an event. CloudTrail is an API audit trail, not a
-record of commands inside a shell; interactive access is excluded by this model.
+record of commands inside a shell. The bootstrap/module must configure the
+customer-owned diagnostic CloudWatch log group and session logging; customers do
+not need to build that destination themselves. This model uses logged Session
+Manager shells and ECS Exec, not SSH or port-forwarding sessions. Kubernetes API
+auditing and session handling are separate future implementation work.

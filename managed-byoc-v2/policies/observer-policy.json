@@ -66,7 +66,6 @@
         "ecs:ListServiceDeployments",
         "ecs:ListServices",
         "ecs:ListTasks",
-        "eks:DescribeCluster",
         "eks:ListClusters",
         "elasticache:Describe*",
         "elasticfilesystem:Describe*",
@@ -135,6 +134,25 @@
       "Resource": "*"
     },
     {
+      "Sid": "ReadManagedEksMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeCluster",
+        "eks:DescribeNodegroup",
+        "eks:DescribeAddon",
+        "eks:DescribeUpdate",
+        "eks:ListNodegroups",
+        "eks:ListAddons",
+        "eks:ListUpdates",
+        "eks:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:nodegroup/<MANAGED_RESOURCE_PREFIX>*/*/*",
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:addon/<MANAGED_RESOURCE_PREFIX>*/*/*"
+      ]
+    },
+    {
       "Sid": "InspectModuleScheduleTargets",
       "Effect": "Allow",
       "Action": "events:ListTargetsByRule",
@@ -191,7 +209,14 @@
         "ssm:GetParameters",
         "ssm:GetParametersByPath",
         "ssm:SendCommand",
-        "ssm:StartSession"
+        "ssm:StartSession",
+        "sts:AssumeRole",
+        "cloudwatch:PutInsightRule",
+        "cloudwatch:PutManagedInsightRules",
+        "cloudwatch:GetInsightRuleReport",
+        "logs:CreateLogAnomalyDetector",
+        "logs:ListAnomalies",
+        "logs:GetLookupTable"
       ],
       "Resource": "*"
     }

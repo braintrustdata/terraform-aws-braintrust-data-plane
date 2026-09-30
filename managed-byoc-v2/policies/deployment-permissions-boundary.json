@@ -2,7 +2,7 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "AllowOnlyIdentityPolicyPermissions",
+      "Sid": "IdentityPolicyCeiling",
       "Effect": "Allow",
       "NotAction": [
         "iam:CreateServiceLinkedRole",
@@ -11,7 +11,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "AllowScopedPassRoleWithinBoundary",
+      "Sid": "PassRuntimeRoles",
       "Effect": "Allow",
       "Action": "iam:PassRole",
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
@@ -24,13 +24,14 @@
             "lambda.amazonaws.com",
             "monitoring.rds.amazonaws.com",
             "spot.amazonaws.com",
-            "vpc-flow-logs.amazonaws.com"
+            "vpc-flow-logs.amazonaws.com",
+            "eks.amazonaws.com"
           ]
         }
       }
     },
     {
-      "Sid": "AllowApprovedServiceLinkedRolesWithinBoundary",
+      "Sid": "CreateServiceLinkedRoles",
       "Effect": "Allow",
       "Action": "iam:CreateServiceLinkedRole",
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*",
@@ -44,13 +45,15 @@
             "elasticloadbalancing.amazonaws.com",
             "rds.amazonaws.com",
             "spot.amazonaws.com",
-            "vpcorigin.cloudfront.amazonaws.com"
+            "vpcorigin.cloudfront.amazonaws.com",
+            "eks.amazonaws.com",
+            "eks-nodegroup.amazonaws.com"
           ]
         }
       }
     },
     {
-      "Sid": "DenyOrgAccountAdmin",
+      "Sid": "DenySensitiveActions",
       "Effect": "Deny",
       "Action": [
         "account:CloseAccount",
@@ -63,14 +66,7 @@
         "payments:*",
         "sso:*",
         "sso-directory:*",
-        "tax:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyAuditTampering",
-      "Effect": "Deny",
-      "Action": [
+        "tax:*",
         "access-analyzer:ApplyArchiveRule",
         "access-analyzer:CreateArchiveRule",
         "access-analyzer:Delete*",
@@ -91,48 +87,18 @@
         "securityhub:Delete*",
         "securityhub:Disable*",
         "securityhub:Disassociate*",
-        "securityhub:Update*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyHumanIdentityAdmin",
-      "Effect": "Deny",
-      "Action": [
+        "securityhub:Update*",
         "iam:*AccessKey*",
         "iam:*AccountAlias",
         "iam:*AccountPasswordPolicy",
         "iam:*Group*",
         "iam:*LoginProfile*",
-        "iam:*User*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyBootstrapIAM",
-      "Effect": "Deny",
-      "Action": "iam:*",
-      "Resource": [
-        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/*",
-        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/*"
-      ]
-    },
-    {
-      "Sid": "DenyRuntimeRoleAssumption",
-      "Effect": "Deny",
-      "Action": [
+        "iam:*User*",
         "ec2-instance-connect:OpenTunnel",
         "ec2-instance-connect:SendSSHPublicKey",
         "ssm:SendCommand",
         "ssm:StartSession",
-        "sts:AssumeRole"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyLogReadAndRouting",
-      "Effect": "Deny",
-      "Action": [
+        "sts:AssumeRole",
         "logs:CreateDelivery",
         "logs:CreateExportTask",
         "logs:FilterLogEvents",
@@ -147,14 +113,7 @@
         "logs:PutSubscriptionFilter",
         "logs:StartLiveTail",
         "logs:StartQuery",
-        "logs:UpdateDeliveryConfiguration"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyWorkloadDataReads",
-      "Effect": "Deny",
-      "Action": [
+        "logs:UpdateDeliveryConfiguration",
         "dynamodb:BatchGetItem",
         "dynamodb:GetItem",
         "dynamodb:PartiQLSelect",
@@ -168,9 +127,67 @@
         "lambda:InvokeFunctionUrl",
         "rds:DownloadCompleteDBLogFile",
         "rds:DownloadDBLogFilePortion",
-        "sqs:ReceiveMessage"
+        "sqs:ReceiveMessage",
+        "ec2:*ImageAttribute",
+        "ec2:*SnapshotAttribute",
+        "ec2:*TrafficMirror*",
+        "ec2:CreateInstanceExportTask",
+        "ec2:CreateStoreImageTask",
+        "ec2:ExportImage",
+        "rds:CopyDBClusterSnapshot",
+        "rds:CopyDBSnapshot",
+        "rds:ModifyDBClusterSnapshotAttribute",
+        "rds:ModifyDBSnapshotAttribute",
+        "rds:StartExportTask",
+        "cloudwatch:PutInsightRule",
+        "cloudwatch:PutManagedInsightRules",
+        "cloudwatch:GetInsightRuleReport",
+        "logs:CreateLogAnomalyDetector",
+        "logs:ListAnomalies",
+        "logs:GetLookupTable"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "ProtectBootstrapIam",
+      "Effect": "Deny",
+      "NotAction": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:GetRole",
+        "iam:ListAttachedRolePolicies",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:*/braintrust-byoc/*"
+    },
+    {
+      "Sid": "DenyOtherBootstrapAttachments",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/*",
+      "Condition": {
+        "ArnNotEquals": {
+          "iam:PolicyARN": "<DIAGNOSTICS_POLICY_ARN>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDiagnosticsPolicyElsewhere",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "NotResource": "<DIAGNOSTICS_ROLE_ARN>",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": "<DIAGNOSTICS_POLICY_ARN>"
+        }
+      }
     },
     {
       "Sid": "DenyOtherInvocations",
@@ -211,31 +228,6 @@
       }
     },
     {
-      "Sid": "DenyEC2DataExport",
-      "Effect": "Deny",
-      "Action": [
-        "ec2:*ImageAttribute",
-        "ec2:*SnapshotAttribute",
-        "ec2:*TrafficMirror*",
-        "ec2:CreateInstanceExportTask",
-        "ec2:CreateStoreImageTask",
-        "ec2:ExportImage"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyRDSSnapshotExport",
-      "Effect": "Deny",
-      "Action": [
-        "rds:CopyDBClusterSnapshot",
-        "rds:CopyDBSnapshot",
-        "rds:ModifyDBClusterSnapshotAttribute",
-        "rds:ModifyDBSnapshotAttribute",
-        "rds:StartExportTask"
-      ],
-      "Resource": "*"
-    },
-    {
       "Sid": "RestrictBootstrapListing",
       "Effect": "Deny",
       "Action": "s3:ListBucket",
@@ -261,7 +253,9 @@
         "s3:PutBucket*",
         "s3:PutEncryptionConfiguration",
         "s3:PutLifecycleConfiguration",
-        "s3:PutReplicationConfiguration"
+        "s3:PutReplicationConfiguration",
+        "s3:TagResource",
+        "s3:UntagResource"
       ],
       "Resource": [
         "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
@@ -269,37 +263,24 @@
       ]
     },
     {
-      "Sid": "ProtectBrainstoreData",
+      "Sid": "ProtectRetainedData",
       "Effect": "Deny",
       "Action": [
         "s3:DeleteBucket",
         "s3:DeleteObject",
-        "s3:DeleteObjectVersion"
-      ],
-      "Resource": [
-        "arn:<AWS_PARTITION>:s3:::<MANAGED_RESOURCE_PREFIX>*-brainstore-*",
-        "arn:<AWS_PARTITION>:s3:::<MANAGED_RESOURCE_PREFIX>*-brainstore-*/*"
-      ]
-    },
-    {
-      "Sid": "ProtectKeysAndAliases",
-      "Effect": "Deny",
-      "Action": [
+        "s3:DeleteObjectVersion",
         "kms:DisableKey",
         "kms:ScheduleKeyDeletion",
         "kms:DeleteAlias",
-        "kms:UpdateAlias"
+        "kms:UpdateAlias",
+        "rds:DeleteDBSnapshot"
       ],
       "Resource": [
+        "arn:<AWS_PARTITION>:s3:::<MANAGED_RESOURCE_PREFIX>*-brainstore-*",
         "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
-        "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
+        "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*",
+        "arn:<AWS_PARTITION>:rds:<AWS_REGION>:<AWS_ACCOUNT_ID>:snapshot:<MANAGED_RESOURCE_PREFIX>*-main-final-snapshot-*"
       ]
-    },
-    {
-      "Sid": "ProtectRDSSnapshots",
-      "Effect": "Deny",
-      "Action": "rds:DeleteDBSnapshot",
-      "Resource": "arn:<AWS_PARTITION>:rds:<AWS_REGION>:<AWS_ACCOUNT_ID>:snapshot:<MANAGED_RESOURCE_PREFIX>*-main-final-snapshot-*"
     }
   ]
 }

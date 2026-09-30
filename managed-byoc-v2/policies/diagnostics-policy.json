@@ -1,0 +1,163 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DiscoverDiagnosticTargets",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceStatus",
+        "ecs:ListClusters",
+        "ecs:ListServices",
+        "ecs:ListTasks",
+        "ecs:DescribeClusters",
+        "ecs:DescribeServices",
+        "ecs:DescribeTasks",
+        "ssm:DescribeInstanceInformation",
+        "ssm:DescribeSessions",
+        "ssm:GetConnectionStatus",
+        "logs:DescribeLogGroups",
+        "eks:ListClusters"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
+    },
+    {
+      "Sid": "ReadManagedEksMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeCluster",
+        "eks:DescribeNodegroup",
+        "eks:DescribeAddon",
+        "eks:DescribeUpdate",
+        "eks:ListNodegroups",
+        "eks:ListAddons",
+        "eks:ListUpdates",
+        "eks:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:nodegroup/<MANAGED_RESOURCE_PREFIX>*/*/*",
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:addon/<MANAGED_RESOURCE_PREFIX>*/*/*"
+      ]
+    },
+    {
+      "Sid": "StartBrainstoreShell",
+      "Effect": "Allow",
+      "Action": "ssm:StartSession",
+      "Resource": "arn:<AWS_PARTITION>:ec2:<AWS_REGION>:<AWS_ACCOUNT_ID>:instance/*",
+      "Condition": {
+        "StringLike": {
+          "ssm:resourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
+        },
+        "StringEquals": {
+          "ssm:resourceTag/BrainstoreRole": [
+            "Reader",
+            "Writer",
+            "FastReader",
+            "ReaderWriter"
+          ]
+        },
+        "Bool": {
+          "ssm:SessionDocumentAccessCheck": "true"
+        }
+      }
+    },
+    {
+      "Sid": "UseLoggedShellDocument",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:StartSession",
+        "ssm:GetDocument"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:document/BraintrustDiagnosticsShell-<BOOTSTRAP_NAME>"
+    },
+    {
+      "Sid": "OpenSessionTransport",
+      "Effect": "Allow",
+      "Action": "ssmmessages:OpenDataChannel",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOwnSessions",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:ResumeSession",
+        "ssm:TerminateSession"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:session/*",
+      "Condition": {
+        "StringEquals": {
+          "ssm:resourceTag/aws:ssmmessages:session-id": "${aws:userid}"
+        }
+      }
+    },
+    {
+      "Sid": "ExecManagedContainers",
+      "Effect": "Allow",
+      "Action": "ecs:ExecuteCommand",
+      "Resource": [
+        "arn:<AWS_PARTITION>:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+        "arn:<AWS_PARTITION>:ecs:<AWS_REGION>:<AWS_ACCOUNT_ID>:task/<MANAGED_RESOURCE_PREFIX>*/*"
+      ]
+    },
+    {
+      "Sid": "ReadManagedApplicationLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust/<MANAGED_RESOURCE_PREFIX>*:*",
+        "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/ecs/<MANAGED_RESOURCE_PREFIX>*:*",
+        "arn:<AWS_PARTITION>:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/aws/lambda/<MANAGED_RESOURCE_PREFIX>*:*"
+      ]
+    },
+    {
+      "Sid": "EncryptEcsExecSession",
+      "Effect": "Allow",
+      "Action": "kms:GenerateDataKey",
+      "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
+      "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDirectDataAndAlternateAccess",
+      "Effect": "Deny",
+      "Action": [
+        "iam:*",
+        "sts:AssumeRole",
+        "ec2-instance-connect:*",
+        "ssm:SendCommand",
+        "s3:*",
+        "secretsmanager:GetSecretValue",
+        "ssm:GetParameter*",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "rds-data:*",
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:PartiQLSelect",
+        "sqs:ReceiveMessage",
+        "lambda:Invoke*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

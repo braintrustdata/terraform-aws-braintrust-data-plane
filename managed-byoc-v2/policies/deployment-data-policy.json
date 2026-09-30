@@ -17,13 +17,16 @@
       "Resource": "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*.tflock"
     },
     {
-      "Sid": "ReadTerraformStateBucketMetadata",
+      "Sid": "ReadBootstrapBucketMetadata",
       "Effect": "Allow",
       "Action": [
         "s3:GetBucketLocation",
         "s3:GetBucketVersioning"
       ],
-      "Resource": "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>"
+      "Resource": [
+        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
+        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>"
+      ]
     },
     {
       "Sid": "ListTerraformStatePrefix",
@@ -41,15 +44,6 @@
       "Effect": "Allow",
       "Action": "s3:PutObject",
       "Resource": "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>/braintrust-byoc/operations/<BOOTSTRAP_NAME>/*"
-    },
-    {
-      "Sid": "ReadOperationLogBucketMetadata",
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetBucketLocation",
-        "s3:GetBucketVersioning"
-      ],
-      "Resource": "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>"
     },
     {
       "Sid": "ListOperationLogPrefix",
@@ -115,18 +109,14 @@
         "s3:PutBucketWebsite",
         "s3:PutEncryptionConfiguration",
         "s3:PutLifecycleConfiguration",
-        "s3:PutReplicationConfiguration"
+        "s3:PutReplicationConfiguration",
+        "s3:GetBucketAbac",
+        "s3:PutBucketAbac",
+        "s3:TagResource",
+        "s3:UntagResource",
+        "s3:ListTagsForResource"
       ],
       "Resource": "arn:<AWS_PARTITION>:s3:::<MANAGED_RESOURCE_PREFIX>*"
-    },
-    {
-      "Sid": "ReadS3AccountContext",
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetAccountPublicAccessBlock",
-        "s3:ListAllMyBuckets"
-      ],
-      "Resource": "*"
     },
     {
       "Sid": "ManagePrefixedSecrets",
@@ -166,24 +156,6 @@
       "Action": [
         "secretsmanager:GetRandomPassword",
         "secretsmanager:ListSecrets"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "ManageDataPlaneKeyAliases",
-      "Effect": "Allow",
-      "Action": [
-        "kms:CreateAlias",
-        "kms:UpdateAlias"
-      ],
-      "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
-    },
-    {
-      "Sid": "ReadKmsAccountMetadata",
-      "Effect": "Allow",
-      "Action": [
-        "kms:ListAliases",
-        "kms:ListKeys"
       ],
       "Resource": "*"
     },

@@ -47,7 +47,7 @@
       "Resource": "arn:<AWS_PARTITION>:cloudformation:<AWS_REGION>:<AWS_ACCOUNT_ID>:stack/<MANAGED_RESOURCE_PREFIX>*/*"
     },
     {
-      "Sid": "ReadAccountAndAuditContext",
+      "Sid": "ReadAccountContext",
       "Effect": "Allow",
       "Action": [
         "account:Get*",
@@ -56,7 +56,6 @@
         "cloudtrail:Get*",
         "cloudtrail:List*",
         "cloudtrail:LookupEvents",
-        "eks:DescribeCluster",
         "sts:GetCallerIdentity"
       ],
       "Resource": "*"
@@ -119,7 +118,7 @@
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
     },
     {
-      "Sid": "RequireRuntimeBoundaryOnRoleCreation",
+      "Sid": "CreateBoundedRoles",
       "Effect": "Allow",
       "Action": "iam:CreateRole",
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
@@ -130,7 +129,7 @@
       }
     },
     {
-      "Sid": "SetOnlyTheRuntimeBoundary",
+      "Sid": "SetRuntimeBoundary",
       "Effect": "Allow",
       "Action": "iam:PutRolePermissionsBoundary",
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
@@ -168,7 +167,7 @@
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/<MANAGED_RESOURCE_PREFIX>*"
     },
     {
-      "Sid": "PassPrefixedRolesToApprovedServices",
+      "Sid": "PassRuntimeRoles",
       "Effect": "Allow",
       "Action": "iam:PassRole",
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
@@ -187,7 +186,7 @@
       }
     },
     {
-      "Sid": "CreateApprovedServiceLinkedRoles",
+      "Sid": "CreateServiceLinkedRoles",
       "Effect": "Allow",
       "Action": "iam:CreateServiceLinkedRole",
       "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*",
@@ -258,7 +257,7 @@
       }
     },
     {
-      "Sid": "AllowServiceManagedKeyGrants",
+      "Sid": "ServiceKeyGrants",
       "Effect": "Allow",
       "Action": "kms:CreateGrant",
       "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
@@ -272,7 +271,7 @@
       }
     },
     {
-      "Sid": "DenyAdministrativeManagedPolicies",
+      "Sid": "DenyAdminPolicies",
       "Effect": "Deny",
       "Action": "iam:AttachRolePolicy",
       "Resource": "*",
@@ -285,6 +284,26 @@
           ]
         }
       }
+    },
+    {
+      "Sid": "ReadStorageMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "kms:ListAliases",
+        "kms:ListKeys",
+        "s3:GetAccountPublicAccessBlock",
+        "s3:ListAllMyBuckets"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageDataPlaneKeyAliases",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateAlias",
+        "kms:UpdateAlias"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
     }
   ]
 }

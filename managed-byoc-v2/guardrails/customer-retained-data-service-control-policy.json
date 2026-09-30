@@ -2,6 +2,24 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "DenyDeploymentLogDerivedContent",
+      "Effect": "Deny",
+      "Action": [
+        "cloudwatch:PutInsightRule",
+        "cloudwatch:PutManagedInsightRules",
+        "cloudwatch:GetInsightRuleReport",
+        "logs:CreateLogAnomalyDetector",
+        "logs:ListAnomalies",
+        "logs:GetLookupTable"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
       "Sid": "ProtectRetainedBrainstoreData",
       "Effect": "Deny",
       "Action": [
@@ -15,7 +33,7 @@
       ],
       "Condition": {
         "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
         }
       }
     },
@@ -29,12 +47,12 @@
         "kms:UpdateAlias"
       ],
       "Resource": [
-        "arn:aws:kms:<AWS_REGION>:<ACCOUNT_ID>:key/*",
-        "arn:aws:kms:<AWS_REGION>:<ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
+        "arn:aws:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
+        "arn:aws:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:alias/braintrust/<MANAGED_RESOURCE_PREFIX>*"
       ],
       "Condition": {
         "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
         }
       }
     },
@@ -42,10 +60,10 @@
       "Sid": "ProtectRetainedDatabaseSnapshots",
       "Effect": "Deny",
       "Action": "rds:DeleteDBSnapshot",
-      "Resource": "arn:aws:rds:<AWS_REGION>:<ACCOUNT_ID>:snapshot:<MANAGED_RESOURCE_PREFIX>*-main-final-snapshot-*",
+      "Resource": "arn:aws:rds:<AWS_REGION>:<AWS_ACCOUNT_ID>:snapshot:<MANAGED_RESOURCE_PREFIX>*-main-final-snapshot-*",
       "Condition": {
         "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
         }
       }
     },
@@ -63,7 +81,7 @@
       ],
       "Condition": {
         "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/Braintrust*Role-<BOOTSTRAP_NAME>"
         }
       }
     },
@@ -83,7 +101,7 @@
       ],
       "Condition": {
         "ArnEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
         }
       }
     },
@@ -96,7 +114,9 @@
         "s3:PutBucket*",
         "s3:PutEncryptionConfiguration",
         "s3:PutLifecycleConfiguration",
-        "s3:PutReplicationConfiguration"
+        "s3:PutReplicationConfiguration",
+        "s3:TagResource",
+        "s3:UntagResource"
       ],
       "Resource": [
         "arn:aws:s3:::<STATE_BUCKET_NAME>",
@@ -104,7 +124,7 @@
       ],
       "Condition": {
         "ArnEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
         }
       }
     },
@@ -118,7 +138,7 @@
       "NotResource": "arn:aws:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*.tflock",
       "Condition": {
         "ArnEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
         }
       }
     },
@@ -162,14 +182,21 @@
         "sqs:ReceiveMessage",
         "ssm:GetParameter*",
         "ssm:SendCommand",
-        "ssm:StartSession"
+        "ssm:StartSession",
+        "sts:AssumeRole",
+        "cloudwatch:PutInsightRule",
+        "cloudwatch:PutManagedInsightRules",
+        "cloudwatch:GetInsightRuleReport",
+        "logs:CreateLogAnomalyDetector",
+        "logs:ListAnomalies",
+        "logs:GetLookupTable"
       ],
       "Resource": "*",
       "Condition": {
         "ArnLike": {
           "aws:PrincipalArn": [
-            "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
-            "arn:aws:iam::<ACCOUNT_ID>:role/braintrust-byoc/BraintrustObserverRole-<BOOTSTRAP_NAME>"
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
+            "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustObserverRole-<BOOTSTRAP_NAME>"
           ]
         }
       }

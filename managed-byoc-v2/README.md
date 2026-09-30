@@ -19,7 +19,8 @@ separate AWS accounts.
 Each bootstrap reserves a unique, non-overlapping name prefix in that account.
 Every data plane it manages uses a `deployment_name` beginning with that
 prefix. This lets the same safeguards cover additional data planes without
-binding generated bucket names or key IDs after creation.
+binding generated bucket names or key IDs after creation. These examples cover
+one configured AWS Region; additional Regions require corresponding policy scope.
 
 ## BYOC roles
 
@@ -27,11 +28,12 @@ binding generated bucket names or key IDs after creation.
 | --- | --- | --- | --- |
 | `BraintrustDeploymentRole` | Braintrust deployment service | Versioned Terraform deployment operations | State, artifacts, license/module secrets, and workload configuration needed by Terraform |
 | `BraintrustSupportRole` | Named Braintrust support personnel | Bounded incident response and operational changes | No standing direct access |
-| `BraintrustObserverRole` | Named Braintrust personnel | Broad infrastructure diagnostics | None |
+| `BraintrustObserverRole` | Named Braintrust personnel | Inspect infrastructure configuration, health, and metrics | None |
+| `BraintrustDiagnosticsRole` | Named Braintrust engineers | Temporary shell, container, and application log access | No diagnostic policy attached by default; data access when activated |
 
-There is no Braintrust break-glass administrator role. The customer can revoke
-new Braintrust sessions by removing or changing the role trust policies. For
-an active incident, the customer must also revoke existing role sessions.
+Diagnostics is a scoped troubleshooting role, not an unrestricted administrator.
+The customer can block new Braintrust sessions by changing role trust. Ending
+existing access also requires [credential revocation and session cleanup](diagnostics.md#customer-revocation).
 
 ```mermaid
 flowchart LR
@@ -39,12 +41,15 @@ flowchart LR
         M[BYOC deployment service]
         H[Support SSO]
         O[Observer SSO]
+        E[Engineering SSO]
     end
 
     subgraph Customer AWS account
         D[Deployment role]
         S[Support role]
         R[Observer role]
+        G[Diagnostics role]
+        C[(Diagnostic transcripts)]
         T[(Terraform state)]
         L[(Operation records)]
         I[Data plane infrastructure]
@@ -61,6 +66,10 @@ flowchart LR
     D -->|read / write| T
     D -->|write only| L
     D --> I
+    D -.->|attach / detach fixed policy| G
+    E -->|named human session, when activated| G
+    G -->|logged shell and container access| I
+    I -->|session transcripts| C
     S -->|bounded, audited operations| I
     R -->|inspect configuration, health, metrics, alarms| I
     I --> A
@@ -69,26 +78,27 @@ flowchart LR
 
 ## Effective access
 
-| Capability | Deployment | Support | Observer |
-| --- | --- | --- | --- |
-| Directly read application objects or database contents | No | No | No |
-| Read Terraform state | Exact state prefix | No | No |
-| Write operation records | Exact log prefix | No | No |
-| Read secret values | Exact license secret and prefixed secrets managed by Terraform | No | No |
-| Read workload configuration containing credentials | Configuration managed by the module | No | No |
-| Decrypt application data | No | No | No |
-| Read infrastructure metrics, alarms, and configuration | Yes | Yes | Yes |
-| Read application log bodies | No | No | No |
-| Update ECS services and ECS autoscaling | Yes | Scoped | No |
-| Scale Brainstore instances, replace unhealthy instances, or cancel a rollout | Yes | Scoped | No |
-| Tune Lambda reserved and provisioned concurrency | Yes | Scoped | No |
-| Pause or resume the module's scheduled jobs | Yes | Scoped | No |
-| Reboot databases/caches or tune the database parameter group | Yes | Scoped | No |
-| Create or replace infrastructure definitions | Yes | No | No |
-| Create data plane IAM roles | Yes, with the required boundary | No | No |
-| Pass data plane roles to AWS services | Specified roles and services only | No | No |
-| Change the three BYOC roles or guardrails | No | No | No |
-| Delete retained customer data | No | No | No |
+| Capability | Deployment | Support | Observer | Diagnostics, when activated |
+| --- | --- | --- | --- | --- |
+| Directly read application objects or database contents | No | No | No | Through workload access; no direct AWS data-read grant |
+| Read Terraform state | Exact state prefix | No | No | No |
+| Write operation records | Exact log prefix | No | No | No |
+| Read secret values | Exact license secret and prefixed secrets managed by Terraform | No | No | Through workload access; no direct Secrets Manager grant |
+| Read workload configuration containing credentials | Configuration managed by the module | No | No | Through workload access |
+| Decrypt application data | No direct grant | No | No | Through workload access; no direct KMS decrypt grant |
+| Read infrastructure metrics, alarms, and configuration | Yes | Yes | Yes | Target discovery; use Observer for broad inspection |
+| Read application log bodies | No | No | No | Matching application logs |
+| Open a shell or execute inside a container | No | No | No | Managed Brainstore instances and ECS tasks |
+| Update ECS services and ECS autoscaling | Yes | Scoped | No | Use Support |
+| Scale Brainstore instances, replace unhealthy instances, or cancel a rollout | Yes | Scoped | No | Use Support |
+| Tune Lambda reserved and provisioned concurrency | Yes | Scoped | No | Use Support |
+| Pause or resume the module's scheduled jobs | Yes | Scoped | No | Use Support |
+| Reboot databases/caches or tune the database parameter group | Yes | Scoped | No | Use Support |
+| Create or replace infrastructure definitions | Yes | No | No | No |
+| Create data plane IAM roles | Yes, with the required boundary | No | No | No |
+| Pass data plane roles to AWS services | Specified roles and services only | No | No | No |
+| Change BYOC roles or guardrails | Fixed Diagnostics policy attachment only | No | No | No |
+| Delete retained customer data | No direct grant | No | No | No direct grant; shell can modify workload data |
 
 Deployment automation reads only one secret provided by the customer: the
 license key. The current Terraform module also creates database, Redis, and
@@ -96,33 +106,28 @@ internal runtime secrets, and reads some values during planning and refresh. The
 deployment role therefore receives `GetSecretValue` for the exact license secret
 and secrets whose names begin with the managed resource prefix.
 Terraform state can contain generated credentials and must be treated as
-sensitive. Human roles have no state or secret access. Deployment automation
-can invoke only the module's database migration and quarantine warmup hooks;
+sensitive. Support and Observer have no state or secret access. Diagnostics has
+no direct state or secret-read grant, but can reach runtime credentials through
+a shell. Deployment automation can invoke only the module's database migration
+and quarantine warmup hooks;
 general workload invocation is denied. It also manages encrypted Lambda
 environment variables, which can contain credentials managed by the module.
 This is a documented deployment exception, not human diagnostic access.
 
 CloudWatch metrics, alarms, dashboards, resource state, and log group metadata
 are diagnostic metadata. Application log events and Logs Insights results are
-treated as possible customer data and are excluded from both human roles.
+treated as possible customer data and are excluded from Support and Observer.
 Keep secrets and customer payloads out of names, tags, descriptions, stack
 outputs, and task overrides visible through diagnostic APIs.
 
 ## Policy set
 
-The policy files in this preview are standalone JSON under `policies/`. The deployment
-permissions are split into two identity policies because AWS limits each managed
-policy document to 6,144 characters. The split follows a useful review boundary
-rather than creating one policy per AWS service.
-
-| Policy | Attached to | Purpose | Change rate |
-| --- | --- | --- | --- |
-| `deployment-infrastructure-policy.json` | Deployment role | AWS service, scoped IAM, and tagged KMS key administration | Evolves with the data plane module |
-| `deployment-data-policy.json` | Deployment role | State, artifacts, operational records, secrets, S3, and KMS | Evolves with storage and secret handling |
-| `deployment-permissions-boundary.json` | Deployment role | Stable maximum permissions for automation | Rare; versioned bootstrap update |
-| `runtime-permissions-boundary.json` | Every runtime role created by Terraform | Baseline maximum for workload identities | Rare; versioned bootstrap update |
-| `observer-policy.json` | Observer and Support roles | Broad diagnostic metadata with explicit denials for content and interactive access | Internally reviewed additions |
-| `support-policy.json` | Support role | Operations limited to matching resources | Internally reviewed additions |
+The [policy guide](policies/README.md#role-attachment-model) maps each JSON file
+to its role. Deployment uses four policies: infrastructure, data, Diagnostics
+activation, and future EKS permissions. Observer and Support share an inspection
+policy; Support adds bounded operations. Diagnostics receives its separate policy
+only during activation. Deployment and runtime roles also have permissions boundaries.
+The EKS permissions do not enable Kubernetes access.
 
 The trust policies under `trust-policies/` restrict each customer role to one
 exact Braintrust principal. Machine sessions additionally require a unique
@@ -132,10 +137,10 @@ The attribution flow, including console access, must be validated before use;
 see [`trust-policies/README.md`](trust-policies/README.md).
 
 The deployment role policies describe the maximum access across all data
-planes under one bootstrap. They do not implement narrower IAM credentials for
-each deployment operation; credential brokering and session scope require
-separate implementation validation. Assess this preview against the role-wide
-permissions, not an assumed per-operation restriction.
+planes under one bootstrap. Some infrastructure permissions and discovery APIs
+remain account-wide; the prefix is not complete isolation between data planes.
+The policies do not yet narrow credentials for each deployment operation. Assess
+this preview against the full role permissions, not an assumed operation-specific limit.
 
 ## IAM creation and `PassRole`
 
@@ -151,7 +156,7 @@ services. The deployment role cannot assume runtime roles itself.
 Observer and Support can inspect infrastructure configuration and health,
 including metrics, alarms, deployments, scaling settings, and schedules.
 Neither role can read Terraform state, secrets, application data, or application
-log bodies, or open a shell.
+log bodies, open a shell, or assume another role.
 
 Support can also make maintenance or incident changes to ECS services and tasks,
 Brainstore scaling within existing limits and instance health, Lambda concurrency, and
@@ -165,9 +170,34 @@ across the account in the configured Region. Record and monitor support changes,
 restore temporary overrides, and reconcile lasting changes through the
 deployment workflow.
 
+## Temporary Diagnostics access
+
+Some investigations need host or container access. Diagnostics provides that
+access separately from standing Support and Observer permissions. One activation
+covers all data planes under the bootstrap and multiple engineers, each using
+their own attributed session. Braintrust manages activation under the recorded
+customer access setting. The default activation lasts two hours; extensions are
+explicit and recorded, not automatic.
+
+The deployment service can attach or detach only the fixed diagnostic policy.
+It cannot rewrite that policy or restore customer-removed trust. Closure requires
+permission removal and active-session cleanup; policy detachment alone is not
+proof that existing sessions have ended. These are implementation requirements,
+not completed workflow guarantees.
+
+The supported paths are logged Session Manager shells and ECS Exec. We do not
+use SSH or port-forwarding sessions for this access model. Diagnostic transcripts
+are stored in a customer-owned CloudWatch log group with default encryption.
+Diagnostics can access and modify data through the workload, including through
+runtime credentials; it is not a data-blind or necessarily non-root role.
+
+See the [Diagnostics guide](diagnostics.md) for permissions, logging prerequisites,
+and customer revocation. [Kubernetes permissions](kubernetes-permissions.md)
+define the future role profiles only; they do not enable Kubernetes access.
+
 ## Customer guardrails
 
-The two SCPs under `guardrails/` illustrate customer-owned safeguards. They
+The three SCPs under `guardrails/` illustrate customer-owned safeguards. They
 do not grant access. They reinforce the runtime boundary requirement, IAM
 prefix, specified `PassRole` services, bootstrap role protection, data access
 restrictions, retained data protections, and audit control protection
@@ -197,6 +227,51 @@ decryption to specified keys and the documented Secrets Manager, S3, and Lambda
 configuration paths. Customer bootstrap keys and storage settings are protected
 from deployment changes.
 
+## Logging and operation records
+
+Three complementary records stay in customer-controlled storage: CloudTrail
+records AWS API activity, CloudWatch stores diagnostic session commands and
+output, and operation records explain the deployment or access workflow.
+Operation records include deployment outcomes and, for Diagnostics, the
+authorizing actor, reason, scope, expiry, extensions, and cleanup result.
+
+```mermaid
+flowchart TB
+    subgraph BT[Braintrust]
+        DEP[BYOC deployment service]
+        ENG[Named engineers]
+    end
+
+    subgraph CUSTOMER[Customer AWS environment]
+        subgraph BYOC[BYOC account]
+            API["AWS APIs<br/>Role assumptions, IAM changes,<br/>infrastructure inspection and updates"]
+            SESSION["Diagnostic sessions<br/>SSM shell and ECS Exec"]
+            CW[("CloudWatch diagnostic transcripts")]
+            OPS[("S3 operation records")]
+        end
+        subgraph ARCHIVE[Customer audit archive account]
+            CT[("Organization CloudTrail<br/>API event archive")]
+        end
+    end
+
+    DEP -->|deployment and activation APIs| API
+    ENG -->|attributed role sessions| API
+    API -->|Diagnostics session APIs| SESSION
+    API -.->|CloudTrail API events, not shell contents| CT
+    SESSION -->|commands and output| CW
+    DEP -->|workflow summaries| OPS
+```
+
+The customer manages organization CloudTrail and its archive. Bootstrap and
+module configuration must provide the diagnostic transcript destination and
+delivery permissions; these are not created by the policy files alone.
+
+The guardrails protect the named audit resources and diagnostic logging settings;
+ordinary application logging remains deployment-managed. Operation records need
+[versioning and retention controls](policies/README.md) in addition to deletion
+denials. Protected destinations do not guarantee uninterrupted capture from a
+privileged shell; see the [logging prerequisites and limits](diagnostics.md#logging-prerequisites).
+
 ## Access outside the BYOC account
 
 A dedicated account does not mean the data plane never uses another AWS account.
@@ -204,7 +279,7 @@ The intended boundary depends on who is making the request:
 
 | Access path | Default | External access |
 | --- | --- | --- |
-| Deployment, Support, and Observer roles | Operate in the BYOC account | Deployment reads the named Braintrust-hosted software bucket; the customer SCP blocks access to other externally owned S3 buckets |
+| Deployment, Support, Observer, and Diagnostics roles | Operate in the BYOC account | Deployment reads the named Braintrust-hosted software bucket; the customer SCP blocks access to other externally owned S3 buckets |
 | Data plane workloads | Use resources in the BYOC account | An enabled feature may require an exact external role or resource |
 
 For example, the Bedrock integration can require the Gateway to assume a scoped
@@ -212,8 +287,9 @@ role in another account to call a configured model. S3 export can require the
 data plane to assume a scoped role to write requested exports to a
 customer-designated S3 bucket, including one in another account.
 
-Runtime roles cannot assume another role under the baseline boundary. A feature
-that needs this access requires an explicit destination role ARN in the workload
+The baseline permits the API handler's internal quarantine and AI Proxy invocation
+roles. Other role assumptions are denied. An external feature
+requires an explicit destination role ARN in the workload
 policy, a feature-specific allowance in the customer-controlled boundary,
 and a destination trust policy limited to the intended workload role. Direct
 access to an external bucket, key, or other resource likewise requires
@@ -239,27 +315,28 @@ permissions and the destination account's controls govern its subsequent calls.
 Deployment allow policies will change as the Terraform module gains or removes
 features. Those changes will be versioned with the required customer
 configuration.
-The trust policies, permissions boundaries, SCP, audit ownership, and data
-access invariants are the more stable security contract.
+Trust restrictions, permissions boundaries, SCPs, audit ownership, and data
+access restrictions form the baseline safeguards.
 
 The deployment role cannot edit its own role, trust policy, attached policies,
 or permissions boundary. Increasing its maximum access therefore requires a
 bootstrap update controlled by the customer. It can change runtime policies
 created by the module, but each runtime role remains capped by the boundary
-owned by the customer.
+owned by the customer. Its only bootstrap IAM mutation is attaching or detaching
+the fixed Diagnostics policy on the designated role.
 
 ## Data disposition
 
 `retain-data` is the customer default. Deprovisioning removes serving
 infrastructure while retaining the Brainstore bucket and its controls, the KMS
 key and alias created by the module, and an encrypted final RDS snapshot for
-customer disposition. The Terraform state bucket and operation log bucket also
+customer recovery or deletion. The Terraform state bucket and operation log bucket also
 remain under customer control. Permanent workload data erasure is not part of
 this customer package.
 
 The deployment boundary and retained-data guardrail together deny deletion of
 module-named Brainstore buckets and their objects, disablement or scheduled
-deletion of KMS keys in the dedicated account, deletion of module-named final
+deletion of KMS keys in the configured account and Region, deletion of module-named final
 RDS snapshots, and deletion of operation records. They also protect data plane
 key aliases. The deprovisioning workflow must detach retained resources from
 Terraform state before destroying serving infrastructure.
@@ -279,7 +356,9 @@ access through a workload with data access. Support changes are attributable
 to named sessions and customer-owned audit logs; Braintrust reverts temporary
 changes or reconciles lasting ones through the deployment workflow. Versioned
 deployment inputs, temporary credentials, monitoring, and customer-controlled
-revocation provide additional safeguards.
+revocation provide additional safeguards. Activated Diagnostics adds deliberate
+access through workloads. Retained-data API denials do not prevent every data
+change possible using runtime credentials or a privileged shell.
 
 ## Reviewing the files
 
@@ -296,6 +375,9 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-09-30 | Added a logging diagram distinguishing CloudTrail API events, diagnostic transcripts, and operation records. Clarified storage ownership and the limits of logging protections. No permissions changed in this update. | Review the evidence destinations, configuration responsibilities, and distinction between protected audit resources and ordinary application logs. |
+| 2026-09-29 | Corrected internal runtime role assumptions; closed log-derived content paths and routine human role chaining; allowed bootstrap IAM inspection without weakening mutation controls. Standardized naming, added S3 ABAC and EKS access-entry tagging permissions, and strengthened rendered-policy checks. | Review the internal invocation exceptions, mandatory IAM paths and naming limits, regional scope, and unchanged separation between routine and activated Diagnostics access. |
+| 2026-09-29 | Added temporary Diagnostics access, exact activation permissions, and dedicated session logging safeguards. Added scoped EKS management and discovery permissions plus future Kubernetes role profiles. | Review data-capable troubleshooting, activation and logging controls, and the distinction between proposed Kubernetes permissions and an implemented access path. |
 | 2026-09-25 | Extended the bootstrap scope to multiple data planes under one reserved prefix; protected retained keys without a post-creation key ARN; removed unused broad deployment grants and denied CloudWatch Logs routing/export. Clarified equivalent customer controls and the role-wide permission ceiling. | Review naming scope, KMS and retained-data safeguards, log routing restrictions, and the distinction between role access and per-operation credentials. |
 | 2026-09-23 | Simplified the access diagram and human operations summary; clarified that external access is a documented feature requirement, not a case-by-case approval. No permissions changed. | Role access and operating boundaries are unchanged. |
 | 2026-09-23 | Added the external access model, an S3 owner-account guardrail for Braintrust roles, exact artifact bucket scope, default-deny runtime role assumption, and cross-account audit guidance. | Review the boundary between routine BYOC operations and explicitly enabled runtime integrations. |

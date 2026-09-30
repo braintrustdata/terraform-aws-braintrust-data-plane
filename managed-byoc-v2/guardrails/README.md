@@ -1,6 +1,6 @@
 # Customer service control policies
 
-The two SCPs are reference implementations for the dedicated AWS account.
+The three SCPs are reference implementations for the dedicated AWS account.
 Customers can use equivalent existing organization controls if those controls
 provide the same effective safeguards. Validate the combined controls before
 production use; the JSON need not be copied byte-for-byte.
@@ -11,7 +11,8 @@ main controls are:
 - require the runtime boundary owned by the customer when deployment automation
   creates a role;
 - constrain role creation and `PassRole` to the configured resource prefix;
-- prevent the deployment role from editing bootstrap roles and policies;
+- prevent bootstrap IAM changes except the exact Diagnostics role/policy
+  attachment pair, while allowing metadata reads for verification;
 - prevent Braintrust roles from disabling customer audit controls;
 - prevent deployment automation from routing or exporting application logs;
 - deny direct application object and secret reads outside documented machine
@@ -20,44 +21,48 @@ main controls are:
 - deny Braintrust management roles access to S3 buckets owned outside the BYOC
   account, except the exact Braintrust deployment artifact bucket;
 - restrict KMS grants to requests made by integrated AWS services; and
-- deny shell, session, and role chaining paths.
+- deny deployment shell, session, and role chaining paths.
 
 `customer-retained-data-service-control-policy.json` protects the exact
 resources preserved by the default `retain-data` workflow and independently
-reinforces restrictions on human data and shell access:
+reinforces restrictions on routine Support and Observer data and shell access:
 
 - module-named Brainstore buckets and objects across data planes;
-- all KMS keys in the dedicated account against deployment-role disablement or
+- all KMS keys in the configured account and Region against deployment-role disablement or
   scheduled deletion, plus module-named aliases;
 - matching final RDS snapshots;
 - the operation records bucket and objects owned by the customer;
 - bootstrap storage and key configuration and state deletion (except lock files);
 - direct object, secret, database record, queue, and application log reads by
-  human roles; and
-- interactive access through SSM, ECS Exec, EKS, or EC2 Instance Connect.
+  Support and Observer, including log-derived samples and reports;
+- deployment access to log-derived samples and reports; and
+- interactive SSM, ECS Exec, and EC2 Instance Connect access by those two roles,
+  outbound role assumption, and access through the EKS console viewer.
+  Kubernetes RBAC is separate.
 
-Two documents keep each SCP comfortably below the AWS size limit and separate
-the deployment and identity contract from human and retained data protections.
+`customer-diagnostics-service-control-policy.json` adds the troubleshooting
+safeguards:
 
-Replace every placeholder before use:
+- protect the logged SSM shell document and diagnostic transcript configuration
+  from both Braintrust management and matching runtime roles;
+- protect existing ECS Exec configuration by denying `ecs:UpdateCluster`;
+- retain Diagnostics restrictions on identity administration, direct state and
+  data APIs, alternative SSM documents, generic Run Command, and EC2 Instance Connect.
 
-| Placeholder | Value |
-| --- | --- |
-| `<ACCOUNT_ID>` | Dedicated AWS account ID |
-| `<AWS_REGION>` | Data plane AWS Region |
-| `<BOOTSTRAP_NAME>` | Short identifier for this customer access contract |
-| `<MANAGED_RESOURCE_PREFIX>` | Reserved, non-overlapping prefix for every `deployment_name` under this bootstrap |
-| `<RUNTIME_BOUNDARY_ARN>` | ARN of the runtime boundary created by the customer |
-| `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
-| `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
-| `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust deployment artifact bucket for the data plane Region |
-| `<LICENSE_SECRET_KMS_KEY_ARN>` | Resolved license secret key ARN, including a key managed by AWS if used |
-| `<STATE_KMS_KEY_ARN>` | State key owned by the customer, if used |
-| `<OPERATION_LOG_KMS_KEY_ARN>` | Operation log key owned by the customer, if used |
-| `<LICENSE_SECRET_ARN>` | Exact ARN of the license secret owned by the customer |
+We use logged Session Manager shells and ECS Exec, not SSH or port-forwarding
+sessions. The diagnostic policy's positive grants further constrain the targets.
+Protecting logging configuration does not prove a privileged shell cannot affect
+capture on the host; see the [Diagnostics guide](../diagnostics.md).
 
-Follow the optional key and S3 Bucket Key instructions in
-[`../policies/README.md`](../policies/README.md). The examples target the `aws`
+Three documents separate identity, retained data, and diagnostic safeguards
+while remaining within AWS policy size limits. All three apply to the baseline.
+Runtime access can still modify data through the application: retained-data
+denials for human AWS principals do not make a privileged shell read-only.
+
+Use the [shared placeholder definitions and mandatory IAM paths](../policies/README.md),
+including its optional-key and S3 Bucket Key instructions. A role outside the
+protected `/braintrust-byoc/` path will not match the management-role selectors.
+The examples target one configured Region in the `aws`
 partition. Deploy SCPs as minified JSON: AWS CLI/API submissions count
 whitespace against the [SCP size limit](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html).
 
@@ -74,12 +79,13 @@ boundary. Account for that exception when enabling a new service.
 
 ## External AWS access
 
-The S3 guardrail restricts Braintrust's Deployment, Support, and Observer roles
+The S3 guardrail restricts all four Braintrust management roles
 from accessing buckets owned outside the BYOC account, except the named
 Braintrust software bucket needed for deployment. It applies when AWS supplies
 the bucket owner's account; identity policies govern other S3 requests.
 
-Runtime role assumption is denied by default. A feature such as Bedrock access
+Runtime role assumption is limited to the API handler's internal quarantine and
+AI Proxy invocation paths. A feature such as Bedrock access
 or S3 export can use an external role or resource only with its documented
 destination and permissions, a matching workload policy, and the required
 destination-side controls. The [policy guide](../policies/README.md#external-feature-policy-notes)
