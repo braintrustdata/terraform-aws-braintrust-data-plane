@@ -270,10 +270,20 @@ if [[ "$package_dir" == "$source_dir" ]]; then
   jq -e '.Statement[] | select(.Sid == "KeepManagedKmsOwnershipTag") |
     .Condition."ForAnyValue:StringEquals"."aws:TagKeys" == "BraintrustDeploymentName"' \
     "$access_guardrail" >/dev/null
-  for action in logs:CreateExportTask logs:PutSubscriptionFilter logs:CreateDelivery; do
-    jq -e --arg action "$action" '.Statement[] | select(.Sid == "DenyDeploymentLogRoutingAndExport") |
-      .Action | index($action) != null' "$access_guardrail" >/dev/null
-  done
+  jq -e '[.Statement[] | select(.Sid == "DenyDeploymentLogRoutingAndInteractiveAccess") |
+    .Effect == "Deny" and .Resource == "*" and
+    .Condition == {"ArnEquals": {"aws:PrincipalArn":
+      "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDeploymentRole-review"}} and
+    (.Action | sort) == ([
+      "logs:AssociateSourceToS3TableIntegration", "logs:CreateDelivery", "logs:CreateExportTask",
+      "logs:PutAccountPolicy", "logs:PutDeliveryDestination", "logs:PutDeliveryDestinationPolicy",
+      "logs:PutDeliverySource", "logs:PutDestination", "logs:PutDestinationPolicy",
+      "logs:PutIntegration", "logs:PutResourcePolicy", "logs:PutSubscriptionFilter",
+      "logs:PutSyslogConfiguration", "logs:UpdateDeliveryConfiguration",
+      "ec2-instance-connect:OpenTunnel", "ec2-instance-connect:SendSSHPublicKey",
+      "ecs:ExecuteCommand", "eks:AccessKubernetesApi", "ssm:SendCommand",
+      "ssm:StartSession", "sts:AssumeRole"] | sort)] == [true]' \
+    "$access_guardrail" >/dev/null
   if jq -e '[.Statement[] | select(.Sid == "ManageDataPlaneServices") | .Action[]] |
       any(. == "dynamodb:*" or . == "eks:*" or . == "ec2-instance-connect:*")' \
       "$infrastructure" >/dev/null; then

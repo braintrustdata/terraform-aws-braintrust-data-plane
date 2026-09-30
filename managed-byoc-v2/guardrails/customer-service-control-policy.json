@@ -53,7 +53,7 @@
       }
     },
     {
-      "Sid": "DenyDeploymentLogRoutingAndExport",
+      "Sid": "DenyDeploymentLogRoutingAndInteractiveAccess",
       "Effect": "Deny",
       "Action": [
         "logs:AssociateSourceToS3TableIntegration",
@@ -69,7 +69,14 @@
         "logs:PutResourcePolicy",
         "logs:PutSubscriptionFilter",
         "logs:PutSyslogConfiguration",
-        "logs:UpdateDeliveryConfiguration"
+        "logs:UpdateDeliveryConfiguration",
+        "ec2-instance-connect:OpenTunnel",
+        "ec2-instance-connect:SendSSHPublicKey",
+        "ecs:ExecuteCommand",
+        "eks:AccessKubernetesApi",
+        "ssm:SendCommand",
+        "ssm:StartSession",
+        "sts:AssumeRole"
       ],
       "Resource": "*",
       "Condition": {
@@ -398,25 +405,6 @@
         },
         "BoolIfExists": {
           "kms:GrantIsForAWSResource": "false"
-        }
-      }
-    },
-    {
-      "Sid": "DenyDeploymentInteractiveAccess",
-      "Effect": "Deny",
-      "Action": [
-        "ec2-instance-connect:OpenTunnel",
-        "ec2-instance-connect:SendSSHPublicKey",
-        "ecs:ExecuteCommand",
-        "eks:AccessKubernetesApi",
-        "ssm:SendCommand",
-        "ssm:StartSession",
-        "sts:AssumeRole"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "ArnEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
         }
       }
     }
