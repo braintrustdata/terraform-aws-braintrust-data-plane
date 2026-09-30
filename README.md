@@ -68,6 +68,22 @@ Loop connects to MicroVM endpoints through an interface VPC endpoint in the main
 The endpoint policy allows connections only to MicroVMs in the deployment account.
 The public MicroVM endpoint remains available because AWS does not support its removal.
 
+### Startup dependencies and upgrades
+
+Loop ingress rules are owned by the database, Redis, Brainstore, and gateway
+modules. Their internal `loop_runtime_security_groups` maps are separate from
+baseline `authorized_security_groups`: Loop waits for Gateway startup, which
+indirectly waits for database migration. Combining the maps would delay the
+migration Lambda's own database access until after migration succeeds.
+The database connection address waits for baseline ingress, but not Loop
+ingress. This changes creation order without broadening network permissions.
+
+Chained state moves preserve existing Loop rules from both their original
+Loop-module addresses and the shared-map addresses. Downgrading after these
+moves is not safe without a reviewed state migration: older versions can
+destroy/recreate the rules. These address changes require a major release and
+the corresponding migration guide before publication.
+
 ### Sandbox isolation
 
 The default `loop_runtime_sandbox_egress_mode = "restricted"` creates a dedicated VPC for sandbox egress.

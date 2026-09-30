@@ -279,8 +279,8 @@ module "database" {
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
-    local.loop_runtime_authorized_security_groups,
   )
+  loop_runtime_security_groups       = local.loop_runtime_authorized_security_groups
   postgres_storage_iops              = var.postgres_storage_iops
   postgres_storage_throughput        = var.postgres_storage_throughput
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
@@ -316,13 +316,13 @@ module "redis" {
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
-    local.loop_runtime_authorized_security_groups,
   )
-  use_redis_replication_group = var.use_redis_replication_group
-  redis_instance_type         = var.redis_instance_type
-  redis_version               = var.redis_version
-  apply_immediately           = var.redis_apply_immediately
-  custom_tags                 = local.all_custom_tags
+  loop_runtime_security_groups = local.loop_runtime_authorized_security_groups
+  use_redis_replication_group  = var.use_redis_replication_group
+  redis_instance_type          = var.redis_instance_type
+  redis_version                = var.redis_version
+  apply_immediately            = var.redis_apply_immediately
+  custom_tags                  = local.all_custom_tags
 }
 
 module "storage" {
@@ -858,8 +858,8 @@ module "brainstore" {
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
     local.bastion_security_group,
-    local.loop_runtime_authorized_security_groups,
   )
+  loop_runtime_security_groups = local.loop_runtime_authorized_security_groups
   authorized_security_groups_ssh = merge(
     local.bastion_security_group,
     local.instance_connect_endpoint_security_group

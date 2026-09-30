@@ -43,6 +43,31 @@ run "loop_with_existing_sandbox_vpc" {
   }
 }
 
+# The fresh-deployment ordering regression is checked by
+# scripts/check-loop-network-dependencies. Mocked plans cannot establish that a
+# Lambda invocation actually has PostgreSQL connectivity at invocation time.
+run "loop_with_private_gateway" {
+  command = plan
+  variables {
+    create_ai_gateway = true
+    enable_ai_gateway = true
+  }
+}
+
+run "loop_disabled_with_private_gateway" {
+  command = plan
+  variables {
+    enable_loop_runtime = false
+    create_ai_gateway   = true
+    enable_ai_gateway   = true
+  }
+
+  assert {
+    condition     = length(module.loop_runtime_ecs) == 0 && length(module.gateway_ecs) == 1
+    error_message = "Disabling Loop must retain the independently enabled gateway."
+  }
+}
+
 run "rejects_empty_existing_sandbox_subnet_1_id" {
   command = plan
   variables {

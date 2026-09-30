@@ -214,3 +214,18 @@ resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorize
   security_group_id = aws_security_group.rds[0].id
   tags              = local.common_tags
 }
+
+# Loop starts after Gateway, which depends on database migration. Keep its rule
+# separate so the migration Lambda's baseline ingress can be created first.
+resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_loop_runtime_security_groups" {
+  for_each = length(var.custom_security_group_ids) == 0 ? var.loop_runtime_security_groups : {}
+
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from ${each.key}."
+
+  security_group_id = aws_security_group.rds[0].id
+  tags              = local.common_tags
+}
