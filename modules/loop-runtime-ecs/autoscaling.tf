@@ -6,7 +6,6 @@ resource "aws_appautoscaling_target" "loop_runtime" {
   service_namespace  = "ecs"
 }
 
-# Runtime emits this every 15 seconds, including during model calls.
 resource "aws_appautoscaling_policy" "loop_runtime_conversation_target" {
   name               = "${var.deployment_name}-loop-runtime-conversation-target"
   policy_type        = "TargetTrackingScaling"

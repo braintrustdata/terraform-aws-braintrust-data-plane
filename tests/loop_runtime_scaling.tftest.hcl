@@ -43,8 +43,6 @@ run "scales_on_claimed_conversations" {
     error_message = "Loop runtime must scale on claimed conversation utilization at a 50% target."
   }
 
-  # The runtime publishes the metric with these dimensions. They must match the
-  # policy dimensions, or the policy tracks a metric with no data.
   assert {
     condition = (
       {

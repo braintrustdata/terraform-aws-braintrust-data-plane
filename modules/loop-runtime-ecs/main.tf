@@ -128,7 +128,7 @@ locals {
     image     = var.container_image
     essential = true
     user      = "1000:1000"
-    # Leave at least 15 seconds after the runtime's maximum drain timeout.
+
     stopTimeout = 120
     linuxParameters = {
       initProcessEnabled = true
