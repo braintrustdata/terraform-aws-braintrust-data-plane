@@ -776,6 +776,18 @@ variable "loop_runtime_max_capacity" {
   default     = 50
 }
 
+variable "loop_runtime_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU use percentage for Loop runtime autoscaling."
+  default     = 40
+}
+
+variable "loop_runtime_target_memory_utilization" {
+  type        = number
+  description = "Target average memory use percentage for Loop runtime autoscaling."
+  default     = 50
+}
+
 variable "loop_runtime_target_conversation_utilization" {
   type        = number
   description = "Target average claimed conversation use percentage for Loop runtime autoscaling."
