@@ -740,17 +740,6 @@ variable "enable_loop_runtime" {
   }
 }
 
-variable "loop_runtime_version_override" {
-  type        = string
-  description = "Loop runtime version overrides are unsupported because autoscaling requires the bundled runtime version."
-  default     = null
-
-  validation {
-    condition     = var.loop_runtime_version_override == null
-    error_message = "loop_runtime_version_override is unsupported; use the bundled Loop runtime version."
-  }
-}
-
 variable "loop_runtime_task_cpu" {
   type        = number
   description = "CPU units for the Loop runtime ECS task."
