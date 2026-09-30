@@ -133,11 +133,7 @@ locals {
     "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
   } : {}
 
-  loop_runtime_version = (
-    var.loop_runtime_version_override != null
-    ? var.loop_runtime_version_override
-    : jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
-  )
+  loop_runtime_version = jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
 
   loop_runtime_brainstore_reader_url = local.create_loop_runtime ? format(
     "http://%s:%s",
@@ -575,16 +571,14 @@ module "loop_runtime_ecs" {
 
   container_image = format("public.ecr.aws/braintrust/loop-runtime:%s", local.loop_runtime_version)
 
-  cpu                       = var.loop_runtime_task_cpu
-  memory                    = var.loop_runtime_task_memory
-  ephemeral_storage_gib     = var.loop_runtime_ephemeral_storage_gib
-  min_capacity              = var.loop_runtime_min_capacity
-  max_capacity              = var.loop_runtime_max_capacity
-  target_cpu_utilization    = var.loop_runtime_target_cpu_utilization
-  target_memory_utilization = var.loop_runtime_target_memory_utilization
-  log_retention_days        = var.loop_runtime_log_retention_days
-  permissions_boundary_arn  = var.permissions_boundary_arn
-  enable_execute_command    = var.loop_runtime_enable_execute_command
+  cpu                      = var.loop_runtime_task_cpu
+  memory                   = var.loop_runtime_task_memory
+  ephemeral_storage_gib    = var.loop_runtime_ephemeral_storage_gib
+  min_capacity             = var.loop_runtime_min_capacity
+  max_capacity             = var.loop_runtime_max_capacity
+  log_retention_days       = var.loop_runtime_log_retention_days
+  permissions_boundary_arn = var.permissions_boundary_arn
+  enable_execute_command   = var.loop_runtime_enable_execute_command
 
   target_conversation_utilization = var.loop_runtime_target_conversation_utilization
   drain_timeout_seconds           = var.loop_runtime_drain_timeout_seconds

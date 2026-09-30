@@ -742,8 +742,13 @@ variable "enable_loop_runtime" {
 
 variable "loop_runtime_version_override" {
   type        = string
-  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  description = "Loop runtime version overrides are unsupported because autoscaling requires the bundled runtime version."
   default     = null
+
+  validation {
+    condition     = var.loop_runtime_version_override == null
+    error_message = "loop_runtime_version_override is unsupported; use the bundled Loop runtime version."
+  }
 }
 
 variable "loop_runtime_task_cpu" {
@@ -773,18 +778,6 @@ variable "loop_runtime_min_capacity" {
 variable "loop_runtime_max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 50
-}
-
-variable "loop_runtime_target_cpu_utilization" {
-  type        = number
-  description = "Target average CPU use percentage for Loop runtime autoscaling."
-  default     = 40
-}
-
-variable "loop_runtime_target_memory_utilization" {
-  type        = number
-  description = "Target average memory use percentage for Loop runtime autoscaling."
   default     = 50
 }
 

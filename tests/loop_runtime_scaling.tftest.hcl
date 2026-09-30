@@ -60,16 +60,11 @@ run "scales_on_claimed_conversations" {
   }
 
   assert {
-    condition = alltrue([
-      for policy in [
-        aws_appautoscaling_policy.loop_runtime_cpu_target,
-        aws_appautoscaling_policy.loop_runtime_memory_target,
-        aws_appautoscaling_policy.loop_runtime_conversation_target,
-      ] :
-      policy.target_tracking_scaling_policy_configuration[0].scale_in_cooldown == 120
-      && policy.target_tracking_scaling_policy_configuration[0].scale_out_cooldown == 60
-    ])
-    error_message = "Every Loop runtime scaling policy must scale in after 120 seconds and out after 60 seconds."
+    condition = (
+      aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].scale_in_cooldown == 120
+      && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].scale_out_cooldown == 60
+    )
+    error_message = "Loop runtime must scale in after 120 seconds and out after 60 seconds."
   }
 }
 

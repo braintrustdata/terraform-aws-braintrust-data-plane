@@ -95,28 +95,6 @@ variable "max_capacity" {
   }
 }
 
-variable "target_cpu_utilization" {
-  type        = number
-  description = "Target average CPU utilization percentage for Loop runtime ECS service autoscaling."
-  default     = 40
-
-  validation {
-    condition     = var.target_cpu_utilization > 0 && var.target_cpu_utilization <= 100
-    error_message = "target_cpu_utilization must be between 1 and 100."
-  }
-}
-
-variable "target_memory_utilization" {
-  type        = number
-  description = "Target average memory utilization percentage for Loop runtime ECS service autoscaling."
-  default     = 50
-
-  validation {
-    condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
-    error_message = "target_memory_utilization must be between 1 and 100."
-  }
-}
-
 variable "target_conversation_utilization" {
   type        = number
   description = "Target average claimed conversation utilization percentage for Loop runtime ECS service autoscaling."
