@@ -6,9 +6,9 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
   ssm_vpc_endpoint_services = {
-    "ssm" : "com.amazonaws.${data.aws_region.current.region}.ssm",
-    "ssmmessages" : "com.amazonaws.${data.aws_region.current.region}.ssmmessages",
-    "ec2messages" : "com.amazonaws.${data.aws_region.current.region}.ec2messages",
+    # "ssm" : "com.amazonaws.${data.aws_region.current.region}.ssm",
+    # "ssmmessages" : "com.amazonaws.${data.aws_region.current.region}.ssmmessages",
+    # "ec2messages" : "com.amazonaws.${data.aws_region.current.region}.ec2messages",
   }
 
   s3_vpc_endpoint_has_org_ids = length(var.s3_vpc_endpoint_resource_org_ids) > 0
