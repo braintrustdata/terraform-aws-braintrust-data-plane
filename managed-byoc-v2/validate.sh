@@ -244,6 +244,26 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     .Resource | index("arn:aws:kms:us-east-1:111122223333:key/*") != null' "$retained" >/dev/null
 
   access_guardrail="$temporary_dir/customer-service-control-policy.json"
+  jq -e '[.Statement[] | select(.Sid == "DenyAccountAndOrganizationAdministration") |
+    .Effect == "Deny" and .Resource == "*" and
+    (has("Condition") | not) and (has("NotAction") | not) and
+    ([.Action[] | select(startswith("s3:"))] == ["s3:PutAccountPublicAccessBlock"])] == [true]' \
+    "$access_guardrail" >/dev/null
+  jq -e '[.Statement[] | select(.Sid == "DenyDeploymentRoleActionsOutsidePrefix") |
+    .Effect == "Deny" and
+    (.Action | sort) == (["iam:CreateRole", "iam:PassRole"] | sort) and
+    .NotResource == "arn:aws:iam::111122223333:role/bt-a-*" and
+    .Condition == {"ArnEquals": {"aws:PrincipalArn":
+      "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDeploymentRole-review"}}] == [true]' \
+    "$access_guardrail" >/dev/null
+  for action in s3:PutBucketPolicy s3:PutBucketPublicAccessBlock \
+      s3:GetBucketOwnershipControls s3:PutBucketOwnershipControls; do
+    jq -e --arg action "$action" '.Statement[] | select(.Sid == "ManagePrefixedBuckets") |
+      .Effect == "Allow" and .Resource == "arn:aws:s3:::bt-a-*" and
+      (.Action | index($action) != null)' \
+      "$temporary_dir/deployment-data-policy.json" >/dev/null
+  done
+  echo 'Account-level S3 protection, scoped ownership controls, and preserved bucket management checks passed (static checks only).'
   jq -e '.Statement[] | select(.Sid == "RestrictDeploymentDecryptKeys") |
     .Condition."StringNotLikeIfExists"."aws:ResourceTag/BraintrustDeploymentName" == "bt-a-*"' \
     "$access_guardrail" >/dev/null
@@ -263,6 +283,19 @@ if [[ "$package_dir" == "$source_dir" ]]; then
   echo 'Multi-data-plane naming and retained-key scope checks passed.'
 
   runtime="$temporary_dir/runtime-permissions-boundary.json"
+  jq -e '[.Statement[] | select(.Sid == "DenyBucketAccessAdministration") |
+    .Effect == "Deny" and .Resource == "*" and
+    (has("Condition") | not) and (has("NotAction") | not) and
+    (.Action | sort) == (["s3:DeleteBucketPolicy", "s3:PutBucketAcl",
+      "s3:PutBucketPolicy", "s3:PutBucketPublicAccessBlock"] | sort)] == [true]' \
+    "$runtime" >/dev/null
+  jq -e '[.Statement[] | select(.Sid == "AllowOnlyWorkloadPolicyPermissions") |
+    .Effect == "Allow" and .NotAction == "iam:*" and .Resource == "*"] == [true]' \
+    "$runtime" >/dev/null
+  jq -e '[.Statement[] | select(.Effect == "Allow") | .Action |
+    if type == "array" then .[] else . end] | index("s3:PutBucketAcl") == null' \
+    "$temporary_dir/deployment-data-policy.json" >/dev/null
+  echo 'Runtime bucket administration denial and unused deployment ACL removal checks passed (static checks only).'
   jq -e '.Statement[] | select(.Sid == "DenyWorkloadInitiatedInteractiveAccess") |
     .Effect == "Deny" and .Resource == "*" and
     (.Action | sort) == (["ssm:StartSession", "ssm:SendCommand",

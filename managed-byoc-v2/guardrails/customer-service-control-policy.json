@@ -12,6 +12,7 @@
         "identitystore:*",
         "organizations:*",
         "payments:*",
+        "s3:PutAccountPublicAccessBlock",
         "sso:*",
         "sso-directory:*",
         "tax:*"
@@ -98,9 +99,12 @@
       }
     },
     {
-      "Sid": "DenyDeploymentRoleCreationOutsidePrefix",
+      "Sid": "DenyDeploymentRoleActionsOutsidePrefix",
       "Effect": "Deny",
-      "Action": "iam:CreateRole",
+      "Action": [
+        "iam:CreateRole",
+        "iam:PassRole"
+      ],
       "NotResource": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
       "Condition": {
         "ArnEquals": {
@@ -130,17 +134,6 @@
       "Effect": "Deny",
       "Action": "iam:DeleteRolePermissionsBoundary",
       "Resource": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
-      "Condition": {
-        "ArnEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
-        }
-      }
-    },
-    {
-      "Sid": "RestrictPassRole",
-      "Effect": "Deny",
-      "Action": "iam:PassRole",
-      "NotResource": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
       "Condition": {
         "ArnEquals": {
           "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"

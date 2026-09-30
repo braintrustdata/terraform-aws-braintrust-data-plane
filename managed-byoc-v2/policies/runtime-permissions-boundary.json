@@ -87,6 +87,17 @@
       "Resource": "*"
     },
     {
+      "Sid": "DenyBucketAccessAdministration",
+      "Effect": "Deny",
+      "Action": [
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketAcl",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketPublicAccessBlock"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "DenyBootstrapStorageAccess",
       "Effect": "Deny",
       "Action": "s3:*",

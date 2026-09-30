@@ -105,7 +105,9 @@ policies.
 The deployment boundary is not a grant: an action must be allowed by an
 identity policy and the boundary, and must not be denied by the SCP. The
 runtime boundary similarly caps policies that the Terraform module creates for
-individual workloads. It denies workloads permission to initiate Session Manager
+individual workloads. It prevents workloads from changing bucket policies, bucket
+ACLs, or bucket public access settings, while preserving authorized object
+operations and presigned URLs. It denies workloads permission to initiate Session Manager
 shells, Run Command, ECS Exec, or EC2 Instance Connect. Instance and task agents
 retain the separate transport permissions needed to receive diagnostic sessions
 and write transcripts. External feature scope is detailed below.

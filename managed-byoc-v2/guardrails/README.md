@@ -14,6 +14,8 @@ main controls are:
 - prevent bootstrap IAM changes except the exact Diagnostics role/policy
   attachment pair, while allowing metadata reads for verification;
 - prevent Braintrust roles from disabling customer audit controls;
+- prevent account identities from changing or removing account-level S3 Block
+  Public Access;
 - prevent deployment automation from routing or exporting application logs;
 - deny direct application object and secret reads outside documented machine
   exceptions, and cap KMS decryption by key identity or managed tag, service,
@@ -82,6 +84,17 @@ member account identity. Other statements apply only to matching principals.
 SCPs do not constrain AWS service-linked roles; the deployment policy allows
 creation only for listed services, and those roles do not receive the runtime
 boundary. Account for that exception when enabling a new service.
+
+## S3 public access protection
+
+Before applying the SCP, enable account-level **Block all public access** (all
+four settings). The SCP denies `s3:PutAccountPublicAccessBlock`, which AWS uses
+for both changes and removal; it protects the existing configuration rather than
+enabling it. Equivalent organization enforcement can provide the same safeguard.
+
+Deployment can still manage private bucket policies and bucket-level settings.
+Authorized presigned URLs remain supported: they use the signer's object
+permissions, not anonymous public access. See [AWS's presigned URL guide](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html).
 
 ## External AWS access
 
