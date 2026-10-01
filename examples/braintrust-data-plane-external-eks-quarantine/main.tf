@@ -42,7 +42,7 @@ module "braintrust-data-plane" {
 
   # Loop runtime is not supported with external EKS deployments.
   enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "internet"
+  loop_runtime_sandbox_egress_mode = "restricted"
 
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles
