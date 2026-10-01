@@ -32,11 +32,12 @@ variables {
   }]
 }
 
-run "reject_incomplete_rollout" {
+# The real helper throws on timeout; this mock checks a contract violation.
+run "reject_unexpected_response" {
   command = apply
   module { source = "./modules/brainstore-deployment" }
   variables {
-    deployment_name = "bt-timeout"
+    deployment_name = "bt-unexpected"
   }
   override_resource {
     target = aws_lambda_invocation.rollout

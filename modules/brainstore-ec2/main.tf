@@ -1,8 +1,8 @@
 locals {
   brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
-  common_tags = merge({
+  common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
-  }, var.custom_tags)
+  })
   architecture                = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes            = var.writer_instance_count > 0
   has_automation_writer_nodes = var.automation_writer_instance_count > 0
