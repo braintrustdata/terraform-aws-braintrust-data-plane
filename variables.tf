@@ -542,7 +542,7 @@ variable "create_ai_gateway" {
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  description = "Wire GATEWAY_URL on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
   type        = bool
   default     = false
 
@@ -742,7 +742,7 @@ variable "braintrust_api_version_override" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "Route traffic to the API ECS ALB instead of API Gateway and the APIHandler and AIProxy Lambdas. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via its NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. API ECS infra is always created for standard (non-external-EKS) deployments. Default false keeps Lambda as the active path while ECS stays warm for cutover."
+  description = "Route traffic to the API ECS ALB instead of API Gateway and the APIHandler and AIProxy Lambdas. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via the quarantine VPC NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. Default false keeps Lambda as the active path while ECS stays warm for cutover."
   default     = false
 
   validation {
@@ -1234,7 +1234,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, see use_private_gateway_quarantine_proxy for how the URL is chosen."
+  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, precedence is PrivateLink, then the AI Proxy Function URL while that Lambda exists, then the CloudFront /v1/proxy URL once enable_ecs_api has removed it. That CloudFront path follows the configured /v1/proxy origin, including a hosted gateway. A caller-supplied quarantine VPC needs its own egress or a private URL here. See use_private_gateway_quarantine_proxy."
   type        = string
   default     = null
 

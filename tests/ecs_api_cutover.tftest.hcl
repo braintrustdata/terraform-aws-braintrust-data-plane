@@ -81,7 +81,8 @@ run "rejects_whitespace_quarantine_proxy_url_in_ecs_mode" {
 
 # No quarantine_proxy_url: the plan must still succeed. The CloudFront
 # distribution hostname is unknown until apply, so the fallback URL cannot
-# be compared here. A null fallback would fail ecs_quarantine_proxy_requirements.
+# be compared here. Ingress exists in ECS mode, so the fallback is that
+# hostname plus /v1/proxy.
 run "ecs_mode_defaults_quarantine_to_cloudfront" {
   command = plan
 

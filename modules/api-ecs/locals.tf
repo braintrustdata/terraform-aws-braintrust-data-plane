@@ -15,10 +15,10 @@ locals {
   alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
   alb_listener_port = local.alb_https_enabled ? 443 : 80
   api_ecs_url       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
-  # Root module resolves override / AI Proxy / hosted / PrivateLink VPCE URL.
-  # Null/blank → omit QUARANTINE_PROXY_URL so api-ts getRuntimeEnv falls back.
+  # Root module resolves override / PrivateLink / Function URL / CloudFront /v1/proxy.
+  # Null/blank → omit QUARANTINE_PROXY_URL so api-ts getRuntimeEnv falls back
+  # to http://localhost:8000/v1/proxy, which a quarantine Lambda cannot call.
   # Ternary, not &&: trimspace(null) errors even when the null check is false.
-  # ECS mode passes a known null here once the AI Proxy Function URL is gone.
   quarantine_proxy_url = (
     var.quarantine_proxy_url == null ? null : (
       trimspace(var.quarantine_proxy_url) != "" ? trimspace(var.quarantine_proxy_url) : null

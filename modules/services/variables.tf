@@ -319,7 +319,7 @@ variable "url_security_allow_cidrs" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "When true, do not create APIHandler or AIProxy. CloudFront is already routing that traffic to ECS. Quarantine, database migration, CatchupETL, and the cron Lambdas stay."
+  description = "When true, do not create APIHandler or AIProxy. CloudFront is already routing that traffic to ECS. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Setting this back to false creates APIHandler and AIProxy again."
   default     = false
 }
 

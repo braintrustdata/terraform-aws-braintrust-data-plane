@@ -127,8 +127,9 @@ locals {
   )
   # Distribution hostname (https://*.cloudfront.net), not a custom alias.
   # Same value Loop uses. Append /v1/proxy so getRuntimeEnv does not rewrite
-  # it to /v1. Only referenced once the Function URL is gone, so ingress is
-  # not an input to API ECS while the Lambda path is still active.
+  # it to /v1. Terraform records this ingress reference in both flag states,
+  # so the API task definition waits on the CloudFront domain in Lambda mode
+  # too. The domain does not depend on that task definition.
   cloudfront_quarantine_proxy_url = (
     local.enable_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
   )

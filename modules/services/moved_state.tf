@@ -1,6 +1,9 @@
-# Count indexes so enable_ecs_api can destroy APIHandler and AIProxy without
-# recreating them on Lambda-mode stacks. Forward apply moves state in place.
-# A module downgrade after apply addresses the uncounted resources and recreates them.
+# Count indexes so an enable_ecs_api=false upgrade moves APIHandler and AIProxy
+# to [0] in place. Terraform moves surviving [0] resources back to the uncounted
+# address on a module downgrade, so a Lambda-mode stack is not recreated.
+# An enable_ecs_api=true apply deletes these resources. Setting the flag back
+# to false, or downgrading after that apply, creates them again, including a
+# new Function URL hostname.
 
 moved {
   from = aws_lambda_function.ai_proxy

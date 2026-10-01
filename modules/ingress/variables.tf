@@ -110,7 +110,7 @@ variable "api_handler_function_arn" {
 }
 
 variable "enable_ecs_api" {
-  description = "Route CloudFront API and AI Proxy traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda. When true, API Gateway and the AI Proxy CloudFront origin are not created."
+  description = "Route CloudFront API and function traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda. When true, API Gateway and the API Gateway and AI Proxy CloudFront origins are not created. /v1/proxy can still use a hosted or private gateway origin ahead of the ECS ALB."
   type        = bool
   default     = false
 }

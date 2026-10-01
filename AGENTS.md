@@ -103,7 +103,7 @@ Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are m
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
 - Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
 - `create_*` flags own resource lifetime; `enable_*` flags own routing.
-  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false recreates them. The default stays false.
+  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false creates that surface again, including a new Function URL hostname. It does not resume a warm standby. A Lambda-mode upgrade only moves state to `[0]`; Terraform moves surviving `[0]` resources back on downgrade. Resources deleted by an ECS-mode apply are created again on downgrade. The default stays false.
 
 ### Private gateway ALB relocation
 
@@ -115,25 +115,28 @@ Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assu
 
 Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
 - **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists, so the path is ready before cutover.
-- **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
+- **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
 
 Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL` and Loop's hosted/CloudFront proxy URL). Set both true for single-apply wiring on greenfield deployments.
 
 ### Quarantine LLM proxy URL
 
 Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
-`QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
-`*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
-header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
-A module-managed quarantine VPC uses the same `modules/vpc` NAT gateway as
-the main VPC, so quarantine functions can reach public HTTPS. That is how
-the AI Proxy Function URL is reached. When `enable_ecs_api` removes that
-URL, the default replacement is `https://<cloudfront-domain>/v1/proxy`
-(`module.ingress.api_url`), reached the same way. In plain ECS mode
-CloudFront serves that path from the API service. Do **not** build this
-from a request Host header. Do **not** use the API ECS ALB or gateway ALB
-DNS directly. Those addresses are private to the main VPC, and quarantine
-is not peered to it.
+`QUARANTINE_PROXY_URL`. Do **not** build this URL from a request Host header.
+A module-managed quarantine VPC and the main VPC each use `modules/vpc`, so
+each has its own NAT gateway. Quarantine functions reach public HTTPS through
+the quarantine NAT. That is how the AI Proxy Function URL is reached. When
+`enable_ecs_api` removes that URL, the default replacement is
+`https://<cloudfront-domain>/v1/proxy` (`module.ingress.api_url`), reached
+the same way. CloudFront then serves that path from whichever origin
+`/v1/proxy` already uses: a hosted gateway, a private gateway, or the API
+ECS ALB. With `use_global_ai_gateway_origin`, those calls leave the data
+plane for the hosted gateway. A CloudFront WAF or source-IP allow list must
+admit the quarantine NAT address, because every quarantine call arrives from
+it. In plain ECS mode the inner call returns to the same API ECS service
+that invoked the quarantine function. Do **not** use the API ECS ALB or
+gateway ALB DNS directly. Those addresses are private to the main VPC, and
+quarantine is not peered to it.
 Do **not** peer the quarantine VPC to main for this path. Prefer PrivateLink
 to the private gateway when opted in. Loop Runtime uses the
 private gateway ALB `/v1/proxy` when `enable_ai_gateway`. When enable is
@@ -152,9 +155,9 @@ existing stacks are unchanged until operators explicitly enable it.
   if set; otherwise the AI Proxy Lambda Function URL when `enable_ecs_api`
   is false. When `enable_ecs_api` is true and neither an override nor
   PrivateLink set a URL, the CloudFront API URL `/v1/proxy` is used.
+  Ingress exists whenever ECS mode is on, so that URL is present.
   Omitting `QUARANTINE_PROXY_URL` entirely makes api-ts fall back to
-  `http://localhost:8000/v1/proxy`, which the quarantine Lambda cannot call,
-  so apply fails if the CloudFront URL is also missing.
+  `http://localhost:8000/v1/proxy`, which the quarantine Lambda cannot call.
 - **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
   quarantine VPC are both enabled, creates PrivateLink and sets
   `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
@@ -172,8 +175,10 @@ existing stacks are unchanged until operators explicitly enable it.
    VPCs; not `use_global_ai_gateway_origin`)
 3. else AI Proxy Lambda Function URL when `enable_ecs_api` is false
 4. else `https://<cloudfront-domain>/v1/proxy` when `enable_ecs_api` is true.
-   `use_global_ai_gateway_origin` does not select this URL; it only changes
-   which origin serves that CloudFront path.
+   `use_global_ai_gateway_origin` does not select this URL; it changes which
+   origin serves that CloudFront path. When that origin is the hosted
+   gateway, quarantine LLM calls leave the data plane. The URL check is
+   presence only: it does not test NAT egress, WAF admission, or auth.
 
 #### Networking (PrivateLink; only when the flag wires to private gateway)
 
