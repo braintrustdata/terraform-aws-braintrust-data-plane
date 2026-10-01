@@ -5,6 +5,16 @@
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
+
+  # Plan leaves aws_cloudfront_distribution.domain_name unknown unless a mock
+  # value is supplied. The quarantine fallback test asserts that URL.
+  override_resource {
+    target = module.ingress[0].aws_cloudfront_distribution.dataplane
+    values = {
+      domain_name = "d111111abcdef8.cloudfront.net"
+    }
+    override_during = plan
+  }
 }
 
 mock_provider "random" {}
@@ -79,10 +89,9 @@ run "rejects_whitespace_quarantine_proxy_url_in_ecs_mode" {
   ]
 }
 
-# No quarantine_proxy_url: the plan must still succeed. The CloudFront
-# distribution hostname is unknown until apply, so the fallback URL cannot
-# be compared here. Ingress exists in ECS mode, so the fallback is that
-# hostname plus /v1/proxy.
+# No quarantine_proxy_url: ECS mode must select the mocked CloudFront
+# hostname plus /v1/proxy. A null fallback would also leave AIProxy absent,
+# so the URL assertion is what proves the fallback.
 run "ecs_mode_defaults_quarantine_to_cloudfront" {
   command = plan
 
@@ -93,5 +102,10 @@ run "ecs_mode_defaults_quarantine_to_cloudfront" {
   assert {
     condition     = module.services[0].ai_proxy_url == null
     error_message = "ECS mode should still remove the AI Proxy Function URL when the quarantine URL is left unset"
+  }
+
+  assert {
+    condition     = output.quarantine_proxy_url == "https://d111111abcdef8.cloudfront.net/v1/proxy"
+    error_message = "ECS mode should default quarantine to the CloudFront /v1/proxy URL"
   }
 }
