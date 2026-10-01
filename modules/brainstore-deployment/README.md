@@ -1,22 +1,5 @@
 # Brainstore deployment gate
 
-This internal module deploys the `BrainstoreDeployment` Lambda built in the Braintrust repository's `api-ts` project. Terraform updates the existing ASGs' numbered launch-template versions, then invokes the helper synchronously. One invocation waits up to 600 seconds and must return `{ "status": "complete" }`. Lambda exceptions or any other result stop the apply before API services update. No continuation payload is required.
-
-The helper owns instance refreshes. Do not add a native `instance_refresh` block to the ASGs or restore launch-template-triggered ASG replacement. Terraform waits for healthy capacity when creating an ASG, but healthy old capacity does not prove that an update has rolled out. The helper checks the actual instance versions, target health, refresh status, and termination of old instances. Existing ASG identities and Terraform resource addresses stay unchanged during routine updates.
-
-Only the API ECS service resources and API-related Lambda functions depend on `completion_id`. Keep bootstrap resources and the API ALB outside that dependency. Brainstore retains the existing SSM proxy URL lookup; the ECS URL's parameter-version reference targets the specific module instance to avoid depending on the entire API module.
-
-## Release coordination
-
-1. Merge/build the helper implementation in the Braintrust repository. Its Bazel target is `//api-ts:lambda_brainstore_deployment_zip`, and the normal regional publisher stages it as `BrainstoreDeployment`.
-2. Publish the helper alongside the API Lambdas under the same release tag in all supported regional asset buckets. The root module selects the active API release: when `enable_ecs_api` is true, `braintrust_api_version_override` or `modules/api-ecs/VERSIONS.json`; otherwise, `lambda_version_tag_override` or `modules/services/VERSIONS.json`. The helper has no separate version pin. Both API ECS services and API Lambdas still wait for the gate in either mode.
-3. Validate a real non-production deployment using the generated IAM role: initial creation, a simultaneous Brainstore/API version update, failed refresh, and interruption/retry. Confirm API updates begin only after old Brainstore instances terminate.
-4. Release the Terraform module after the shared API release includes the helper artifact in every supported region.
-
-Mock tests cover wiring and failure propagation. They cannot validate AWS authorization, eventual consistency, or actual instance boot timing. The helper has read permissions plus `StartInstanceRefresh` restricted by both ASG name and deployment tag; it uses the configuration Terraform has already installed and does not require `iam:PassRole` or ASG update permissions.
-
-The function depends on its IAM policy, but a successful policy attachment does not guarantee immediate propagation to every AWS service. The helper retries authorization errors during the first two minutes of each invocation, within its existing time budget. Persistent permission errors still stop the apply with the original AWS error.
-
-A failed invocation is not recorded as a completed deployment. Rerunning apply resumes through live AWS inspection; it does not require state surgery. Terraform's usual deployment state lock must remain enabled. The invocation resource uses the default `CREATE_ONLY` lifecycle, so deleting the module does not invoke the helper.
-
-The state move from `aws_lambda_invocation.first` to `aws_lambda_invocation.rollout` handles upgrades from the earlier draft, including partially applied deployments. The changed input causes one fresh readiness check. Any old `second` and `final` invocation records are removed without invoking the helper during deletion.
+Terraform's native ASG instance refresh returns before the rollout finishes, allowing API updates to start too early.
+This module invokes a Lambda that rolls out the desired Brainstore launch templates and waits for healthy replacement instances and termination of old instances.
+API ECS services and API Lambdas wait for successful completion before updating.

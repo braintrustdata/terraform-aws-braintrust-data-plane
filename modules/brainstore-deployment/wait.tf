@@ -1,6 +1,7 @@
 resource "aws_lambda_invocation" "rollout" {
   function_name = aws_lambda_function.waiter.function_name
-  qualifier     = aws_lambda_function.waiter.version
+  # Use the current code without rerunning solely for a helper version change.
+  qualifier = "$LATEST"
   input = jsonencode({
     deployment   = local.deployment
     wait_seconds = 600

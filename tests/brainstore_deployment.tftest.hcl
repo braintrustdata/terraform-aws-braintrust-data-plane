@@ -6,9 +6,6 @@ mock_provider "aws" {
   mock_resource "aws_iam_role" {
     defaults = { arn = "arn:aws:iam::123456789012:role/bt-test-brainstore-deployment" }
   }
-  mock_resource "aws_lambda_function" {
-    defaults = { version = "1" }
-  }
   mock_resource "aws_lambda_invocation" {
     defaults = {
       result = "{\"status\":\"complete\"}"
@@ -67,6 +64,37 @@ run "complete_rollout" {
   assert {
     condition     = length(aws_lambda_function.waiter.vpc_config) == 0 && aws_lambda_function.waiter.tags.BraintrustDeploymentName == "bt-test"
     error_message = "The deployment function must be tagged and independent of dataplane VPC connectivity."
+  }
+}
+
+run "unchanged_rollout" {
+  command = plan
+  module { source = "./modules/brainstore-deployment" }
+
+  assert {
+    condition     = output.completion_id == run.complete_rollout.completion_id
+    error_message = "An unchanged plan must preserve the completed invocation."
+  }
+}
+
+run "helper_code_update" {
+  command = plan
+  module { source = "./modules/brainstore-deployment" }
+  variables {
+    version_tag = "new-api-version"
+  }
+  override_data {
+    target = data.http.artifact
+    values = { status_code = 200, response_body = "lambda/BrainstoreDeployment/versions/abcdef.zip" }
+  }
+
+  assert {
+    condition     = aws_lambda_function.waiter.s3_key == "lambda/BrainstoreDeployment/versions/abcdef.zip"
+    error_message = "The helper code must still follow the selected API release."
+  }
+  assert {
+    condition     = aws_lambda_invocation.rollout.qualifier == "$LATEST" && output.completion_id == run.complete_rollout.completion_id
+    error_message = "Updating only the helper code must preserve the completed rollout invocation."
   }
 }
 

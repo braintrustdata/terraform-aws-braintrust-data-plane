@@ -86,6 +86,8 @@ locals {
   # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
   # version, changes the launch template, and triggers a rolling instance
   # refresh. Lambda mode passes just the bare name.
+  # Index the instance to avoid the module-wide dependency from a splat, which
+  # cycles through API services waiting on Brainstore. ECS-enabled implies count = 1.
   brainstore_ai_proxy_url_ssm_parameter = (
     local.enable_ecs_api
     ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${module.api_ecs[0].url_ssm_parameter_version}"
