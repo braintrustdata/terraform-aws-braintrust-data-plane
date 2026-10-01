@@ -121,6 +121,7 @@ resource "aws_lb_target_group" "brainstore_writer" {
   target_type = "instance"
 
   connection_termination = true
+  deregistration_delay   = 30
   health_check {
     protocol            = "TCP"
     matcher             = ""
