@@ -23,6 +23,8 @@ resource "aws_ecs_task_definition" "braintrust_api_background" {
   }, local.common_tags)
 
   lifecycle {
+    create_before_destroy = true
+
     precondition {
       condition     = contains(keys(local.valid_fargate_memory_by_cpu), tostring(var.braintrust_api_background_cpu))
       error_message = "braintrust_api_background_cpu must be a valid Fargate CPU value."
