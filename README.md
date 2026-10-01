@@ -143,10 +143,22 @@ plane VPC. The module uses its name without creating or managing the group or
 its subnet membership. This works with both the legacy Redis cluster and
 `use_redis_replication_group = true`.
 
-Leaving this input unset preserves the existing group and Redis configuration.
-An explicit state move maps the managed subnet group to its new `[0]` address.
-Changing the subnet group **name** on an existing deployment replaces the Redis
-cluster or replication group and causes downtime; review the plan before applying.
+Leaving `existing_elasticache_subnet_group_name` unset preserves the managed subnet
+group and Redis, moving only the group's Terraform address to
+`module.redis.aws_elasticache_subnet_group.main[0]`. Downgrading the module on
+Terraform 1.10 or newer automatically moves the address back without replacing
+the group.
+
+Setting a different subnet-group name replaces the Redis cluster or replication
+group and causes downtime; review the plan before applying. Terraform updates the
+Redis URL secret with the replacement endpoint. The secret-value change alone
+does not redeploy API ECS or Loop services. After the replacement and secret update
+complete, force a new deployment of all enabled API ECS services (API, ingest, and
+background) and the Loop service so their tasks load the updated secret.
+Brainstore's updated user data triggers an autoscaling instance refresh, and
+Lambdas that embed `redis_host` update during the apply. The gateway embeds the
+Redis host in its task environment, so it also updates during the apply.
+
 Switching to an external group also removes the old module-managed subnet group.
 Do not set this input to the module's own group name to transfer ownership: that
 would schedule the still-used group for deletion. Keeping the existing managed
