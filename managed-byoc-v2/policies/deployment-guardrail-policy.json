@@ -2,21 +2,18 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "IdentityPolicyCeiling",
-      "Effect": "Allow",
-      "NotAction": [
-        "iam:CreateServiceLinkedRole",
-        "iam:PassRole"
-      ],
-      "Resource": "*"
+      "Sid": "PassRoleScope",
+      "Effect": "Deny",
+      "Action": "iam:PassRole",
+      "NotResource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
     },
     {
-      "Sid": "PassRuntimeRoles",
-      "Effect": "Allow",
+      "Sid": "PassRoleServices",
+      "Effect": "Deny",
       "Action": "iam:PassRole",
-      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
+      "Resource": "*",
       "Condition": {
-        "StringEquals": {
+        "StringNotEquals": {
           "iam:PassedToService": [
             "ec2.amazonaws.com",
             "ecs-tasks.amazonaws.com",
@@ -31,12 +28,18 @@
       }
     },
     {
-      "Sid": "CreateServiceLinkedRoles",
-      "Effect": "Allow",
+      "Sid": "LinkedRoleScope",
+      "Effect": "Deny",
       "Action": "iam:CreateServiceLinkedRole",
-      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*",
+      "NotResource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*"
+    },
+    {
+      "Sid": "LinkedRoleServices",
+      "Effect": "Deny",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
       "Condition": {
-        "StringEquals": {
+        "StringNotEquals": {
           "iam:AWSServiceName": [
             "autoscaling.amazonaws.com",
             "ecs.amazonaws.com",

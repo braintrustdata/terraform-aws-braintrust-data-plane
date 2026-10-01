@@ -295,8 +295,10 @@ privileged shell; see the [logging prerequisites and limits](diagnostics.md#logg
 The [policy guide](policies/README.md#role-attachment-model) maps each JSON file
 to its role. Observer and Support share an inspection policy; Support adds
 bounded operations. Diagnostics receives its separate policy only during activation.
-Deployment and runtime roles also have permissions boundaries, which cap the
-permissions a role can receive rather than granting access.
+Deployment's protected identity guardrail policy adds explicit denials to its
+allow policies. Permissions boundaries apply to runtime roles created by Terraform,
+limiting delegated permissions without granting access. Customer SCPs provide
+independent organization safeguards.
 
 The [trust policies](trust-policies/README.md) restrict each customer role to one
 exact Braintrust principal. Machine sessions additionally require a unique
@@ -314,13 +316,17 @@ this preview against the full role permissions, not an assumed limit for each op
 
 Runtime roles are the IAM identities used by data plane workloads. The data plane
 is an evolving product and must be able to add, update, and remove those roles
-and policies. Deployment can manage only IAM resources whose names begin with
-the configured managed resource prefix. Every created role must carry the runtime
-permissions boundary owned by the customer. `iam:PassRole` is limited to matching
+and policies. Deployment can manage runtime IAM resources only when their names
+begin with the configured managed resource prefix. Every created workload role
+must carry the runtime permissions boundary owned by the customer. `iam:PassRole` is limited to matching
 roles and a specified list of AWS services. Deployment cannot assume runtime
 roles itself. The runtime boundary denies SSM sessions, Run Command, ECS Exec,
 and EC2 Instance Connect initiated by workloads. Agent permissions needed to
 receive diagnostic sessions remain available.
+
+AWS service-linked roles are a separate exception, limited to listed services.
+They use AWS-managed policies rather than the runtime boundary; see the
+[guardrail guide](guardrails/README.md#scope-and-implementation).
 
 ## Access outside the BYOC account
 
@@ -360,11 +366,11 @@ permissions and the destination account's controls govern its subsequent calls.
 Deployment allow policies will change as the Terraform module gains or removes
 features. Those changes will be versioned with the required customer
 configuration.
-Trust restrictions, permissions boundaries, SCPs, audit ownership, and data
-access restrictions form the baseline safeguards.
+Trust restrictions, protected identity guardrails, runtime permissions boundaries,
+SCPs, audit ownership, and data access restrictions form the baseline safeguards.
 
-The deployment role cannot edit its own role, trust policy, attached policies,
-or permissions boundary. Increasing its maximum access therefore requires a
+The deployment role cannot edit its own role, trust policy, or attached policies,
+including its guardrail policy. Increasing its maximum access therefore requires a
 bootstrap update controlled by the customer. It can change runtime policies
 created by the module, but each runtime role remains capped by the boundary
 owned by the customer. Its only bootstrap IAM mutation is attaching or detaching
@@ -379,7 +385,7 @@ customer recovery or deletion. The Terraform state bucket and operation log
 bucket also remain under customer control. Permanent workload data erasure is
 not part of this customer package.
 
-The deployment boundary and guardrail for retained data together deny deletion of
+The deployment guardrail policy and retained data SCP together deny deletion of
 Brainstore buckets named by the module and their objects, disablement or scheduled
 deletion of KMS keys in the configured account and Region, deletion of final RDS
 snapshots named by the module, and deletion of operation records. They also
@@ -428,6 +434,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-10-01 | Replaced Deployment's permissions boundary with a protected identity guardrail policy. Preserved its explicit restrictions and made role and service limits explicit denials. Runtime boundaries, human policies, trust, and SCPs are unchanged. | Review the updated attachment map and guardrail policy, including `PassRole`, service-linked role creation, and protection against changing or detaching the guardrail. |
 | 2026-09-30 | Improved reading order and navigation, clarified review and implementation responsibilities, and reorganized the policy and guardrail guides. No policies changed. | Use the Start here links and role attachment map; permissions, safeguards, and scope are unchanged. |
 | 2026-09-30 | Consolidated deployment log-routing and interactive-access denials into one SCP statement. No permissions changed. | The actions, principal, and conditions remain identical; the policy document is smaller. |
 | 2026-09-30 | Added deployment ownership-control permissions for module-created S3 VPC flow-log destinations. | The two actions remain scoped to the managed bucket prefix; public access protection and object permissions are unchanged. |

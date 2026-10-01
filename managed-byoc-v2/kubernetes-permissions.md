@@ -24,8 +24,9 @@ no automatic administrator grant for the cluster creator. AWS does not support
 a resource ARN restriction on `CreateCluster`; the module must also enforce the
 reserved cluster name prefix. Subsequent lifecycle actions use that name prefix.
 
-The deployment boundary and SCP allow passing matching cluster roles to EKS;
-the EKS policy permits only its service-linked roles for clusters and managed
+The EKS policy grants passing matching cluster roles to EKS; the deployment
+guardrail and SCP restrict `PassRole` to listed services.
+The EKS policy permits only its service-linked roles for clusters and managed
 node groups. Existing EC2 `PassRole` covers node roles. This is not a full baseline
 for EKS Auto Mode, Fargate, or a selected implementation of pod identity.
 

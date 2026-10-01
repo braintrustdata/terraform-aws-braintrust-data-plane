@@ -10,17 +10,22 @@ below are implementation references; no substitutions are needed for security re
 
 | Role | Permissions boundary | Identity policies |
 | --- | --- | --- |
-| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | [deployment-permissions-boundary.json](deployment-permissions-boundary.json) | [deployment-infrastructure-policy.json](deployment-infrastructure-policy.json), [deployment-data-policy.json](deployment-data-policy.json), [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json), [deployment-eks-policy.json](deployment-eks-policy.json) |
+| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | [deployment-infrastructure-policy.json](deployment-infrastructure-policy.json), [deployment-data-policy.json](deployment-data-policy.json), [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json), [deployment-eks-policy.json](deployment-eks-policy.json), [deployment-guardrail-policy.json](deployment-guardrail-policy.json) |
 | `BraintrustSupportRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [observer-policy.json](observer-policy.json), [support-policy.json](support-policy.json) |
 | `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [observer-policy.json](observer-policy.json) |
 | `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None required; Diagnostics SCP remains effective | [diagnostics-policy.json](diagnostics-policy.json) only during activation |
 | Runtime roles created by Terraform | [runtime-permissions-boundary.json](runtime-permissions-boundary.json) | Module policies for individual workloads |
 
-The deployment boundary is not a grant: an action must be allowed by an
-identity policy and the boundary, and must not be denied by the SCP. The
-runtime boundary similarly caps policies that the Terraform module creates for
-individual workloads. It prevents workloads from changing bucket policies, bucket
-ACLs, or bucket public access settings, while preserving authorized object
+Deployment's allow policies grant operations; its guardrail policy contains only
+explicit denials and must remain attached as an identity policy, not a permissions
+boundary. These denials override other grants,
+including resource policies, without granting any access themselves. Its bootstrap
+IAM protections prevent Deployment from changing or detaching this policy.
+Customer SCPs independently enforce organization safeguards.
+
+The runtime permissions boundary caps the permissions delegated to roles created
+by Terraform; it does not grant access. It prevents workloads from changing bucket
+policies, bucket ACLs, or bucket public access settings, while preserving authorized object
 operations and presigned URLs. It denies workloads permission to initiate Session Manager
 shells, Run Command, ECS Exec, or EC2 Instance Connect. Instance and task agents
 retain the separate transport permissions needed to receive diagnostic sessions
@@ -51,7 +56,7 @@ All bootstrap IAM resources must use the protected `/braintrust-byoc/` path:
 | --- | --- |
 | Four management roles | `Braintrust{Deployment,Support,Observer,Diagnostics}Role-<BOOTSTRAP_NAME>` |
 | Runtime boundary policy | `BraintrustRuntimeBoundary-<BOOTSTRAP_NAME>` |
-| Deployment boundary policy | `BraintrustDeploymentBoundary-<BOOTSTRAP_NAME>` |
+| Deployment guardrail policy | `BraintrustDeploymentGuardrail-<BOOTSTRAP_NAME>` |
 | Diagnostics managed policy | `BraintrustDiagnosticsPolicy-<BOOTSTRAP_NAME>` |
 | Other bootstrap managed policies | Names ending in `-<BOOTSTRAP_NAME>`, under the same protected path |
 | Runtime roles, managed policies, and instance profiles | Root IAM path `/`, with names beginning with `<MANAGED_RESOURCE_PREFIX>`; never the bootstrap path |
@@ -132,9 +137,9 @@ outside the runtime resource prefix. Resolve all three Diagnostics placeholders
 from the same bootstrap. Role and policy ARNs must be exact, without wildcards.
 Do not attach another identity policy or grant access through resource policies.
 
-The deployment boundary permits only the matching role/policy attachment pair.
-It also permits reading role metadata, lists of attached policies, and policy contents
-to verify activation. Other bootstrap IAM changes remain denied. The condition
+The Diagnostics management policy grants the matching role/policy attachment pair
+and metadata reads to verify activation. The deployment guardrail and SCP deny
+other bootstrap IAM changes. The condition
 using the role ID on `ssm:TerminateSession` permits cleanup of different
 engineers' sessions for that Diagnostics role, without authorizing shell access
 for deployment automation.

@@ -116,6 +116,8 @@ check_rendered_names() {
   local activation_file="$temporary_dir/${fixture}deployment-diagnostics-policy.json"
   local infrastructure_file="$temporary_dir/${fixture}deployment-infrastructure-policy.json"
   local data_file="$temporary_dir/${fixture}deployment-data-policy.json"
+  local guardrail_file="$temporary_dir/${fixture}deployment-guardrail-policy.json"
+  local eks_file="$temporary_dir/${fixture}deployment-eks-policy.json"
   role="$(jq -er '.Statement[] | select(.Sid == "ActivatePredefinedDiagnostics") | .Resource' "$activation_file")"
   role_pattern='^arn:aws:iam::([0-9]{12}):role/braintrust-byoc/BraintrustDiagnosticsRole-([a-z0-9][a-z0-9-]{0,15})$'
   if [[ ! "$role" =~ $role_pattern ]]; then
@@ -133,7 +135,7 @@ check_rendered_names() {
   jq -e --arg boundary "$runtime_boundary" '.Statement[] | select(.Sid == "RequireRuntimeBoundary") |
     .Condition.ArnNotEquals."iam:PermissionsBoundary" == $boundary' \
     "$temporary_dir/${fixture}customer-service-control-policy.json" >/dev/null
-  for file in deployment-permissions-boundary.json customer-service-control-policy.json; do
+  for file in deployment-guardrail-policy.json customer-service-control-policy.json; do
     jq -e --arg role "$role" --arg policy "$policy" '
       ([.Statement[] | select(.Sid == "DenyOtherBootstrapAttachments") |
         .Condition.ArnNotEquals."iam:PolicyARN" == $policy] == [true]) and
@@ -148,6 +150,38 @@ check_rendered_names() {
     exit 1
   fi
   prefix="${BASH_REMATCH[1]}"
+  # The guardrail replaces a boundary ceiling, not an identity grant. Preserve
+  # both the resource and service restrictions, including absent context keys.
+  jq -e --slurpfile infrastructure "$infrastructure_file" --slurpfile eks "$eks_file" \
+    --arg pass_scope "arn:aws:iam::${account}:role/${prefix}*" \
+    --arg linked_scope "arn:aws:iam::${account}:role/aws-service-role/*" '
+    def values: if type == "array" then .[] else . end;
+    ($infrastructure[0].Statement + $eks[0].Statement |
+      map(select(.Effect == "Allow"))) as $allows |
+    (.Statement | all(.Effect == "Deny")) and
+    ([.Statement[] | select(.Sid == "PassRoleScope") |
+      .Action == "iam:PassRole" and .NotResource == $pass_scope and
+      (has("Resource") | not) and (has("Condition") | not)] == [true]) and
+    ([.Statement[] | select(.Sid == "LinkedRoleScope") |
+      .Action == "iam:CreateServiceLinkedRole" and .NotResource == $linked_scope and
+      (has("Resource") | not) and (has("Condition") | not)] == [true]) and
+    ([$allows[] | select(.Action == "iam:PassRole") | .Resource] |
+      unique == [$pass_scope]) and
+    ([$allows[] | select(.Action == "iam:CreateServiceLinkedRole") | .Resource] |
+      unique == [$linked_scope]) and
+    ([.Statement[] | select(.Sid == "PassRoleServices") |
+      .Action == "iam:PassRole" and .Resource == "*" and
+      (.Condition | .StringNotEquals."iam:PassedToService" |= (. // [] | sort)) ==
+      {"StringNotEquals": {"iam:PassedToService":
+        ([$allows[] | select(.Action == "iam:PassRole") |
+          .Condition.StringEquals."iam:PassedToService" | values] | unique)}}] == [true]) and
+    ([.Statement[] | select(.Sid == "LinkedRoleServices") |
+      .Action == "iam:CreateServiceLinkedRole" and .Resource == "*" and
+      (.Condition | .StringNotEquals."iam:AWSServiceName" |= (. // [] | sort)) ==
+      {"StringNotEquals": {"iam:AWSServiceName":
+        ([$allows[] | select(.Action == "iam:CreateServiceLinkedRole") |
+          .Condition.StringEquals."iam:AWSServiceName" | values] | unique)}}] == [true])' \
+    "$guardrail_file" >/dev/null
   state_resource="$(jq -er '.Statement[] | select(.Sid == "ReadAndWriteTerraformState") | .Resource' "$data_file")"
   state_bucket="${state_resource#arn:aws:s3:::}"
   state_bucket="${state_bucket%%/*}"
@@ -183,7 +217,7 @@ check_rendered_names ''
 if [[ "$package_dir" == "$source_dir" ]]; then
   check_rendered_names maximum-
 fi
-echo 'Bootstrap naming, protected IAM paths, and input length checks passed.'
+echo 'Bootstrap naming, protected IAM paths, input lengths, and deployment guardrail ceiling checks passed.'
 
 if [[ "$package_dir" == "$source_dir" ]]; then
   if rg -n '<(BRAINSTORE_BUCKET_NAME|DATA_PLANE_KMS_KEY_ARN|RETAINED_RDS_SNAPSHOT_PREFIX)>' \
@@ -203,13 +237,13 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     fi
   }
 
-  boundary="$temporary_dir/deployment-permissions-boundary.json"
+  deployment_guardrail="$temporary_dir/deployment-guardrail-policy.json"
   retained="$temporary_dir/customer-retained-data-service-control-policy.json"
   infrastructure="$temporary_dir/deployment-infrastructure-policy.json"
 
-  for file in "$boundary" "$retained"; do
+  for file in "$deployment_guardrail" "$retained"; do
     sid=ProtectRetainedBrainstoreData
-    [[ "$file" == "$boundary" ]] && sid=ProtectRetainedData
+    [[ "$file" == "$deployment_guardrail" ]] && sid=ProtectRetainedData
     pattern="$(jq -r --arg sid "$sid" '.Statement[] | select(.Sid == $sid) | .Resource[0]' "$file")"
     assert_scope "$pattern" \
       'arn:aws:s3:::bt-a-one-brainstore-1234' \
@@ -217,7 +251,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
       'arn:aws:s3:::bt-b-one-brainstore-1234'
 
     sid=ProtectRetainedDatabaseSnapshots
-    [[ "$file" == "$boundary" ]] && sid=ProtectRetainedData
+    [[ "$file" == "$deployment_guardrail" ]] && sid=ProtectRetainedData
     pattern="$(jq -r --arg sid "$sid" '.Statement[] | select(.Sid == $sid) | .Resource |
       if type == "array" then .[] | select(contains(":snapshot:")) else . end' "$file")"
     assert_scope "$pattern" \
@@ -226,7 +260,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
       'arn:aws:rds:us-east-1:111122223333:snapshot:bt-b-one-main-final-snapshot-1234'
   done
 
-  pattern="$(jq -r '.Statement[] | select(.Sid == "DenyOtherInvocations") | .NotResource[0]' "$boundary")"
+  pattern="$(jq -r '.Statement[] | select(.Sid == "DenyOtherInvocations") | .NotResource[0]' "$deployment_guardrail")"
   assert_scope "$pattern" \
     'arn:aws:lambda:us-east-1:111122223333:function:bt-a-one-MigrateDatabaseFunction' \
     'arn:aws:lambda:us-east-1:111122223333:function:bt-a-two-MigrateDatabaseFunction' \
@@ -239,7 +273,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     'arn:aws:ssm:us-east-1:111122223333:parameter/braintrust/bt-b-one/ai-proxy-url'
 
   jq -e '.Statement[] | select(.Sid == "ProtectRetainedData") |
-    .Resource | index("arn:aws:kms:us-east-1:111122223333:key/*") != null' "$boundary" >/dev/null
+    .Resource | index("arn:aws:kms:us-east-1:111122223333:key/*") != null' "$deployment_guardrail" >/dev/null
   jq -e '.Statement[] | select(.Sid == "ProtectRetainedDataPlaneKey") |
     .Resource | index("arn:aws:kms:us-east-1:111122223333:key/*") != null' "$retained" >/dev/null
 
@@ -324,7 +358,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
       "arn:aws:iam::111122223333:role/bt-a-two-${target}" \
       "arn:aws:iam::444455556666:role/bt-a-one-${target}"
   done
-  for file in "$boundary" "$retained" "$temporary_dir/observer-policy.json"; do
+  for file in "$deployment_guardrail" "$retained" "$temporary_dir/observer-policy.json"; do
     for action in cloudwatch:PutInsightRule cloudwatch:PutManagedInsightRules cloudwatch:GetInsightRuleReport \
         logs:CreateLogAnomalyDetector logs:ListAnomalies logs:GetLookupTable; do
       jq -e --arg action "$action" '[.Statement[] | select(.Effect == "Deny") | .Action |
@@ -350,7 +384,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     .Effect == "Allow" and .Resource == $role and
     (.Action | sort) == (["iam:AttachRolePolicy", "iam:DetachRolePolicy"] | sort) and
     .Condition.ArnEquals."iam:PolicyARN" == $policy' "$activation" >/dev/null
-  for file in "$boundary" "$access_guardrail"; do
+  for file in "$deployment_guardrail" "$access_guardrail"; do
     jq -e --arg role "$diagnostic_role" --arg policy "$diagnostic_policy" '
       ([.Statement[] | select(.Sid == "ProtectBootstrapIam") |
         .Effect == "Deny" and
