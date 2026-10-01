@@ -10,6 +10,20 @@ identifiers for each account and enabled features vary. This design preview
 is not a deployment template. The production bootstrap will implement the
 validated model.
 
+## Start here
+
+Read this page for the access model, then use the guides below to inspect its
+controls. Security review does not require deployment or placeholder substitution.
+
+| To review | Read |
+| --- | --- |
+| Roles and effective access | [BYOC roles](#byoc-roles) and [access matrix](#effective-access) |
+| Role permissions and boundaries | [Policy guide](policies/README.md#role-attachment-model) |
+| Who can assume the roles | [Trust guide](trust-policies/README.md) |
+| Customer organization controls | [Guardrail guide](guardrails/README.md) |
+| Temporary troubleshooting access | [Diagnostics guide](diagnostics.md) |
+| Audit collection and alerts | [Monitoring guide](guardrails/cloudtrail-alerting.md) |
+
 BYOC separates routine operations from troubleshooting that can access customer
 data. Deployment remains privileged and can access state and secrets managed by
 the module. Routine human roles have no direct access to application data;
@@ -23,8 +37,10 @@ and the account may host multiple Braintrust data plane deployments. Customer
 applications and infrastructure unrelated to Braintrust BYOC must reside in
 separate AWS accounts.
 
-Each bootstrap reserves a unique, non-overlapping name prefix in that account.
-Every data plane it manages uses a `deployment_name` beginning with that
+A bootstrap is the account setup for management roles, policies, and operational
+storage shared by one or more data planes. Each bootstrap reserves a unique,
+non-overlapping name prefix in that account. Every data plane it manages uses a
+`deployment_name` beginning with that
 prefix. This lets the same safeguards cover additional data planes without
 binding generated bucket names or key IDs after creation. These examples cover
 one configured AWS Region; additional Regions require corresponding policy scope.
@@ -127,41 +143,6 @@ treated as possible customer data and are excluded from Support and Observer.
 Keep secrets and customer payloads out of names, tags, descriptions, stack
 outputs, and task overrides visible through diagnostic APIs.
 
-## Policy set
-
-The [policy guide](policies/README.md#role-attachment-model) maps each JSON file
-to its role. Deployment uses four policies: infrastructure, data, Diagnostics
-activation, and future EKS permissions. Observer and Support share an inspection
-policy; Support adds bounded operations. Diagnostics receives its separate policy
-only during activation. Deployment and runtime roles also have permissions boundaries.
-The EKS permissions do not enable Kubernetes access.
-
-The trust policies under `trust-policies/` restrict each customer role to one
-exact Braintrust principal. Machine sessions additionally require a unique
-External ID and an operation source identity. Human sessions must inherit a
-source identity established by Braintrust's identity provider or access broker.
-The attribution flow, including console access, must be validated before use;
-see [`trust-policies/README.md`](trust-policies/README.md).
-
-The deployment role policies describe the maximum access across all data
-planes under one bootstrap. Some infrastructure permissions and discovery APIs
-apply across the account; the prefix is not complete isolation between data planes.
-The policies do not yet narrow credentials for each deployment operation. Assess
-this preview against the full role permissions, not an assumed limit for each
-operation.
-
-## IAM creation and `PassRole`
-
-The data plane is an evolving product and must be able to add, update, and
-remove runtime IAM roles and policies. The deployment role can manage only IAM
-resources whose names begin with the configured managed resource prefix. Every
-created role must carry the runtime permissions boundary owned by the customer.
-`iam:PassRole` is limited to matching roles and a specified list of AWS
-services. The deployment role cannot assume runtime roles itself. The runtime
-boundary denies SSM sessions, Run Command, ECS Exec, and EC2 Instance Connect
-initiated by workloads. Agent permissions needed to receive diagnostic sessions remain
-available.
-
 ## Human operations model
 
 Observer and Support can inspect infrastructure configuration and health,
@@ -206,20 +187,23 @@ Diagnostics can access and modify data through workloads and their runtime
 credentials, and may provide root access.
 
 See the [Diagnostics guide](diagnostics.md) for permissions, logging prerequisites,
-and customer revocation. [Kubernetes permissions](kubernetes-permissions.md)
-define the future role profiles only; they do not enable Kubernetes access.
+and customer revocation.
 
 ## Customer guardrails
 
-The three SCPs under `guardrails/` illustrate safeguards owned by the customer. They
-do not grant access. They reinforce the runtime boundary requirement, IAM
-prefix, specified `PassRole` services, bootstrap role protection, data access
+Service control policies (SCPs) set organization permission limits; they do not
+grant access. The [three reference SCPs](guardrails/README.md) reinforce the runtime
+boundary requirement, IAM prefix, specified `PassRole` services, bootstrap role protection, data access
 restrictions, retained data protections, and audit control protection
 independently of Braintrust identity policies. The effective safeguards are
 part of this model; customers can provide equivalent organization controls
 instead of copying these example SCPs if the combined behavior is validated.
 Customers retain control of the license secret, bootstrap policies and trust,
 state and operation log buckets, and any encryption keys managed by the customer.
+
+Braintrust supplies the production bootstrap and configures diagnostic transcript
+collection through the bootstrap and module. The customer applies the account setup
+and manages organization controls, CloudTrail, alerts, and optional archive replication.
 
 Recommended monitoring and recovery controls:
 
@@ -228,7 +212,7 @@ Recommended monitoring and recovery controls:
 2. Enable management events and the targeted data events listed in the alerting
    guide, including S3, Lambda, DynamoDB, and SQS where used.
 3. Implement the minimum event alerts in
-   [`guardrails/cloudtrail-alerting.md`](guardrails/cloudtrail-alerting.md),
+   the [monitoring guide](guardrails/cloudtrail-alerting.md),
    including alerts for role assumption, human mutations, identity control
    changes, attempts to access sensitive data, retained data deletion, public
    exposure, interactive access, and audit tampering.
@@ -306,6 +290,38 @@ monitoring. Operation records need
 denials. Protected destinations do not guarantee uninterrupted capture from a
 privileged shell; see the [logging prerequisites and limits](diagnostics.md#logging-prerequisites).
 
+## Policy set
+
+The [policy guide](policies/README.md#role-attachment-model) maps each JSON file
+to its role. Observer and Support share an inspection policy; Support adds
+bounded operations. Diagnostics receives its separate policy only during activation.
+Deployment and runtime roles also have permissions boundaries, which cap the
+permissions a role can receive rather than granting access.
+
+The [trust policies](trust-policies/README.md) restrict each customer role to one
+exact Braintrust principal. Machine sessions additionally require a unique
+External ID and an operation source identity. Human sessions must inherit a
+source identity established by Braintrust's identity provider or access broker.
+The attribution flow, including console access, must be validated before use.
+
+The deployment policies describe the maximum access across all data planes under
+one bootstrap. Some infrastructure permissions and discovery APIs apply across
+the account; the prefix is not complete isolation between data planes. The
+policies do not yet narrow credentials for each deployment operation. Assess
+this preview against the full role permissions, not an assumed limit for each operation.
+
+## IAM creation and `PassRole`
+
+Runtime roles are the IAM identities used by data plane workloads. The data plane
+is an evolving product and must be able to add, update, and remove those roles
+and policies. Deployment can manage only IAM resources whose names begin with
+the configured managed resource prefix. Every created role must carry the runtime
+permissions boundary owned by the customer. `iam:PassRole` is limited to matching
+roles and a specified list of AWS services. Deployment cannot assume runtime
+roles itself. The runtime boundary denies SSM sessions, Run Command, ECS Exec,
+and EC2 Instance Connect initiated by workloads. Agent permissions needed to
+receive diagnostic sessions remain available.
+
 ## Access outside the BYOC account
 
 A dedicated account does not mean the data plane never uses another AWS account.
@@ -321,16 +337,11 @@ role in another account to call a configured model. S3 export can require the
 data plane to assume a scoped role to write requested exports to a
 S3 bucket designated by the customer, including one in another account.
 
-The baseline permits the API handler's internal quarantine and AI Proxy invocation
-roles. Other role assumptions are denied. An external feature
-requires an explicit destination role ARN in the workload
-policy, an allowance for that feature in the boundary controlled by the customer,
-and a destination trust policy limited to the intended workload role. Direct
-access to an external bucket, key, or other resource likewise requires
-scope for that feature's resources and their owner accounts. These boundary changes do
-not grant access on their own.
-The sample policies do not yet impose a limit on resource ownership for every runtime
-service API; direct external access needs controls specific to that integration.
+The baseline permits only the API handler's internal quarantine and AI Proxy role
+assumptions. External features need exact destination scope in workload policies,
+matching boundary exceptions, and destination trust or resource policies limited
+to the intended workload. Boundary exceptions do not grant access on their own;
+the [policy guide](policies/README.md#external-feature-policy-notes) describes the requirements.
 
 For each feature with external access, Braintrust will document the source
 workload, destination, purpose, required actions, customer configuration, and
@@ -338,10 +349,10 @@ audit events. Customers configure the documented access to use the feature;
 otherwise that feature remains unavailable. Exact destinations vary by
 installation, but the permission pattern is a published feature requirement,
 not an individual approval process. Normal updates within the existing
-boundary need no new configuration for access to other accounts. AWS does not supply
-resource ownership information for every API, so the S3 account ownership SCP is one
-concrete guardrail, not a claim that a single condition protects every AWS
-service. Once a workload assumes a role in another account, that role's
+boundary need no new configuration for access to other accounts. The sample policies
+do not impose a universal resource ownership limit: AWS does not supply that context
+for every API, so direct external access needs controls specific to each integration.
+Once a workload assumes a role in another account, that role's
 permissions and the destination account's controls govern its subsequent calls.
 
 ## Stable guardrails and evolving permissions
@@ -399,11 +410,16 @@ prevent every data change possible using runtime credentials or a privileged she
 
 ## Reviewing the files
 
-Replace the documented placeholders with values specific to each account before
-using any policy. `policies/README.md` lists them and explains the attachment
-model. `guardrails/README.md` explains the SCP and rollout precautions. Run
-`./validate.sh` to check JSON syntax and AWS policy size limits. The script can
-also use IAM Access Analyzer when AWS credentials are available.
+The JSON files are references for the production bootstrap, not instructions to
+deploy this preview. Use the [role attachment map](policies/README.md#role-attachment-model)
+to find the policies for each role and the [trust guide](trust-policies/README.md)
+to inspect its allowed callers. Naming, placeholder substitution, and validation
+are covered in the [policy guide](policies/README.md).
+
+## Additional permission reference
+
+[EKS and Kubernetes permissions](kubernetes-permissions.md) describe the included
+profiles for future Kubernetes support. They do not enable Kubernetes access.
 
 ## Preview change history
 
@@ -412,6 +428,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-09-30 | Improved reading order and navigation, clarified review and implementation responsibilities, and reorganized the policy and guardrail guides. No policies changed. | Use the Start here links and role attachment map; permissions, safeguards, and scope are unchanged. |
 | 2026-09-30 | Consolidated deployment log-routing and interactive-access denials into one SCP statement. No permissions changed. | The actions, principal, and conditions remain identical; the policy document is smaller. |
 | 2026-09-30 | Added deployment ownership-control permissions for module-created S3 VPC flow-log destinations. | The two actions remain scoped to the managed bucket prefix; public access protection and object permissions are unchanged. |
 | 2026-09-30 | Denied runtime changes to bucket policies, bucket ACLs, and bucket public access settings. Removed the unused deployment bucket ACL grant. | Review the separation between workload object access and deployment bucket administration; object permissions and presigned URLs are unchanged. |

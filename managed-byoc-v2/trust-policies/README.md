@@ -1,5 +1,12 @@
 # Trust policy review guide
 
+[Back to overview](../README.md#start-here)
+
+Review [deployment-role-trust-policy.json](deployment-role-trust-policy.json) for
+the machine role and [human-role-trust-policy.json](human-role-trust-policy.json)
+for Support, Observer, and Diagnostics. The human policy is instantiated separately
+for each role with its designated Braintrust source principal.
+
 Use the [bootstrap IAM naming rules](../policies/README.md#naming-and-scope) for
 all target roles. These additional placeholders configure the trusted sources:
 

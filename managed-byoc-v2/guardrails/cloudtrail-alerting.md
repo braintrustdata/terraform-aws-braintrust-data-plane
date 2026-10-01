@@ -1,8 +1,11 @@
-# CloudTrail alerting MVP
+# CloudTrail monitoring and alerts
+
+[Back to overview](../README.md#start-here)
 
 These controls define the minimum detection baseline for the dedicated BYOC
-account. The customer owns and operates them. They complement IAM, permissions
-boundaries, and SCPs; they do not prevent an action that is otherwise authorized.
+account. The customer owns and operates them. They complement the
+[IAM policies](../policies/README.md) and [guardrails](README.md); they do not
+prevent an action that is otherwise authorized.
 
 ## Collection prerequisites
 

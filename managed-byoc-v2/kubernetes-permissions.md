@@ -1,12 +1,15 @@
 # EKS and Kubernetes permission preparation
 
+[Back to overview](README.md#start-here)
+
 This is a permissions baseline for future Kubernetes support, not an EKS
 deployment or an implemented Kubernetes access path. Networking, cluster
 configuration, access activation, and session handling are outside this update.
 
 ## AWS permissions
 
-`deployment-eks-policy.json` prepares Deployment to manage named EKS clusters,
+[deployment-eks-policy.json](policies/deployment-eks-policy.json) prepares Deployment
+to manage named EKS clusters,
 managed node groups, and add-ons in the configured account and Region. It also
 permits fixed access entries for Deployment, Support, and Observer, with one
 predefined Kubernetes group per role. It does not permit arbitrary principals,

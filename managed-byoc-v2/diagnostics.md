@@ -1,5 +1,7 @@
 # Temporary Diagnostics access
 
+[Back to overview](README.md#start-here)
+
 Status: design preview; workflow and deployment validation remain outstanding.
 
 Diagnostics is separate from routine Support and Observer access. It permits
@@ -10,9 +12,11 @@ can read or modify customer data and can include root inside a host or container
 ## Access and activation
 
 - Bootstrap creates `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` and the fixed
-  `diagnostics-policy.json` managed policy. The policy is normally unattached.
+  [diagnostics-policy.json](policies/diagnostics-policy.json) managed policy.
+  The policy is normally unattached.
 - Trust is limited to the designated Braintrust engineering source role, with
-  the same identity attribution requirements as the other human roles.
+  the same [identity attribution requirements](trust-policies/README.md) as the
+  other human roles.
 - Deployment can attach/detach only that policy on that role. It cannot rewrite
   the policy, change trust, replace the role, or attach the policy elsewhere.
   Metadata reads let it check the role and current policy attachment.

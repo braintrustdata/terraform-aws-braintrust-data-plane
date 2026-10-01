@@ -1,46 +1,41 @@
 # IAM policy review guide
 
-These are proposed policy documents, not deployment artifacts. Replace all
-placeholders before implementation:
+[Back to overview](../README.md#start-here)
 
-| Placeholder | Meaning |
-| --- | --- |
-| `<AWS_PARTITION>` | `aws` for this preview; other partitions need a separate compatibility review |
-| `<AWS_ACCOUNT_ID>` | Dedicated customer AWS account ID |
-| `<AWS_REGION>` | Data plane AWS Region |
-| `<BOOTSTRAP_NAME>` | Bootstrap identifier: 1–16 lowercase letters, digits, or hyphens; start with a letter or digit |
-| `<MANAGED_RESOURCE_PREFIX>` | Reserved deployment prefix: 2–8 lowercase letters, digits, or hyphens; start with a letter or digit and end in a hyphen |
-| `<RUNTIME_BOUNDARY_ARN>` | Exact `policy/braintrust-byoc/BraintrustRuntimeBoundary-<BOOTSTRAP_NAME>` ARN |
-| `<DIAGNOSTICS_ROLE_ARN>` | Exact bootstrap role `role/braintrust-byoc/BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` |
-| `<DIAGNOSTICS_POLICY_ARN>` | Exact managed policy `policy/braintrust-byoc/BraintrustDiagnosticsPolicy-<BOOTSTRAP_NAME>` |
-| `<DIAGNOSTICS_ROLE_ID>` | Immutable IAM `RoleId` returned when bootstrap creates Diagnostics; used to clean up sessions across engineers |
-| `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
-| `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
-| `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust deployment artifact bucket for the data plane Region |
-| `<STATE_KMS_KEY_ARN>` | State bucket key owned by the customer, if SSE-KMS is used |
-| `<OPERATION_LOG_KMS_KEY_ARN>` | Operation log key owned by the customer, if SSE-KMS is used |
-| `<LICENSE_SECRET_ARN>` | Exact ARN of the license secret owned by the customer; up to 128 characters in this package |
-| `<LICENSE_SECRET_KMS_KEY_ARN>` | Resolved license secret key ARN; see handling for keys managed by AWS below |
+These are proposed policy documents, not deployment artifacts. Start with the
+role attachment map to inspect permissions. Naming, placeholders, and validation
+below are implementation references; no substitutions are needed for security review.
 
-For a license secret key managed by AWS, remove `DecryptLicenseSecret` and put
-the resolved `alias/aws/secretsmanager` **key ARN** in the SCP decrypt exception.
-For an SSE-S3 bucket, remove its `Use...KeyThroughS3` statement and corresponding
-key entries from the SCPs. Never replace an unused key placeholder with `*`.
+## Role attachment model
 
-Bootstrap keys must be distinct from data plane keys created by the module and
-must not carry the module's `BraintrustDeploymentName` tag. Their policies stay
-under customer control. The S3 KMS examples use object ARN encryption context;
-keep S3 Bucket Keys disabled for these two buckets. Enabling Bucket Keys changes
-the context to a bucket ARN and requires an explicit policy update.
+| Role | Permissions boundary | Identity policies |
+| --- | --- | --- |
+| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | [deployment-permissions-boundary.json](deployment-permissions-boundary.json) | [deployment-infrastructure-policy.json](deployment-infrastructure-policy.json), [deployment-data-policy.json](deployment-data-policy.json), [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json), [deployment-eks-policy.json](deployment-eks-policy.json) |
+| `BraintrustSupportRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [observer-policy.json](observer-policy.json), [support-policy.json](support-policy.json) |
+| `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [observer-policy.json](observer-policy.json) |
+| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None required; Diagnostics SCP remains effective | [diagnostics-policy.json](diagnostics-policy.json) only during activation |
+| Runtime roles created by Terraform | [runtime-permissions-boundary.json](runtime-permissions-boundary.json) | Module policies for individual workloads |
 
-The KMS decrypt permission for operation records supports multipart uploads; it
-does not grant S3 object reads. Retain bucket versioning and consider Object Lock
-for operation records: `PutObject` can otherwise replace the current version.
+The deployment boundary is not a grant: an action must be allowed by an
+identity policy and the boundary, and must not be denied by the SCP. The
+runtime boundary similarly caps policies that the Terraform module creates for
+individual workloads. It prevents workloads from changing bucket policies, bucket
+ACLs, or bucket public access settings, while preserving authorized object
+operations and presigned URLs. It denies workloads permission to initiate Session Manager
+shells, Run Command, ECS Exec, or EC2 Instance Connect. Instance and task agents
+retain the separate transport permissions needed to receive diagnostic sessions
+and write transcripts. External feature scope is detailed below.
 
-Terraform also needs [KMS access for encrypted Lambda environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars-encryption.html).
-This deployment permission applies only through Lambda and only to data plane
-keys tagged by the module; it does not permit direct KMS decryption. Confirm the AWS
-service request context and provider refresh behavior before production use.
+The Observer policy is the shared inspection baseline. Support also receives
+the Support policy; Observer does not. Explicit denies in the shared policy
+remain effective for both roles. Do not attach it to Diagnostics: its session
+and log denials would block troubleshooting. Diagnostics has its own discovery permissions.
+
+BYOC v2 deployment configuration must keep the module's legacy
+`enable_braintrust_support_logs_access` and
+`enable_braintrust_support_shell_access` flags `false`. Those options create a
+separate support path outside this bootstrap's human role controls; they are not
+part of v2. The deployment workflow must reject either option being enabled.
 
 ## Naming and scope
 
@@ -87,58 +82,48 @@ prevents the deployment role from removing the ownership tag or changing it
 outside the reserved prefix. Externally supplied data plane keys require a
 separately documented bootstrap configuration; these samples cover keys
 created by the module.
-Before production use, test key creation, Lambda and Secrets Manager use,
-ordinary updates to tags other than the ownership tag, denied changes to
-`BraintrustDeploymentName`, and key deletion protection against the rendered
-policies.
 
-## Role attachment model
+## Placeholders
 
-| Role | Permissions boundary | Identity policies |
-| --- | --- | --- |
-| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | `deployment-permissions-boundary.json` | `deployment-infrastructure-policy.json`, `deployment-data-policy.json`, `deployment-diagnostics-policy.json`, `deployment-eks-policy.json` |
-| `BraintrustSupportRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | `observer-policy.json`, `support-policy.json` |
-| `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | `observer-policy.json` |
-| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None required; Diagnostics SCP remains effective | `diagnostics-policy.json` only during activation |
-| Runtime roles created by Terraform | `runtime-permissions-boundary.json` | Module policies for individual workloads |
+Replace all placeholders before implementation:
 
-The deployment boundary is not a grant: an action must be allowed by an
-identity policy and the boundary, and must not be denied by the SCP. The
-runtime boundary similarly caps policies that the Terraform module creates for
-individual workloads. It prevents workloads from changing bucket policies, bucket
-ACLs, or bucket public access settings, while preserving authorized object
-operations and presigned URLs. It denies workloads permission to initiate Session Manager
-shells, Run Command, ECS Exec, or EC2 Instance Connect. Instance and task agents
-retain the separate transport permissions needed to receive diagnostic sessions
-and write transcripts. External feature scope is detailed below.
+| Placeholder | Meaning |
+| --- | --- |
+| `<AWS_PARTITION>` | `aws` for this preview; other partitions need a separate compatibility review |
+| `<AWS_ACCOUNT_ID>` | Dedicated customer AWS account ID |
+| `<AWS_REGION>` | Data plane AWS Region |
+| `<BOOTSTRAP_NAME>` | Bootstrap identifier: 1–16 lowercase letters, digits, or hyphens; start with a letter or digit |
+| `<MANAGED_RESOURCE_PREFIX>` | Reserved deployment prefix: 2–8 lowercase letters, digits, or hyphens; start with a letter or digit and end in a hyphen |
+| `<RUNTIME_BOUNDARY_ARN>` | Exact `policy/braintrust-byoc/BraintrustRuntimeBoundary-<BOOTSTRAP_NAME>` ARN |
+| `<DIAGNOSTICS_ROLE_ARN>` | Exact bootstrap role `role/braintrust-byoc/BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` |
+| `<DIAGNOSTICS_POLICY_ARN>` | Exact managed policy `policy/braintrust-byoc/BraintrustDiagnosticsPolicy-<BOOTSTRAP_NAME>` |
+| `<DIAGNOSTICS_ROLE_ID>` | Immutable IAM `RoleId` returned when bootstrap creates Diagnostics; used to clean up sessions across engineers |
+| `<STATE_BUCKET_NAME>` | Terraform state bucket owned by the customer |
+| `<OPERATION_LOG_BUCKET_NAME>` | Operation log bucket owned by the customer |
+| `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust deployment artifact bucket for the data plane Region |
+| `<STATE_KMS_KEY_ARN>` | State bucket key owned by the customer, if SSE-KMS is used |
+| `<OPERATION_LOG_KMS_KEY_ARN>` | Operation log key owned by the customer, if SSE-KMS is used |
+| `<LICENSE_SECRET_ARN>` | Exact ARN of the license secret owned by the customer; up to 128 characters in this package |
+| `<LICENSE_SECRET_KMS_KEY_ARN>` | Resolved license secret key ARN; see handling for keys managed by AWS below |
 
-BYOC v2 deployment configuration must keep the module's legacy
-`enable_braintrust_support_logs_access` and
-`enable_braintrust_support_shell_access` flags `false`. Those options create a
-separate support path outside this bootstrap's human role controls; they are not
-part of v2. The deployment workflow must reject either option being enabled.
+For a license secret key managed by AWS, remove `DecryptLicenseSecret` and put
+the resolved `alias/aws/secretsmanager` **key ARN** in the SCP decrypt exception.
+For an SSE-S3 bucket, remove its `Use...KeyThroughS3` statement and corresponding
+key entries from the SCPs. Never replace an unused key placeholder with `*`.
 
-AWS limits each managed policy document to 6,144 characters, excluding
-whitespace. The validation script checks short samples and renders using maximum
-input lengths, including 63-character bucket names and the naming limits above. Trust principal
-ARNs and External IDs have separate limits in the [trust guide](../trust-policies/README.md).
-Final customer values must also pass. Run
-`./validate.sh /path/to/rendered-package` from the package directory to check
-final values. Submit SCPs as minified JSON.
-The policy set separates deployment infrastructure, data, Diagnostics activation,
-and future EKS permissions. Boundaries and SCPs enforce the stable restrictions.
-The EKS policy reserves bounded permissions in the proposed bootstrap; it does not
-provision a cluster or install Kubernetes role bindings.
+Bootstrap keys must be distinct from data plane keys created by the module and
+must not carry the module's `BraintrustDeploymentName` tag. Their policies stay
+under customer control. The S3 KMS examples use object ARN encryption context;
+keep S3 Bucket Keys disabled for these two buckets. Enabling Bucket Keys changes
+the context to a bucket ARN and requires an explicit policy update.
 
-`observer-policy.json` is the common human diagnostic baseline. The Support
-role also receives `support-policy.json`; the Observer role does not. Explicit
-denies in the shared policy therefore remain effective for both roles. Do not
-attach it to Diagnostics: its explicit session and log denials would block
-troubleshooting. Diagnostics has its own minimal discovery permissions.
+The KMS decrypt permission for operation records supports multipart uploads; it
+does not grant S3 object reads. Retain bucket versioning and consider Object Lock
+for operation records: `PutObject` can otherwise replace the current version.
 
-The state example uses a separate backend prefix per deployment and S3 lock
-files (`*.tflock`), not Terraform workspace deletion. The implementation must
-verify backend discovery/list requests without granting access to other state.
+Terraform also needs [KMS access for encrypted Lambda environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars-encryption.html).
+This deployment permission applies only through Lambda and only to data plane
+keys tagged by the module; it does not permit direct KMS decryption.
 
 ## Diagnostics policy constraints
 
@@ -163,10 +148,7 @@ across the account in the configured Region; cleanup is constrained by role ID.
 ECS Exec session ownership and cleanup must also be validated before promising
 expiry behavior.
 
-The EKS file is kept separate because the existing deployment policies are
-near AWS's size limit. Its fixed groups for access entries are permission preparation,
-not an operational Kubernetes access mechanism. See
-[Diagnostics](../diagnostics.md) and [Kubernetes permissions](../kubernetes-permissions.md).
+See the [Diagnostics guide](../diagnostics.md) for activation, logging, and revocation.
 
 ## External feature policy notes
 
@@ -194,6 +176,10 @@ controls specific to each service and audit coverage for each enabled feature.
 
 ## Storage and log content
 
+The state example uses a separate backend prefix per deployment and S3 lock
+files (`*.tflock`), not Terraform workspace deletion. The implementation must
+verify backend discovery/list requests without granting access to other state.
+
 Deployment can configure S3 buckets under the managed prefix, including the module's
 optional S3 ABAC setting and its bucket tag APIs. This does not enable ABAC by
 default, grant object reads, or allow bootstrap bucket configuration changes.
@@ -212,8 +198,33 @@ changes use the function prefix; schedule controls cover only the three module
 job names, leaving customer audit rules outside their scope. Keep sensitive values
 out of schedule target inputs, which are visible to the human diagnostic roles.
 
-`observer-policy.json` excludes Lambda function/version listings and
+[observer-policy.json](observer-policy.json) excludes Lambda function/version listings and
 task definition reads because those responses can include credentials. Operators
 can inspect concurrency and ECS service revisions using known resource names or
 ARNs without reading those values. Some AWS console pages may remain unavailable;
 the corresponding permitted CLI/API operations remain the intended access path.
+
+## Additional permissions
+
+[deployment-eks-policy.json](deployment-eks-policy.json) is separate because the
+existing deployment policies are near AWS's size limit. It reserves bounded EKS
+permissions but does not provision a cluster or install Kubernetes role bindings.
+See the [Kubernetes permission reference](../kubernetes-permissions.md).
+
+## Validation before implementation
+
+AWS limits each managed policy document to 6,144 characters, excluding whitespace.
+The [validation script](../validate.sh) checks JSON syntax, policy size, and static
+constraints using sample values and maximum input lengths, including 63-character
+bucket names and the naming limits above. Trust principal ARNs and External IDs
+have separate limits in the [trust guide](../trust-policies/README.md). These checks
+do not replace deployment and access testing.
+
+From the package directory, run `./validate.sh` for the source examples or
+`./validate.sh /path/to/rendered-package` for final values. Set `VALIDATE_WITH_AWS=1`
+to also run IAM Access Analyzer with AWS credentials. Submit SCPs as minified JSON.
+
+Before production use, test key creation, Lambda and Secrets Manager use,
+ordinary updates to tags other than the ownership tag, denied changes to
+`BraintrustDeploymentName`, and key deletion protection against the rendered
+policies. Confirm AWS service request context and Terraform provider refresh behavior.
