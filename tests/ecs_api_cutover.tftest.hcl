@@ -5,16 +5,6 @@
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
-
-  # Plan leaves aws_cloudfront_distribution.domain_name unknown unless a mock
-  # value is supplied. The quarantine fallback test asserts that URL.
-  override_resource {
-    target = module.ingress[0].aws_cloudfront_distribution.dataplane
-    values = {
-      domain_name = "d111111abcdef8.cloudfront.net"
-    }
-    override_during = plan
-  }
 }
 
 mock_provider "random" {}
@@ -89,11 +79,21 @@ run "rejects_whitespace_quarantine_proxy_url_in_ecs_mode" {
   ]
 }
 
-# No quarantine_proxy_url: ECS mode must select the mocked CloudFront
-# hostname plus /v1/proxy. A null fallback would also leave AIProxy absent,
-# so the URL assertion is what proves the fallback.
+# No quarantine_proxy_url: ECS mode must select the CloudFront hostname
+# plus /v1/proxy. A null fallback would also leave AIProxy absent, so the
+# URL assertion is what proves the fallback.
+#
+# Terraform 1.10 leaves overridden computed attributes unknown during plan,
+# so this run overrides the ingress output instead of the distribution.
 run "ecs_mode_defaults_quarantine_to_cloudfront" {
   command = plan
+
+  override_module {
+    target = module.ingress[0]
+    outputs = {
+      api_url = "https://d111111abcdef8.cloudfront.net"
+    }
+  }
 
   variables {
     quarantine_proxy_url = null
