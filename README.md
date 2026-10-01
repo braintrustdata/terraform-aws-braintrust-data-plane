@@ -150,13 +150,23 @@ The module creates these AWS service endpoints in VPCs it manages:
 | Service | Type | Created when | Private DNS |
 | --- | --- | --- | --- |
 | S3 | Gateway | Always, in both main and quarantine VPCs when created; attached to their private route tables | Not applicable |
-| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) | Enabled |
+| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) and `create_ssm_vpc_endpoints = true` (default `true`) | Enabled |
 | Secrets Manager | Interface | Main VPC with `create_secrets_manager_vpc_endpoint = true` (default `true`) | Enabled |
 
 SSM and Secrets Manager endpoints span all three private subnets and share a
 security group allowing HTTPS (TCP 443) from the VPC CIDR. Private DNS lets
 existing SDK and CLI calls use the endpoints without URL overrides. Interface
 endpoint charges apply.
+
+To keep Brainstore SSM access enabled while supplying your own SSM connectivity,
+set `enable_brainstore_ec2_ssm = true` and `create_ssm_vpc_endpoints = false`.
+This opts out of all three module-managed SSM endpoints without changing the
+Brainstore SSM IAM permissions. Provide reachable customer-managed endpoints
+(including DNS and security groups) or outbound HTTPS access to SSM. Disabling
+this option on an existing deployment removes its module-managed SSM endpoints.
+The shared endpoint security group remains while Secrets Manager needs it.
+S3, Secrets Manager, and quarantine endpoints are unaffected. The option has no
+effect when `create_vpc = false`.
 
 Secrets Manager is enabled by default independently of SSM. Upgrading a deployment
 with a module-managed main VPC adds the endpoint and redirects regional Secrets
@@ -171,6 +181,41 @@ Separately, `use_private_gateway_quarantine_proxy` can create an interface endpo
 in quarantine for the private gateway when both VPCs are module-managed and the
 private gateway is enabled for this path. It uses its endpoint-specific DNS name
 with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+
+### Existing ElastiCache subnet group
+
+By default, the module creates an ElastiCache subnet group from the three main
+VPC private subnets. To reuse a customer-managed group, set:
+
+```hcl
+existing_elasticache_subnet_group_name = "my-redis-subnet-group"
+```
+
+The group must already exist in the deployment region and belong to the data
+plane VPC. The module uses its name without creating or managing the group or
+its subnet membership. This works with both the legacy Redis cluster and
+`use_redis_replication_group = true`.
+
+Leaving `existing_elasticache_subnet_group_name` unset preserves the managed subnet
+group and Redis, moving only the group's Terraform address to
+`module.redis.aws_elasticache_subnet_group.main[0]`. Downgrading the module on
+Terraform 1.10 or newer automatically moves the address back without replacing
+the group.
+
+Setting a different subnet-group name replaces the Redis cluster or replication
+group and causes downtime; review the plan before applying. Terraform updates the
+Redis URL secret with the replacement endpoint. The secret-value change alone
+does not redeploy API ECS or Loop services. After the replacement and secret update
+complete, force a new deployment of all enabled API ECS services (API, ingest, and
+background) and the Loop service so their tasks load the updated secret.
+Brainstore's updated user data triggers an autoscaling instance refresh, and
+Lambdas that embed `redis_host` update during the apply. The gateway embeds the
+Redis host in its task environment, so it also updates during the apply.
+
+Switching to an external group also removes the old module-managed subnet group.
+Do not set this input to the module's own group name to transfer ownership: that
+would schedule the still-used group for deletion. Keeping the existing managed
+group requires leaving this input unset.
 
 ### Tagging and Naming
 

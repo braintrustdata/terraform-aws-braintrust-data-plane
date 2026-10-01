@@ -105,6 +105,9 @@ module "braintrust-data-plane" {
   enable_quarantine_vpc = false
 
   ### Redis configuration
+  # Reuse a subnet group in the data plane VPC; null creates one (default).
+  # Changing the subnet group name on an existing deployment replaces Redis.
+  # existing_elasticache_subnet_group_name = null
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
@@ -137,6 +140,10 @@ module "braintrust-data-plane" {
   # peer with other VPCs and the default CIDRs conflict.
   # vpc_cidr            = "10.175.0.0/21"
   # quarantine_vpc_cidr = "10.175.8.0/21"
+
+  # SSM endpoints are created when enable_brainstore_ec2_ssm is true.
+  # Set false only when SSM connectivity is provided separately.
+  # create_ssm_vpc_endpoints = true
 
   # Secrets Manager endpoint is enabled by default in a module-managed main VPC.
   # Adds interface endpoint charges; Private DNS redirects regional API calls.

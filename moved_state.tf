@@ -238,6 +238,12 @@ moved {
   to   = module.database.aws_db_subnet_group.main[0]
 }
 
+# ElastiCache subnet group is now optional; preserve existing managed groups.
+moved {
+  from = module.redis.aws_elasticache_subnet_group.main
+  to   = module.redis.aws_elasticache_subnet_group.main[0]
+}
+
 # Quarantine IAM resources moved from services -> services-common
 # These IAM roles are no longer in 'services' they are in 'services-common'
 moved {

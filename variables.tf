@@ -111,6 +111,12 @@ variable "create_vpc" {
   description = "Whether to create a new VPC. If false, existing VPC details must be provided."
 }
 
+variable "create_ssm_vpc_endpoints" {
+  type        = bool
+  default     = true
+  description = "Create SSM interface endpoints in the main VPC when create_vpc and enable_brainstore_ec2_ssm are true. Set false to use customer-managed endpoints or another network path to SSM without disabling Brainstore SSM access. Does not affect Secrets Manager, S3, or quarantine endpoints."
+}
+
 variable "create_secrets_manager_vpc_endpoint" {
   type        = bool
   default     = true
@@ -504,6 +510,17 @@ variable "DANGER_disable_database_deletion_protection" {
 }
 
 ## Redis
+variable "existing_elasticache_subnet_group_name" {
+  type        = string
+  default     = null
+  description = "Existing ElastiCache subnet group name to use for either Redis mode. Must belong to the data plane VPC. When null, the module creates a subnet group from the private subnets. Changing the subnet group name on an existing Redis deployment replaces Redis."
+
+  validation {
+    condition     = var.existing_elasticache_subnet_group_name == null ? true : trimspace(var.existing_elasticache_subnet_group_name) != ""
+    error_message = "existing_elasticache_subnet_group_name must be null or a non-empty subnet group name."
+  }
+}
+
 variable "use_redis_replication_group" {
   description = "Use an ElastiCache replication group instead of the legacy single-node ElastiCache cluster. Existing deployments should leave this false until following the documented Redis migration procedure."
   type        = bool
