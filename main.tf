@@ -85,11 +85,12 @@ locals {
   # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
   # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
   # version, changes the launch template, and triggers a rolling instance
-  # refresh. Lambda mode passes just the bare name. one() keeps this
-  # index-safe when api_ecs is absent.
+  # refresh. Lambda mode passes just the bare name.
+  # Index the instance to avoid the module-wide dependency from a splat, which
+  # cycles through API services waiting on Brainstore. ECS-enabled implies count = 1.
   brainstore_ai_proxy_url_ssm_parameter = (
     local.enable_ecs_api
-    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
+    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${module.api_ecs[0].url_ssm_parameter_version}"
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
@@ -350,8 +351,10 @@ module "services" {
   source = "./modules/services"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
+  brainstore_deployment_id = module.brainstore_deployment[0].completion_id
+
   deployment_name             = var.deployment_name
-  lambda_version_tag_override = var.lambda_version_tag_override
+  lambda_version_tag_override = local.lambda_version_tag
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry
@@ -638,8 +641,10 @@ module "api_ecs" {
   source = "./modules/api-ecs"
   count  = local.create_ecs_api ? 1 : 0
 
+  brainstore_deployment_id = module.brainstore_deployment[0].completion_id
+
   deployment_name      = var.deployment_name
-  api_version_override = var.braintrust_api_version_override
+  api_version_override = local.api_version_tag
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
