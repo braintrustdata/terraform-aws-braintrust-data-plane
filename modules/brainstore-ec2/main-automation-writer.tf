@@ -114,15 +114,6 @@ resource "aws_autoscaling_group" "brainstore_automation_writer" {
     create_before_destroy = true
   }
 
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200
-    }
-    triggers = ["tag"]
-  }
-
   tag {
     key                 = "Name"
     value               = "${var.deployment_name}-brainstore-automation-writer"

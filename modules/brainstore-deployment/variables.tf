@@ -14,7 +14,7 @@ variable "fleets" {
     launch_template_id      = string
     launch_template_version = string
     desired_capacity        = number
-    target_group_arn        = string
+    target_group_arn        = optional(string)
   }))
 }
 
