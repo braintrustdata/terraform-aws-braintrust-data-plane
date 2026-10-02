@@ -1374,6 +1374,13 @@ variable "s3_lambda_responses_additional_allowed_origins" {
   default     = []
 }
 
+variable "manage_s3_public_access_block" {
+  description = "Manage all four S3 Block Public Access settings on module-created buckets (default true). Set false only for new deployments where AWS defaults and customer account/organization controls own these settings. Changing true to false on an existing deployment deletes its managed bucket-level configurations."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "enable_s3_bucket_abac" {
   description = "Enable attribute-based access control (ABAC) on S3 buckets managed by this module. When enabled, bucket tags can be used in authorization policies and tag management requires s3:TagResource, s3:UntagResource, and s3:ListTagsForResource."
   type        = bool

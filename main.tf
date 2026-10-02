@@ -225,13 +225,14 @@ module "main_vpc" {
   private_subnet_3_cidr                = cidrsubnet(var.vpc_cidr, 3, 3)
   private_subnet_3_az                  = local.private_subnet_3_az
   create_secrets_manager_vpc_endpoint  = var.create_secrets_manager_vpc_endpoint
-  create_ssm_vpc_endpoints            = var.create_ssm_vpc_endpoints
+  create_ssm_vpc_endpoints             = var.create_ssm_vpc_endpoints
   enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
   custom_tags                          = local.all_custom_tags
   permissions_boundary_arn             = var.permissions_boundary_arn
   flow_log                             = local.main_vpc_flow_log
+  manage_s3_public_access_block        = var.manage_s3_public_access_block
 }
 
 module "quarantine_vpc" {
@@ -255,6 +256,7 @@ module "quarantine_vpc" {
   custom_tags                          = local.all_custom_tags
   permissions_boundary_arn             = var.permissions_boundary_arn
   flow_log                             = local.quarantine_vpc_flow_log
+  manage_s3_public_access_block        = var.manage_s3_public_access_block
 }
 
 module "database" {
@@ -304,8 +306,8 @@ module "redis" {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
-  vpc_id      = local.main_vpc_id
-  kms_key_arn = local.kms_key_arn
+  vpc_id                                 = local.main_vpc_id
+  kms_key_arn                            = local.kms_key_arn
   existing_elasticache_subnet_group_name = var.existing_elasticache_subnet_group_name
   authorized_security_groups = merge(
     merge(
@@ -339,6 +341,7 @@ module "storage" {
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
   enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
+  manage_s3_public_access_block                  = var.manage_s3_public_access_block
   s3_server_access_logging                       = var.s3_server_access_logging
   custom_tags                                    = local.all_custom_tags
 }

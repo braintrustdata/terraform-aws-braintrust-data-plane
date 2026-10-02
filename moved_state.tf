@@ -133,6 +133,18 @@ moved {
   to   = module.storage.aws_s3_bucket_versioning.lambda_responses_bucket
 }
 
+# The code bundle and Lambda response public access blocks became optional.
+# Keep existing configurations in place when management remains enabled.
+moved {
+  from = module.storage.aws_s3_bucket_public_access_block.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_public_access_block.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket
+  to   = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket[0]
+}
+
 # CloudFront and API Gateway resources moved from services -> ingress
 moved {
   from = module.services.aws_cloudfront_distribution.dataplane
