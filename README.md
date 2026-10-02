@@ -63,6 +63,59 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
 
+## Loop runtime
+
+Loop runtime is optional. Enable it with this input:
+
+```hcl
+enable_loop_runtime = true
+```
+
+When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
+Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
+
+Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
+The endpoint policy allows connections only to MicroVMs in the deployment account.
+The public MicroVM endpoint remains available because AWS does not support its removal.
+
+### Startup dependencies and upgrades
+
+Loop ingress rules are owned by the database, Redis, Brainstore, and gateway
+modules. Their internal `loop_runtime_security_groups` maps are separate from
+baseline `authorized_security_groups`: Loop waits for Gateway startup, which
+indirectly waits for database migration. Combining the maps would delay the
+migration Lambda's own database access until after migration succeeds.
+The database connection address waits for baseline ingress, but not Loop
+ingress. This changes creation order without broadening network permissions.
+
+State moves preserve existing Loop rules from their original Loop-module
+addresses. Downgrading after these moves is not safe without a reviewed state
+migration: older versions can
+destroy/recreate the rules. These address changes require a major release and
+the corresponding migration guide before publication.
+
+### Sandbox isolation
+
+The default `loop_runtime_sandbox_egress_mode = "restricted"` creates a dedicated VPC for sandbox egress.
+The VPC has no outbound route and blocks DNS requests.
+This network isolates untrusted sandbox code from internal networks.
+
+You can supply a dedicated sandbox VPC with these inputs:
+
+```hcl
+loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+```
+
+The module verifies that each subnet belongs to the supplied VPC.
+The module also creates a security group without outbound rules.
+The caller controls routes and DNS restrictions in the supplied VPC.
+
+Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
+Configure equivalent DNS restrictions before you enable Loop with a supplied VPC.
+
 ## Useful scripts
 
 ### dump-logs.sh
@@ -107,13 +160,23 @@ The module creates these AWS service endpoints in VPCs it manages:
 | Service | Type | Created when | Private DNS |
 | --- | --- | --- | --- |
 | S3 | Gateway | Always, in both main and quarantine VPCs when created; attached to their private route tables | Not applicable |
-| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) | Enabled |
+| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) and `create_ssm_vpc_endpoints = true` (default `true`) | Enabled |
 | Secrets Manager | Interface | Main VPC with `create_secrets_manager_vpc_endpoint = true` (default `true`) | Enabled |
 
 SSM and Secrets Manager endpoints span all three private subnets and share a
 security group allowing HTTPS (TCP 443) from the VPC CIDR. Private DNS lets
 existing SDK and CLI calls use the endpoints without URL overrides. Interface
 endpoint charges apply.
+
+To keep Brainstore SSM access enabled while supplying your own SSM connectivity,
+set `enable_brainstore_ec2_ssm = true` and `create_ssm_vpc_endpoints = false`.
+This opts out of all three module-managed SSM endpoints without changing the
+Brainstore SSM IAM permissions. Provide reachable customer-managed endpoints
+(including DNS and security groups) or outbound HTTPS access to SSM. Disabling
+this option on an existing deployment removes its module-managed SSM endpoints.
+The shared endpoint security group remains while Secrets Manager needs it.
+S3, Secrets Manager, and quarantine endpoints are unaffected. The option has no
+effect when `create_vpc = false`.
 
 Secrets Manager is enabled by default independently of SSM. Upgrading a deployment
 with a module-managed main VPC adds the endpoint and redirects regional Secrets
@@ -128,6 +191,41 @@ Separately, `use_private_gateway_quarantine_proxy` can create an interface endpo
 in quarantine for the private gateway when both VPCs are module-managed and the
 private gateway is enabled for this path. It uses its endpoint-specific DNS name
 with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+
+### Existing ElastiCache subnet group
+
+By default, the module creates an ElastiCache subnet group from the three main
+VPC private subnets. To reuse a customer-managed group, set:
+
+```hcl
+existing_elasticache_subnet_group_name = "my-redis-subnet-group"
+```
+
+The group must already exist in the deployment region and belong to the data
+plane VPC. The module uses its name without creating or managing the group or
+its subnet membership. This works with both the legacy Redis cluster and
+`use_redis_replication_group = true`.
+
+Leaving `existing_elasticache_subnet_group_name` unset preserves the managed subnet
+group and Redis, moving only the group's Terraform address to
+`module.redis.aws_elasticache_subnet_group.main[0]`. Downgrading the module on
+Terraform 1.10 or newer automatically moves the address back without replacing
+the group.
+
+Setting a different subnet-group name replaces the Redis cluster or replication
+group and causes downtime; review the plan before applying. Terraform updates the
+Redis URL secret with the replacement endpoint. The secret-value change alone
+does not redeploy API ECS or Loop services. After the replacement and secret update
+complete, force a new deployment of all enabled API ECS services (API, ingest, and
+background) and the Loop service so their tasks load the updated secret.
+Brainstore's updated user data triggers an autoscaling instance refresh, and
+Lambdas that embed `redis_host` update during the apply. The gateway embeds the
+Redis host in its task environment, so it also updates during the apply.
+
+Switching to an external group also removes the old module-managed subnet group.
+Do not set this input to the module's own group name to transfer ownership: that
+would schedule the still-used group for deletion. Keeping the existing managed
+group requires leaving this input unset.
 
 ### Tagging and Naming
 

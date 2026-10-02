@@ -58,6 +58,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop runtime security groups authorized to reach the Brainstore ELB. Kept separate so baseline ingress does not wait for Loop startup."
+  default     = {}
+}
+
 variable "authorized_security_groups_ssh" {
   type        = map(string)
   description = "Map of security group names to their IDs that are authorized to access Brainstore instances via SSH. Format: { name = <security_group_id> }"
