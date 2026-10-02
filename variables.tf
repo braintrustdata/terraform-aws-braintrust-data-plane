@@ -1579,6 +1579,24 @@ variable "brainstore_writer_instance_type" {
   default     = "c8gd.8xlarge"
 }
 
+variable "brainstore_automation_writer_instance_count" {
+  type        = number
+  description = "The number of dedicated automation writer nodes to create"
+  default     = 0
+}
+
+variable "brainstore_automation_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore automation writer nodes"
+  default     = "c8gd.8xlarge"
+}
+
+variable "brainstore_extra_env_vars_automation_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore automation writer nodes"
+  default     = {}
+}
+
 variable "brainstore_instance_key_pair_name" {
   type        = string
   description = "The name of the key pair to use for the Brainstore instance"
@@ -1612,6 +1630,12 @@ variable "brainstore_cache_file_size_reader" {
 variable "brainstore_cache_file_size_writer" {
   type        = string
   description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
+variable "brainstore_cache_file_size_automation_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
 }
 

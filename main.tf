@@ -829,6 +829,10 @@ module "brainstore" {
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
   writer_instance_type                  = var.brainstore_writer_instance_type
+  automation_writer_instance_count      = var.brainstore_automation_writer_instance_count
+  automation_writer_instance_type       = var.brainstore_automation_writer_instance_type
+  extra_env_vars_automation_writer      = var.brainstore_extra_env_vars_automation_writer
+  cache_file_size_automation_writer     = var.brainstore_cache_file_size_automation_writer
   fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader

@@ -100,6 +100,9 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
+  # Automation writers are optional. Enable only when instructed by Braintrust.
+  brainstore_automation_writer_instance_count = 0
+
   ### Redis configuration
   # Reuse a subnet group in the data plane VPC; null creates one (default).
   # Changing the subnet group name on an existing deployment replaces Redis.

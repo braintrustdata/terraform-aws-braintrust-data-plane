@@ -237,6 +237,30 @@ variable "cache_file_size_writer" {
   default     = null
 }
 
+variable "automation_writer_instance_count" {
+  type        = number
+  description = "The number of dedicated automation writer nodes to create"
+  default     = 0
+}
+
+variable "automation_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore automation writer nodes"
+  default     = "c8gd.8xlarge"
+}
+
+variable "extra_env_vars_automation_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore automation writer nodes if enabled"
+  default     = {}
+}
+
+variable "cache_file_size_automation_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
 variable "fast_reader_instance_count" {
   type        = number
   description = "The number of dedicated fast reader nodes to create"
