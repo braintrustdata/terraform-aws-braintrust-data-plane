@@ -25,7 +25,7 @@ variables {
   braintrust_api_url             = "https://api.example.com"
 }
 
-run "scales_on_claimed_conversations" {
+run "scales_and_drains_runtime_by_default" {
   command = plan
   module {
     source = "./modules/loop-runtime-ecs"
@@ -35,12 +35,14 @@ run "scales_on_claimed_conversations" {
     condition = (
       aws_appautoscaling_target.loop_runtime.max_capacity == 50
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 50
+      && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].scale_in_cooldown == 120
+      && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].scale_out_cooldown == 60
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].customized_metric_specification[0].namespace == "Braintrust/LoopRuntime"
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].customized_metric_specification[0].metric_name == "ClaimedConversationUtilization"
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].customized_metric_specification[0].statistic == "Average"
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].customized_metric_specification[0].unit == "Percent"
     )
-    error_message = "Loop runtime must scale on claimed conversation utilization at a 50% target."
+    error_message = "Conversation scaling must target 50% with at most 50 tasks and 120/60-second scale-in/out cooldowns."
   }
 
   assert {
@@ -61,27 +63,10 @@ run "scales_on_claimed_conversations" {
 
   assert {
     condition = (
-      aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].scale_in_cooldown == 120
-      && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].scale_out_cooldown == 60
+      jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].stopTimeout == 120
+      && local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "90"
     )
-    error_message = "Loop runtime must scale in after 120 seconds and out after 60 seconds."
-  }
-}
-
-run "drains_turns_before_stop" {
-  command = plan
-  module {
-    source = "./modules/loop-runtime-ecs"
-  }
-
-  assert {
-    condition     = jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].stopTimeout == 120
-    error_message = "The Loop runtime container must get 120 seconds to stop."
-  }
-
-  assert {
-    condition     = local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "90"
-    error_message = "Loop runtime must drain active turns for 90 seconds by default."
+    error_message = "The runtime must drain for 90 seconds by default within the container's 120-second stop timeout."
   }
 }
 
@@ -96,13 +81,11 @@ run "custom_scaling_and_drain" {
   }
 
   assert {
-    condition     = aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 70
-    error_message = "The conversation target must follow target_conversation_utilization."
-  }
-
-  assert {
-    condition     = local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "105"
-    error_message = "The drain timeout must follow drain_timeout_seconds."
+    condition = (
+      aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 70
+      && local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "105"
+    )
+    error_message = "Conversation scaling and drain timeout must follow the supplied inputs."
   }
 }
 
