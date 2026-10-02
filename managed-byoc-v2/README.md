@@ -422,11 +422,6 @@ to find the policies for each role and the [trust guide](trust-policies/README.m
 to inspect its allowed callers. Naming, placeholder substitution, and validation
 are covered in the [policy guide](policies/README.md).
 
-## Additional permission reference
-
-[EKS and Kubernetes permissions](kubernetes-permissions.md) describe the included
-profiles for future Kubernetes support. They do not enable Kubernetes access.
-
 ## Preview change history
 
 This table records changes to the customer review package, not changes
@@ -434,6 +429,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-10-02 | Removed the detailed Kubernetes permission guide and RBAC reference from the customer review package. | Documentation only; AWS IAM policies and guardrails are unchanged. |
 | 2026-10-02 | Simplified identity policies and the runtime boundary to positive allowances; moved explicit restrictions into the three customer SCPs. Layered activated Diagnostics on shared inspection and Support, with exact attachment controls for all three policies. Expanded selected metadata read families and limited Lambda deployment grants to infrastructure operations. | Review the attachment map, required SCP coverage for management and runtime roles, and feature updates to both the runtime boundary and SCPs. Trust, diagnostic targets, retention, and Deployment's ECS cluster management are preserved. |
 | 2026-10-01 | Replaced Deployment's permissions boundary with a protected identity guardrail policy. Preserved its explicit restrictions and made role and service limits explicit denials. Runtime boundaries, human policies, trust, and SCPs are unchanged. | Review the updated attachment map and guardrail policy, including `PassRole`, service-linked role creation, and protection against changing or detaching the guardrail. |
 | 2026-09-30 | Improved reading order and navigation, clarified review and implementation responsibilities, and reorganized the policy and guardrail guides. No policies changed. | Use the Start here links and role attachment map; permissions, safeguards, and scope are unchanged. |

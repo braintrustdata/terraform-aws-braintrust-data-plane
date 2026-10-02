@@ -226,7 +226,6 @@ the corresponding permitted CLI/API operations remain the intended access path.
 [deployment-eks-policy.json](deployment-eks-policy.json) is separate because the
 existing deployment policies are near AWS's size limit. It reserves bounded EKS
 permissions but does not provision a cluster or install Kubernetes role bindings.
-See the [Kubernetes permission reference](../kubernetes-permissions.md).
 
 ## Validation before implementation
 
