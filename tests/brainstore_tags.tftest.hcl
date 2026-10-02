@@ -38,7 +38,7 @@ run "deployment_tag_cannot_be_overridden" {
       for asg in [aws_autoscaling_group.brainstore, aws_autoscaling_group.brainstore_writer[0], aws_autoscaling_group.brainstore_fast_reader[0]] :
       one([for tag in asg.tag : tag.value if tag.key == "BraintrustDeploymentName"]) == var.deployment_name
     ])
-    error_message = "Every Brainstore ASG must retain the deployment tag required by the rollout helper and its IAM policy."
+    error_message = "Every Brainstore ASG must retain the deployment tag."
   }
 
   assert {
@@ -47,5 +47,13 @@ run "deployment_tag_cannot_be_overridden" {
       one([for tag in asg.tag : tag.value if tag.key == "Environment"]) == "test"
     ])
     error_message = "Unrelated custom tags must be preserved on every Brainstore ASG."
+  }
+
+  assert {
+    condition = (
+      length(aws_autoscaling_group.brainstore_writer[0].instance_refresh) == 1 &&
+      aws_autoscaling_group.brainstore_writer[0].instance_refresh[0].strategy == "Rolling"
+    )
+    error_message = "The ungated writer ASG must retain its own rolling instance refresh."
   }
 }

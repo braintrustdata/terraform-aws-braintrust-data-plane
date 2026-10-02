@@ -61,14 +61,6 @@ output "deployment_fleets" {
       desired_capacity        = var.instance_count
       target_group_arn        = aws_lb_target_group.brainstore.arn
     }],
-    [for group in aws_autoscaling_group.brainstore_writer : {
-      role                    = "writer"
-      asg_name                = group.name
-      launch_template_id      = aws_launch_template.brainstore_writer[0].id
-      launch_template_version = tostring(aws_launch_template.brainstore_writer[0].latest_version)
-      desired_capacity        = var.writer_instance_count
-      target_group_arn        = aws_lb_target_group.brainstore_writer[0].arn
-    }],
     [for group in aws_autoscaling_group.brainstore_fast_reader : {
       role                    = "fast-reader"
       asg_name                = group.name
@@ -80,7 +72,6 @@ output "deployment_fleets" {
   )
   depends_on = [
     aws_autoscaling_group.brainstore,
-    aws_autoscaling_group.brainstore_writer,
     aws_autoscaling_group.brainstore_fast_reader,
   ]
 }
