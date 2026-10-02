@@ -80,6 +80,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_public_access_block" "code_bundle_bucket" {
+  count = var.manage_s3_public_access_block ? 1 : 0
+
   bucket = aws_s3_bucket.code_bundle_bucket.id
 
   block_public_acls       = true

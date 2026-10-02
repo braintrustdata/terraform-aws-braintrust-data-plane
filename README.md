@@ -63,6 +63,30 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
 
+### S3 Block Public Access ownership
+
+By default, the module manages all four Block Public Access settings on its
+Brainstore, code bundle, Lambda response, and optional VPC flow-log buckets.
+
+For a **new deployment** where your security controls prohibit these writes, set:
+
+```hcl
+manage_s3_public_access_block = false
+```
+
+This skips the bucket-level configuration resources; it does not set any
+protection to `false`. [AWS enables Block Public Access on new buckets by default](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
+The customer owns maintaining these protections, preferably through protected
+account or organization controls. An SCP denying configuration changes does not
+itself enable Block Public Access. Bucket policies, encryption, versioning, and
+other module-managed settings remain unchanged. Caller-provided buckets remain
+outside this module's ownership.
+
+Leave the default enabled for existing deployments. Changing it from `true` to
+`false` plans deletion of the existing bucket-level configurations and requires
+the same permission the SCP may prohibit; it is not a supported ownership
+handoff for an existing deployment.
+
 ## Loop runtime
 
 Loop runtime is optional. Enable it with this input:
