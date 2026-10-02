@@ -11,23 +11,26 @@ can read or modify customer data and can include root inside a host or container
 
 ## Access and activation
 
-- Bootstrap creates `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` and the fixed
-  [diagnostics-policy.json](policies/diagnostics-policy.json) managed policy.
-  The policy is normally unattached.
+- Bootstrap creates `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` and the
+  predefined policies in the [attachment map](policies/README.md#role-attachment-model).
+  Diagnostics has no policies attached when inactive. Activation attaches shared
+  inspection, Support operations, and diagnostic access.
 - Trust is limited to the designated Braintrust engineering source role, with
   the same [identity attribution requirements](trust-policies/README.md) as the
   other human roles.
-- Deployment can attach/detach only that policy on that role. It cannot rewrite
-  the policy, change trust, replace the role, or attach the policy elsewhere.
-  Metadata reads let it check the role and current policy attachment.
+- Deployment can attach/detach only those three policies on that exact role.
+  It cannot rewrite them, change trust, replace the role, or attach them elsewhere.
+  Metadata reads let it verify all attachments.
 - One activation covers all matching data planes under the bootstrap. Multiple
   engineers use their own SSO sessions; they do not share credentials.
 - Braintrust records the authorizing actor, reason, bootstrap, start, expiry,
   extensions, and closure result. The default window is two hours, with explicit
   extensions. Individual chained AWS credentials still last at most one hour.
-- The deployment service removes the policy and closes associated active sessions
-  on closure or expiry. The preview supplies permissions to discover and terminate
-  sessions; reliable cleanup, retries, and attribution still require testing.
+- Activation verifies logging, attaches inspection and Support first, and
+  diagnostic access last. Closure or expiry removes diagnostic access first,
+  then the other two policies, and closes associated sessions. IAM changes are
+  not atomic: failed or partial operations must be retried and reported, not
+  treated as successful activation or cleanup. These workflows still need testing.
 
 The recorded customer setting determines whether diagnostics is disallowed,
 requires customer approval, or may be activated at Braintrust's discretion.
@@ -36,8 +39,12 @@ does not technically prevent the authorized deployment service from activating
 access; this preview does not implement an approval gate controlled by the customer.
 
 Do not grant the Diagnostics role or its sessions independent access through
-resource policies. It has no diagnostic permissions attached when inactive.
-Routine scaling and maintenance continue through Support or deployment.
+resource policies. It has no attached policies when inactive. When active,
+engineers can inspect infrastructure and use the same bounded operations as
+Support without switching roles. Routine maintenance otherwise continues through
+Support or deployment.
+Activated inspection includes ECS task definitions, which can contain runtime
+configuration or credentials and remain blocked for Support and Observer.
 
 ## Permitted paths
 
@@ -105,7 +112,7 @@ to that archive.
 ## Customer revocation
 
 Customers can remove Braintrust from Diagnostics trust to block new assumptions.
-For ongoing access, also detach the policy, revoke issued role sessions, and
+For ongoing access, also detach all three policies, revoke issued role sessions, and
 terminate active diagnostic sessions. Trust removal or policy detachment alone
 does not terminate every existing connection. Braintrust's deployment role cannot
 restore removed trust.

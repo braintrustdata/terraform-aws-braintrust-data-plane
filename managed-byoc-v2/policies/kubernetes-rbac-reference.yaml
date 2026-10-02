@@ -1,5 +1,6 @@
 # Design reference only: no RoleBindings or ClusterRoleBindings are installed.
-# Bind each profile within Braintrust-managed namespaces. Support also needs Observer.
+# Bind within Braintrust-managed namespaces. Support adds to Observer;
+# activated Diagnostics receives all three profiles, none when inactive.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -41,9 +42,6 @@ kind: ClusterRole
 metadata:
   name: braintrust-diagnostics
 rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get"]

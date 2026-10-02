@@ -121,6 +121,193 @@
           "aws:PrincipalArn": "<DIAGNOSTICS_ROLE_ARN>"
         }
       }
+    },
+    {
+      "Sid": "DenyRuntimeIdentityAndAccountAdministration",
+      "Effect": "Deny",
+      "Action": [
+        "account:*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeWorkloadInitiatedInteractiveAccess",
+      "Effect": "Deny",
+      "Action": [
+        "ssm:StartSession",
+        "ssm:SendCommand",
+        "ecs:ExecuteCommand",
+        "ec2-instance-connect:*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeBucketAccessAdministration",
+      "Effect": "Deny",
+      "Action": [
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketAcl",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketPublicAccessBlock"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeBootstrapStorageAccess",
+      "Effect": "Deny",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
+        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/*",
+        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>",
+        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>/*"
+      ],
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeKeyAdministration",
+      "Effect": "Deny",
+      "Action": [
+        "kms:CreateKey",
+        "kms:PutKeyPolicy",
+        "kms:DisableKey",
+        "kms:ScheduleKeyDeletion",
+        "kms:DeleteAlias",
+        "kms:UpdateAlias",
+        "kms:TagResource",
+        "kms:UntagResource"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeDirectKeyGrants",
+      "Effect": "Deny",
+      "Action": "kms:CreateGrant",
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists": {
+          "kms:GrantIsForAWSResource": "false"
+        },
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeOtherRuntimeRoleAssumptions",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "NotResource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-QuarantineInvokeRole",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-AIProxyInvokeRole"
+      ],
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "RestrictRuntimeInternalInvokeCallers",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-QuarantineInvokeRole",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-AIProxyInvokeRole"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-APIHandlerRole"
+        },
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeBootstrapRoleAssumption",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyRuntimeBootstrapIamChanges",
+      "Effect": "Deny",
+      "Action": "iam:*",
+      "Resource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/*",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/*"
+      ],
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*"
+        }
+      }
+    },
+    {
+      "Sid": "DeploymentLinkedRoleScope",
+      "Effect": "Deny",
+      "Action": "iam:CreateServiceLinkedRole",
+      "NotResource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DeploymentLinkedRoleServices",
+      "Effect": "Deny",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "iam:AWSServiceName": [
+            "autoscaling.amazonaws.com",
+            "ecs.amazonaws.com",
+            "ecs.application-autoscaling.amazonaws.com",
+            "elasticache.amazonaws.com",
+            "elasticloadbalancing.amazonaws.com",
+            "rds.amazonaws.com",
+            "spot.amazonaws.com",
+            "vpcorigin.cloudfront.amazonaws.com",
+            "eks.amazonaws.com",
+            "eks-nodegroup.amazonaws.com"
+          ]
+        },
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
     }
   ]
 }

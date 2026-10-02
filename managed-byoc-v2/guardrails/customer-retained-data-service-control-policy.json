@@ -154,6 +154,8 @@
         "dynamodb:PartiQLSelect",
         "dynamodb:Query",
         "dynamodb:Scan",
+        "ec2:GetConsoleOutput",
+        "ec2:GetPasswordData",
         "ec2-instance-connect:OpenTunnel",
         "ec2-instance-connect:SendSSHPublicKey",
         "ecs:ExecuteCommand",
@@ -198,6 +200,161 @@
             "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
             "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustObserverRole-<BOOTSTRAP_NAME>"
           ]
+        }
+      }
+    },
+    {
+      "Sid": "DeploymentRestrictBootstrapListing",
+      "Effect": "Deny",
+      "Action": "s3:ListBucket",
+      "Resource": [
+        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
+        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>"
+      ],
+      "Condition": {
+        "StringNotLike": {
+          "s3:prefix": [
+            "braintrust-byoc/<BOOTSTRAP_NAME>/*",
+            "braintrust-byoc/operations/<BOOTSTRAP_NAME>/*"
+          ]
+        },
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDeploymentSensitiveAccess",
+      "Effect": "Deny",
+      "Action": [
+        "account:Delete*",
+        "iam:*AccessKey*",
+        "iam:*AccountAlias",
+        "iam:*AccountPasswordPolicy",
+        "iam:*Group*",
+        "iam:*LoginProfile*",
+        "iam:*User*",
+        "logs:FilterLogEvents",
+        "logs:GetLogEvents",
+        "logs:GetLogGroupFields",
+        "logs:GetLogRecord",
+        "logs:GetQueryResults",
+        "logs:StartLiveTail",
+        "logs:StartQuery",
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetItem",
+        "dynamodb:PartiQLSelect",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "ec2:GetConsoleOutput",
+        "ec2:GetPasswordData",
+        "lambda:InvokeAsync",
+        "lambda:InvokeFunctionUrl",
+        "rds:DownloadCompleteDBLogFile",
+        "rds:DownloadDBLogFilePortion",
+        "sqs:ReceiveMessage",
+        "ec2:*ImageAttribute",
+        "ec2:*SnapshotAttribute",
+        "ec2:*TrafficMirror*",
+        "ec2:CreateInstanceExportTask",
+        "ec2:CreateStoreImageTask",
+        "ec2:ExportImage",
+        "rds:CopyDBClusterSnapshot",
+        "rds:CopyDBSnapshot",
+        "rds:ModifyDBClusterSnapshotAttribute",
+        "rds:ModifyDBSnapshotAttribute",
+        "rds:StartExportTask"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "RestrictPassRoleServices",
+      "Effect": "Deny",
+      "Action": "iam:PassRole",
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "StringNotEquals": {
+          "iam:PassedToService": [
+            "ec2.amazonaws.com",
+            "ecs-tasks.amazonaws.com",
+            "events.amazonaws.com",
+            "lambda.amazonaws.com",
+            "monitoring.rds.amazonaws.com",
+            "spot.amazonaws.com",
+            "vpc-flow-logs.amazonaws.com",
+            "eks.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DeploymentDenyOtherInvocations",
+      "Effect": "Deny",
+      "Action": "lambda:InvokeFunction",
+      "NotResource": [
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-MigrateDatabaseFunction",
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-QuarantineWarmupFunction"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "DenyAdminPolicies",
+      "Effect": "Deny",
+      "Action": "iam:AttachRolePolicy",
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "iam:PolicyARN": [
+            "arn:aws:iam::aws:policy/AdministratorAccess*",
+            "arn:aws:iam::aws:policy/IAMFullAccess",
+            "arn:aws:iam::aws:policy/PowerUserAccess"
+          ]
+        },
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        }
+      }
+    },
+    {
+      "Sid": "KeepManagedKmsOwnershipTag",
+      "Effect": "Deny",
+      "Action": "kms:UntagResource",
+      "Resource": "arn:aws:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "ForAnyValue:StringEquals": {
+          "aws:TagKeys": "BraintrustDeploymentName"
+        }
+      }
+    },
+    {
+      "Sid": "KeepManagedKmsTagWithinPrefix",
+      "Effect": "Deny",
+      "Action": "kms:TagResource",
+      "Resource": "arn:aws:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
+      "Condition": {
+        "ArnEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>"
+        },
+        "ForAnyValue:StringEquals": {
+          "aws:TagKeys": "BraintrustDeploymentName"
+        },
+        "StringNotLikeIfExists": {
+          "aws:RequestTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
         }
       }
     }

@@ -35,7 +35,7 @@ prevent an action that is otherwise authorized.
 
 | Severity | Signal | Events or evaluation |
 | --- | --- | --- |
-| Critical | Bootstrap identity or guardrail change, excluding the recorded Diagnostics activation pair below | `UpdateAssumeRolePolicy`, `AttachRolePolicy`, `DetachRolePolicy`, `PutRolePolicy`, `DeleteRolePolicy`, `PutRolePermissionsBoundary`, `DeleteRolePermissionsBoundary`, `CreatePolicyVersion`, `SetDefaultPolicyVersion`, or relevant Organizations policy changes targeting the BYOC roles, boundaries, or SCPs |
+| Critical | Bootstrap identity or guardrail change, excluding the three recorded Diagnostics activation pairs below | `UpdateAssumeRolePolicy`, `AttachRolePolicy`, `DetachRolePolicy`, `PutRolePolicy`, `DeleteRolePolicy`, `PutRolePermissionsBoundary`, `DeleteRolePermissionsBoundary`, `CreatePolicyVersion`, `SetDefaultPolicyVersion`, or relevant Organizations policy changes targeting the BYOC roles, boundaries, or SCPs |
 | Critical | Audit or security control tampering | `StopLogging`, `DeleteTrail`, `PutEventSelectors`, `UpdateTrail`, `StopConfigurationRecorder`, configuration recorder or delivery channel deletion, GuardDuty disable/delete/disassociation, Security Hub disable/disassociation, or Access Analyzer deletion |
 | Critical | Human access to protected content | A Support or Observer session calls S3 `GetObject*`, Secrets Manager `GetSecretValue`, KMS `Decrypt`, DynamoDB read APIs, SQS `ReceiveMessage`, RDS log download APIs, or Lambda invocation APIs, whether allowed or denied |
 | Critical | Retained data disposition | `DeleteBucket`, `DeleteObject*`, `PutBucketLifecycleConfiguration`, `ScheduleKeyDeletion`, `DisableKey`, `DeleteDBSnapshot`, snapshot sharing/export, or an unexpected `DeleteDBInstance` against a protected resource |
@@ -51,7 +51,7 @@ prevent an action that is otherwise authorized.
 | High | KMS ownership tag change | `TagResource` or `UntagResource` affecting `BraintrustDeploymentName`, other than the expected tag on key creation |
 | Audit | Human role assumption | Every successful and failed `AssumeRole` attempt for Support, Observer, and Diagnostics; notify according to the customer's operating model |
 | Audit | Support mutation | Every successful event in the Support mutation set below; preserve it in the customer audit archive |
-| Audit | Diagnostics activation and closure | Exact `AttachRolePolicy` / `DetachRolePolicy` pair, actor, reason, scope, expiry, and cleanup result from operation records; escalate unmatched or overdue activity |
+| Audit | Diagnostics activation and closure | Three exact role/policy `AttachRolePolicy` / `DetachRolePolicy` pairs, actor, reason, scope, expiry, and cleanup result from operation records; escalate unmatched or overdue activity |
 | Audit | Diagnostic session | `StartSession`, `ResumeSession`, `TerminateSession`, and `ExecuteCommand`; correlate named role session, target, activation, and CloudWatch transcript |
 | Critical | Diagnostic logging changes | Protected SSM document updates/deletion, transcript group deletion or retention/configuration changes, and ECS Exec configuration changes, including denied attempts |
 
@@ -81,9 +81,11 @@ parameters. Routine maintenance does not require an incident ID or fixed window.
 Event names alone are insufficient for APIs that accept both safe and unsafe
 changes. Inspect request parameters where available:
 
-- Diagnostics `AttachRolePolicy` / `DetachRolePolicy`: exact role and policy ARN,
-  deployment principal, operation source identity, authorization, and activation
-  expiry. Do not exclude all policy attachments from alerts for identity changes.
+- Diagnostics `AttachRolePolicy` / `DetachRolePolicy`: exact role and one of the
+  three predefined policy ARNs, deployment principal, operation source identity,
+  authorization, and expiry. Activation and cleanup must account for all three
+  attachments; flag partial or unexpected attachment sets. Do not exclude all
+  policy attachments from alerts for identity changes.
 - `StartSession`: exact logged document, matching Brainstore target, and engineer
   identity. `ExecuteCommand`: matching cluster, task, and container. Compare both
   with the active window for the bootstrap.

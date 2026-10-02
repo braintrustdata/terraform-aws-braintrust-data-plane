@@ -2,7 +2,9 @@
 
 [Back to overview](../README.md#start-here)
 
-The three SCPs are reference implementations for the dedicated AWS account.
+The BYOC account must be an AWS Organizations member account with SCPs enabled,
+not the organization's management account. [AWS documents these limits](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html).
+The three SCPs are reference implementations for that dedicated account.
 Customers can use equivalent existing organization controls if those controls
 provide the same effective safeguards. Validate the combined controls before
 production use; the JSON need not be copied exactly.
@@ -10,11 +12,13 @@ production use; the JSON need not be copied exactly.
 | Policy | Purpose |
 | --- | --- |
 | [customer-service-control-policy.json](customer-service-control-policy.json) | Access limits, runtime IAM controls, bootstrap protection, and audit safeguards |
-| [customer-retained-data-service-control-policy.json](customer-retained-data-service-control-policy.json) | Retained storage and keys, plus independent restrictions on routine human access |
-| [customer-diagnostics-service-control-policy.json](customer-diagnostics-service-control-policy.json) | Diagnostic session paths, transcript destinations, and logging controls |
+| [customer-retained-data-service-control-policy.json](customer-retained-data-service-control-policy.json) | Retained storage and keys, routine human access limits, and deployment content and delegation restrictions |
+| [customer-diagnostics-service-control-policy.json](customer-diagnostics-service-control-policy.json) | Diagnostic sessions and logging, plus workload and service-linked role safeguards |
 
-All three apply to the baseline. They separate access, retained data, and
-Diagnostics safeguards while staying within AWS policy size limits.
+All three are required, or must be replaced by validated equivalent organization
+controls. Restrictions are distributed across them to stay within AWS policy size
+limits; no file is a complete guardrail on its own. Identity policies and the runtime
+boundary use positive allowances; these SCPs enforce the explicit denials.
 
 An SCP sets permission limits; it does not grant access. An explicit deny overrides
 role policies and permissions boundaries, including customer administrative roles
@@ -27,8 +31,9 @@ The access SCP:
 - requires the runtime boundary owned by the customer when deployment automation
   creates a role;
 - constrains role creation and `PassRole` to the configured resource prefix;
-- prevents bootstrap IAM changes except the exact Diagnostics role/policy
-  attachment pair, while allowing metadata reads for verification;
+- prevents bootstrap IAM changes except attaching or detaching the three
+  predefined policies on the exact Diagnostics role, while allowing metadata
+  reads for verification;
 - prevents Braintrust roles from disabling customer audit controls;
 - prevents account identities from changing or removing account-level S3 Block
   Public Access;
@@ -48,21 +53,31 @@ workflow and independently reinforces restrictions on Support and Observer acces
 
 - Brainstore buckets named by the module and their objects across data planes;
 - all KMS keys in the configured account and Region against disablement or
-  scheduled deletion by Deployment, plus aliases named by the module;
+  scheduled deletion by Deployment, plus aliases named by the module and
+  protection of the managed key ownership tag;
 - matching final RDS snapshots;
 - the operation records bucket and objects owned by the customer;
 - bootstrap storage and key configuration and state deletion (except lock files);
 - direct object, secret, database record, queue, and application log reads by
   Support and Observer, including samples and reports derived from logs;
-- deployment access to samples and reports derived from logs; and
+- deployment access to application logs, general workload invocation, export and
+  sharing APIs, and samples or reports derived from logs;
+- deployment `PassRole` service limits and administrator policy attachment; and
 - interactive SSM, ECS Exec, and EC2 Instance Connect access by those two roles,
   outbound role assumption, and access through the EKS console viewer.
   Kubernetes RBAC is separate.
 
 ## Diagnostics safeguards
 
-The Diagnostics SCP:
+The Diagnostics SCP also protects delegated workloads:
 
+- denies runtime access to bootstrap storage and IAM, plus changes to key
+  administration and bucket access controls; audit protection is shared through
+  the access SCP;
+- prevents runtime initiation of shell or execution paths and limits role
+  assumptions to the intended API handler's internal invocation targets;
+- restricts deployment service-linked role creation to the listed services and
+  their AWS IAM path;
 - protects the logged SSM shell document and diagnostic transcript configuration
   from both Braintrust management and matching runtime roles;
 - denies management roles direct transcript stream creation and event writes,

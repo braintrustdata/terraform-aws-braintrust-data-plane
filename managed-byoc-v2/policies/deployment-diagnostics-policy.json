@@ -11,7 +11,11 @@
       "Resource": "<DIAGNOSTICS_ROLE_ARN>",
       "Condition": {
         "ArnEquals": {
-          "iam:PolicyARN": "<DIAGNOSTICS_POLICY_ARN>"
+          "iam:PolicyARN": [
+            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/BraintrustInspectionPolicy-<BOOTSTRAP_NAME>",
+            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/BraintrustSupportPolicy-<BOOTSTRAP_NAME>",
+            "<DIAGNOSTICS_POLICY_ARN>"
+          ]
         }
       }
     },

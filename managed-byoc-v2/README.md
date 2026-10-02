@@ -52,7 +52,7 @@ one configured AWS Region; additional Regions require corresponding policy scope
 | `BraintrustDeploymentRole` | Braintrust deployment service | Versioned Terraform deployment operations | State, artifacts, license/module secrets, and workload configuration needed by Terraform |
 | `BraintrustSupportRole` | Named Braintrust support personnel | Bounded incident response and operational changes | No standing direct access |
 | `BraintrustObserverRole` | Named Braintrust personnel | Inspect infrastructure configuration, health, and metrics | None |
-| `BraintrustDiagnosticsRole` | Named Braintrust engineers | Temporary shell, container, and application log access | No diagnostic policy attached by default; data access when activated |
+| `BraintrustDiagnosticsRole` | Named Braintrust engineers | Temporary shell, container, and application log access | No policies attached by default; data access when activated |
 
 Diagnostics is a scoped troubleshooting role, not an unrestricted administrator.
 The customer can block new Braintrust sessions by changing role trust. Ending
@@ -89,7 +89,7 @@ flowchart LR
     D -->|read / write| T
     D -->|write only| L
     D --> I
-    D -.->|attach / detach fixed policy| G
+    D -.->|attach / detach fixed policies| G
     E -->|named human session, when activated| G
     G -->|logged shell and container access| I
     I -->|session transcripts| C
@@ -107,20 +107,20 @@ flowchart LR
 | Read Terraform state | Exact state prefix | No | No | No |
 | Write operation records | Exact log prefix | No | No | No |
 | Read secret values | Exact license secret and prefixed secrets managed by Terraform | No | No | Through workload access; no direct Secrets Manager grant |
-| Read workload configuration containing credentials | Configuration managed by the module | No | No | Through workload access |
+| Read workload configuration containing credentials | Configuration managed by the module | No | No | ECS task definitions and workload access |
 | Decrypt application data | No direct grant | No | No | Through workload access; no direct KMS decrypt grant |
-| Read infrastructure metrics, alarms, and configuration | Yes | Yes | Yes | Target discovery; use Observer for broad inspection |
+| Read infrastructure metrics, alarms, and configuration | Yes | Yes | Yes | Shared inspection, subject to Diagnostics restrictions |
 | Read application log bodies | No | No | No | Matching application logs |
 | Open a shell or execute inside a container | No | No | No | Managed Brainstore instances and ECS tasks |
-| Update ECS services and ECS autoscaling | Yes | Scoped | No | Use Support |
-| Scale Brainstore instances, replace unhealthy instances, or cancel a rollout | Yes | Scoped | No | Use Support |
-| Tune Lambda reserved and provisioned concurrency | Yes | Scoped | No | Use Support |
-| Pause or resume the module's scheduled jobs | Yes | Scoped | No | Use Support |
-| Reboot databases/caches or tune the database parameter group | Yes | Scoped | No | Use Support |
+| Update ECS services and ECS autoscaling | Yes | Scoped | No | Same as Support |
+| Scale Brainstore instances, replace unhealthy instances, or cancel a rollout | Yes | Scoped | No | Same as Support |
+| Tune Lambda reserved and provisioned concurrency | Yes | Scoped | No | Same as Support |
+| Pause or resume the module's scheduled jobs | Yes | Scoped | No | Same as Support |
+| Reboot databases/caches or tune the database parameter group | Yes | Scoped | No | Same as Support |
 | Create or replace infrastructure definitions | Yes | No | No | No |
 | Create data plane IAM roles | Yes, with the required boundary | No | No | No |
 | Pass data plane roles to AWS services | Specified roles and services only | No | No | No |
-| Change BYOC roles or guardrails | Fixed Diagnostics policy attachment only | No | No | No |
+| Change BYOC roles or guardrails | Three fixed Diagnostics attachments only | No | No | No |
 | Delete retained customer data | No direct grant | No | No | No direct grant; shell can modify workload data |
 
 Deployment automation reads only one secret provided by the customer: the
@@ -174,9 +174,10 @@ their own attributed session. Braintrust manages activation under the recorded
 customer access setting. The default activation lasts two hours; extensions are
 explicit and recorded, not automatic.
 
-The deployment service can attach or detach only the fixed diagnostic policy.
-It cannot rewrite that policy or restore trust removed by the customer. Closure
-requires permission removal and cleanup of active sessions; policy detachment
+The deployment service can attach or detach only the three predefined inspection,
+Support, and diagnostic policies on the Diagnostics role. It cannot rewrite them
+or restore trust removed by the customer. Closure requires removal of all three
+policies and cleanup of active sessions; policy detachment
 alone is not proof that existing sessions have ended. These are implementation
 requirements, not completed workflow guarantees.
 
@@ -195,9 +196,8 @@ Service control policies (SCPs) set organization permission limits; they do not
 grant access. The [three reference SCPs](guardrails/README.md) reinforce the runtime
 boundary requirement, IAM prefix, specified `PassRole` services, bootstrap role protection, data access
 restrictions, retained data protections, and audit control protection
-independently of Braintrust identity policies. The effective safeguards are
-part of this model; customers can provide equivalent organization controls
-instead of copying these example SCPs if the combined behavior is validated.
+independently of Braintrust identity policies. All three SCPs must apply,
+or customer organization controls must provide the same validated safeguards.
 Customers retain control of the license secret, bootstrap policies and trust,
 state and operation log buckets, and any encryption keys managed by the customer.
 
@@ -293,12 +293,11 @@ privileged shell; see the [logging prerequisites and limits](diagnostics.md#logg
 ## Policy set
 
 The [policy guide](policies/README.md#role-attachment-model) maps each JSON file
-to its role. Observer and Support share an inspection policy; Support adds
-bounded operations. Diagnostics receives its separate policy only during activation.
-Deployment's protected identity guardrail policy adds explicit denials to its
-allow policies. Permissions boundaries apply to runtime roles created by Terraform,
-limiting delegated permissions without granting access. Customer SCPs provide
-independent organization safeguards.
+to its role. Observer uses shared inspection; Support adds bounded operations.
+Activated Diagnostics receives both, plus diagnostic access. It has no attached
+policies when inactive. Identity policies specify allowed operations, the runtime
+permissions boundary caps delegated workload permissions, and customer SCPs
+enforce the explicit restrictions. All three layers are needed for this model.
 
 The [trust policies](trust-policies/README.md) restrict each customer role to one
 exact Braintrust principal. Machine sessions additionally require a unique
@@ -320,9 +319,10 @@ and policies. Deployment can manage runtime IAM resources only when their names
 begin with the configured managed resource prefix. Every created workload role
 must carry the runtime permissions boundary owned by the customer. `iam:PassRole` is limited to matching
 roles and a specified list of AWS services. Deployment cannot assume runtime
-roles itself. The runtime boundary denies SSM sessions, Run Command, ECS Exec,
-and EC2 Instance Connect initiated by workloads. Agent permissions needed to
-receive diagnostic sessions remain available.
+roles itself. The runtime boundary permits only listed workload services and
+limited internal role assumptions. SCPs prevent workloads from initiating SSM
+sessions, Run Command, ECS Exec, or EC2 Instance Connect, while agent permissions
+to receive diagnostic sessions and deliver transcripts remain available.
 
 AWS service-linked roles are a separate exception, limited to listed services.
 They use AWS-managed policies rather than the runtime boundary; see the
@@ -364,17 +364,17 @@ permissions and the destination account's controls govern its subsequent calls.
 ## Stable guardrails and evolving permissions
 
 Deployment allow policies will change as the Terraform module gains or removes
-features. Those changes will be versioned with the required customer
-configuration.
-Trust restrictions, protected identity guardrails, runtime permissions boundaries,
-SCPs, audit ownership, and data access restrictions form the baseline safeguards.
+features. New features may also require runtime boundary or SCP updates.
+These changes will be versioned with the required customer configuration.
+Trust restrictions, runtime permissions boundaries, SCPs, audit ownership, and
+data access restrictions form the baseline safeguards.
 
-The deployment role cannot edit its own role, trust policy, or attached policies,
-including its guardrail policy. Increasing its maximum access therefore requires a
-bootstrap update controlled by the customer. It can change runtime policies
+The deployment role cannot edit its own role, trust policy, or attached policies.
+Increasing its maximum access requires a bootstrap update controlled by the
+customer. It can change runtime policies
 created by the module, but each runtime role remains capped by the boundary
 owned by the customer. Its only bootstrap IAM mutation is attaching or detaching
-the fixed Diagnostics policy on the designated role.
+the three predefined policies on the designated Diagnostics role.
 
 ## Data disposition
 
@@ -385,10 +385,10 @@ customer recovery or deletion. The Terraform state bucket and operation log
 bucket also remain under customer control. Permanent workload data erasure is
 not part of this customer package.
 
-The deployment guardrail policy and retained data SCP together deny deletion of
+The retained data SCP denies deletion of
 Brainstore buckets named by the module and their objects, disablement or scheduled
 deletion of KMS keys in the configured account and Region, deletion of final RDS
-snapshots named by the module, and deletion of operation records. They also
+snapshots named by the module, and deletion of operation records. It also
 protect data plane key aliases. The deprovisioning workflow must detach retained
 resources from Terraform state before destroying serving infrastructure.
 
@@ -434,6 +434,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-10-02 | Simplified identity policies and the runtime boundary to positive allowances; moved explicit restrictions into the three customer SCPs. Layered activated Diagnostics on shared inspection and Support, with exact attachment controls for all three policies. Expanded selected metadata read families and limited Lambda deployment grants to infrastructure operations. | Review the attachment map, required SCP coverage for management and runtime roles, and feature updates to both the runtime boundary and SCPs. Trust, diagnostic targets, retention, and Deployment's ECS cluster management are preserved. |
 | 2026-10-01 | Replaced Deployment's permissions boundary with a protected identity guardrail policy. Preserved its explicit restrictions and made role and service limits explicit denials. Runtime boundaries, human policies, trust, and SCPs are unchanged. | Review the updated attachment map and guardrail policy, including `PassRole`, service-linked role creation, and protection against changing or detaching the guardrail. |
 | 2026-09-30 | Improved reading order and navigation, clarified review and implementation responsibilities, and reorganized the policy and guardrail guides. No policies changed. | Use the Start here links and role attachment map; permissions, safeguards, and scope are unchanged. |
 | 2026-09-30 | Consolidated deployment log-routing and interactive-access denials into one SCP statement. No permissions changed. | The actions, principal, and conditions remain identical; the policy document is smaller. |

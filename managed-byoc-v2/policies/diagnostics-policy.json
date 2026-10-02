@@ -2,50 +2,6 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "DiscoverDiagnosticTargets",
-      "Effect": "Allow",
-      "Action": [
-        "ec2:DescribeInstances",
-        "ec2:DescribeInstanceStatus",
-        "ecs:ListClusters",
-        "ecs:ListServices",
-        "ecs:ListTasks",
-        "ecs:DescribeClusters",
-        "ecs:DescribeServices",
-        "ecs:DescribeTasks",
-        "ssm:DescribeInstanceInformation",
-        "ssm:DescribeSessions",
-        "ssm:GetConnectionStatus",
-        "logs:DescribeLogGroups",
-        "eks:ListClusters"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "aws:RequestedRegion": "<AWS_REGION>"
-        }
-      }
-    },
-    {
-      "Sid": "ReadManagedEksMetadata",
-      "Effect": "Allow",
-      "Action": [
-        "eks:DescribeCluster",
-        "eks:DescribeNodegroup",
-        "eks:DescribeAddon",
-        "eks:DescribeUpdate",
-        "eks:ListNodegroups",
-        "eks:ListAddons",
-        "eks:ListUpdates",
-        "eks:ListTagsForResource"
-      ],
-      "Resource": [
-        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
-        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:nodegroup/<MANAGED_RESOURCE_PREFIX>*/*/*",
-        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:addon/<MANAGED_RESOURCE_PREFIX>*/*/*"
-      ]
-    },
-    {
       "Sid": "StartBrainstoreShell",
       "Effect": "Allow",
       "Action": "ssm:StartSession",
@@ -137,28 +93,18 @@
       }
     },
     {
-      "Sid": "DenyDirectDataAndAlternateAccess",
-      "Effect": "Deny",
+      "Sid": "DiscoverDiagnosticSessions",
+      "Effect": "Allow",
       "Action": [
-        "iam:*",
-        "sts:AssumeRole",
-        "ec2-instance-connect:*",
-        "ssm:SendCommand",
-        "s3:*",
-        "secretsmanager:GetSecretValue",
-        "ssm:GetParameter*",
-        "kms:Decrypt",
-        "kms:ReEncrypt*",
-        "rds-data:*",
-        "dynamodb:BatchGetItem",
-        "dynamodb:GetItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:PartiQLSelect",
-        "sqs:ReceiveMessage",
-        "lambda:Invoke*"
+        "ssm:DescribeSessions",
+        "ssm:GetConnectionStatus"
       ],
-      "Resource": "*"
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
     }
   ]
 }

@@ -10,31 +10,38 @@ below are implementation references; no substitutions are needed for security re
 
 | Role | Permissions boundary | Identity policies |
 | --- | --- | --- |
-| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | [deployment-infrastructure-policy.json](deployment-infrastructure-policy.json), [deployment-data-policy.json](deployment-data-policy.json), [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json), [deployment-eks-policy.json](deployment-eks-policy.json), [deployment-guardrail-policy.json](deployment-guardrail-policy.json) |
-| `BraintrustSupportRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [observer-policy.json](observer-policy.json), [support-policy.json](support-policy.json) |
-| `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [observer-policy.json](observer-policy.json) |
-| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None required; Diagnostics SCP remains effective | [diagnostics-policy.json](diagnostics-policy.json) only during activation |
+| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | [deployment-infrastructure-policy.json](deployment-infrastructure-policy.json), [deployment-data-policy.json](deployment-data-policy.json), [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json), [deployment-eks-policy.json](deployment-eks-policy.json), [deployment-workload-policy.json](deployment-workload-policy.json) |
+| `BraintrustSupportRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [inspection-policy.json](inspection-policy.json), [support-policy.json](support-policy.json) |
+| `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None required; SCP remains effective | [inspection-policy.json](inspection-policy.json) |
+| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None required; Diagnostics SCP remains effective | [inspection-policy.json](inspection-policy.json), [support-policy.json](support-policy.json), [diagnostics-policy.json](diagnostics-policy.json), all only during activation |
 | Runtime roles created by Terraform | [runtime-permissions-boundary.json](runtime-permissions-boundary.json) | Module policies for individual workloads |
 
-Deployment's allow policies grant operations; its guardrail policy contains only
-explicit denials and must remain attached as an identity policy, not a permissions
-boundary. These denials override other grants,
-including resource policies, without granting any access themselves. Its bootstrap
-IAM protections prevent Deployment from changing or detaching this policy.
-Customer SCPs independently enforce organization safeguards.
+Identity policies contain positive allowances. Customer SCPs enforce explicit
+restrictions on data access, IAM, audit controls, retained resources, and
+interactive paths. Apply all three reference SCPs or validated equivalent controls;
+omitting an action from an identity policy alone does not replace those safeguards.
 
-The runtime permissions boundary caps the permissions delegated to roles created
-by Terraform; it does not grant access. It prevents workloads from changing bucket
-policies, bucket ACLs, or bucket public access settings, while preserving authorized object
-operations and presigned URLs. It denies workloads permission to initiate Session Manager
-shells, Run Command, ECS Exec, or EC2 Instance Connect. Instance and task agents
-retain the separate transport permissions needed to receive diagnostic sessions
-and write transcripts. External feature scope is detailed below.
+The runtime permissions boundary caps delegated roles using a positive list of
+workload service permissions; it grants no access by itself. Module policies
+still scope each workload's actual permissions. SCPs prevent workload changes
+to bucket policies, public access settings, bootstrap resources, and audit controls,
+and block workload initiation of interactive access. Object operations, presigned
+URLs, agent transport, and transcript delivery remain available within workload
+grants. New workload services require a boundary update; external feature scope
+is detailed below.
 
-The Observer policy is the shared inspection baseline. Support also receives
-the Support policy; Observer does not. Explicit denies in the shared policy
-remain effective for both roles. Do not attach it to Diagnostics: its session
-and log denials would block troubleshooting. Diagnostics has its own discovery permissions.
+Do not grant permissions directly to workload role sessions through resource
+policies: those grants can bypass implicit identity and boundary limits.
+Explicit SCP restrictions still apply. See [AWS's boundary evaluation rules](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html).
+
+The inspection policy is shared by Observer, Support, and activated Diagnostics.
+Support adds its operations policy; activated Diagnostics adds both Support and
+diagnostic access. Inactive Diagnostics has none of these policies attached.
+Diagnostics still cannot call direct S3 or IAM APIs, including metadata reads;
+its SCP restrictions take precedence over the shared grants.
+Selected metadata actions use `Describe*`, `List*`, or narrow `Get*` families;
+content APIs remain excluded or constrained by the SCPs. Read access is not
+necessarily free of sensitive content.
 
 BYOC v2 deployment configuration must keep the module's legacy
 `enable_braintrust_support_logs_access` and
@@ -56,7 +63,8 @@ All bootstrap IAM resources must use the protected `/braintrust-byoc/` path:
 | --- | --- |
 | Four management roles | `Braintrust{Deployment,Support,Observer,Diagnostics}Role-<BOOTSTRAP_NAME>` |
 | Runtime boundary policy | `BraintrustRuntimeBoundary-<BOOTSTRAP_NAME>` |
-| Deployment guardrail policy | `BraintrustDeploymentGuardrail-<BOOTSTRAP_NAME>` |
+| Shared inspection managed policy | `BraintrustInspectionPolicy-<BOOTSTRAP_NAME>` |
+| Support managed policy | `BraintrustSupportPolicy-<BOOTSTRAP_NAME>` |
 | Diagnostics managed policy | `BraintrustDiagnosticsPolicy-<BOOTSTRAP_NAME>` |
 | Other bootstrap managed policies | Names ending in `-<BOOTSTRAP_NAME>`, under the same protected path |
 | Runtime roles, managed policies, and instance profiles | Root IAM path `/`, with names beginning with `<MANAGED_RESOURCE_PREFIX>`; never the bootstrap path |
@@ -132,14 +140,16 @@ keys tagged by the module; it does not permit direct KMS decryption.
 
 ## Diagnostics policy constraints
 
-The Diagnostics role and policy must use the protected `braintrust-byoc/` path,
-outside the runtime resource prefix. Resolve all three Diagnostics placeholders
-from the same bootstrap. Role and policy ARNs must be exact, without wildcards.
-Do not attach another identity policy or grant access through resource policies.
+The Diagnostics role and its three activation policies must use the protected
+`braintrust-byoc/` path, outside the runtime prefix. Resolve Diagnostics placeholders
+and the inspection and Support policy names from the same bootstrap. All activation
+ARNs must be exact. Attach only those three policies while active, none while
+inactive, and do not grant independent access through resource policies.
 
-The Diagnostics management policy grants the matching role/policy attachment pair
-and metadata reads to verify activation. The deployment guardrail and SCP deny
-other bootstrap IAM changes. The condition
+The Diagnostics management policy grants only the three exact role/policy
+attachment pairs and metadata reads to verify activation. SCPs deny other
+bootstrap IAM changes, rewriting policy contents, and attaching those policies
+elsewhere. The condition
 using the role ID on `ssm:TerminateSession` permits cleanup of different
 engineers' sessions for that Diagnostics role, without authorizing shell access
 for deployment automation.
@@ -168,11 +178,12 @@ plane. The shared boundary limits the role types and bootstrap; target trust
 restricts access between data planes. Keep that exact trust intact.
 
 The current module uses `Resource: "*"` when its Bedrock or S3 export role
-allowlist is empty. The boundary still denies those external paths. Before enabling
-either feature, set exact destination ARNs in the source workload policy and
-add only those destinations to `DenyOtherRuntimeRoleAssumptions` exceptions.
-Restrict each new exception to its intended source workload and destination trust;
-an exception to a shared boundary is not itself a grant to a specific workload.
+allowlist is empty. The positive boundary and runtime SCPs still block those
+external paths. Before enabling either feature, use exact destination ARNs in
+the source workload policy, add matching source/destination allowances to the
+boundary, and update the runtime SCP role-assumption restrictions to permit
+that path. Destination trust must name the intended workload. All layers must
+agree; a boundary allowance or SCP exception alone grants no access.
 
 The runtime boundary does not impose a universal limit based on resource
 ownership for direct S3, KMS, or other service calls. External resources therefore
@@ -203,9 +214,10 @@ changes use the function prefix; schedule controls cover only the three module
 job names, leaving customer audit rules outside their scope. Keep sensitive values
 out of schedule target inputs, which are visible to the human diagnostic roles.
 
-[observer-policy.json](observer-policy.json) excludes Lambda function/version listings and
-task definition reads because those responses can include credentials. Operators
-can inspect concurrency and ECS service revisions using known resource names or
+Routine human SCP controls block Lambda function/version listings and task
+definition reads because those responses can include credentials. Operators
+can use the [inspection policy](inspection-policy.json) to inspect concurrency
+and ECS service revisions using known resource names or
 ARNs without reading those values. Some AWS console pages may remain unavailable;
 the corresponding permitted CLI/API operations remain the intended access path.
 

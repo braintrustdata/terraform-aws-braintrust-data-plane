@@ -2,9 +2,88 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "AllowOnlyWorkloadPolicyPermissions",
+      "Sid": "AllowWorkloadServicePermissions",
       "Effect": "Allow",
-      "NotAction": "iam:*",
+      "Action": [
+        "cloudwatch:PutMetricData",
+        "ec2:AssignPrivateIpAddresses",
+        "ec2:UnassignPrivateIpAddresses",
+        "ec2:CreateNetworkInterface",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DetachNetworkInterface",
+        "ec2:AttachNetworkInterface",
+        "ec2:ModifyNetworkInterfaceAttribute",
+        "ec2:CreateTags",
+        "ec2:Describe*",
+        "ec2messages:AcknowledgeMessage",
+        "ec2messages:DeleteMessage",
+        "ec2messages:FailMessage",
+        "ec2messages:GetEndpoint",
+        "ec2messages:GetMessages",
+        "ec2messages:SendReply",
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecs:ListTagsForResource",
+        "eks:DescribeCluster",
+        "eks-auth:AssumeRoleForPodIdentity",
+        "elasticache:DescribeCacheClusters",
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey",
+        "lambda:CreateFunction",
+        "lambda:PublishVersion",
+        "lambda:TagResource",
+        "lambda:DeleteFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:InvokeFunction",
+        "lambda:RunMicrovm",
+        "lambda:GetMicrovm",
+        "lambda:ResumeMicrovm",
+        "lambda:SuspendMicrovm",
+        "lambda:CreateMicrovmAuthToken",
+        "lambda:TerminateMicrovm",
+        "lambda:PassNetworkConnector",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents",
+        "logs:PutRetentionPolicy",
+        "logs:GetLogEvents",
+        "s3:AbortMultipartUpload",
+        "s3:Get*",
+        "s3:List*",
+        "s3:PutObject*",
+        "s3:DeleteObject*",
+        "secretsmanager:GetSecretValue",
+        "ssm:DescribeAssociation",
+        "ssm:GetDeployablePatchSnapshotForInstance",
+        "ssm:GetDocument",
+        "ssm:DescribeDocument",
+        "ssm:GetManifest",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:ListAssociations",
+        "ssm:ListInstanceAssociations",
+        "ssm:PutInventory",
+        "ssm:PutComplianceItems",
+        "ssm:PutConfigurePackageResult",
+        "ssm:UpdateAssociationStatus",
+        "ssm:UpdateInstanceAssociationStatus",
+        "ssm:UpdateInstanceInformation",
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel",
+        "sts:TagSession"
+      ],
       "Resource": "*"
     },
     {
@@ -32,145 +111,29 @@
       }
     },
     {
-      "Sid": "DenyIdentityAndAccountAdministration",
-      "Effect": "Deny",
-      "Action": [
-        "account:*",
-        "billing:*",
-        "controltower:*",
-        "identitystore:*",
-        "organizations:*",
-        "payments:*",
-        "sso:*",
-        "sso-directory:*",
-        "tax:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyAuditAndSecurityControlTampering",
-      "Effect": "Deny",
-      "Action": [
-        "access-analyzer:ApplyArchiveRule",
-        "access-analyzer:CreateArchiveRule",
-        "access-analyzer:Delete*",
-        "access-analyzer:UpdateArchiveRule",
-        "cloudtrail:Delete*",
-        "cloudtrail:Put*",
-        "cloudtrail:StartLogging",
-        "cloudtrail:Stop*",
-        "cloudtrail:Update*",
-        "config:Delete*",
-        "config:Put*",
-        "config:Stop*",
-        "guardduty:Delete*",
-        "guardduty:Disable*",
-        "guardduty:Disassociate*",
-        "guardduty:Update*",
-        "securityhub:BatchDisable*",
-        "securityhub:Delete*",
-        "securityhub:Disable*",
-        "securityhub:Disassociate*",
-        "securityhub:Update*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyWorkloadInitiatedInteractiveAccess",
-      "Effect": "Deny",
-      "Action": [
-        "ssm:StartSession",
-        "ssm:SendCommand",
-        "ecs:ExecuteCommand",
-        "ec2-instance-connect:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyBucketAccessAdministration",
-      "Effect": "Deny",
-      "Action": [
-        "s3:DeleteBucketPolicy",
-        "s3:PutBucketAcl",
-        "s3:PutBucketPolicy",
-        "s3:PutBucketPublicAccessBlock"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyBootstrapStorageAccess",
-      "Effect": "Deny",
-      "Action": "s3:*",
-      "Resource": [
-        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
-        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/*",
-        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>",
-        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>/*"
-      ]
-    },
-    {
-      "Sid": "DenyKeyAdministration",
-      "Effect": "Deny",
-      "Action": [
-        "kms:CreateKey",
-        "kms:PutKeyPolicy",
-        "kms:DisableKey",
-        "kms:ScheduleKeyDeletion",
-        "kms:DeleteAlias",
-        "kms:UpdateAlias",
-        "kms:TagResource",
-        "kms:UntagResource"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "DenyDirectKeyGrants",
-      "Effect": "Deny",
-      "Action": "kms:CreateGrant",
-      "Resource": "*",
-      "Condition": {
-        "BoolIfExists": {
-          "kms:GrantIsForAWSResource": "false"
-        }
-      }
-    },
-    {
-      "Sid": "DenyOtherRuntimeRoleAssumptions",
-      "Effect": "Deny",
-      "Action": "sts:AssumeRole",
-      "NotResource": [
-        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-QuarantineInvokeRole",
-        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-AIProxyInvokeRole"
-      ]
-    },
-    {
-      "Sid": "RestrictInternalInvokeCallers",
-      "Effect": "Deny",
+      "Sid": "AllowInternalRuntimeRoleAssumptions",
+      "Effect": "Allow",
       "Action": "sts:AssumeRole",
       "Resource": [
         "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-QuarantineInvokeRole",
         "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-AIProxyInvokeRole"
       ],
       "Condition": {
-        "ArnNotLike": {
+        "ArnLike": {
           "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-APIHandlerRole"
         }
       }
     },
     {
-      "Sid": "DenyBootstrapRoleAssumption",
-      "Effect": "Deny",
-      "Action": "sts:AssumeRole",
-      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/*"
-    },
-    {
-      "Sid": "DenyBootstrapIamChanges",
-      "Effect": "Deny",
-      "Action": "iam:*",
-      "Resource": [
-        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/*",
-        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/*"
-      ]
+      "Sid": "AllowServiceKeyGrants",
+      "Effect": "Allow",
+      "Action": "kms:CreateGrant",
+      "Resource": "*",
+      "Condition": {
+        "Bool": {
+          "kms:GrantIsForAWSResource": "true"
+        }
+      }
     }
   ]
 }

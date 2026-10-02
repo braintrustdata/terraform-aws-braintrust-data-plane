@@ -11,7 +11,6 @@
         "autoscaling-plans:*",
         "autoscaling:*",
         "cloudfront:*",
-        "cloudwatch:*",
         "ec2:*",
         "ecr-public:*",
         "ecr:*",
@@ -21,8 +20,6 @@
         "elasticloadbalancing:*",
         "events:*",
         "health:*",
-        "lambda:*",
-        "logs:*",
         "rds:*",
         "route53:*",
         "route53resolver:*",
@@ -267,21 +264,6 @@
         },
         "Bool": {
           "kms:GrantIsForAWSResource": "true"
-        }
-      }
-    },
-    {
-      "Sid": "DenyAdminPolicies",
-      "Effect": "Deny",
-      "Action": "iam:AttachRolePolicy",
-      "Resource": "*",
-      "Condition": {
-        "ArnLike": {
-          "iam:PolicyARN": [
-            "arn:aws:iam::aws:policy/AdministratorAccess*",
-            "arn:aws:iam::aws:policy/IAMFullAccess",
-            "arn:aws:iam::aws:policy/PowerUserAccess"
-          ]
         }
       }
     },

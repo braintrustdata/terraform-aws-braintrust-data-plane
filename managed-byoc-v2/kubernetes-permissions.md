@@ -25,7 +25,7 @@ a resource ARN restriction on `CreateCluster`; the module must also enforce the
 reserved cluster name prefix. Subsequent lifecycle actions use that name prefix.
 
 The EKS policy grants passing matching cluster roles to EKS; the deployment
-guardrail and SCP restrict `PassRole` to listed services.
+identity grants and SCPs restrict `PassRole` to listed services.
 The EKS policy permits only its service-linked roles for clusters and managed
 node groups. Existing EC2 `PassRole` covers node roles. This is not a full baseline
 for EKS Auto Mode, Fargate, or a selected implementation of pod identity.
@@ -37,20 +37,20 @@ administration. Diagnostics has similar target discovery. No role receives
 ## Kubernetes permissions
 
 AWS IAM actions do not define what `kubectl` can do. Kubernetes authorization
-requires access entries and RBAC. The IAM `eks:AccessKubernetesApi` denial in
-the routine policies restricts the AWS console viewer; it is not a general
-`kubectl` deny.
+requires access entries and RBAC. The SCP `eks:AccessKubernetesApi` denial for
+routine roles restricts the AWS console viewer; it is not a general `kubectl` deny.
 
 | Role | Intended group and permissions |
 | --- | --- |
 | Deployment | `braintrust:deployment`: manage platform resources required by deployment; exact RBAC follows the future module |
 | Observer | `braintrust:observer`: inspect selected workload configuration, status, events, and capacity |
 | Support | Observer plus `braintrust:support`: scale existing workloads and HPAs; request pod eviction |
-| Diagnostics | Selected inspection plus `braintrust:diagnostics`: application logs and container execution when activated |
+| Diagnostics | Observer and Support plus `braintrust:diagnostics`: application logs and container execution when activated |
 
 [`policies/kubernetes-rbac-reference.yaml`](policies/kubernetes-rbac-reference.yaml)
 defines the three human permission profiles, without bindings. Support would
-receive both the Observer and Support profiles. Bind only within namespaces
+receive both the Observer and Support profiles; activated Diagnostics would
+receive all three. Bind only within namespaces
 managed by Braintrust; the reference does not grant human access across the cluster.
 Diagnostics bindings and activation are deferred, not made permanent by this file.
 
