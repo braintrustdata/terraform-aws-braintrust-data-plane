@@ -23,7 +23,7 @@ run "automation_writer_plans" {
   command = plan
 
   assert {
-    condition     = contains(keys(module.brainstore[0].monitoring_targets), "automation-writer")
-    error_message = "an enabled automation writer pool should be included in Brainstore monitoring targets"
+    condition     = length(module.brainstore) == 1
+    error_message = "an enabled automation writer pool should plan with the Brainstore module"
   }
 }

@@ -35,7 +35,12 @@ run "automation_writer_loop_config_is_rendered" {
   }
 
   assert {
-    condition     = aws_launch_template.brainstore_writer[0].user_data != aws_launch_template.brainstore_automation_writer[0].user_data
-    error_message = "regular and automation writers should render different writer-loop configuration"
+    condition = (
+      aws_launch_template.brainstore_writer[0].user_data != aws_launch_template.brainstore_automation_writer[0].user_data &&
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].health_check_type == "EBS"
+    )
+    error_message = "AutomationWriter should be a fixed-size ASG with no load-balancer target group"
   }
 }

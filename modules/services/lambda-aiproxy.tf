@@ -35,7 +35,6 @@ resource "aws_lambda_function" "ai_proxy" {
   environment {
     variables = merge(
       local.api_common_env_vars,
-      local.api_automation_writer_env_vars,
       local.api_fast_reader_env_vars,
       var.extra_env_vars.AIProxy,
       local.observability_enabled ? merge(local.datadog_env_vars, {

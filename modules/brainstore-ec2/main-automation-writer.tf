@@ -96,66 +96,15 @@ resource "aws_launch_template" "brainstore_automation_writer" {
   }
 }
 
-resource "aws_lb" "brainstore_automation_writer" {
-  count              = local.has_automation_writer_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-aw"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
-
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  tags = local.common_tags
-}
-
-resource "aws_lb_target_group" "brainstore_automation_writer" {
-  count       = local.has_automation_writer_nodes ? 1 : 0
-  name        = "${var.deployment_name}-bstr-aw"
-  port        = var.port
-  protocol    = "TCP"
-  vpc_id      = var.vpc_id
-  target_type = "instance"
-
-  connection_termination = true
-  health_check {
-    protocol            = "TCP"
-    port                = var.port
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 10
-    interval            = 10
-  }
-
-  tags = local.common_tags
-}
-
-resource "aws_lb_listener" "brainstore_automation_writer" {
-  count             = local.has_automation_writer_nodes ? 1 : 0
-  load_balancer_arn = aws_lb.brainstore_automation_writer[0].arn
-  port              = var.port
-  protocol          = "TCP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.brainstore_automation_writer[0].arn
-  }
-  tags = local.common_tags
-}
-
 resource "aws_autoscaling_group" "brainstore_automation_writer" {
   count                     = local.has_automation_writer_nodes ? 1 : 0
   name_prefix               = "${var.deployment_name}-brainstore-automation-writer"
   min_size                  = var.automation_writer_instance_count
-  max_size                  = var.automation_writer_instance_count * 2
+  max_size                  = var.automation_writer_instance_count
   desired_capacity          = var.automation_writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
-  health_check_type         = "EBS,ELB"
+  health_check_type         = "EBS"
   health_check_grace_period = 60
-  target_group_arns         = [aws_lb_target_group.brainstore_automation_writer[0].arn]
-  wait_for_elb_capacity     = var.automation_writer_instance_count
   launch_template {
     id      = aws_launch_template.brainstore_automation_writer[0].id
     version = aws_launch_template.brainstore_automation_writer[0].latest_version
