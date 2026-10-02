@@ -100,8 +100,8 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.8xlarge"
 
-  # Fast writers are optional. Enable only when instructed by Braintrust.
-  brainstore_fast_writer_instance_count = 0
+  # Automation writers are optional. Enable only when instructed by Braintrust.
+  brainstore_automation_writer_instance_count = 0
 
   ### Redis configuration
 

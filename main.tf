@@ -323,18 +323,18 @@ module "services" {
   redis_host                  = module.redis.redis_endpoint
   redis_port                  = module.redis.redis_port
 
-  brainstore_enabled              = true
-  brainstore_default              = var.brainstore_default
-  brainstore_hostname             = module.brainstore[0].dns_name
-  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_fast_writer_hostname = var.brainstore_fast_writer_instance_count > 0 ? module.brainstore[0].fast_writer_dns_name : null
-  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
-  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
-  brainstore_port                 = module.brainstore[0].port
-  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
-  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
-  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
+  brainstore_enabled                    = true
+  brainstore_default                    = var.brainstore_default
+  brainstore_hostname                   = module.brainstore[0].dns_name
+  brainstore_writer_hostname            = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_fast_reader_hostname       = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name             = module.storage.brainstore_bucket_id
+  brainstore_port                       = module.brainstore[0].port
+  brainstore_etl_batch_size             = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version         = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
+  brainstore_enable_export              = var.brainstore_enable_export
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -503,17 +503,17 @@ module "api_ecs" {
   custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
 
   # Brainstore
-  brainstore_hostname             = module.brainstore[0].dns_name
-  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_fast_writer_hostname = var.brainstore_fast_writer_instance_count > 0 ? module.brainstore[0].fast_writer_dns_name : null
-  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
-  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
-  brainstore_port                 = module.brainstore[0].port
-  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
-  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
-  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
-  brainstore_license_key          = var.brainstore_license_key
+  brainstore_hostname                   = module.brainstore[0].dns_name
+  brainstore_writer_hostname            = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_fast_reader_hostname       = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name             = module.storage.brainstore_bucket_id
+  brainstore_port                       = module.brainstore[0].port
+  brainstore_etl_batch_size             = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version         = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
+  brainstore_enable_export              = var.brainstore_enable_export
+  brainstore_license_key                = var.brainstore_license_key
 
   # Storage
   code_bundle_bucket     = module.storage.code_bundle_bucket_id
@@ -680,10 +680,10 @@ module "brainstore" {
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
   writer_instance_type                  = var.brainstore_writer_instance_type
-  fast_writer_instance_count            = var.brainstore_fast_writer_instance_count
-  fast_writer_instance_type             = var.brainstore_fast_writer_instance_type
-  extra_env_vars_fast_writer            = var.brainstore_extra_env_vars_fast_writer
-  cache_file_size_fast_writer           = var.brainstore_cache_file_size_fast_writer
+  automation_writer_instance_count      = var.brainstore_automation_writer_instance_count
+  automation_writer_instance_type       = var.brainstore_automation_writer_instance_type
+  extra_env_vars_automation_writer      = var.brainstore_extra_env_vars_automation_writer
+  cache_file_size_automation_writer     = var.brainstore_cache_file_size_automation_writer
   fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader

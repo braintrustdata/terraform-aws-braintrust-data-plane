@@ -6,9 +6,9 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
-  using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
-  using_brainstore_fast_writer = var.brainstore_fast_writer_hostname != null && var.brainstore_fast_writer_hostname != ""
-  using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
+  using_brainstore_writer            = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
+  using_brainstore_automation_writer = var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != ""
+  using_brainstore_fast_reader       = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
 
   # When both an ACM certificate and a custom domain are provided, the ALB serves
   # HTTPS on 443 and the API URL points at the custom domain so the certificate
@@ -95,8 +95,8 @@ locals {
     local.quarantine_proxy_env_vars,
     local.url_security_env_vars,
     local.btql_audit_log_env_vars,
-    local.using_brainstore_fast_writer ? {
-      BRAINSTORE_FAST_WRITER_URL = "http://${var.brainstore_fast_writer_hostname}:${var.brainstore_port}"
+    local.using_brainstore_automation_writer ? {
+      BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"
     } : {},
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"

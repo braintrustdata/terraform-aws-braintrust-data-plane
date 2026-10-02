@@ -1,8 +1,8 @@
-resource "aws_launch_template" "brainstore_fast_writer" {
-  count                  = local.has_fast_writer_nodes ? 1 : 0
-  name                   = "${var.deployment_name}-brainstore-fast-writer"
+resource "aws_launch_template" "brainstore_automation_writer" {
+  count                  = local.has_automation_writer_nodes ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-automation-writer"
   image_id               = data.aws_ami.ubuntu_24_04.id
-  instance_type          = var.fast_writer_instance_type
+  instance_type          = var.automation_writer_instance_type
   key_name               = var.instance_key_pair_name
   update_default_version = true
 
@@ -54,51 +54,51 @@ resource "aws_launch_template" "brainstore_fast_writer" {
     monitoring_telemetry            = var.monitoring_telemetry
     is_dedicated_reader_node        = "false"
     is_dedicated_writer_node        = "true"
-    extra_env_vars                  = local.brainstore_fast_writer_extra_env_vars
+    extra_env_vars                  = local.brainstore_automation_writer_extra_env_vars
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
     service_token_secret_arn        = var.service_token_secret_arn
     custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script      = var.custom_post_install_script
-    brainstore_cache_file_size      = local.brainstore_fast_writer_cache_file_size
+    brainstore_cache_file_size      = local.brainstore_automation_writer_cache_file_size
     skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
     brainstore_enable_export        = var.brainstore_enable_export
     ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
   }))
 
   tags = merge({
-    Name = "${var.deployment_name}-brainstore-fast-writer"
+    Name = "${var.deployment_name}-brainstore-automation-writer"
   }, local.common_tags)
 
   tag_specifications {
     resource_type = "instance"
     tags = merge({
-      Name           = "${var.deployment_name}-brainstore-fast-writer"
-      BrainstoreRole = "FastWriter"
+      Name           = "${var.deployment_name}-brainstore-automation-writer"
+      BrainstoreRole = "AutomationWriter"
     }, local.common_tags)
   }
 
   tag_specifications {
     resource_type = "volume"
     tags = merge({
-      Name           = "${var.deployment_name}-brainstore-fast-writer"
-      BrainstoreRole = "FastWriter"
+      Name           = "${var.deployment_name}-brainstore-automation-writer"
+      BrainstoreRole = "AutomationWriter"
     }, local.common_tags)
   }
 
   tag_specifications {
     resource_type = "network-interface"
     tags = merge({
-      Name           = "${var.deployment_name}-brainstore-fast-writer"
-      BrainstoreRole = "FastWriter"
+      Name           = "${var.deployment_name}-brainstore-automation-writer"
+      BrainstoreRole = "AutomationWriter"
     }, local.common_tags)
   }
 }
 
-resource "aws_lb" "brainstore_fast_writer" {
-  count              = local.has_fast_writer_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-fw"
+resource "aws_lb" "brainstore_automation_writer" {
+  count              = local.has_automation_writer_nodes ? 1 : 0
+  name               = "${var.deployment_name}-bstr-aw"
   internal           = true
   load_balancer_type = "network"
   subnets            = var.private_subnet_ids
@@ -111,9 +111,9 @@ resource "aws_lb" "brainstore_fast_writer" {
   tags = local.common_tags
 }
 
-resource "aws_lb_target_group" "brainstore_fast_writer" {
-  count       = local.has_fast_writer_nodes ? 1 : 0
-  name        = "${var.deployment_name}-bstr-fw"
+resource "aws_lb_target_group" "brainstore_automation_writer" {
+  count       = local.has_automation_writer_nodes ? 1 : 0
+  name        = "${var.deployment_name}-bstr-aw"
   port        = var.port
   protocol    = "TCP"
   vpc_id      = var.vpc_id
@@ -132,33 +132,33 @@ resource "aws_lb_target_group" "brainstore_fast_writer" {
   tags = local.common_tags
 }
 
-resource "aws_lb_listener" "brainstore_fast_writer" {
-  count             = local.has_fast_writer_nodes ? 1 : 0
-  load_balancer_arn = aws_lb.brainstore_fast_writer[0].arn
+resource "aws_lb_listener" "brainstore_automation_writer" {
+  count             = local.has_automation_writer_nodes ? 1 : 0
+  load_balancer_arn = aws_lb.brainstore_automation_writer[0].arn
   port              = var.port
   protocol          = "TCP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.brainstore_fast_writer[0].arn
+    target_group_arn = aws_lb_target_group.brainstore_automation_writer[0].arn
   }
   tags = local.common_tags
 }
 
-resource "aws_autoscaling_group" "brainstore_fast_writer" {
-  count                     = local.has_fast_writer_nodes ? 1 : 0
-  name_prefix               = "${var.deployment_name}-brainstore-fast-writer"
-  min_size                  = var.fast_writer_instance_count
-  max_size                  = var.fast_writer_instance_count * 2
-  desired_capacity          = var.fast_writer_instance_count
+resource "aws_autoscaling_group" "brainstore_automation_writer" {
+  count                     = local.has_automation_writer_nodes ? 1 : 0
+  name_prefix               = "${var.deployment_name}-brainstore-automation-writer"
+  min_size                  = var.automation_writer_instance_count
+  max_size                  = var.automation_writer_instance_count * 2
+  desired_capacity          = var.automation_writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
-  target_group_arns         = [aws_lb_target_group.brainstore_fast_writer[0].arn]
-  wait_for_elb_capacity     = var.fast_writer_instance_count
+  target_group_arns         = [aws_lb_target_group.brainstore_automation_writer[0].arn]
+  wait_for_elb_capacity     = var.automation_writer_instance_count
   launch_template {
-    id      = aws_launch_template.brainstore_fast_writer[0].id
-    version = aws_launch_template.brainstore_fast_writer[0].latest_version
+    id      = aws_launch_template.brainstore_automation_writer[0].id
+    version = aws_launch_template.brainstore_automation_writer[0].latest_version
   }
 
   lifecycle {
@@ -176,7 +176,7 @@ resource "aws_autoscaling_group" "brainstore_fast_writer" {
 
   tag {
     key                 = "Name"
-    value               = "${var.deployment_name}-brainstore-fast-writer"
+    value               = "${var.deployment_name}-brainstore-automation-writer"
     propagate_at_launch = true
   }
 

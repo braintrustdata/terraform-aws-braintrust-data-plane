@@ -162,9 +162,9 @@ variable "brainstore_writer_hostname" {
   default     = null
 }
 
-variable "brainstore_fast_writer_hostname" {
+variable "brainstore_automation_writer_hostname" {
   type        = string
-  description = "Hostname for the dedicated Brainstore fast writer nodes, if enabled"
+  description = "Hostname for the dedicated Brainstore automation writer nodes, if enabled"
   default     = null
 }
 
