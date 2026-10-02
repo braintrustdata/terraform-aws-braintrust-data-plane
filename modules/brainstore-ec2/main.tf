@@ -1,8 +1,8 @@
 locals {
   brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
-  common_tags = merge({
+  common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
-  }, var.custom_tags)
+  })
   architecture                = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes            = var.writer_instance_count > 0
   has_automation_writer_nodes = var.automation_writer_instance_count > 0
@@ -156,8 +156,11 @@ resource "aws_lb_target_group" "brainstore" {
   target_type = "instance"
 
   connection_termination = true
+  deregistration_delay   = 30
   health_check {
     protocol            = "TCP"
+    matcher             = ""
+    path                = ""
     port                = var.port
     healthy_threshold   = 3
     unhealthy_threshold = 3
@@ -200,15 +203,6 @@ resource "aws_autoscaling_group" "brainstore" {
   lifecycle {
     # If this ever has to be replaced, we want a new ASG to be created before the old one is terminated.
     create_before_destroy = true
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200
-    }
-    triggers = ["tag"]
   }
 
   tag {
