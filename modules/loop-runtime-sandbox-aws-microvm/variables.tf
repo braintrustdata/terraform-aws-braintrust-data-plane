@@ -93,12 +93,6 @@ variable "ingress_network_connector_arns" {
   default     = []
 }
 
-variable "sandbox_egress_mode" {
-  type        = string
-  description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector."
-  default     = "restricted"
-}
-
 variable "enable_microvm_runtime_logs" {
   type        = bool
   description = "Export MicroVM stdout/stderr to CloudWatch (can include sandbox output). Creates an execution role and grants the task role PassRole."
@@ -139,11 +133,6 @@ variable "existing_vpc_id" {
   validation {
     condition     = var.existing_vpc_id == null ? true : trimspace(var.existing_vpc_id) != ""
     error_message = "existing_vpc_id must be null or a nonempty VPC ID."
-  }
-
-  validation {
-    condition     = var.existing_vpc_id == null || var.sandbox_egress_mode != "internet"
-    error_message = "existing_vpc_id requires restricted sandbox egress."
   }
 }
 
@@ -217,4 +206,15 @@ variable "endpoint_subnet_ids" {
 variable "runtime_security_group_id" {
   type        = string
   description = "Loop runtime security group that can access the MicroVM endpoint."
+}
+
+variable "egress_gateway_deregistration_delay" {
+  type        = number
+  description = "Deregistration delay in seconds for the sandbox egress gateway NLB target group."
+  default     = 900
+
+  validation {
+    condition     = var.egress_gateway_deregistration_delay >= 0 && var.egress_gateway_deregistration_delay <= 3600
+    error_message = "egress_gateway_deregistration_delay must be between 0 and 3600."
+  }
 }

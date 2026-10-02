@@ -27,10 +27,6 @@ run "loop_private_endpoint" {
     condition     = length(module.loop_runtime_ecs) == 1 && length(module.loop_runtime_sandbox_aws_microvm) == 1
     error_message = "Loop must create the runtime and MicroVM modules."
   }
-  assert {
-    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
-    error_message = "MicroVM egress must default to restricted."
-  }
 }
 
 run "loop_with_existing_sandbox_vpc" {
