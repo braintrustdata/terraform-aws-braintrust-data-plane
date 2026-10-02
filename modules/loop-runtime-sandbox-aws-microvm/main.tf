@@ -17,9 +17,7 @@ locals {
 
   base_image_arn = "arn:${local.partition}:lambda:${local.region}:aws:microvm-image:al2023-1"
 
-  # AWS-managed ingress connector used at RunMicrovm time. Sandboxes never get
-  # the AWS-managed Internet egress connector; their only egress is the
-  # restricted VPC connector, which reaches just the Loop egress gateway.
+  # AWS-managed ingress connector used at RunMicrovm time.
   managed_ingress_connector_arn = "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:ALL_INGRESS"
   ingress_connector_arns        = length(var.ingress_network_connector_arns) > 0 ? var.ingress_network_connector_arns : [local.managed_ingress_connector_arn]
 
@@ -44,8 +42,6 @@ locals {
     aws_cloudformation_stack.restricted_egress_connector.outputs["NetworkConnectorArn"]
   ]
 
-  # The Loop runtime serves the sandbox egress proxy on this port. Sandboxes
-  # reach it through a PrivateLink endpoint in the sandbox VPC.
   egress_gateway_port     = 4002
   egress_gateway_dns_name = aws_vpc_endpoint.egress_gateway.dns_entry[0].dns_name
 
@@ -240,8 +236,7 @@ resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
   priority                = 100
 }
 
-# Sandboxes resolve only the egress gateway endpoint. AWS stores firewall
-# domains with a trailing dot, so write it that way to avoid plan drift.
+# AWS stores firewall domains with trailing dots; match that to avoid plan drift.
 resource "aws_route53_resolver_firewall_domain_list" "egress_gateway" {
   count = local.create_restricted_egress_vpc ? 1 : 0
 
@@ -554,10 +549,8 @@ resource "aws_vpc_endpoint" "loop_runtime_microvm" {
 }
 
 # --- Sandbox egress gateway ---
-# Sandboxes reach the Loop runtime egress proxy (port 4002) through
-# PrivateLink: an interface endpoint in the sandbox VPC connects to an
-# endpoint service in front of an internal NLB in the main VPC. The proxy
-# authorizes each request, so reaching the endpoint grants no credentials.
+# Sandboxes reach the proxy on port 4002 through PrivateLink.
+# The proxy authorizes each request; endpoint access grants no credentials.
 
 resource "aws_security_group" "egress_gateway_nlb" {
   name        = "${var.deployment_name}-loop-egress-gateway-nlb"
@@ -587,9 +580,8 @@ resource "aws_lb" "egress_gateway" {
   security_groups                  = [aws_security_group.egress_gateway_nlb.id]
   enable_cross_zone_load_balancing = true
 
-  # PrivateLink traffic is limited by the endpoint service principals and the
-  # sandbox endpoint security group. The sandbox subnets vary with
-  # existing_vpc_id, so the NLB does not filter this traffic again.
+  # Endpoint principals and the sandbox endpoint security group restrict ingress.
+  # Skip NLB filtering because supplied sandbox subnets can vary.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
 
   tags = merge({
