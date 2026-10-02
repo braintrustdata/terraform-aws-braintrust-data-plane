@@ -87,7 +87,7 @@ variable "min_capacity" {
 variable "max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 4
+  default     = 50
 
   validation {
     condition     = var.max_capacity >= var.min_capacity
@@ -95,25 +95,25 @@ variable "max_capacity" {
   }
 }
 
-variable "target_cpu_utilization" {
+variable "target_conversation_utilization" {
   type        = number
-  description = "Target average CPU utilization percentage for Loop runtime ECS service autoscaling."
-  default     = 40
-
-  validation {
-    condition     = var.target_cpu_utilization > 0 && var.target_cpu_utilization <= 100
-    error_message = "target_cpu_utilization must be between 1 and 100."
-  }
-}
-
-variable "target_memory_utilization" {
-  type        = number
-  description = "Target average memory utilization percentage for Loop runtime ECS service autoscaling."
+  description = "Target average claimed conversation utilization percentage for Loop runtime ECS service autoscaling."
   default     = 50
 
   validation {
-    condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
-    error_message = "target_memory_utilization must be between 1 and 100."
+    condition     = var.target_conversation_utilization > 0 && var.target_conversation_utilization <= 100
+    error_message = "target_conversation_utilization must be between 1 and 100."
+  }
+}
+
+variable "drain_timeout_seconds" {
+  type        = number
+  description = "Maximum seconds active Loop runtime turns can finish after the task receives SIGTERM. The container stop timeout is 120 seconds."
+  default     = 90
+
+  validation {
+    condition     = var.drain_timeout_seconds >= 1 && var.drain_timeout_seconds <= 105
+    error_message = "drain_timeout_seconds must be between 1 and 105."
   }
 }
 
@@ -305,6 +305,18 @@ variable "extra_env_vars" {
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
     error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for key in [
+        "LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE",
+        "LOOP_RUNTIME_CAPACITY_METRIC_CLUSTER_NAME",
+        "LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME",
+        "LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS",
+      ] : !contains(keys(var.extra_env_vars), key)
+    ])
+    error_message = "Do not set LOOP_RUNTIME_CAPACITY_METRIC_* or LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS in extra_env_vars; use the dedicated inputs."
   }
 }
 
