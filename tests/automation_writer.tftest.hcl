@@ -26,13 +26,4 @@ run "automation_writer_plans" {
     condition     = length(module.brainstore) == 1
     error_message = "an enabled automation writer pool should plan with the Brainstore module"
   }
-
-  assert {
-    condition = (
-      length(module.brainstore_deployment) == 1 &&
-      contains([for fleet in module.brainstore[0].deployment_fleets : fleet.role], "automation-writer") &&
-      one([for fleet in module.brainstore[0].deployment_fleets : fleet if fleet.role == "automation-writer"]).target_group_arn == null
-    )
-    error_message = "the automation writer fleet should participate in the deployment gate without a target group"
-  }
 }
