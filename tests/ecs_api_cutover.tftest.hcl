@@ -38,4 +38,23 @@ run "ecs_api_cutover_plans" {
     condition     = length(module.ingress) == 1
     error_message = "cutover path should keep ingress for CloudFront routing"
   }
+
+  assert {
+    condition     = local.effective_api_handler_provisioned_concurrency == 0
+    error_message = "ECS API mode should disable unused API Handler Lambda provisioned concurrency"
+  }
+}
+
+run "lambda_api_mode_keeps_provisioned_concurrency" {
+  command = plan
+
+  variables {
+    enable_ecs_api                      = false
+    api_handler_provisioned_concurrency = 2
+  }
+
+  assert {
+    condition     = local.effective_api_handler_provisioned_concurrency == 2
+    error_message = "Lambda API mode should preserve configured API Handler provisioned concurrency"
+  }
 }
