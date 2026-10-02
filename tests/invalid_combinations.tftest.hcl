@@ -14,6 +14,18 @@ variables {
   brainstore_license_key = "test-license"
 }
 
+run "rejects_whitespace_quarantine_proxy_url" {
+  command = plan
+
+  variables {
+    quarantine_proxy_url = "   "
+  }
+
+  expect_failures = [
+    var.quarantine_proxy_url,
+  ]
+}
+
 run "rejects_ecs_api_with_external_eks" {
   command = plan
 

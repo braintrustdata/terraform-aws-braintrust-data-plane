@@ -626,7 +626,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), or AI Proxy Function URL. Null or blank omits the env var so api-ts getRuntimeEnv falls back to the caller proxy URL."
+  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), the AI Proxy Function URL while that Lambda exists, or the CloudFront /v1/proxy URL once it is gone. Null or blank omits the variable; api-ts uses the caller proxy URL, which is http://localhost:8000/v1/proxy in this ECS configuration. A quarantine Lambda cannot call that address."
   default     = null
 }
 
