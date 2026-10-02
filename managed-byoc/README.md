@@ -23,12 +23,16 @@ The script requires the AWS CLI, `jq`, and `uuidgen`.
 
 The script sets an ExternalId in the role trust policy for cross-account protection. On first create it auto-generates a value in the form `braintrust-<uuid>`. Re-running against an existing role generates a new ExternalId if it doesn't exist, or preserves the existing ExternalId.
 
+The script injects the management role's exact ARN into its inline policy at runtime. An explicit deny prevents the role from directly modifying, deleting, or passing itself.
+
+When updating an existing installation, pass the role's current name with `--role-name`. This is required for installations using a non-default name, including `BraintrustExternalAccessRole`.
+
 When the script completes, share the printed **Role ARN** and **External ID** with Braintrust.
 
 This role and policy set is the required baseline for managed BYOC. You can review the Trust Policy and Inline Policy in the following files:
 
 - Trust Policy: `managed-byoc/policies/management-role-trust-policy.json` (base policy; ExternalId is always injected by the script at runtime)
-- Inline Policy: `managed-byoc/policies/management-role-policy.json`
+- Inline Policy: `managed-byoc/policies/management-role-policy.json` (base policy; the management role ARN is always injected by the script at runtime)
 
 ## 3) Optional: Organization Service Control Policy (SCP) guardrail
 
