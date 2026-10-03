@@ -1,0 +1,100 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageLambdaInfrastructure",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:Add*",
+        "lambda:CreateAlias",
+        "lambda:CreateCapacityProvider",
+        "lambda:CreateCodeSigningConfig",
+        "lambda:CreateEventSourceMapping",
+        "lambda:CreateFunction",
+        "lambda:CreateFunctionUrlConfig",
+        "lambda:CreateMicrovmImage",
+        "lambda:CreateNetworkConnector",
+        "lambda:Delete*",
+        "lambda:GetAccountSettings",
+        "lambda:GetAlias",
+        "lambda:GetCapacityProvider",
+        "lambda:GetCodeSigningConfig",
+        "lambda:GetEventSourceMapping",
+        "lambda:GetFunction*",
+        "lambda:GetLayerVersion*",
+        "lambda:GetMicrovm*",
+        "lambda:GetNetworkConnector",
+        "lambda:GetPolicy",
+        "lambda:GetProvisionedConcurrencyConfig",
+        "lambda:GetResourcePolicy",
+        "lambda:GetRuntimeManagementConfig",
+        "lambda:List*",
+        "lambda:PassCapacityProvider",
+        "lambda:PassNetworkConnector",
+        "lambda:Publish*",
+        "lambda:Put*",
+        "lambda:Remove*",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:Update*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "InvokeModuleDeploymentHooks",
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": [
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-MigrateDatabaseFunction",
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-QuarantineWarmupFunction"
+      ]
+    },
+    {
+      "Sid": "ManageInfrastructureMonitoring",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:DeleteAlarms",
+        "cloudwatch:DeleteDashboards",
+        "cloudwatch:Describe*",
+        "cloudwatch:DisableAlarmActions",
+        "cloudwatch:EnableAlarmActions",
+        "cloudwatch:GetDashboard",
+        "cloudwatch:GetMetric*",
+        "cloudwatch:List*",
+        "cloudwatch:PutCompositeAlarm",
+        "cloudwatch:PutDashboard",
+        "cloudwatch:PutMetricAlarm",
+        "cloudwatch:PutMetricData",
+        "cloudwatch:SetAlarmState",
+        "cloudwatch:TagResource",
+        "cloudwatch:UntagResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageLogGroupConfiguration",
+      "Effect": "Allow",
+      "Action": [
+        "logs:AssociateKmsKey",
+        "logs:CreateLogGroup",
+        "logs:DeleteDataProtectionPolicy",
+        "logs:DeleteLogGroup",
+        "logs:DeleteMetricFilter",
+        "logs:DeleteRetentionPolicy",
+        "logs:Describe*",
+        "logs:DisassociateKmsKey",
+        "logs:GetDataProtectionPolicy",
+        "logs:ListTagsForResource",
+        "logs:ListTagsLogGroup",
+        "logs:PutDataProtectionPolicy",
+        "logs:PutMetricFilter",
+        "logs:PutRetentionPolicy",
+        "logs:TagLogGroup",
+        "logs:TagResource",
+        "logs:UntagLogGroup",
+        "logs:UntagResource"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
