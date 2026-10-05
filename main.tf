@@ -444,10 +444,11 @@ module "ecs" {
   source = "./modules/ecs"
   count  = local.create_ai_gateway || local.create_ecs_api || local.create_loop_runtime ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  container_insights = var.container_insights
-  custom_tags        = local.all_custom_tags
+  deployment_name                       = var.deployment_name
+  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
+  kms_key_arn                           = local.kms_key_arn
+  container_insights                    = var.container_insights
+  custom_tags                           = local.all_custom_tags
 }
 
 module "gateway_alb" {
@@ -477,12 +478,13 @@ module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = local.create_ai_gateway ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
-  ecs_cluster_arn    = module.ecs[0].cluster_arn
-  ecs_cluster_name   = module.ecs[0].cluster_name
+  deployment_name                       = var.deployment_name
+  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
+  kms_key_arn                           = local.kms_key_arn
+  vpc_id                                = local.main_vpc_id
+  private_subnet_ids                    = local.main_vpc_private_subnet_ids
+  ecs_cluster_arn                       = module.ecs[0].cluster_arn
+  ecs_cluster_name                      = module.ecs[0].cluster_name
   container_image = format(
     "public.ecr.aws/braintrust/gateway:%s",
     var.ai_gateway_version_override != null ? var.ai_gateway_version_override : jsondecode(file("${path.module}/modules/gateway-ecs/VERSIONS.json"))["gateway"]
@@ -571,12 +573,13 @@ module "loop_runtime_ecs" {
   source = "./modules/loop-runtime-ecs"
   count  = local.create_loop_runtime ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
-  ecs_cluster_arn    = module.ecs[0].cluster_arn
-  ecs_cluster_name   = module.ecs[0].cluster_name
+  deployment_name                       = var.deployment_name
+  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
+  kms_key_arn                           = local.kms_key_arn
+  vpc_id                                = local.main_vpc_id
+  private_subnet_ids                    = local.main_vpc_private_subnet_ids
+  ecs_cluster_arn                       = module.ecs[0].cluster_arn
+  ecs_cluster_name                      = module.ecs[0].cluster_name
 
   container_image = format("public.ecr.aws/braintrust/loop-runtime:%s", local.loop_runtime_version)
 
@@ -788,6 +791,7 @@ module "services_common" {
   source = "./modules/services-common"
 
   deployment_name                           = var.deployment_name
+  diagnostics_transcript_log_group_name     = var.diagnostics_transcript_log_group_name
   vpc_id                                    = local.main_vpc_id
   kms_key_arn                               = local.kms_key_arn
   database_secret_arn                       = local.postgres_credentials_secret_arn
