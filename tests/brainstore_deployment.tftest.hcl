@@ -45,7 +45,7 @@ run "complete_rollout" {
         deployment_name = var.deployment_name
         fleets          = var.fleets
       }
-      wait_seconds      = 600
+      wait_seconds      = 900
       return_on_timeout = true
     })
     error_message = "The first invocation must allow a timeout response so Terraform can retry."
@@ -55,12 +55,12 @@ run "complete_rollout" {
     error_message = "The completion dependency must use the invocation that returns the helper's actual complete-only response."
   }
   assert {
-    condition     = jsondecode(aws_lambda_invocation.retry.input).deployment == jsondecode(aws_lambda_invocation.rollout.input).deployment && jsondecode(aws_lambda_invocation.retry.input).wait_seconds == 600 && !can(jsondecode(aws_lambda_invocation.retry.input).return_on_timeout)
+    condition     = jsondecode(aws_lambda_invocation.retry.input).deployment == jsondecode(aws_lambda_invocation.rollout.input).deployment && jsondecode(aws_lambda_invocation.retry.input).wait_seconds == 900 && !can(jsondecode(aws_lambda_invocation.retry.input).return_on_timeout)
     error_message = "The final invocation must use the same deployment and wait budget, throwing on timeout."
   }
   assert {
-    condition     = aws_lambda_function.waiter.timeout > jsondecode(aws_lambda_invocation.rollout.input).wait_seconds
-    error_message = "The Lambda must have time to report a timeout after the wait budget expires."
+    condition     = aws_lambda_function.waiter.timeout == 900 && aws_lambda_function.waiter.timeout == jsondecode(aws_lambda_invocation.rollout.input).wait_seconds
+    error_message = "Each invocation must use the full 15-minute Lambda limit; the helper retains its runtime guard."
   }
   assert {
     condition     = jsondecode(aws_iam_role_policy.waiter.policy).Statement[1].Resource[0] == "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:*:autoScalingGroupName/bt-test-brainstore-123" && jsondecode(aws_iam_role_policy.waiter.policy).Statement[1].Condition.StringEquals["autoscaling:ResourceTag/BraintrustDeploymentName"] == "bt-test"

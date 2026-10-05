@@ -3,7 +3,7 @@ resource "aws_lambda_invocation" "rollout" {
   qualifier     = "$LATEST"
   input = jsonencode({
     deployment        = local.deployment
-    wait_seconds      = 600
+    wait_seconds      = aws_lambda_function.waiter.timeout
     return_on_timeout = true
   })
   lifecycle {
@@ -19,7 +19,7 @@ resource "aws_lambda_invocation" "retry" {
   qualifier     = aws_lambda_invocation.rollout.qualifier
   input = jsonencode({
     deployment   = local.deployment
-    wait_seconds = 600
+    wait_seconds = aws_lambda_function.waiter.timeout
   })
   lifecycle {
     replace_triggered_by = [aws_lambda_invocation.rollout]
