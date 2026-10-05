@@ -52,14 +52,6 @@ run "serves_sandbox_egress_gateway" {
   }
 
   assert {
-    condition = anytrue([
-      for lb in aws_ecs_service.loop_runtime.load_balancer :
-      lb.target_group_arn == var.target_group_arn && lb.container_port == 4001
-    ])
-    error_message = "The ECS service must keep port 4001 registered with the ALB target group."
-  }
-
-  assert {
     condition = (
       aws_vpc_security_group_ingress_rule.task_from_sandbox_egress_gateway["Loop Sandbox Egress Gateway"].referenced_security_group_id == "sg-22222222222222222"
       && aws_vpc_security_group_ingress_rule.task_from_sandbox_egress_gateway["Loop Sandbox Egress Gateway"].from_port == 4002

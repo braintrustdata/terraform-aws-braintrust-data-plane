@@ -215,7 +215,7 @@ output "loop_runtime_ai_proxy_url" {
 
 output "loop_runtime_sandbox_egress_gateway_dns_name" {
   value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_dns_name : null
-  description = "DNS name of the Loop sandbox egress gateway endpoint. With loop_runtime_sandbox_existing_vpc_id, allow sandboxes to resolve this name."
+  description = "Loop sandbox egress gateway endpoint DNS name. A supplied sandbox VPC must let sandboxes resolve it."
 }
 
 output "loop_runtime_microvm_image_arn" {

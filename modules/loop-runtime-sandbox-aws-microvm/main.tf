@@ -34,7 +34,7 @@ locals {
   main_endpoint_subnet_ids = [
     for az in distinct(local.egress_gateway_nlb_azs) : var.endpoint_subnet_ids[index(local.egress_gateway_nlb_azs, az)]
   ]
-  egress_gateway_subnet_ids = [
+  sandbox_endpoint_subnet_ids = [
     for az in distinct(local.sandbox_subnet_azs) : local.restricted_egress_subnet_ids[index(local.sandbox_subnet_azs, az)]
     if contains(local.egress_gateway_nlb_azs, az)
   ]
@@ -270,8 +270,7 @@ resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egre
   tags                   = local.common_tags
 }
 
-# Outbound access is limited to aws_vpc_security_group_egress_rule
-# .sandbox_to_egress_gateway. Terraform removes the default allow-all rule.
+# Terraform drops the default allow-all egress; sandbox_to_egress_gateway is the only rule.
 resource "aws_security_group" "restricted_egress" {
   description = "Security group for restricted Loop runtime sandbox egress"
   name        = "${var.deployment_name}-loop-runtime-restricted-egress"
@@ -549,8 +548,8 @@ resource "aws_vpc_endpoint" "loop_runtime_microvm" {
 }
 
 # --- Sandbox egress gateway ---
-# Sandboxes reach the proxy on port 4002 through PrivateLink.
-# The proxy authorizes each request; endpoint access grants no credentials.
+# Sandboxes reach the runtime's port 4002 proxy over PrivateLink. The proxy
+# authorizes each request, so network access alone grants nothing.
 
 resource "aws_security_group" "egress_gateway_nlb" {
   name        = "${var.deployment_name}-loop-egress-gateway-nlb"
@@ -580,8 +579,7 @@ resource "aws_lb" "egress_gateway" {
   security_groups                  = [aws_security_group.egress_gateway_nlb.id]
   enable_cross_zone_load_balancing = true
 
-  # Endpoint principals and the sandbox endpoint security group restrict ingress.
-  # Skip NLB filtering because supplied sandbox subnets can vary.
+  # Ingress is gated by the endpoint service principals and the endpoint SG.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
 
   tags = merge({
@@ -598,9 +596,7 @@ resource "aws_lb_target_group" "egress_gateway" {
   deregistration_delay = var.egress_gateway_deregistration_delay
 
   health_check {
-    enabled  = true
     protocol = "TCP"
-    port     = "traffic-port"
   }
 
   tags = merge({
@@ -666,12 +662,12 @@ resource "aws_vpc_endpoint" "egress_gateway" {
   service_name        = aws_vpc_endpoint_service.egress_gateway.service_name
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = false
-  subnet_ids          = local.egress_gateway_subnet_ids
+  subnet_ids          = local.sandbox_endpoint_subnet_ids
   security_group_ids  = [aws_security_group.egress_gateway_endpoint.id]
 
   lifecycle {
     precondition {
-      condition     = length(local.egress_gateway_subnet_ids) > 0
+      condition     = length(local.sandbox_endpoint_subnet_ids) > 0
       error_message = "The sandbox VPC needs a subnet in an availability zone served by the egress gateway NLB."
     }
   }

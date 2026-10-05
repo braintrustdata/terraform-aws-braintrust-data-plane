@@ -19,16 +19,17 @@ output "microvm_log_group_name" {
 }
 
 output "egress_gateway_target_group_arn" {
-  description = "Target group the Loop runtime ECS service registers its sandbox egress port with. Read from the listener so the service waits for it."
-  value       = aws_lb_listener.egress_gateway.default_action[0].target_group_arn
+  description = "Egress gateway target group for the Loop runtime ECS service."
+  # Read through the listener so the ECS service waits for it.
+  value = aws_lb_listener.egress_gateway.default_action[0].target_group_arn
 }
 
 output "egress_gateway_security_group_id" {
-  description = "Security group of the sandbox egress gateway NLB. The Loop runtime tasks must accept its traffic on port 4002."
+  description = "Egress gateway NLB security group."
   value       = aws_security_group.egress_gateway_nlb.id
 }
 
 output "egress_gateway_dns_name" {
-  description = "DNS name of the sandbox egress gateway endpoint. With existing_vpc_id, the caller's DNS policy must let sandboxes resolve it."
+  description = "Egress gateway endpoint DNS name."
   value       = local.egress_gateway_dns_name
 }

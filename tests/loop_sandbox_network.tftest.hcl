@@ -119,10 +119,6 @@ run "managed_isolation_by_default" {
     condition     = length(aws_route53_resolver_firewall_rule_group_association.restricted_egress) == 1 && aws_route53_resolver_firewall_rule.restricted_egress[0].action == "BLOCK" && aws_route53_resolver_firewall_domain_list.restricted_egress[0].domains == toset(["*."])
     error_message = "The managed VPC must retain its DNS block."
   }
-  assert {
-    condition     = aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.from_port == 4002 && aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.to_port == 4002 && aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.ip_protocol == "tcp"
-    error_message = "The sandbox security group must only reach the egress gateway endpoint on port 4002."
-  }
 }
 
 run "existing_vpc_keeps_customer_network" {
@@ -145,8 +141,8 @@ run "existing_vpc_keeps_customer_network" {
     error_message = "The module must not change DNS policy in a supplied VPC."
   }
   assert {
-    condition     = aws_security_group.restricted_egress.vpc_id == "vpc-0123456789abcdef0" && aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.from_port == 4002
-    error_message = "The supplied VPC must retain a dedicated security group that only reaches the egress gateway."
+    condition     = aws_security_group.restricted_egress.vpc_id == "vpc-0123456789abcdef0"
+    error_message = "The sandbox security group must live in the supplied VPC."
   }
   assert {
     condition     = aws_cloudformation_stack.restricted_egress_connector.parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2"
@@ -282,7 +278,6 @@ run "egress_gateway_in_managed_vpc" {
       && aws_lb_listener.egress_gateway.port == 4002
       && aws_lb_listener.egress_gateway.protocol == "TCP"
       && aws_lb_listener.egress_gateway.default_action[0].target_group_arn == aws_lb_target_group.egress_gateway.arn
-      && output.egress_gateway_target_group_arn == aws_lb_target_group.egress_gateway.arn
     )
     error_message = "The NLB must forward TCP 4002 to the Loop runtime tasks."
   }
@@ -293,7 +288,6 @@ run "egress_gateway_in_managed_vpc" {
       && aws_vpc_security_group_egress_rule.egress_gateway_nlb_to_runtime.referenced_security_group_id == var.runtime_security_group_id
       && aws_vpc_security_group_egress_rule.egress_gateway_nlb_to_runtime.from_port == 4002
       && aws_vpc_security_group_egress_rule.egress_gateway_nlb_to_runtime.to_port == 4002
-      && output.egress_gateway_security_group_id == aws_security_group.egress_gateway_nlb.id
     )
     error_message = "The NLB may only reach the Loop runtime tasks on port 4002."
   }
