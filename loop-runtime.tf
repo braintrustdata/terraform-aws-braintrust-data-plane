@@ -56,12 +56,13 @@ module "loop_runtime_ecs" {
   source = "./modules/loop-runtime-ecs"
   count  = local.create_loop_runtime ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
-  ecs_cluster_arn    = module.ecs[0].cluster_arn
-  ecs_cluster_name   = module.ecs[0].cluster_name
+  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
+  deployment_name                       = var.deployment_name
+  kms_key_arn                           = local.kms_key_arn
+  vpc_id                                = local.main_vpc_id
+  private_subnet_ids                    = local.main_vpc_private_subnet_ids
+  ecs_cluster_arn                       = module.ecs[0].cluster_arn
+  ecs_cluster_name                      = module.ecs[0].cluster_name
 
   container_image = format("public.ecr.aws/braintrust/loop-runtime:%s", local.loop_runtime_version)
 
