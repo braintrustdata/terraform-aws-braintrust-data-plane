@@ -45,13 +45,18 @@ run "complete_rollout" {
         deployment_name = var.deployment_name
         fleets          = var.fleets
       }
-      wait_seconds = 600
+      wait_seconds      = 600
+      return_on_timeout = true
     })
-    error_message = "The single invocation must send only the desired deployment and wait budget."
+    error_message = "The first invocation must allow a timeout response so Terraform can retry."
   }
   assert {
-    condition     = output.completion_id == aws_lambda_invocation.rollout.id && jsondecode(aws_lambda_invocation.rollout.result).status == "complete"
+    condition     = output.completion_id == aws_lambda_invocation.retry.id && jsondecode(aws_lambda_invocation.retry.result).status == "complete"
     error_message = "The completion dependency must use the invocation that returns the helper's actual complete-only response."
+  }
+  assert {
+    condition     = jsondecode(aws_lambda_invocation.retry.input).deployment == jsondecode(aws_lambda_invocation.rollout.input).deployment && jsondecode(aws_lambda_invocation.retry.input).wait_seconds == 600 && !can(jsondecode(aws_lambda_invocation.retry.input).return_on_timeout)
+    error_message = "The final invocation must use the same deployment and wait budget, throwing on timeout."
   }
   assert {
     condition     = aws_lambda_function.waiter.timeout > jsondecode(aws_lambda_invocation.rollout.input).wait_seconds
@@ -106,4 +111,23 @@ run "reject_missing_artifact" {
     values = { status_code = 404, response_body = "missing" }
   }
   expect_failures = [data.http.artifact]
+}
+
+run "changed_launch_template" {
+  command = apply
+  module { source = "./modules/brainstore-deployment" }
+  variables {
+    fleets = [{
+      role                    = "reader"
+      asg_name                = "bt-test-brainstore-123"
+      launch_template_id      = "lt-abc123"
+      launch_template_version = "3"
+      desired_capacity        = 2
+      target_group_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/reader/abc123"
+    }]
+  }
+  assert {
+    condition     = output.completion_id != run.complete_rollout.completion_id && jsondecode(aws_lambda_invocation.retry.input).deployment.fleets[0].launch_template_version == "3"
+    error_message = "Changing the deployment must replace the final invocation and send the new launch template."
+  }
 }

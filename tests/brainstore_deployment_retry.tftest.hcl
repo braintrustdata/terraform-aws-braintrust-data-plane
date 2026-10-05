@@ -32,15 +32,36 @@ variables {
   }]
 }
 
-run "reject_unexpected_response" {
+
+run "retry_after_first_timeout" {
   command = apply
   module { source = "./modules/brainstore-deployment" }
   variables {
-    deployment_name = "bt-unexpected"
+    deployment_name = "bt-retry"
   }
   override_resource {
     target = aws_lambda_invocation.rollout
-    values = { result = "{\"status\":\"pending\"}" }
+    values = { result = "{\"status\":\"timed_out\"}" }
   }
-  expect_failures = [aws_lambda_invocation.rollout]
+  assert {
+    condition     = output.completion_id == aws_lambda_invocation.retry.id && jsondecode(aws_lambda_invocation.retry.result).status == "complete"
+    error_message = "A first-attempt timeout must allow the final invocation to complete the gate."
+  }
+}
+
+run "reject_final_timeout_response" {
+  command = apply
+  module { source = "./modules/brainstore-deployment" }
+  variables {
+    deployment_name = "bt-final"
+  }
+  override_resource {
+    target = aws_lambda_invocation.rollout
+    values = { result = "{\"status\":\"timed_out\"}" }
+  }
+  override_resource {
+    target = aws_lambda_invocation.retry
+    values = { result = "{\"status\":\"timed_out\"}" }
+  }
+  expect_failures = [aws_lambda_invocation.retry]
 }
