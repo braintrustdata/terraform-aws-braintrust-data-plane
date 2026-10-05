@@ -740,6 +740,12 @@ variable "enable_loop_runtime" {
   }
 }
 
+variable "loop_runtime_version_override" {
+  type        = string
+  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  default     = null
+}
+
 variable "loop_runtime_task_cpu" {
   type        = number
   description = "CPU units for the Loop runtime ECS task."
@@ -767,6 +773,22 @@ variable "loop_runtime_min_capacity" {
 variable "loop_runtime_max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
+  default     = 50
+}
+
+# Deprecated: Loop runtime scales on claimed conversation utilization only.
+# Kept so existing configurations still plan; remove in the next major version.
+# tflint-ignore: terraform_unused_declarations
+variable "loop_runtime_target_cpu_utilization" {
+  type        = number
+  description = "Deprecated and unused. Loop runtime scales on loop_runtime_target_conversation_utilization."
+  default     = 40
+}
+
+# tflint-ignore: terraform_unused_declarations
+variable "loop_runtime_target_memory_utilization" {
+  type        = number
+  description = "Deprecated and unused. Loop runtime scales on loop_runtime_target_conversation_utilization."
   default     = 50
 }
 

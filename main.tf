@@ -133,7 +133,11 @@ locals {
     "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
   } : {}
 
-  loop_runtime_version = jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
+  loop_runtime_version = (
+    var.loop_runtime_version_override != null
+    ? var.loop_runtime_version_override
+    : jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
+  )
 
   loop_runtime_brainstore_reader_url = local.create_loop_runtime ? format(
     "http://%s:%s",
