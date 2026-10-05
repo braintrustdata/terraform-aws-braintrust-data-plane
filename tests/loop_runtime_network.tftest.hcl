@@ -96,3 +96,18 @@ run "rejects_empty_existing_sandbox_subnet_3_id" {
   }
   expect_failures = [var.loop_runtime_sandbox_existing_private_subnet_3_id]
 }
+
+run "rejects_internet_sandbox_egress" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_egress_mode = "internet"
+  }
+  expect_failures = [var.loop_runtime_sandbox_egress_mode]
+}
+
+run "accepts_restricted_sandbox_egress" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_egress_mode = "restricted"
+  }
+}

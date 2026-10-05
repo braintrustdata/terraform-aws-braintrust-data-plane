@@ -856,6 +856,20 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   default     = false
 }
 
+# Deprecated: sandboxes always use restricted egress. Kept so existing
+# configurations still plan; remove in the next major version.
+# tflint-ignore: terraform_unused_declarations
+variable "loop_runtime_sandbox_egress_mode" {
+  type        = string
+  description = "Deprecated. Loop runtime sandboxes always use restricted egress; the only accepted value is restricted."
+  default     = "restricted"
+
+  validation {
+    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
+    error_message = "loop_runtime_sandbox_egress_mode only supports \"restricted\"; internet egress was removed."
+  }
+}
+
 variable "loop_runtime_sandbox_existing_vpc_id" {
   type        = string
   description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and DNS restrictions."

@@ -89,6 +89,7 @@ the corresponding migration guide before publication.
 The module creates a dedicated sandbox VPC with no outbound route.
 Sandboxes can reach only the Loop egress gateway endpoint on port 4002, and its name is the only one they can resolve.
 The endpoint connects over PrivateLink to the Loop runtime proxy, which authorizes each request.
+`loop_runtime_sandbox_egress_mode` is deprecated and only accepts `"restricted"`.
 
 You can supply a dedicated sandbox VPC with these inputs:
 
