@@ -48,6 +48,33 @@ run "external_bucket_mode_plans" {
   }
 }
 
+# External mode with a KMS key plans (the key is granted to the API, Brainstore,
+# and Loop runtime roles).
+run "external_bucket_mode_with_kms_plans" {
+  command = plan
+
+  variables {
+    create_code_bundle_s3_bucket               = false
+    existing_code_bundle_s3_bucket_arn         = "arn:aws:s3:::external-code-bundle-bucket"
+    existing_code_bundle_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+  }
+
+  assert {
+    condition     = output.code_bundle_s3_bucket_name == "external-code-bundle-bucket"
+    error_message = "external code bundle bucket name must be derived from the provided ARN"
+  }
+}
+
+run "rejects_kms_key_without_arn" {
+  command = plan
+
+  variables {
+    existing_code_bundle_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+  }
+
+  expect_failures = [var.existing_code_bundle_s3_bucket_kms_key_arn]
+}
+
 run "rejects_missing_arn_when_not_created" {
   command = plan
 

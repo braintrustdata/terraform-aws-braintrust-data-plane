@@ -1817,7 +1817,7 @@ variable "create_code_bundle_s3_bucket" {
 
 variable "existing_code_bundle_s3_bucket_arn" {
   type        = string
-  description = "ARN of an existing code bundle S3 bucket to consume when create_code_bundle_s3_bucket is false. The bucket's lifecycle and CORS are owned by the caller; it must allow the Braintrust origins and use SSE-S3 (AES256), since no KMS key input exists for it."
+  description = "ARN of an existing code bundle S3 bucket to consume when create_code_bundle_s3_bucket is false. The bucket's lifecycle and CORS are owned by the caller, and it must allow the Braintrust origins."
   default     = null
 
   validation {
@@ -1828,6 +1828,17 @@ variable "existing_code_bundle_s3_bucket_arn" {
   validation {
     condition     = var.existing_code_bundle_s3_bucket_arn == null ? true : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.existing_code_bundle_s3_bucket_arn))
     error_message = "existing_code_bundle_s3_bucket_arn must be a valid S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_code_bundle_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the KMS key that encrypts the caller-provided code bundle bucket. When set, the Brainstore, API, and Loop runtime roles are granted permission to use this key. Only valid together with existing_code_bundle_s3_bucket_arn. Leave null when the bucket uses SSE-S3 (AES256)."
+  default     = null
+
+  validation {
+    condition     = var.existing_code_bundle_s3_bucket_kms_key_arn == null || var.existing_code_bundle_s3_bucket_arn != null
+    error_message = "existing_code_bundle_s3_bucket_kms_key_arn requires existing_code_bundle_s3_bucket_arn to be set."
   }
 }
 

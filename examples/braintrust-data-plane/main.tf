@@ -126,12 +126,6 @@ module "braintrust-data-plane" {
   # customer controls own protection. Do not change this on an existing stack.
   # manage_s3_public_access_block = false
 
-  ### Existing code bundle S3 bucket
-  # Consume a caller-provided bucket instead of creating one. The module does not
-  # manage its lifecycle, CORS, policy, or encryption. It must use SSE-S3 (AES256).
-  # create_code_bundle_s3_bucket       = false
-  # existing_code_bundle_s3_bucket_arn = "arn:aws:s3:::my-code-bundle-bucket"
-
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.
   # Changing them after the fact is not possible and will require a complete rebuild of your Braintrust deployment.
