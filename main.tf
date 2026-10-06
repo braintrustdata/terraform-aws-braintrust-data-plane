@@ -233,6 +233,7 @@ module "main_vpc" {
   custom_tags                          = local.all_custom_tags
   permissions_boundary_arn             = var.permissions_boundary_arn
   flow_log                             = local.main_vpc_flow_log
+  manage_s3_public_access_block        = var.manage_s3_public_access_block
 }
 
 module "quarantine_vpc" {
@@ -256,6 +257,7 @@ module "quarantine_vpc" {
   custom_tags                          = local.all_custom_tags
   permissions_boundary_arn             = var.permissions_boundary_arn
   flow_log                             = local.quarantine_vpc_flow_log
+  manage_s3_public_access_block        = var.manage_s3_public_access_block
 }
 
 module "database" {
@@ -340,6 +342,7 @@ module "storage" {
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
   enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
+  manage_s3_public_access_block                  = var.manage_s3_public_access_block
   s3_server_access_logging                       = var.s3_server_access_logging
   custom_tags                                    = local.all_custom_tags
 }
