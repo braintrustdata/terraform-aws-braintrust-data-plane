@@ -25,9 +25,15 @@ activation window.
 Before activation, verify the approved SSM document and destination, workload
 delivery permissions, agent/network readiness, and ECS task Exec readiness.
 ECS images must contain `script` and `cat`; infrastructure configuration alone
-does not establish successful transcript delivery. Session encryption retains
-the existing deployment KMS configuration; transcript storage uses the group's
-encryption configuration.
+does not establish successful transcript delivery.
+
+ECS Exec `kms_key_id` encrypts session traffic; transcript storage uses the log
+group's encryption. CloudWatch Logs always encrypts data at rest. The module sets
+`cloud_watch_encryption_enabled = false`: it does not require customer-managed
+KMS encryption or disable an existing log-group key. Setting this flag to `true`
+requires an existing customer-managed KMS-encrypted group; it does not configure
+the group's encryption. See [ECS Exec logging](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html#ecs-exec-logging)
+and [CloudWatch encryption](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html).
 
 Upgrades without this optional input preserve existing resource addresses and
 permission defaults. Adopting the input changes the cluster logging destination
