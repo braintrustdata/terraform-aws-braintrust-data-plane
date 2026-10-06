@@ -91,7 +91,7 @@ resource "aws_lambda_function" "waiter" {
   architectures = ["arm64"]
   handler       = "index.handler"
   memory_size   = 256
-  timeout       = 660
+  timeout       = 900
   logging_config {
     log_format = "JSON"
     log_group  = aws_cloudwatch_log_group.waiter.name
