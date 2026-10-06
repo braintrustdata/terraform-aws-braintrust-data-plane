@@ -1,14 +1,28 @@
 resource "aws_lambda_invocation" "rollout" {
   function_name = aws_lambda_function.waiter.function_name
-  # Use the current code without rerunning solely for a helper version change.
-  qualifier = "$LATEST"
+  qualifier     = "$LATEST"
   input = jsonencode({
-    deployment   = local.deployment
-    wait_seconds = 600
+    deployment        = local.deployment
+    wait_seconds      = aws_lambda_function.waiter.timeout - 60
+    return_on_timeout = true
   })
   lifecycle {
-    # The helper throws on timeout/failure so a later apply can invoke it again.
-    # This guards against unexpected successful responses, not normal timeouts.
+    postcondition {
+      condition     = contains(["complete", "timed_out"], try(jsondecode(self.result).status, ""))
+      error_message = "Brainstore deployment returned an unexpected result; API deployment is blocked."
+    }
+  }
+}
+
+resource "aws_lambda_invocation" "retry" {
+  function_name = aws_lambda_invocation.rollout.function_name
+  qualifier     = aws_lambda_invocation.rollout.qualifier
+  input = jsonencode({
+    deployment   = local.deployment
+    wait_seconds = aws_lambda_function.waiter.timeout - 60
+  })
+  lifecycle {
+    replace_triggered_by = [aws_lambda_invocation.rollout]
     postcondition {
       condition     = try(jsondecode(self.result).status == "complete", false)
       error_message = "Brainstore deployment did not complete; API deployment is blocked."
@@ -18,5 +32,5 @@ resource "aws_lambda_invocation" "rollout" {
 
 output "completion_id" {
   description = "Completion dependency for this exact Brainstore deployment."
-  value       = aws_lambda_invocation.rollout.id
+  value       = aws_lambda_invocation.retry.id
 }
