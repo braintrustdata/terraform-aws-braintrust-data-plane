@@ -23,6 +23,7 @@ locals {
 
   create_restricted_egress_vpc = var.existing_vpc_id == null
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
+  restricted_egress_vpc_cidr   = var.existing_vpc_id != null ? data.aws_vpc.restricted_egress_existing[0].cidr_block : aws_vpc.restricted_egress[0].cidr_block
   existing_private_subnet_ids = [
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
@@ -270,7 +271,7 @@ resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egre
   tags                   = local.common_tags
 }
 
-# Terraform drops the default allow-all egress; sandbox_to_egress_gateway is the only rule.
+# Terraform drops the default allow-all egress; rules below allow the gateway and resolvers.
 resource "aws_security_group" "restricted_egress" {
   description = "Security group for restricted Loop runtime sandbox egress"
   name        = "${var.deployment_name}-loop-runtime-restricted-egress"
@@ -486,6 +487,12 @@ resource "aws_cloudformation_stack" "microvm_image" {
   }
 }
 
+data "aws_vpc" "restricted_egress_existing" {
+  count = var.existing_vpc_id != null ? 1 : 0
+
+  id = var.existing_vpc_id
+}
+
 data "aws_subnet" "restricted_egress_existing" {
   count = var.existing_vpc_id != null ? length(local.existing_private_subnet_ids) : 0
 
@@ -655,6 +662,30 @@ resource "aws_vpc_security_group_egress_rule" "sandbox_to_egress_gateway" {
   ip_protocol                  = "tcp"
   description                  = "Allow Loop sandboxes to reach only the egress gateway."
   tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_link_local" {
+  for_each = toset(["tcp", "udp"])
+
+  security_group_id = aws_security_group.restricted_egress.id
+  cidr_ipv4         = "169.254.169.253/32"
+  from_port         = 53
+  to_port           = 53
+  ip_protocol       = each.value
+  description       = "Allow Loop sandboxes to query the link-local VPC resolver."
+  tags              = local.common_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_vpc" {
+  for_each = toset(["tcp", "udp"])
+
+  security_group_id = aws_security_group.restricted_egress.id
+  cidr_ipv4         = "${cidrhost(local.restricted_egress_vpc_cidr, 2)}/32"
+  from_port         = 53
+  to_port           = 53
+  ip_protocol       = each.value
+  description       = "Allow Loop sandboxes to query the VPC CIDR resolver."
+  tags              = local.common_tags
 }
 
 resource "aws_vpc_endpoint" "egress_gateway" {

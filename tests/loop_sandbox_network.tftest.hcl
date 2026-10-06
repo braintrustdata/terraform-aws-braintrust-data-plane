@@ -257,6 +257,22 @@ run "egress_gateway_in_managed_vpc" {
   }
 
   assert {
+    condition = alltrue(flatten([
+      for cidr, rules in {
+        "169.254.169.253/32" = aws_vpc_security_group_egress_rule.sandbox_to_dns_link_local
+        "10.255.0.2/32"      = aws_vpc_security_group_egress_rule.sandbox_to_dns_vpc
+        } : [
+        for protocol in ["tcp", "udp"] :
+        rules[protocol].security_group_id == aws_security_group.restricted_egress.id
+        && rules[protocol].cidr_ipv4 == cidr
+        && rules[protocol].from_port == 53 && rules[protocol].to_port == 53
+        && rules[protocol].ip_protocol == protocol
+      ]
+    ]))
+    error_message = "Managed sandboxes must allow TCP and UDP DNS only to the link-local and VPC resolvers."
+  }
+
+  assert {
     condition = (
       aws_lb.egress_gateway.load_balancer_type == "network"
       && aws_lb.egress_gateway.internal
@@ -368,6 +384,22 @@ run "egress_gateway_in_existing_vpc" {
     existing_private_subnet_1_id = "subnet-0123456789abcdef0"
     existing_private_subnet_2_id = "subnet-0123456789abcdef1"
     existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+  }
+
+  assert {
+    condition = alltrue(flatten([
+      for cidr, rules in {
+        "169.254.169.253/32" = aws_vpc_security_group_egress_rule.sandbox_to_dns_link_local
+        "172.20.0.2/32"      = aws_vpc_security_group_egress_rule.sandbox_to_dns_vpc
+        } : [
+        for protocol in ["tcp", "udp"] :
+        rules[protocol].security_group_id == aws_security_group.restricted_egress.id
+        && rules[protocol].cidr_ipv4 == cidr
+        && rules[protocol].from_port == 53 && rules[protocol].to_port == 53
+        && rules[protocol].ip_protocol == protocol
+      ]
+    ]))
+    error_message = "Supplied-VPC sandboxes must derive the VPC resolver from its CIDR and allow only TCP and UDP port 53."
   }
 
   override_data {
