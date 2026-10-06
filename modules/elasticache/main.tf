@@ -18,7 +18,6 @@ locals {
 
   redis_auth_token              = local.create_redis_replication_group ? aws_secretsmanager_secret_version.auth_token[0].secret_string : null
   redis_url                     = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
-  redis_url                     = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
   elasticache_subnet_group_name = var.existing_elasticache_subnet_group_name == null ? aws_elasticache_subnet_group.main[0].name : var.existing_elasticache_subnet_group_name
 }
 
