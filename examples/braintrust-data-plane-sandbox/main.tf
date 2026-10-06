@@ -33,7 +33,7 @@ module "braintrust-data-plane" {
 
   # The optional Loop runtime is disabled by default.
   enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "internet"
+  loop_runtime_sandbox_egress_mode = "restricted"
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
@@ -88,8 +88,9 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
-  # Disable fast readers to reduce costs in sandbox. Production deployments enable by default.
-  brainstore_fast_reader_instance_count = 0
+  # Disable fast reader and automation writer pools to reduce costs in sandbox.
+  brainstore_fast_reader_instance_count       = 0
+  brainstore_automation_writer_instance_count = 0
 
   ### WARNING: skip_pg_for_brainstore_objects is safe for fresh sandbox deployments
   ### but can cause data loss or downtime if applied incorrectly to existing
@@ -105,6 +106,9 @@ module "braintrust-data-plane" {
   enable_quarantine_vpc = false
 
   ### Redis configuration
+  # Reuse a subnet group in the data plane VPC; null creates one (default).
+  # Changing the subnet group name on an existing deployment replaces Redis.
+  # existing_elasticache_subnet_group_name = null
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
@@ -141,6 +145,10 @@ module "braintrust-data-plane" {
   # peer with other VPCs and the default CIDRs conflict.
   # vpc_cidr            = "10.175.0.0/21"
   # quarantine_vpc_cidr = "10.175.8.0/21"
+
+  # SSM endpoints are created when enable_brainstore_ec2_ssm is true.
+  # Set false only when SSM connectivity is provided separately.
+  # create_ssm_vpc_endpoints = true
 
   # Secrets Manager endpoint is enabled by default in a module-managed main VPC.
   # Adds interface endpoint charges; Private DNS redirects regional API calls.

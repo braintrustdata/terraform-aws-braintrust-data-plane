@@ -119,8 +119,11 @@ resource "aws_lb_target_group" "brainstore_fast_reader" {
   target_type = "instance"
 
   connection_termination = true
+  deregistration_delay   = 30
   health_check {
     protocol            = "TCP"
+    matcher             = ""
+    path                = ""
     port                = var.port
     healthy_threshold   = 3
     unhealthy_threshold = 3
@@ -162,15 +165,6 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
 
   lifecycle {
     create_before_destroy = true
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200
-    }
-    triggers = ["tag"]
   }
 
   tag {

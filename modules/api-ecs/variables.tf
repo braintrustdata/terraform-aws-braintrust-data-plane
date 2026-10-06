@@ -732,3 +732,9 @@ variable "task_security_group_id" {
   type        = string
   description = "Security group ID to attach to API ECS tasks."
 }
+
+variable "brainstore_deployment_id" {
+  description = "Dependency on the completed Brainstore deployment."
+  type        = string
+  default     = null
+}

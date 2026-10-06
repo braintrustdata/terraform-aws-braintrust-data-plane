@@ -111,6 +111,12 @@ variable "create_vpc" {
   description = "Whether to create a new VPC. If false, existing VPC details must be provided."
 }
 
+variable "create_ssm_vpc_endpoints" {
+  type        = bool
+  default     = true
+  description = "Create SSM interface endpoints in the main VPC when create_vpc and enable_brainstore_ec2_ssm are true. Set false to use customer-managed endpoints or another network path to SSM without disabling Brainstore SSM access. Does not affect Secrets Manager, S3, or quarantine endpoints."
+}
+
 variable "create_secrets_manager_vpc_endpoint" {
   type        = bool
   default     = true
@@ -504,6 +510,17 @@ variable "DANGER_disable_database_deletion_protection" {
 }
 
 ## Redis
+variable "existing_elasticache_subnet_group_name" {
+  type        = string
+  default     = null
+  description = "Existing ElastiCache subnet group name to use for either Redis mode. Must belong to the data plane VPC. When null, the module creates a subnet group from the private subnets. Changing the subnet group name on an existing Redis deployment replaces Redis."
+
+  validation {
+    condition     = var.existing_elasticache_subnet_group_name == null ? true : trimspace(var.existing_elasticache_subnet_group_name) != ""
+    error_message = "existing_elasticache_subnet_group_name must be null or a non-empty subnet group name."
+  }
+}
+
 variable "use_redis_replication_group" {
   description = "Use an ElastiCache replication group instead of the legacy single-node ElastiCache cluster. Existing deployments should leave this false until following the documented Redis migration procedure."
   type        = bool
@@ -552,7 +569,7 @@ variable "create_ai_gateway" {
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
   type        = bool
   default     = false
 
@@ -737,6 +754,212 @@ variable "url_security_allow_cidrs" {
   description = "Optional comma-separated CIDR ranges that Braintrust backend URL-security validation may allow even if private or reserved. Hard-blocked metadata, link-local, multicast, unspecified, and future-use ranges remain blocked."
   type        = string
   default     = ""
+}
+
+variable "enable_loop_runtime" {
+  type        = bool
+  description = "Deploy the dedicated Loop runtime ECS/Fargate service and its MicroVM sandbox. Requires the ECS API data plane and Brainstore."
+  default     = false
+
+  validation {
+    condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
+    error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true. The Loop runtime requires the in-VPC ECS API data plane."
+  }
+}
+
+variable "loop_runtime_version_override" {
+  type        = string
+  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  default     = null
+}
+
+variable "loop_runtime_task_cpu" {
+  type        = number
+  description = "CPU units for the Loop runtime ECS task."
+  default     = 2048
+}
+
+variable "loop_runtime_task_memory" {
+  type        = number
+  description = "Memory in MiB for the Loop runtime ECS task."
+  default     = 8192
+}
+
+variable "loop_runtime_ephemeral_storage_gib" {
+  type        = number
+  description = "Task ephemeral storage in GiB for the Loop runtime. Set 21 through 200. Null uses the Fargate default of 20."
+  default     = null
+}
+
+variable "loop_runtime_min_capacity" {
+  type        = number
+  description = "Minimum number of Loop runtime ECS tasks."
+  default     = 1
+}
+
+variable "loop_runtime_max_capacity" {
+  type        = number
+  description = "Maximum number of Loop runtime ECS tasks."
+  default     = 4
+}
+
+variable "loop_runtime_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU use percentage for Loop runtime autoscaling."
+  default     = 40
+}
+
+variable "loop_runtime_target_memory_utilization" {
+  type        = number
+  description = "Target average memory use percentage for Loop runtime autoscaling."
+  default     = 50
+}
+
+variable "loop_runtime_log_retention_days" {
+  type        = number
+  description = "CloudWatch log retention days for Loop runtime container logs."
+  default     = 14
+
+  validation {
+    condition = contains([
+      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.loop_runtime_log_retention_days)
+    error_message = "loop_runtime_log_retention_days must be a valid CloudWatch Logs retention value."
+  }
+}
+
+variable "loop_runtime_enable_execute_command" {
+  type        = bool
+  description = "Enable ECS Exec on the Loop runtime service."
+  default     = false
+}
+
+variable "loop_runtime_alb_deregistration_delay" {
+  type        = number
+  description = "Deregistration delay in seconds for the Loop runtime ALB target group."
+  default     = 900
+}
+
+variable "loop_runtime_extra_env_vars" {
+  type        = map(string)
+  description = "Extra environment variables for the Loop runtime container."
+  default     = {}
+}
+
+variable "loop_runtime_microvm_minimum_memory_mib" {
+  type        = number
+  description = "Minimum memory in MiB for sandbox MicroVMs."
+  default     = 2048
+}
+
+variable "loop_runtime_microvm_max_idle_duration_seconds" {
+  type        = number
+  description = "Idle seconds before a sandbox MicroVM suspends."
+  default     = 900
+}
+
+variable "loop_runtime_microvm_suspended_duration_seconds" {
+  type        = number
+  description = "Seconds that a suspended sandbox MicroVM remains available before termination."
+  default     = 28800
+}
+
+variable "loop_runtime_microvm_maximum_duration_seconds" {
+  type        = number
+  description = "Maximum sandbox MicroVM lifetime in active or suspended states."
+  default     = 28800
+}
+
+variable "loop_runtime_microvm_auth_token_expiration_minutes" {
+  type        = number
+  description = "Endpoint authentication token lifetime in minutes for sandbox MicroVM requests."
+  default     = 30
+}
+
+variable "enable_loop_runtime_microvm_runtime_logs" {
+  type        = bool
+  description = "Export Loop runtime MicroVM output to CloudWatch. Sandbox output can contain sensitive data."
+  default     = false
+}
+
+variable "loop_runtime_sandbox_egress_mode" {
+  type        = string
+  description = "Outbound network mode for Loop runtime sandbox MicroVMs. The value internet permits public access. Every other value blocks outbound access."
+  default     = "restricted"
+}
+
+variable "loop_runtime_sandbox_existing_vpc_id" {
+  type        = string
+  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and DNS restrictions."
+  default     = null
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
+    error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
+  }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || var.loop_runtime_sandbox_egress_mode != "internet"
+    error_message = "loop_runtime_sandbox_existing_vpc_id requires restricted sandbox egress."
+  }
+}
+
+variable "loop_runtime_sandbox_existing_private_subnet_1_id" {
+  type        = string
+  description = "ID of existing private subnet 1 in the Loop runtime sandbox VPC. Required with loop_runtime_sandbox_existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_1_id == null)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_1_id must be supplied together."
+  }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_private_subnet_1_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_private_subnet_1_id) != ""
+    error_message = "loop_runtime_sandbox_existing_private_subnet_1_id must be null or a nonempty subnet ID."
+  }
+}
+
+variable "loop_runtime_sandbox_existing_private_subnet_2_id" {
+  type        = string
+  description = "ID of existing private subnet 2 in the Loop runtime sandbox VPC. Required with loop_runtime_sandbox_existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_2_id == null)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_2_id must be supplied together."
+  }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_private_subnet_2_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_private_subnet_2_id) != ""
+    error_message = "loop_runtime_sandbox_existing_private_subnet_2_id must be null or a nonempty subnet ID."
+  }
+}
+
+variable "loop_runtime_sandbox_existing_private_subnet_3_id" {
+  type        = string
+  description = "ID of existing private subnet 3 in the Loop runtime sandbox VPC. Required with loop_runtime_sandbox_existing_vpc_id."
+  default     = null
+
+  validation {
+    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_3_id == null)
+    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_3_id must be supplied together."
+  }
+
+  validation {
+    condition     = var.loop_runtime_sandbox_existing_private_subnet_3_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_private_subnet_3_id) != ""
+    error_message = "loop_runtime_sandbox_existing_private_subnet_3_id must be null or a nonempty subnet ID."
+  }
+
+  validation {
+    condition = var.loop_runtime_sandbox_existing_vpc_id == null || length(distinct([
+      var.loop_runtime_sandbox_existing_private_subnet_1_id,
+      var.loop_runtime_sandbox_existing_private_subnet_2_id,
+      var.loop_runtime_sandbox_existing_private_subnet_3_id,
+    ])) == 3
+    error_message = "The Loop runtime sandbox private subnet IDs must be distinct."
+  }
 }
 
 variable "braintrust_api_version_override" {
@@ -1366,6 +1589,24 @@ variable "brainstore_writer_instance_type" {
   default     = "c8gd.8xlarge"
 }
 
+variable "brainstore_automation_writer_instance_count" {
+  type        = number
+  description = "The number of dedicated automation writer nodes to create"
+  default     = 0
+}
+
+variable "brainstore_automation_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore automation writer nodes"
+  default     = "c8gd.8xlarge"
+}
+
+variable "brainstore_extra_env_vars_automation_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore automation writer nodes"
+  default     = {}
+}
+
 variable "brainstore_instance_key_pair_name" {
   type        = string
   description = "The name of the key pair to use for the Brainstore instance"
@@ -1399,6 +1640,12 @@ variable "brainstore_cache_file_size_reader" {
 variable "brainstore_cache_file_size_writer" {
   type        = string
   description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
+variable "brainstore_cache_file_size_automation_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
 }
 

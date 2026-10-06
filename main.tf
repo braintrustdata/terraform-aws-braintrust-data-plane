@@ -85,15 +85,17 @@ locals {
   # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
   # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
   # version, changes the launch template, and triggers a rolling instance
-  # refresh. Lambda mode passes just the bare name. one() keeps this
-  # index-safe when api_ecs is absent.
+  # refresh. Lambda mode passes just the bare name.
+  # Index the instance to avoid the module-wide dependency from a splat, which
+  # cycles through API services waiting on Brainstore. ECS-enabled implies count = 1.
   brainstore_ai_proxy_url_ssm_parameter = (
     local.enable_ecs_api
-    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${one(module.api_ecs[*].url_ssm_parameter_version)}"
+    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${module.api_ecs[0].url_ssm_parameter_version}"
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # Loop Runtime uses the self-hosted AI Proxy Lambda Function URL.
+  # AI Proxy Lambda Function URL. Quarantine UDF fallback (and similar
+  # internet-reachable callers). Loop Runtime does not use this.
   # one() keeps this index-safe when services is absent.
   self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
 
@@ -124,6 +126,42 @@ locals {
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_alb[0].gateway_url
   } : {}
+
+  # Loop runtime requires the ECS API data plane and Brainstore. It is fronted
+  # by the shared CloudFront distribution at /loop/runtime*.
+  create_loop_runtime = local.create_ecs_api && var.enable_loop_runtime
+  loop_runtime_authorized_security_groups = local.create_loop_runtime ? {
+    "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
+  } : {}
+
+  loop_runtime_version = (
+    var.loop_runtime_version_override != null
+    ? var.loop_runtime_version_override
+    : jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
+  )
+
+  loop_runtime_brainstore_reader_url = local.create_loop_runtime ? format(
+    "http://%s:%s",
+    var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : module.brainstore[0].dns_name,
+    module.brainstore[0].port,
+  ) : ""
+
+  # Loop uses the private gateway after cutover. Otherwise, it uses the hosted
+  # gateway or the CloudFront API proxy. Gateway ingress exists before cutover.
+  hosted_ai_gateway_proxy_url = format(
+    "https://%s/v1/proxy",
+    trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
+  )
+  loop_runtime_ai_proxy_url = (
+    local.enable_ai_gateway
+    ? "${one(module.gateway_alb[*].gateway_url)}/v1/proxy"
+    : (
+      var.use_global_ai_gateway_origin
+      ? local.hosted_ai_gateway_proxy_url
+      : one(module.ingress[*].api_url)
+    )
+  )
+
   # Only wire per-deployment backend URLs into Lambdas that call them. Do not
   # merge GATEWAY_URL into MigrateDatabaseFunction or crons — that changes their
   # env hash and re-runs migrations or replaces unrelated functions.
@@ -188,6 +226,7 @@ module "main_vpc" {
   private_subnet_3_cidr                = cidrsubnet(var.vpc_cidr, 3, 3)
   private_subnet_3_az                  = local.private_subnet_3_az
   create_secrets_manager_vpc_endpoint  = var.create_secrets_manager_vpc_endpoint
+  create_ssm_vpc_endpoints             = var.create_ssm_vpc_endpoints
   enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
@@ -243,6 +282,7 @@ module "database" {
     ),
     local.bastion_security_group,
   )
+  loop_runtime_security_groups       = local.loop_runtime_authorized_security_groups
   postgres_storage_iops              = var.postgres_storage_iops
   postgres_storage_throughput        = var.postgres_storage_throughput
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
@@ -265,8 +305,9 @@ module "redis" {
     local.main_vpc_private_subnet_2_id,
     local.main_vpc_private_subnet_3_id
   ]
-  vpc_id      = local.main_vpc_id
-  kms_key_arn = local.kms_key_arn
+  vpc_id                                 = local.main_vpc_id
+  kms_key_arn                            = local.kms_key_arn
+  existing_elasticache_subnet_group_name = var.existing_elasticache_subnet_group_name
   authorized_security_groups = merge(
     merge(
       {
@@ -279,6 +320,7 @@ module "redis" {
     ),
     local.bastion_security_group,
   )
+  loop_runtime_security_groups        = local.loop_runtime_authorized_security_groups
   use_redis_replication_group         = var.use_redis_replication_group
   redis_rg_auth_token_update_strategy = var.redis_rg_auth_token_update_strategy
   redis_instance_type                 = var.redis_instance_type
@@ -307,8 +349,10 @@ module "services" {
   source = "./modules/services"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
+  brainstore_deployment_id = module.brainstore_deployment[0].completion_id
+
   deployment_name             = var.deployment_name
-  lambda_version_tag_override = var.lambda_version_tag_override
+  lambda_version_tag_override = local.lambda_version_tag
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry
@@ -423,6 +467,7 @@ module "gateway_alb" {
     },
     var.ai_gateway_authorized_security_groups,
   )
+  loop_runtime_security_groups   = local.loop_runtime_authorized_security_groups
   alb_client_keep_alive          = var.ai_gateway_alb_client_keep_alive
   alb_idle_timeout               = var.ai_gateway_alb_idle_timeout
   alb_deregistration_delay       = var.ai_gateway_alb_deregistration_delay
@@ -480,12 +525,124 @@ module "gateway_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 }
 
+module "loop_runtime_alb" {
+  source = "./modules/loop-runtime-alb"
+  count  = local.create_loop_runtime ? 1 : 0
+
+  deployment_name                      = var.deployment_name
+  vpc_id                               = local.main_vpc_id
+  private_subnet_ids                   = local.main_vpc_private_subnet_ids
+  enable_cloudfront_vpc_origin_ingress = true
+  authorized_security_groups = {
+    "API" = module.services_common.api_security_group_id
+  }
+  alb_deregistration_delay = var.loop_runtime_alb_deregistration_delay
+  custom_tags              = local.all_custom_tags
+}
+
+module "loop_runtime_sandbox_aws_microvm" {
+  source = "./modules/loop-runtime-sandbox-aws-microvm"
+  count  = local.create_loop_runtime ? 1 : 0
+
+  deployment_name          = var.deployment_name
+  permissions_boundary_arn = var.permissions_boundary_arn
+  microvm_version_tag      = local.loop_runtime_version
+
+  endpoint_vpc_id           = local.main_vpc_id
+  endpoint_subnet_ids       = local.main_vpc_private_subnet_ids
+  runtime_security_group_id = module.loop_runtime_ecs[0].task_security_group_id
+
+  microvm_minimum_memory_mib            = var.loop_runtime_microvm_minimum_memory_mib
+  microvm_max_idle_duration_seconds     = var.loop_runtime_microvm_max_idle_duration_seconds
+  microvm_suspended_duration_seconds    = var.loop_runtime_microvm_suspended_duration_seconds
+  microvm_maximum_duration_seconds      = var.loop_runtime_microvm_maximum_duration_seconds
+  microvm_auth_token_expiration_minutes = var.loop_runtime_microvm_auth_token_expiration_minutes
+  enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
+  sandbox_egress_mode                   = var.loop_runtime_sandbox_egress_mode
+  existing_vpc_id                       = var.loop_runtime_sandbox_existing_vpc_id
+  existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
+  existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id
+  existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
+
+  kms_key_arn = local.kms_key_arn
+  custom_tags = local.all_custom_tags
+}
+
+module "loop_runtime_ecs" {
+  source = "./modules/loop-runtime-ecs"
+  count  = local.create_loop_runtime ? 1 : 0
+
+  deployment_name    = var.deployment_name
+  kms_key_arn        = local.kms_key_arn
+  vpc_id             = local.main_vpc_id
+  private_subnet_ids = local.main_vpc_private_subnet_ids
+  ecs_cluster_arn    = module.ecs[0].cluster_arn
+  ecs_cluster_name   = module.ecs[0].cluster_name
+
+  container_image = format("public.ecr.aws/braintrust/loop-runtime:%s", local.loop_runtime_version)
+
+  cpu                       = var.loop_runtime_task_cpu
+  memory                    = var.loop_runtime_task_memory
+  ephemeral_storage_gib     = var.loop_runtime_ephemeral_storage_gib
+  min_capacity              = var.loop_runtime_min_capacity
+  max_capacity              = var.loop_runtime_max_capacity
+  target_cpu_utilization    = var.loop_runtime_target_cpu_utilization
+  target_memory_utilization = var.loop_runtime_target_memory_utilization
+  log_retention_days        = var.loop_runtime_log_retention_days
+  permissions_boundary_arn  = var.permissions_boundary_arn
+  enable_execute_command    = var.loop_runtime_enable_execute_command
+
+  target_group_arn               = module.loop_runtime_alb[0].loop_runtime_target_group_arn
+  alb_security_group_id          = module.loop_runtime_alb[0].loop_runtime_alb_security_group_id
+  loop_runtime_http_listener_arn = module.loop_runtime_alb[0].loop_runtime_http_listener_arn
+
+  sandbox_env_vars                 = module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
+  additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
+
+  database_url_secret_arn   = local.database_url_secret_arn
+  redis_url_secret_arn      = module.redis.redis_url_secret_arn
+  function_tools_secret_arn = module.services_common.function_tools_secret_arn
+
+  brainstore_s3_bucket_name        = module.storage.brainstore_bucket_id
+  brainstore_s3_bucket_arn         = module.storage.brainstore_bucket_arn
+  brainstore_s3_bucket_kms_key_arn = var.existing_brainstore_s3_bucket_kms_key_arn
+  code_bundle_bucket               = module.storage.code_bundle_bucket_id
+  code_bundle_bucket_arn           = module.storage.code_bundle_bucket_arn
+
+  brainstore_reader_url = local.loop_runtime_brainstore_reader_url
+  ai_proxy_url          = local.loop_runtime_ai_proxy_url
+  braintrust_api_url    = module.ingress[0].api_url
+
+  brainstore_locks_s3_path       = var.brainstore_locks_s3_path
+  brainstore_wal_footer_version  = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects = var.skip_pg_for_brainstore_objects
+
+  brainstore_license_key = var.brainstore_license_key
+  monitoring_telemetry   = var.monitoring_telemetry
+
+  org_name        = var.braintrust_org_name
+  allowed_org_ids = var.allowed_org_ids
+  extra_env_vars  = var.loop_runtime_extra_env_vars
+
+  internal_observability_enabled            = local.create_internal_observability_secret
+  internal_observability_api_key_secret_arn = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_env_name           = var.internal_observability_env_name
+  internal_observability_region             = var.internal_observability_region
+
+  custom_tags = local.all_custom_tags
+
+  # Greenfield both-flags-true: do not roll Loop before gateway ECS is up.
+  depends_on = [module.gateway_ecs]
+}
+
 module "api_ecs" {
   source = "./modules/api-ecs"
   count  = local.create_ecs_api ? 1 : 0
 
+  brainstore_deployment_id = module.brainstore_deployment[0].completion_id
+
   deployment_name      = var.deployment_name
-  api_version_override = var.braintrust_api_version_override
+  api_version_override = local.api_version_tag
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
@@ -678,6 +835,10 @@ module "brainstore" {
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
   writer_instance_type                  = var.brainstore_writer_instance_type
+  automation_writer_instance_count      = var.brainstore_automation_writer_instance_count
+  automation_writer_instance_type       = var.brainstore_automation_writer_instance_type
+  extra_env_vars_automation_writer      = var.brainstore_extra_env_vars_automation_writer
+  cache_file_size_automation_writer     = var.brainstore_cache_file_size_automation_writer
   fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
   fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
@@ -706,8 +867,9 @@ module "brainstore" {
       # This is a deprecated security group that will be removed in the future
       !var.use_deployment_mode_external_eks ? { "Lambda Services" = module.services[0].lambda_security_group_id } : {}
     ),
-    local.bastion_security_group
+    local.bastion_security_group,
   )
+  loop_runtime_security_groups = local.loop_runtime_authorized_security_groups
   authorized_security_groups_ssh = merge(
     local.bastion_security_group,
     local.instance_connect_endpoint_security_group

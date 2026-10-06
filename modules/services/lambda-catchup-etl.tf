@@ -5,7 +5,7 @@ locals {
 }
 
 resource "aws_lambda_function" "catchup_etl" {
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
 
   function_name = local.catchup_etl_function_name
   s3_bucket     = local.lambda_s3_bucket
@@ -33,6 +33,7 @@ resource "aws_lambda_function" "catchup_etl" {
       BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
       BRAINSTORE_BACKFILL_HISTORICAL_BATCH_SIZE = var.brainstore_etl_batch_size
       },
+      local.redis_extra_env_vars,
       var.extra_env_vars.CatchupETL,
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.catchup_etl_base_function_name
