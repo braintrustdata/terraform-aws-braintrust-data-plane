@@ -33,6 +33,26 @@ run "scales_and_drains_runtime_by_default" {
 
   assert {
     condition = (
+      aws_appautoscaling_policy.loop_runtime_cpu_target.target_tracking_scaling_policy_configuration[0].target_value == 40
+      && aws_appautoscaling_policy.loop_runtime_cpu_target.target_tracking_scaling_policy_configuration[0].predefined_metric_specification[0].predefined_metric_type == "ECSServiceAverageCPUUtilization"
+      && aws_appautoscaling_policy.loop_runtime_memory_target.target_tracking_scaling_policy_configuration[0].target_value == 50
+      && aws_appautoscaling_policy.loop_runtime_memory_target.target_tracking_scaling_policy_configuration[0].predefined_metric_specification[0].predefined_metric_type == "ECSServiceAverageMemoryUtilization"
+      && alltrue([
+        for policy in [
+          aws_appautoscaling_policy.loop_runtime_cpu_target,
+          aws_appautoscaling_policy.loop_runtime_memory_target,
+          aws_appautoscaling_policy.loop_runtime_conversation_target,
+        ] : policy.resource_id == aws_appautoscaling_target.loop_runtime.resource_id
+        && policy.target_tracking_scaling_policy_configuration[0].scale_in_cooldown == 120
+        && policy.target_tracking_scaling_policy_configuration[0].scale_out_cooldown == 60
+        && policy.target_tracking_scaling_policy_configuration[0].disable_scale_in != true
+      ])
+    )
+    error_message = "CPU, memory, and conversation policies must scale the same service with 120/60-second cooldowns and scale-in enabled."
+  }
+
+  assert {
+    condition = (
       aws_appautoscaling_target.loop_runtime.max_capacity == 50
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 50
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].scale_in_cooldown == 120
@@ -76,16 +96,21 @@ run "custom_scaling_and_drain" {
     source = "./modules/loop-runtime-ecs"
   }
   variables {
+    container_image                 = "public.ecr.aws/braintrust/loop-runtime:v1.2.3"
+    target_cpu_utilization          = 65
+    target_memory_utilization       = 75
     target_conversation_utilization = 70
     drain_timeout_seconds           = 105
   }
 
   assert {
     condition = (
-      aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 70
+      aws_appautoscaling_policy.loop_runtime_cpu_target.target_tracking_scaling_policy_configuration[0].target_value == 65
+      && aws_appautoscaling_policy.loop_runtime_memory_target.target_tracking_scaling_policy_configuration[0].target_value == 75
+      && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 70
       && local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "105"
     )
-    error_message = "Conversation scaling and drain timeout must follow the supplied inputs."
+    error_message = "Pinned images must retain CPU and memory scaling alongside conversation scaling, using the supplied targets and drain timeout."
   }
 }
 

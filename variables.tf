@@ -776,19 +776,15 @@ variable "loop_runtime_max_capacity" {
   default     = 50
 }
 
-# Deprecated: Loop runtime scales on claimed conversation utilization only.
-# Kept so existing configurations still plan; remove in the next major version.
-# tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_target_cpu_utilization" {
   type        = number
-  description = "Deprecated and unused. Loop runtime scales on loop_runtime_target_conversation_utilization."
+  description = "Target average CPU use percentage for Loop runtime autoscaling."
   default     = 40
 }
 
-# tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_target_memory_utilization" {
   type        = number
-  description = "Deprecated and unused. Loop runtime scales on loop_runtime_target_conversation_utilization."
+  description = "Target average memory use percentage for Loop runtime autoscaling."
   default     = 50
 }
 

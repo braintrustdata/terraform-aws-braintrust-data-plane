@@ -116,10 +116,10 @@ run "loop_runtime_version_override_pins_image" {
   }
 }
 
-run "accepts_deprecated_scaling_targets" {
+run "accepts_custom_scaling_targets" {
   command = plan
   variables {
-    loop_runtime_target_cpu_utilization    = 40
-    loop_runtime_target_memory_utilization = 50
+    loop_runtime_target_cpu_utilization    = 65
+    loop_runtime_target_memory_utilization = 75
   }
 }
