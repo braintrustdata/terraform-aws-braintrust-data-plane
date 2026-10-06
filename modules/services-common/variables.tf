@@ -77,6 +77,12 @@ variable "enable_ecs" {
   default     = false
 }
 
+variable "api_ecs_enable_execute_command" {
+  type        = bool
+  description = "Whether API ECS Exec is enabled. Grants opt-in transcript delivery only when ECS and a transcript destination are configured."
+  default     = false
+}
+
 variable "code_bundle_s3_bucket_arn" {
   type        = string
   description = "The ARN of the code bundle S3 bucket"

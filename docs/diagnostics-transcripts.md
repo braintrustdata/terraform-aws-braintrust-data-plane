@@ -11,6 +11,11 @@ Enable Brainstore SSM and the desired ECS services independently using
 `ai_gateway_enable_execute_command`, and `loop_runtime_enable_execute_command`.
 New ECS tasks are required when enabling Exec on an existing service.
 
+The shared API/Lambda role receives transcript-delivery permissions only when
+API ECS exists and `api_ecs_enable_execute_command` is enabled. Selecting a
+destination for Brainstore, Gateway, or Loop does not grant API transcript writes.
+Existing ECS task trust and non-transcript permissions remain unchanged.
+
 The customer bootstrap owns the protected Session Manager shell document, its
 CloudWatch streaming settings, the transcript group, and human access policies.
 The module does not accept a shell-document input because it does not initiate

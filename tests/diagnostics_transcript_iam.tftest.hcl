@@ -18,8 +18,9 @@ run "default_creates_no_transcript_grant" {
   command = plan
   module { source = "./modules/services-common" }
   variables {
-    enable_brainstore_ec2_ssm = true
-    enable_ecs                = true
+    enable_brainstore_ec2_ssm      = true
+    enable_ecs                     = true
+    api_ecs_enable_execute_command = true
   }
   assert {
     condition     = length(aws_iam_role_policy.brainstore_diagnostics_transcripts) == 0 && length(aws_iam_role_policy.api_diagnostics_transcripts) == 0
@@ -33,6 +34,7 @@ run "exact_destination_only" {
     diagnostics_transcript_log_group_name = "/braintrust-byoc/test/diagnostics"
     enable_brainstore_ec2_ssm             = true
     enable_ecs                            = true
+    api_ecs_enable_execute_command        = true
   }
   assert {
     condition     = jsondecode(aws_iam_role_policy.brainstore_diagnostics_transcripts[0].policy).Statement[1].Resource == "arn:aws:logs:us-east-1:123456789012:log-group:/braintrust-byoc/test/diagnostics:*"
@@ -42,6 +44,10 @@ run "exact_destination_only" {
     condition     = toset(jsondecode(aws_iam_role_policy.api_diagnostics_transcripts[0].policy).Statement[1].Action) == toset(["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"])
     error_message = "Workload delivery must not create/delete log groups or read transcripts."
   }
+  assert {
+    condition     = jsondecode(aws_iam_role_policy.api_diagnostics_transcripts[0].policy).Statement[1].Resource == "arn:aws:logs:us-east-1:123456789012:log-group:/braintrust-byoc/test/diagnostics:*"
+    error_message = "API delivery must be restricted to the exact group."
+  }
 }
 run "disabled_sessions_create_no_grants" {
   command = plan
@@ -50,5 +56,64 @@ run "disabled_sessions_create_no_grants" {
   assert {
     condition     = length(aws_iam_role_policy.brainstore_diagnostics_transcripts) == 0 && length(aws_iam_role_policy.api_diagnostics_transcripts) == 0
     error_message = "Destination must not silently enable sessions."
+  }
+}
+
+run "api_ecs_without_exec_creates_no_transcript_grant" {
+  command = plan
+  module { source = "./modules/services-common" }
+  variables {
+    diagnostics_transcript_log_group_name = "/braintrust-byoc/test/diagnostics"
+    enable_brainstore_ec2_ssm             = true
+    enable_ecs                            = true
+  }
+  assert {
+    condition     = length(aws_iam_role_policy.api_diagnostics_transcripts) == 0
+    error_message = "API ECS presence must not grant transcript delivery when API Exec is disabled."
+  }
+  assert {
+    condition     = length(aws_iam_role_policy.brainstore_diagnostics_transcripts) == 1
+    error_message = "Brainstore transcript delivery must remain independent of API Exec."
+  }
+  assert {
+    condition = length([
+      for statement in jsondecode(aws_iam_role.api_handler_role.assume_role_policy).Statement : statement
+      if try(statement.Principal.Service, null) == "ecs-tasks.amazonaws.com"
+    ]) == 1
+    error_message = "Disabling API Exec must not remove the existing ECS task trust."
+  }
+  assert {
+    condition = length([
+      for statement in jsondecode(aws_iam_policy.api_handler_policy.policy).Statement : statement
+      if try(statement.Sid, null) == "ECSExec"
+    ]) == 1
+    error_message = "The transcript gate must not change existing ECS Exec channel permissions."
+  }
+}
+
+run "api_exec_without_ecs_creates_no_transcript_grant" {
+  command = plan
+  module { source = "./modules/services-common" }
+  variables {
+    diagnostics_transcript_log_group_name = "/braintrust-byoc/test/diagnostics"
+    api_ecs_enable_execute_command        = true
+  }
+  assert {
+    condition     = length(aws_iam_role_policy.api_diagnostics_transcripts) == 0
+    error_message = "An API Exec flag without API ECS must not grant transcript delivery."
+  }
+}
+
+run "api_exec_does_not_grant_brainstore_transcript_delivery" {
+  command = plan
+  module { source = "./modules/services-common" }
+  variables {
+    diagnostics_transcript_log_group_name = "/braintrust-byoc/test/diagnostics"
+    enable_ecs                            = true
+    api_ecs_enable_execute_command        = true
+  }
+  assert {
+    condition     = length(aws_iam_role_policy.api_diagnostics_transcripts) == 1 && length(aws_iam_role_policy.brainstore_diagnostics_transcripts) == 0
+    error_message = "API transcript delivery must not grant Brainstore delivery when Brainstore SSM is disabled."
   }
 }

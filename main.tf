@@ -816,6 +816,7 @@ module "services_common" {
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
   enable_ecs                                = local.create_ecs_api
+  api_ecs_enable_execute_command            = var.api_ecs_enable_execute_command
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = local.all_custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
