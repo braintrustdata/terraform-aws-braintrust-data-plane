@@ -4,6 +4,7 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  is_replica                 = var.replicate_source_db != null
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
   rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
 }
@@ -23,9 +24,12 @@ resource "aws_db_instance" "main" {
   iops                  = var.postgres_storage_iops
   multi_az              = var.multi_az
 
-  db_name  = "postgres"
-  username = local.postgres_username
-  password = local.postgres_password
+  # A read replica inherits these from its source and the API rejects them.
+  db_name  = local.is_replica ? null : "postgres"
+  username = local.is_replica ? null : local.postgres_username
+  password = local.is_replica ? null : local.postgres_password
+
+  replicate_source_db = var.replicate_source_db
 
   db_subnet_group_name   = local.database_subnet_group_name
   parameter_group_name   = aws_db_parameter_group.main.name

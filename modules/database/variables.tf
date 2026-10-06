@@ -131,3 +131,9 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "replicate_source_db" {
+  description = "ARN of an existing RDS instance to create the main database as a read replica of. The replica inherits username, password and db_name from the source. Remove after promoting."
+  type        = string
+  default     = null
+}

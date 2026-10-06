@@ -267,6 +267,7 @@ module "database" {
   multi_az                            = var.postgres_multi_az
   postgres_storage_size               = var.postgres_storage_size
   postgres_max_storage_size           = var.postgres_max_storage_size
+  replicate_source_db                 = var.postgres_replicate_source_db
   postgres_storage_type               = var.postgres_storage_type
   postgres_version                    = var.postgres_version
   database_subnet_ids                 = local.database_subnet_ids

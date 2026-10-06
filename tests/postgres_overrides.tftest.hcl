@@ -92,3 +92,23 @@ run "rejects_empty_override" {
 
   expect_failures = [var.postgres_connection_override]
 }
+
+# Resources inside modules can't be asserted on; this checks the replica
+# configuration (no username/password/db_name) plans cleanly.
+run "replica_source_db_plans" {
+  command = plan
+
+  variables {
+    postgres_replicate_source_db = "arn:aws:rds:us-east-1:123456789012:db:source-db"
+  }
+}
+
+run "rejects_non_arn_replica_source" {
+  command = plan
+
+  variables {
+    postgres_replicate_source_db = "source-db"
+  }
+
+  expect_failures = [var.postgres_replicate_source_db]
+}

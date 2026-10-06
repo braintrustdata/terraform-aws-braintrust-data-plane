@@ -461,6 +461,17 @@ variable "postgres_multi_az" {
   default     = false
 }
 
+variable "postgres_replicate_source_db" {
+  description = "Advanced: ARN of an existing RDS instance to create the main database as a read replica of, for migrating a database into this module. Remove after promoting the replica. The replica needs the source's exact postgres_version and its credentials in the database secret, and postgres_max_storage_size must be 0 or at least postgres_storage_size."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.postgres_replicate_source_db == null || can(regex("^arn:aws[a-z-]*:rds:[a-z0-9-]+:[0-9]{12}:db:.+$", var.postgres_replicate_source_db))
+    error_message = "postgres_replicate_source_db must be the source DB instance's full ARN (arn:aws:rds:<region>:<account>:db:<identifier>), not its identifier."
+  }
+}
+
 variable "postgres_auto_minor_version_upgrade" {
   description = "Indicates that minor engine upgrades will be applied automatically to the DB instance during the maintenance window. When true you will have to set your postgres_version to only the major number or you will see drift. e.g. '15' instead of '15.7'"
   type        = bool
