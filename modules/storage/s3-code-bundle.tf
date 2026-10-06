@@ -1,4 +1,6 @@
 resource "aws_s3_bucket" "code_bundle_bucket" {
+  count = var.create_code_bundle_s3_bucket ? 1 : 0
+
   # S3 bucket names are globally unique so we have to use a prefix and let terraform
   # generate a random suffix to ensure uniqueness
   bucket_prefix = "${var.deployment_name}-code-bundles-"
@@ -12,9 +14,9 @@ resource "aws_s3_bucket" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_abac" "code_bundle_bucket" {
-  count = var.enable_s3_bucket_abac ? 1 : 0
+  count = var.create_code_bundle_s3_bucket && var.enable_s3_bucket_abac ? 1 : 0
 
-  bucket = aws_s3_bucket.code_bundle_bucket.id
+  bucket = aws_s3_bucket.code_bundle_bucket[0].id
 
   abac_status {
     status = "Enabled"
@@ -22,7 +24,9 @@ resource "aws_s3_bucket_abac" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucket" {
-  bucket = aws_s3_bucket.code_bundle_bucket.id
+  count = var.create_code_bundle_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.code_bundle_bucket[0].id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -35,14 +39,18 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "code_bundle_bucke
 }
 
 resource "aws_s3_bucket_versioning" "code_bundle_bucket" {
-  bucket = aws_s3_bucket.code_bundle_bucket.id
+  count = var.create_code_bundle_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.code_bundle_bucket[0].id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
-  bucket = aws_s3_bucket.code_bundle_bucket.id
+  count = var.create_code_bundle_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.code_bundle_bucket[0].id
 
   cors_rule {
     allowed_headers = ["*"]
@@ -53,7 +61,9 @@ resource "aws_s3_bucket_cors_configuration" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
-  bucket     = aws_s3_bucket.code_bundle_bucket.id
+  count = var.create_code_bundle_s3_bucket ? 1 : 0
+
+  bucket     = aws_s3_bucket.code_bundle_bucket[0].id
   depends_on = [aws_s3_bucket_versioning.code_bundle_bucket]
 
 
@@ -80,9 +90,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_public_access_block" "code_bundle_bucket" {
-  count = var.manage_s3_public_access_block ? 1 : 0
+  count = var.create_code_bundle_s3_bucket && var.manage_s3_public_access_block ? 1 : 0
 
-  bucket = aws_s3_bucket.code_bundle_bucket.id
+  bucket = aws_s3_bucket.code_bundle_bucket[0].id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -91,7 +101,9 @@ resource "aws_s3_bucket_public_access_block" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "code_bundle_bucket" {
-  bucket = aws_s3_bucket.code_bundle_bucket.id
+  count = var.create_code_bundle_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.code_bundle_bucket[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -102,8 +114,8 @@ resource "aws_s3_bucket_policy" "code_bundle_bucket" {
         Principal = "*"
         Action    = "s3:*"
         Resource = [
-          aws_s3_bucket.code_bundle_bucket.arn,
-          "${aws_s3_bucket.code_bundle_bucket.arn}/*"
+          aws_s3_bucket.code_bundle_bucket[0].arn,
+          "${aws_s3_bucket.code_bundle_bucket[0].arn}/*"
         ]
         Condition = {
           Bool = {

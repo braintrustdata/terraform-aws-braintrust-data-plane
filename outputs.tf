@@ -90,7 +90,12 @@ output "brainstore_s3_bucket_arn" {
 
 output "code_bundle_s3_bucket_name" {
   value       = module.storage.code_bundle_bucket_id
-  description = "Name of the code bundle S3 bucket"
+  description = "Name of the code bundle S3 bucket (module-owned or caller-provided)"
+}
+
+output "code_bundle_s3_bucket_arn" {
+  value       = module.storage.code_bundle_bucket_arn
+  description = "ARN of the code bundle S3 bucket (module-owned or caller-provided)"
 }
 
 output "lambda_responses_s3_bucket_name" {

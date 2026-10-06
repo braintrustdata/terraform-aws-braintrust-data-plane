@@ -58,16 +58,16 @@ run "new_deployment_opt_out" {
   assert {
     condition = (
       length(aws_s3_bucket.brainstore) == 1 &&
-      aws_s3_bucket.code_bundle_bucket.bucket_prefix == "bt-test-code-bundles-" &&
+      aws_s3_bucket.code_bundle_bucket[0].bucket_prefix == "bt-test-code-bundles-" &&
       aws_s3_bucket.lambda_responses_bucket.bucket_prefix == "bt-test-lambda-responses-" &&
       length(aws_s3_bucket_policy.brainstore) == 1 &&
-      aws_s3_bucket_policy.code_bundle_bucket.policy != null &&
+      aws_s3_bucket_policy.code_bundle_bucket[0].policy != null &&
       aws_s3_bucket_policy.lambda_responses_bucket.policy != null &&
       length(aws_s3_bucket_server_side_encryption_configuration.brainstore) == 1 &&
-      aws_s3_bucket_server_side_encryption_configuration.code_bundle_bucket.rule != null &&
+      aws_s3_bucket_server_side_encryption_configuration.code_bundle_bucket[0].rule != null &&
       aws_s3_bucket_server_side_encryption_configuration.lambda_responses_bucket.rule != null &&
       aws_s3_bucket_versioning.brainstore[0].versioning_configuration[0].status == "Enabled" &&
-      aws_s3_bucket_versioning.code_bundle_bucket.versioning_configuration[0].status == "Enabled" &&
+      aws_s3_bucket_versioning.code_bundle_bucket[0].versioning_configuration[0].status == "Enabled" &&
       aws_s3_bucket_versioning.lambda_responses_bucket.versioning_configuration[0].status == "Enabled"
     )
     error_message = "Opt-out must preserve buckets, policies, encryption, and versioning."

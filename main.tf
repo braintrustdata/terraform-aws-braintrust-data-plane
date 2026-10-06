@@ -337,6 +337,8 @@ module "storage" {
   kms_key_arn                                    = local.kms_key_arn
   create_brainstore_s3_bucket                    = var.create_brainstore_s3_bucket
   existing_brainstore_s3_bucket_arn              = var.existing_brainstore_s3_bucket_arn
+  create_code_bundle_s3_bucket                   = var.create_code_bundle_s3_bucket
+  existing_code_bundle_s3_bucket_arn             = var.existing_code_bundle_s3_bucket_arn
   brainstore_s3_bucket_retention_days            = var.brainstore_s3_bucket_retention_days
   s3_additional_allowed_origins                  = var.s3_additional_allowed_origins
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
