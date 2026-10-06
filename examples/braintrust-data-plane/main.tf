@@ -121,6 +121,11 @@ module "braintrust-data-plane" {
   #  }
   #
 
+  ### S3 Block Public Access
+  # New deployments only: skip bucket Block Public Access configuration when
+  # customer controls own protection. Do not change this on an existing stack.
+  # manage_s3_public_access_block = false
+
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.
   # Changing them after the fact is not possible and will require a complete rebuild of your Braintrust deployment.
