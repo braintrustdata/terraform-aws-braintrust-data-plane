@@ -111,6 +111,12 @@ variable "create_vpc" {
   description = "Whether to create a new VPC. If false, existing VPC details must be provided."
 }
 
+variable "create_ssm_vpc_endpoints" {
+  type        = bool
+  default     = true
+  description = "Create SSM interface endpoints in the main VPC when create_vpc and enable_brainstore_ec2_ssm are true. Set false to use customer-managed endpoints or another network path to SSM without disabling Brainstore SSM access. Does not affect Secrets Manager, S3, or quarantine endpoints."
+}
+
 variable "create_secrets_manager_vpc_endpoint" {
   type        = bool
   default     = true
@@ -504,6 +510,17 @@ variable "DANGER_disable_database_deletion_protection" {
 }
 
 ## Redis
+variable "existing_elasticache_subnet_group_name" {
+  type        = string
+  default     = null
+  description = "Existing ElastiCache subnet group name to use for either Redis mode. Must belong to the data plane VPC. When null, the module creates a subnet group from the private subnets. Changing the subnet group name on an existing Redis deployment replaces Redis."
+
+  validation {
+    condition     = var.existing_elasticache_subnet_group_name == null ? true : trimspace(var.existing_elasticache_subnet_group_name) != ""
+    error_message = "existing_elasticache_subnet_group_name must be null or a non-empty subnet group name."
+  }
+}
+
 variable "use_redis_replication_group" {
   description = "Use an ElastiCache replication group instead of the legacy single-node ElastiCache cluster. Existing deployments should leave this false until following the documented Redis migration procedure."
   type        = bool
@@ -1357,6 +1374,13 @@ variable "s3_lambda_responses_additional_allowed_origins" {
   default     = []
 }
 
+variable "manage_s3_public_access_block" {
+  description = "Manage all four S3 Block Public Access settings on module-created buckets (default true). Set false only for new deployments where AWS defaults and customer account/organization controls own these settings. Changing true to false on an existing deployment deletes its managed bucket-level configurations."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "enable_s3_bucket_abac" {
   description = "Enable attribute-based access control (ABAC) on S3 buckets managed by this module. When enabled, bucket tags can be used in authorization policies and tag management requires s3:TagResource, s3:UntagResource, and s3:ListTagsForResource."
   type        = bool
@@ -1563,6 +1587,24 @@ variable "brainstore_writer_instance_type" {
   default     = "c8gd.8xlarge"
 }
 
+variable "brainstore_automation_writer_instance_count" {
+  type        = number
+  description = "The number of dedicated automation writer nodes to create"
+  default     = 0
+}
+
+variable "brainstore_automation_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore automation writer nodes"
+  default     = "c8gd.8xlarge"
+}
+
+variable "brainstore_extra_env_vars_automation_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore automation writer nodes"
+  default     = {}
+}
+
 variable "brainstore_instance_key_pair_name" {
   type        = string
   description = "The name of the key pair to use for the Brainstore instance"
@@ -1596,6 +1638,12 @@ variable "brainstore_cache_file_size_reader" {
 variable "brainstore_cache_file_size_writer" {
   type        = string
   description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  default     = null
+}
+
+variable "brainstore_cache_file_size_automation_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
   default     = null
 }
 
