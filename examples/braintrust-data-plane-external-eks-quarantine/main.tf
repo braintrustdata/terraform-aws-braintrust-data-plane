@@ -10,6 +10,9 @@
 # - Deploys all IAM permissions needed for the Quarantine VPC
 
 module "braintrust-data-plane" {
+  # Optional existing bootstrap-owned SSM/ECS transcript destination.
+  # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
+  # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
   # Using local source for testing - change to GitHub source for production
   source = "../../"
   # source = "github.com/braintrustdata/terraform-braintrust-data-plane"
