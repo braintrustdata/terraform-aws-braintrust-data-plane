@@ -21,6 +21,13 @@ jobs:
       contents: write
 
     steps:
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: bot-token
+        with:
+          app-id: ${{ secrets.GH_BOT_APP_ID }}
+          private-key: ${{ secrets.GH_BOT_APP_PRIVATE_KEY }}
+
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -29,12 +36,6 @@ jobs:
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
-        with:
-          role-to-assume: arn:aws:iam::872608195481:role/github_ecr_full_access
-          aws-region: us-east-1
 
       - name: Lock Braintrust service image versions
         if: inputs.services_version != ''
