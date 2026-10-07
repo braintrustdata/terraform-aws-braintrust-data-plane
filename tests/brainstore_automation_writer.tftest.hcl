@@ -1,5 +1,5 @@
-# Verify automation-writer loop configuration is rendered into distinct
-# launch-template user data for the regular and automation writer roles.
+# Verify disabled automation writers skip instance metadata and enabled pools
+# retain their cache sizing and distinct writer-loop configuration.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -27,6 +27,29 @@ variables {
   automation_writer_instance_count      = 1
 }
 
+run "disabled_automation_writer_skips_instance_metadata" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_instance_type  = "unused-instance-type"
+  }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 0 &&
+      local.brainstore_automation_writer_cache_file_size == null &&
+      length(aws_launch_template.brainstore_automation_writer) == 0 &&
+      length(aws_autoscaling_group.brainstore_automation_writer) == 0
+    )
+    error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
+  }
+}
+
 run "automation_writer_loop_config_is_rendered" {
   command = plan
 
@@ -43,4 +66,54 @@ run "automation_writer_loop_config_is_rendered" {
     )
     error_message = "AutomationWriter should be a fixed-size ASG with no load-balancer target group"
   }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 1 &&
+      local.brainstore_automation_writer_cache_file_size == "855gb" &&
+      aws_launch_template.brainstore_automation_writer[0].instance_type == var.automation_writer_instance_type
+    )
+    error_message = "An enabled automation writer pool must look up its configured instance type and use 90% of its local storage for the cache."
+  }
+}
+
+run "automation_writer_preserves_cache_override" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    cache_file_size_automation_writer = "100gb"
+  }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 1 &&
+      local.brainstore_automation_writer_cache_file_size == "100gb"
+    )
+    error_message = "An enabled automation writer pool must preserve an explicit cache size while still validating its instance storage."
+  }
+}
+
+run "automation_writer_requires_local_storage_with_cache_override" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    cache_file_size_automation_writer = "100gb"
+  }
+
+  override_data {
+    target = data.aws_ec2_instance_type.brainstore_automation_writer[0]
+    values = {
+      total_instance_storage = null
+    }
+  }
+
+  expect_failures = [data.aws_ec2_instance_type.brainstore_automation_writer[0]]
 }
