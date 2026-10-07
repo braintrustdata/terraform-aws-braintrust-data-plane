@@ -462,7 +462,7 @@ variable "postgres_multi_az" {
 }
 
 variable "postgres_replicate_source_db" {
-  description = "Advanced: ARN of an existing RDS instance to create the main database as a read replica of, for migrating a database into this module. Requires postgres_replicate_source_credentials_secret_arn. Remove after promoting the replica. The replica needs the source's exact postgres_version and KMS key (kms_key_arn), and postgres_max_storage_size must be 0 or at least postgres_storage_size."
+  description = "Advanced: ARN of an existing RDS instance to create the main database as a read replica of, for migrating a database into this module. Requires postgres_replicate_source_credentials_secret_arn. Remove after promoting the replica. The replica needs the source's exact postgres_version, and postgres_max_storage_size must be 0 or at least postgres_storage_size. kms_key_arn may differ from the source's key; the replica is encrypted with it."
   type        = string
   default     = null
 
