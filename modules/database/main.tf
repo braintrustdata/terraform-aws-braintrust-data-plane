@@ -199,8 +199,9 @@ resource "aws_secretsmanager_secret" "database_url" {
 }
 
 resource "aws_secretsmanager_secret_version" "database_url" {
-  secret_id     = aws_secretsmanager_secret.database_url.id
-  secret_string = "postgres://${local.postgres_username}:${local.postgres_password}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/postgres?sslmode=require"
+  secret_id = aws_secretsmanager_secret.database_url.id
+  # urlencode uses query-string encoding for spaces; PostgreSQL URIs require %20.
+  secret_string = "postgres://${replace(urlencode(local.postgres_username), "+", "%20")}:${replace(urlencode(local.postgres_password), "+", "%20")}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/postgres?sslmode=require"
 }
 
 #------------------------------------------------------------------------------
