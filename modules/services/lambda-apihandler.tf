@@ -16,10 +16,6 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
-  redis_extra_env_vars = var.use_redis_replication_group ? {
-    REDIS_URL = "rediss://${var.redis_host}:${var.redis_port}"
-  } : {}
-
   # Shared between the AI Proxy and API Handler
   api_common_env_vars = merge({
     ORG_NAME                   = var.braintrust_org_name
@@ -103,7 +99,7 @@ locals {
 
 resource "aws_lambda_function" "api_handler" {
   # Require the DB migrations to be run before the API handler is deployed
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
 
   function_name                  = local.api_handler_function_name
   s3_bucket                      = local.lambda_s3_bucket

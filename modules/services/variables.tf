@@ -100,7 +100,7 @@ variable "postgres_port" {
 
 variable "use_redis_replication_group" {
   type        = bool
-  description = "Sets REDIS_URL with rediss:// scheme in api common env vars"
+  description = "Sets REDIS_URL with rediss:// scheme for all Redis-configured Lambda services"
 }
 
 variable "redis_host" {
@@ -472,4 +472,10 @@ variable "internal_observability_trace_disabled_plugins" {
   description = "Datadog trace plugins to disable for internal observability."
   type        = string
   default     = ""
+}
+
+variable "brainstore_deployment_id" {
+  description = "Dependency on the completed Brainstore deployment."
+  type        = string
+  default     = null
 }

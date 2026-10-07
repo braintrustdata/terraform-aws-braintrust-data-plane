@@ -6,6 +6,12 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
+  nofile_ulimits = [{
+    name      = "nofile"
+    softLimit = 1048576
+    hardLimit = 1048576
+  }]
+
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
 
@@ -137,6 +143,7 @@ locals {
   api_service_env_vars = {
     for service_name in local.api_service_names :
     service_name => merge(local.merged_env_vars, {
+      OTEL_SERVICE_NAME                  = service_name
       CLOUDWATCH_METRICS_SERVICE_NAME    = service_name
       CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
     })
@@ -159,6 +166,7 @@ locals {
     name      = "api"
     image     = "${var.container_image_repository}:${local.api_version_tag}"
     essential = true
+    ulimits   = local.nofile_ulimits
     linuxParameters = {
       initProcessEnabled = true
     }
@@ -196,11 +204,14 @@ locals {
       ],
     )
     healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      command = [
+        "CMD-SHELL",
+        "curl --silent --fail --output /dev/null --max-time 5 --write-out '{\"msg\":\"API health check result\",\"event\":\"ecs_health_check\",\"curl\":%%{json}}\\n' http://localhost:8000/ >> /proc/1/fd/1"
+      ]
       interval    = 30
       retries     = 3
       startPeriod = 10
-      timeout     = 5
+      timeout     = 6
     }
     mountPoints    = []
     systemControls = []

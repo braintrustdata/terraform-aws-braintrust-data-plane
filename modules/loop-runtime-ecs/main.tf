@@ -3,6 +3,12 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
+  nofile_ulimits = [{
+    name      = "nofile"
+    softLimit = 1048576
+    hardLimit = 1048576
+  }]
+
   container_name           = "loop-runtime"
   container_port           = 4001
   observability_enabled    = var.internal_observability_enabled
@@ -82,6 +88,7 @@ locals {
       { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = var.redis_url_secret_arn },
       { name = "BRAINSTORE_REDIS_URI", valueFrom = var.redis_url_secret_arn },
       { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
+      { name = "FUNCTION_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
     ],
     local.use_object_store_locks ? [] : [
       { name = "BRAINSTORE_LOCKS_URI", valueFrom = var.redis_url_secret_arn },
@@ -118,6 +125,7 @@ locals {
     image     = var.container_image
     essential = true
     user      = "1000:1000"
+    ulimits   = local.nofile_ulimits
     linuxParameters = {
       initProcessEnabled = true
       capabilities = {
@@ -290,44 +298,6 @@ resource "aws_security_group_rule" "task_egress_all" {
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Allow all outbound traffic from Loop runtime ECS tasks"
   security_group_id = aws_security_group.task.id
-}
-
-# Allow the Loop runtime tasks to reach Postgres, Redis and Brainstore by adding
-# ingress rules on those services' security groups.
-resource "aws_vpc_security_group_ingress_rule" "postgres_from_task" {
-  count = var.database_security_group_id == null ? 0 : 1
-
-  from_port                    = var.database_port
-  to_port                      = var.database_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from Loop runtime tasks."
-  security_group_id            = var.database_security_group_id
-  tags                         = local.common_tags
-}
-
-resource "aws_vpc_security_group_ingress_rule" "redis_from_task" {
-  count = var.redis_security_group_id == null ? 0 : 1
-
-  from_port                    = var.redis_port
-  to_port                      = var.redis_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from Loop runtime tasks."
-  security_group_id            = var.redis_security_group_id
-  tags                         = local.common_tags
-}
-
-resource "aws_vpc_security_group_ingress_rule" "brainstore_from_task" {
-  count = var.brainstore_security_group_id == null ? 0 : 1
-
-  from_port                    = var.brainstore_port
-  to_port                      = var.brainstore_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from Loop runtime tasks."
-  security_group_id            = var.brainstore_security_group_id
-  tags                         = local.common_tags
 }
 
 # --- Task execution role (pulls secrets at container start) ---

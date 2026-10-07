@@ -55,7 +55,7 @@ resource "aws_launch_template" "brainstore_writer" {
     monitoring_telemetry            = var.monitoring_telemetry
     is_dedicated_reader_node        = "false"
     is_dedicated_writer_node        = "true"
-    extra_env_vars                  = var.extra_env_vars_writer
+    extra_env_vars                  = local.brainstore_writer_extra_env_vars
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
@@ -120,8 +120,11 @@ resource "aws_lb_target_group" "brainstore_writer" {
   target_type = "instance"
 
   connection_termination = true
+  deregistration_delay   = 30
   health_check {
     protocol            = "TCP"
+    matcher             = ""
+    path                = ""
     port                = var.port
     healthy_threshold   = 3
     unhealthy_threshold = 3
