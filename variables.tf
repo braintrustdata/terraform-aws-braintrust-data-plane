@@ -470,11 +470,6 @@ variable "postgres_replicate_source_db" {
     condition     = var.postgres_replicate_source_db == null || can(regex("^arn:aws[a-z-]*:rds:[a-z0-9-]+:[0-9]{12}:db:.+$", var.postgres_replicate_source_db))
     error_message = "postgres_replicate_source_db must be the source DB instance's full ARN (arn:aws:rds:<region>:<account>:db:<identifier>), not its identifier."
   }
-
-  validation {
-    condition     = var.postgres_replicate_source_db == null || var.postgres_replicate_source_credentials_secret_arn != null
-    error_message = "postgres_replicate_source_db requires postgres_replicate_source_credentials_secret_arn, so the database secret matches the source's credentials."
-  }
 }
 
 variable "postgres_replicate_source_credentials_secret_arn" {
@@ -485,6 +480,11 @@ variable "postgres_replicate_source_credentials_secret_arn" {
   validation {
     condition     = var.postgres_replicate_source_credentials_secret_arn == null || can(regex("^arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$", var.postgres_replicate_source_credentials_secret_arn))
     error_message = "postgres_replicate_source_credentials_secret_arn must be a Secrets Manager secret ARN."
+  }
+
+  validation {
+    condition     = (var.postgres_replicate_source_credentials_secret_arn == null) == (var.postgres_replicate_source_db == null)
+    error_message = "postgres_replicate_source_credentials_secret_arn and postgres_replicate_source_db must be set together, so the database secret matches the source's credentials."
   }
 }
 

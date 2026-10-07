@@ -122,7 +122,7 @@ run "rejects_replica_without_source_credentials" {
     postgres_replicate_source_db = "arn:aws:rds:us-east-1:123456789012:db:source-db"
   }
 
-  expect_failures = [var.postgres_replicate_source_db]
+  expect_failures = [var.postgres_replicate_source_credentials_secret_arn]
 }
 
 run "rejects_non_arn_source_credentials" {
@@ -130,6 +130,16 @@ run "rejects_non_arn_source_credentials" {
 
   variables {
     postgres_replicate_source_credentials_secret_arn = "source-credentials"
+  }
+
+  expect_failures = [var.postgres_replicate_source_credentials_secret_arn]
+}
+
+run "rejects_source_credentials_without_replica_source" {
+  command = plan
+
+  variables {
+    postgres_replicate_source_credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:source-credentials-test"
   }
 
   expect_failures = [var.postgres_replicate_source_credentials_secret_arn]
