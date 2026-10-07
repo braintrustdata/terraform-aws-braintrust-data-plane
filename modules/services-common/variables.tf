@@ -105,6 +105,18 @@ variable "attachment_s3_bucket_kms_key_arn" {
   default     = null
 }
 
+variable "external_attachment_s3_bucket_arns" {
+  type        = list(string)
+  description = "ARNs of caller-owned S3 buckets that traces link to as external attachments. When non-empty, the API role is granted s3:GetObject on their objects."
+  default     = []
+}
+
+variable "external_attachment_kms_key_arns" {
+  type        = list(string)
+  description = "ARNs of the KMS keys that encrypt the external attachment buckets. When non-empty, the API role is granted kms:Decrypt on them through S3."
+  default     = []
+}
+
 variable "service_additional_policy_arns" {
   type        = list(string)
   description = "Additional policy ARNs to attach to the IAM role used by the main braintrust API service"
