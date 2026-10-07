@@ -1,4 +1,5 @@
 locals {
+  seed_credentials  = var.replicate_source_credentials_secret_arn == null ? null : jsondecode(data.aws_secretsmanager_secret_version.seed_credentials[0].secret_string)
   postgres_username = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["username"]
   postgres_password = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["password"]
   common_tags = merge({
@@ -159,11 +160,17 @@ data "aws_secretsmanager_random_password" "database_secret" {
   exclude_punctuation = true
 }
 
+data "aws_secretsmanager_secret_version" "seed_credentials" {
+  count = var.replicate_source_credentials_secret_arn == null ? 0 : 1
+
+  secret_id = var.replicate_source_credentials_secret_arn
+}
+
 resource "aws_secretsmanager_secret_version" "database_secret" {
   secret_id = aws_secretsmanager_secret.database_secret.id
   secret_string = jsonencode({
-    username = "postgres"
-    password = data.aws_secretsmanager_random_password.database_secret.random_password
+    username = local.seed_credentials == null ? "postgres" : local.seed_credentials["username"]
+    password = local.seed_credentials == null ? data.aws_secretsmanager_random_password.database_secret.random_password : local.seed_credentials["password"]
   })
 
   lifecycle {

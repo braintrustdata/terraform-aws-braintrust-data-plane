@@ -46,9 +46,11 @@ module "braintrust-data-plane" {
   # }
 
   # Advanced: create the main database as a read replica of an existing RDS
-  # instance (full ARN), to migrate a database into this module. Remove after
-  # promoting the replica.
-  # postgres_replicate_source_db = "arn:aws:rds:us-east-1:123456789012:db:existing-database"
+  # instance (full ARN), to migrate a database into this module. Needs the
+  # source's master credentials (JSON username/password) in a secret. Remove
+  # both after promoting the replica.
+  # postgres_replicate_source_db                     = "arn:aws:rds:us-east-1:123456789012:db:existing-database"
+  # postgres_replicate_source_credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:source-credentials-AbCdEf"
 
   # Changing this will incur a short downtime.
   postgres_instance_type = "db.r8g.2xlarge"
