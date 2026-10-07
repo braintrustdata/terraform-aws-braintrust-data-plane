@@ -11,7 +11,7 @@ resource "aws_lambda_function" "billing_cron" {
   function_name = local.billing_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions[local.billing_cron_base_function_name]
-  role          = aws_iam_role.default_role.arn
+  role          = aws_iam_role.billing_cron.arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.billing_cron_original_handler
   runtime       = "nodejs22.x"
   timeout       = 300
