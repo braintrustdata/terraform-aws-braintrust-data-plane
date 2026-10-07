@@ -1,0 +1,47 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ActivatePredefinedDiagnostics",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Resource": "<DIAGNOSTICS_ROLE_ARN>",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": [
+            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/BraintrustInspectionPolicy-<BOOTSTRAP_NAME>",
+            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/BraintrustSupportPolicy-<BOOTSTRAP_NAME>",
+            "<DIAGNOSTICS_POLICY_ARN>"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DiscoverDiagnosticSessions",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeSessions"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
+    },
+    {
+      "Sid": "CloseDiagnosticSessions",
+      "Effect": "Allow",
+      "Action": "ssm:TerminateSession",
+      "Resource": "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:session/*",
+      "Condition": {
+        "StringLike": {
+          "ssm:resourceTag/aws:ssmmessages:session-id": "<DIAGNOSTICS_ROLE_ID>:*"
+        }
+      }
+    }
+  ]
+}
