@@ -1,6 +1,9 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 module "braintrust-data-plane" {
+  # Optional existing bootstrap-owned SSM/ECS transcript destination.
+  # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
+  # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
@@ -88,8 +91,9 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
-  # Disable fast readers to reduce costs in sandbox. Production deployments enable by default.
-  brainstore_fast_reader_instance_count = 0
+  # Disable fast reader and automation writer pools to reduce costs in sandbox.
+  brainstore_fast_reader_instance_count       = 0
+  brainstore_automation_writer_instance_count = 0
 
   ### WARNING: skip_pg_for_brainstore_objects is safe for fresh sandbox deployments
   ### but can cause data loss or downtime if applied incorrectly to existing
@@ -105,6 +109,9 @@ module "braintrust-data-plane" {
   enable_quarantine_vpc = false
 
   ### Redis configuration
+  # Reuse a subnet group in the data plane VPC; null creates one (default).
+  # Changing the subnet group name on an existing deployment replaces Redis.
+  # existing_elasticache_subnet_group_name = null
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
@@ -138,9 +145,18 @@ module "braintrust-data-plane" {
   # vpc_cidr            = "10.175.0.0/21"
   # quarantine_vpc_cidr = "10.175.8.0/21"
 
+  # SSM endpoints are created when enable_brainstore_ec2_ssm is true.
+  # Set false only when SSM connectivity is provided separately.
+  # create_ssm_vpc_endpoints = true
+
   # Secrets Manager endpoint is enabled by default in a module-managed main VPC.
   # Adds interface endpoint charges; Private DNS redirects regional API calls.
   # create_secrets_manager_vpc_endpoint = false # Opt out.
+
+  ### S3 Block Public Access
+  # New deployments only: skip bucket Block Public Access configuration when
+  # customer controls own protection. Do not change this on an existing stack.
+  # manage_s3_public_access_block = false
 
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.

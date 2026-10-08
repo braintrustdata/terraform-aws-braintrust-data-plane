@@ -133,6 +133,18 @@ moved {
   to   = module.storage.aws_s3_bucket_versioning.lambda_responses_bucket
 }
 
+# The code bundle and Lambda response public access blocks became optional.
+# Keep existing configurations in place when management remains enabled.
+moved {
+  from = module.storage.aws_s3_bucket_public_access_block.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_public_access_block.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket
+  to   = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket[0]
+}
+
 # CloudFront and API Gateway resources moved from services -> ingress
 moved {
   from = module.services.aws_cloudfront_distribution.dataplane
@@ -236,6 +248,12 @@ moved {
 moved {
   from = module.database.aws_db_subnet_group.main
   to   = module.database.aws_db_subnet_group.main[0]
+}
+
+# ElastiCache subnet group is now optional; preserve existing managed groups.
+moved {
+  from = module.redis.aws_elasticache_subnet_group.main
+  to   = module.redis.aws_elasticache_subnet_group.main[0]
 }
 
 # Quarantine IAM resources moved from services -> services-common

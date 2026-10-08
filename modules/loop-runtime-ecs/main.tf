@@ -3,6 +3,12 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
+  nofile_ulimits = [{
+    name      = "nofile"
+    softLimit = 1048576
+    hardLimit = 1048576
+  }]
+
   container_name           = "loop-runtime"
   container_port           = 4001
   service_name             = "${var.deployment_name}-loop-runtime"
@@ -124,11 +130,11 @@ locals {
   }))
 
   loop_runtime_container_definition = {
-    name      = local.container_name
-    image     = var.container_image
-    essential = true
-    user      = "1000:1000"
-
+    name        = local.container_name
+    image       = var.container_image
+    essential   = true
+    user        = "1000:1000"
+    ulimits     = local.nofile_ulimits
     stopTimeout = 120
     linuxParameters = {
       initProcessEnabled = true
