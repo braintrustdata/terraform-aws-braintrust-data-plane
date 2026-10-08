@@ -89,10 +89,11 @@ resource "aws_vpc_security_group_ingress_rule" "gateway_alb_from_quarantine_priv
 resource "aws_lb" "gateway_quarantine_privatelink" {
   count = local.create_quarantine_gateway_privatelink ? 1 : 0
 
-  name               = "${var.deployment_name}-gw-q-pl"
-  internal           = true
-  load_balancer_type = "network"
-  security_groups    = [aws_security_group.gateway_quarantine_privatelink_nlb[0].id]
+  name                             = "${var.deployment_name}-gw-q-pl"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  security_groups                  = [aws_security_group.gateway_quarantine_privatelink_nlb[0].id]
   # PrivateLink traffic bypasses NLB SG evaluation; see comment above the NLB SG.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
   subnets                                                      = local.main_vpc_private_subnet_ids
