@@ -3,6 +3,9 @@
 # Your existing Braintrust data plane module instantiation.
 # See examples/braintrust-data-plane for full configuration options.
 module "braintrust-data-plane" {
+  # Optional existing bootstrap-owned SSM/ECS transcript destination.
+  # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
+  # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # ... your eixsting configuration ...
 

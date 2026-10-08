@@ -2026,3 +2026,13 @@ variable "override_brainstore_iam_role_trust_policy" {
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
   default     = null
 }
+variable "diagnostics_transcript_log_group_name" {
+  description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null preserves existing logging and permissions; session enablement flags remain independent."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
+    error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
+  }
+}
