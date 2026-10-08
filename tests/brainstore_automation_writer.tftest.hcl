@@ -57,6 +57,10 @@ run "automation_writer_loop_config_is_rendered" {
     source = "./modules/brainstore-ec2"
   }
 
+  variables {
+    fast_reader_instance_count = 1
+  }
+
   assert {
     condition = (
       aws_launch_template.brainstore_writer[0].user_data != aws_launch_template.brainstore_automation_writer[0].user_data &&
@@ -70,10 +74,26 @@ run "automation_writer_loop_config_is_rendered" {
   assert {
     condition = (
       length(data.aws_ec2_instance_type.brainstore_automation_writer) == 1 &&
-      local.brainstore_automation_writer_cache_file_size == "855gb" &&
+      local.brainstore_automation_writer_cache_file_size == "712gb" &&
       aws_launch_template.brainstore_automation_writer[0].instance_type == var.automation_writer_instance_type
     )
-    error_message = "An enabled automation writer pool must look up its configured instance type and use 90% of its local storage for the cache."
+    error_message = "An enabled automation writer pool must look up its configured instance type and use 75% of its local storage for the cache."
+  }
+
+  assert {
+    condition = (
+      local.brainstore_writer_cache_file_size == "712gb" &&
+      local.brainstore_automation_writer_cache_file_size == "712gb"
+    )
+    error_message = "Both writer pools must receive a cache size of 75% of their local storage, rounded down to whole GB."
+  }
+
+  assert {
+    condition = (
+      local.brainstore_cache_file_size == "855gb" &&
+      local.brainstore_fast_reader_cache_file_size == "855gb"
+    )
+    error_message = "Both reader pools must receive a cache size of 90% of their local storage."
   }
 }
 
