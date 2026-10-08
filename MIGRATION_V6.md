@@ -49,10 +49,14 @@ These services have new variables that require consideration:
 
 ## Rollback
 
-Set `enable_ecs_api = false` and apply. CloudFront will revert to the Lambda path. This is a fast rollback while the Lambdas are still deployed.
+Through v6.8.1, set `enable_ecs_api = false` and apply. CloudFront reverts to the Lambda path. That rollback is fast because APIHandler and AIProxy are still deployed.
+
+Starting with the release that removes those Lambdas when `enable_ecs_api` is true, setting the flag back to false creates the Lambda path again, including a new Function URL hostname. It does not turn the previous functions back on.
 
 The custom CloudFront origin request policy (`<deployment>-all-viewer-with-forwarded-proto`) is left in place after rollback. CloudFront cannot delete a policy in the same apply that detaches it from the distribution.
 
 ## Cleanup
 
-Lambda resources will continue to exist in your data plane, though they are no longer used. A future release will remove the Lambda resources.
+Through v6.8.1, APIHandler and AIProxy stay in the data plane after cutover, though CloudFront no longer sends traffic to them.
+
+The following release removes APIHandler, AIProxy, the public Function URL, and API Gateway when `enable_ecs_api` is true. Quarantine, database migration, CatchupETL, and the cron Lambdas stay.
