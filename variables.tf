@@ -1680,8 +1680,8 @@ variable "skip_pg_for_brainstore_objects" {
 
 variable "brainstore_enable_export" {
   type        = bool
-  description = "Enable Brainstore-based export and migrate progress state of existing export automations. Sets BRAINSTORE_EXPORT_MIGRATION_ENABLED on the API handler Lambda and BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED on Brainstore writer nodes."
-  default     = false
+  description = "Enable Brainstore export IAM permissions, setting to false will cause export failures due to insufficient permissions."
+  default     = true
 }
 
 variable "s3_export_assume_role_arns" {
@@ -2057,4 +2057,14 @@ variable "override_brainstore_iam_role_trust_policy" {
   type        = string
   description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
   default     = null
+}
+variable "diagnostics_transcript_log_group_name" {
+  description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null preserves existing logging and permissions; session enablement flags remain independent."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
+    error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
+  }
 }

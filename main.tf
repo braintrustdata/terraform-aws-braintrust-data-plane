@@ -381,7 +381,6 @@ module "services" {
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -449,10 +448,11 @@ module "ecs" {
   source = "./modules/ecs"
   count  = local.create_ai_gateway || local.create_ecs_api || local.create_loop_runtime ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  container_insights = var.container_insights
-  custom_tags        = local.all_custom_tags
+  deployment_name                       = var.deployment_name
+  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
+  kms_key_arn                           = local.kms_key_arn
+  container_insights                    = var.container_insights
+  custom_tags                           = local.all_custom_tags
 }
 
 module "gateway_alb" {
@@ -482,12 +482,13 @@ module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = local.create_ai_gateway ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
-  ecs_cluster_arn    = module.ecs[0].cluster_arn
-  ecs_cluster_name   = module.ecs[0].cluster_name
+  deployment_name                       = var.deployment_name
+  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
+  kms_key_arn                           = local.kms_key_arn
+  vpc_id                                = local.main_vpc_id
+  private_subnet_ids                    = local.main_vpc_private_subnet_ids
+  ecs_cluster_arn                       = module.ecs[0].cluster_arn
+  ecs_cluster_name                      = module.ecs[0].cluster_name
   container_image = format(
     "public.ecr.aws/braintrust/gateway:%s",
     var.ai_gateway_version_override != null ? var.ai_gateway_version_override : jsondecode(file("${path.module}/modules/gateway-ecs/VERSIONS.json"))["gateway"]
@@ -576,12 +577,13 @@ module "loop_runtime_ecs" {
   source = "./modules/loop-runtime-ecs"
   count  = local.create_loop_runtime ? 1 : 0
 
-  deployment_name    = var.deployment_name
-  kms_key_arn        = local.kms_key_arn
-  vpc_id             = local.main_vpc_id
-  private_subnet_ids = local.main_vpc_private_subnet_ids
-  ecs_cluster_arn    = module.ecs[0].cluster_arn
-  ecs_cluster_name   = module.ecs[0].cluster_name
+  deployment_name                       = var.deployment_name
+  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
+  kms_key_arn                           = local.kms_key_arn
+  vpc_id                                = local.main_vpc_id
+  private_subnet_ids                    = local.main_vpc_private_subnet_ids
+  ecs_cluster_arn                       = module.ecs[0].cluster_arn
+  ecs_cluster_name                      = module.ecs[0].cluster_name
 
   container_image = format("public.ecr.aws/braintrust/loop-runtime:%s", local.loop_runtime_version)
 
@@ -672,7 +674,6 @@ module "api_ecs" {
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
   brainstore_license_key          = var.brainstore_license_key
 
   # Storage
@@ -794,6 +795,7 @@ module "services_common" {
   source = "./modules/services-common"
 
   deployment_name                           = var.deployment_name
+  diagnostics_transcript_log_group_name     = var.diagnostics_transcript_log_group_name
   vpc_id                                    = local.main_vpc_id
   kms_key_arn                               = local.kms_key_arn
   database_secret_arn                       = local.postgres_credentials_secret_arn
@@ -816,6 +818,7 @@ module "services_common" {
   enable_eks_pod_identity                   = var.enable_eks_pod_identity
   enable_eks_irsa                           = var.enable_eks_irsa
   enable_ecs                                = local.create_ecs_api
+  api_ecs_enable_execute_command            = var.api_ecs_enable_execute_command
   enable_brainstore_ec2_ssm                 = var.enable_brainstore_ec2_ssm
   custom_tags                               = local.all_custom_tags
   override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
@@ -836,7 +839,6 @@ module "brainstore" {
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
   skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export              = var.brainstore_enable_export
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count
