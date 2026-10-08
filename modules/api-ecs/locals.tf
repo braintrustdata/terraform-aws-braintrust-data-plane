@@ -6,6 +6,12 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
+  nofile_ulimits = [{
+    name      = "nofile"
+    softLimit = 1048576
+    hardLimit = 1048576
+  }]
+
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
 
@@ -107,9 +113,6 @@ locals {
     (var.brainstore_wal_footer_version != "" || var.skip_pg_for_brainstore_objects != "") ? {
       BRAINSTORE_WAL_USE_EFFICIENT_FORMAT = "true"
     } : {},
-    var.brainstore_enable_export ? {
-      BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
-    } : {},
     # Attachments bucket, wired into all API services when configured. Omitted
     # when unconfigured so the app falls back to its default behavior.
     var.attachment_bucket_name != null ? {
@@ -163,6 +166,7 @@ locals {
     name      = "api"
     image     = "${var.container_image_repository}:${local.api_version_tag}"
     essential = true
+    ulimits   = local.nofile_ulimits
     linuxParameters = {
       initProcessEnabled = true
     }
