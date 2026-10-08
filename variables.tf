@@ -1636,7 +1636,7 @@ variable "brainstore_cache_file_size_reader" {
 
 variable "brainstore_cache_file_size_writer" {
   type        = string
-  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 75% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 50% of the ephemeral storage size."
   default     = null
 }
 

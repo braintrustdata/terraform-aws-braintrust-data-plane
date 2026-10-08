@@ -82,10 +82,10 @@ run "automation_writer_loop_config_is_rendered" {
 
   assert {
     condition = (
-      local.brainstore_writer_cache_file_size == "712gb" &&
+      local.brainstore_writer_cache_file_size == "475gb" &&
       local.brainstore_automation_writer_cache_file_size == "712gb"
     )
-    error_message = "Both writer pools must receive a cache size of 75% of their local storage, rounded down to whole GB."
+    error_message = "Writers must receive a cache size of 50% of their local storage and automation writers 75%, rounded down to whole GB."
   }
 
   assert {
