@@ -1809,6 +1809,39 @@ variable "existing_brainstore_s3_bucket_arn" {
   }
 }
 
+variable "create_code_bundle_s3_bucket" {
+  type        = bool
+  description = "Whether this module creates and manages the code bundle S3 bucket (the default). Set to false to consume a caller-provided bucket via existing_code_bundle_s3_bucket_arn; the module then creates no bucket, lifecycle, policy, encryption, versioning, CORS, ABAC, or public-access resources for it."
+  default     = true
+}
+
+variable "existing_code_bundle_s3_bucket_arn" {
+  type        = string
+  description = "ARN of an existing code bundle S3 bucket to consume when create_code_bundle_s3_bucket is false. The bucket's lifecycle and CORS are owned by the caller, and it must allow the Braintrust origins."
+  default     = null
+
+  validation {
+    condition     = var.create_code_bundle_s3_bucket ? var.existing_code_bundle_s3_bucket_arn == null : var.existing_code_bundle_s3_bucket_arn != null
+    error_message = "existing_code_bundle_s3_bucket_arn is required when create_code_bundle_s3_bucket is false, and must be null when create_code_bundle_s3_bucket is true."
+  }
+
+  validation {
+    condition     = var.existing_code_bundle_s3_bucket_arn == null ? true : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.existing_code_bundle_s3_bucket_arn))
+    error_message = "existing_code_bundle_s3_bucket_arn must be a valid S3 bucket ARN of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "existing_code_bundle_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the KMS key that encrypts the caller-provided code bundle bucket. When set, the Brainstore, API, and Loop runtime roles are granted permission to use this key. Only valid together with existing_code_bundle_s3_bucket_arn. Leave null when the bucket uses SSE-S3 (AES256)."
+  default     = null
+
+  validation {
+    condition     = var.existing_code_bundle_s3_bucket_kms_key_arn == null || var.existing_code_bundle_s3_bucket_arn != null
+    error_message = "existing_code_bundle_s3_bucket_kms_key_arn requires existing_code_bundle_s3_bucket_arn to be set."
+  }
+}
+
 variable "existing_brainstore_s3_bucket_kms_key_arn" {
   type        = string
   description = "Optional ARN of the KMS key that encrypts the caller-provided Brainstore bucket. When set, the Brainstore and API roles are granted permission to use this key. Only valid together with existing_brainstore_s3_bucket_arn."

@@ -36,6 +36,18 @@ locals {
     : split(":::", var.existing_brainstore_s3_bucket_arn)[1]
   )
 
+  # Code bundle bucket identity, same scheme as the Brainstore bucket above.
+  code_bundle_bucket_arn = (
+    var.create_code_bundle_s3_bucket
+    ? aws_s3_bucket.code_bundle_bucket[0].arn
+    : var.existing_code_bundle_s3_bucket_arn
+  )
+  code_bundle_bucket_id = (
+    var.create_code_bundle_s3_bucket
+    ? aws_s3_bucket.code_bundle_bucket[0].id
+    : split(":::", var.existing_code_bundle_s3_bucket_arn)[1]
+  )
+
   # Object presence is known at plan time even when .bucket is unknown until apply
   # (e.g. destination bucket created in the same configuration).
   s3_server_access_logging_enabled = var.s3_server_access_logging != null
@@ -50,11 +62,11 @@ locals {
   )
 
   # Server access logging only applies to buckets this module owns. A
-  # caller-provided Brainstore bucket is configured by its owner, not here.
+  # caller-provided Brainstore or code bundle bucket is configured by its owner, not here.
   s3_server_access_logging_buckets = merge(
     var.create_brainstore_s3_bucket ? { brainstore = aws_s3_bucket.brainstore[0].id } : {},
+    var.create_code_bundle_s3_bucket ? { code-bundle = aws_s3_bucket.code_bundle_bucket[0].id } : {},
     {
-      code-bundle      = aws_s3_bucket.code_bundle_bucket.id
       lambda-responses = aws_s3_bucket.lambda_responses_bucket.id
     }
   )

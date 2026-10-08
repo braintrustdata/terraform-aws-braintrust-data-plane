@@ -437,9 +437,9 @@ resource "aws_iam_role_policy" "code_bundle_access" {
   })
 }
 
-# The code-bundle bucket is encrypted with kms_key_arn. The Brainstore bucket
-# is encrypted with kms_key_arn when module-owned, or with
-# brainstore_s3_bucket_kms_key_arn when a caller provides an SSE-KMS bucket.
+# The code-bundle and Brainstore buckets are encrypted with kms_key_arn when
+# module-owned, or with brainstore_s3_bucket_kms_key_arn and
+# code_bundle_s3_bucket_kms_key_arn when a caller provides an SSE-KMS bucket.
 # SSE-KMS reads/writes need key access in addition to the S3 grants above.
 resource "aws_iam_role_policy" "kms_access" {
   name = "LoopRuntimeKmsAccess"
@@ -449,10 +449,11 @@ resource "aws_iam_role_policy" "kms_access" {
     Statement = [{
       Effect = "Allow"
       Action = ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"]
-      Resource = var.brainstore_s3_bucket_kms_key_arn != null ? [
+      Resource = distinct(compact([
         var.kms_key_arn,
         var.brainstore_s3_bucket_kms_key_arn,
-      ] : [var.kms_key_arn]
+        var.code_bundle_s3_bucket_kms_key_arn,
+      ]))
       Condition = {
         StringEquals = {
           "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
