@@ -257,12 +257,8 @@ variable "extra_env_vars_automation_writer" {
 
 variable "cache_file_size_automation_writer" {
   type        = string
-  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 75% of the ephemeral storage size."
   default     = null
-variable "cache_file_size_automation_writer" {
-type        = string
-description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 75% of the ephemeral storage size."
-default     = null
 }
 
 variable "fast_reader_instance_count" {
