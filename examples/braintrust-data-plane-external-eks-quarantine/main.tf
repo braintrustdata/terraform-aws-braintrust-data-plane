@@ -10,6 +10,9 @@
 # - Deploys all IAM permissions needed for the Quarantine VPC
 
 module "braintrust-data-plane" {
+  # Optional existing bootstrap-owned SSM/ECS transcript destination.
+  # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
+  # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
   # Using local source for testing - change to GitHub source for production
   source = "../../"
   # source = "github.com/braintrustdata/terraform-braintrust-data-plane"
@@ -157,6 +160,11 @@ module "braintrust-data-plane" {
   # custom_tags = {
   #   CustomTagKey = "SomeValue"
   # }
+  ### S3 Block Public Access
+  # New deployments only: skip bucket Block Public Access configuration when
+  # customer controls own protection. Do not change this on an existing stack.
+  # manage_s3_public_access_block = false
+
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
   # Use s3_additional_allowed_origins to apply the same origins to both buckets,

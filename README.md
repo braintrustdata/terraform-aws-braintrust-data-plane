@@ -3,6 +3,7 @@
 For the latest guidance, always refer to the official Braintrust documentation:
 
 - [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
+- [Protected Diagnostics transcripts](docs/diagnostics-transcripts.md)
 - [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
 
@@ -15,6 +16,16 @@ Always upgrade **one major version at a time**. For example, go from v4 â†’ v5 â
 Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
+
+### Brainstore and API upgrades
+
+A normal `terraform apply` waits for the reader and, when enabled, fast-reader Brainstore fleets before updating the API ECS services and the API, catchup ETL, automation, and billing Lambda functions. Their launch-template updates keep the existing ASGs and use a deployment Lambda to start and wait for instance refreshes. The writer and AutomationWriter pools use their own asynchronous ASG instance refreshes and do not block API updates.
+
+For the gated reader fleets, the helper checks the exact numbered launch-template version, ASG and target health, and termination of old instances. Healthy instances from the previous version do not satisfy it. Refreshes can temporarily double capacity to preserve availability. API deployments remain blocked if a gated refresh fails, health checks fail, or the final attempt reaches its 14-minute waiting budget. Terraform automatically invokes the controller a second time during the same apply after the first waiting budget expires, resuming the active refresh with another 14-minute budget. The final invocation also rechecks readiness when the first attempt completes. Fix any reported failure and rerun `terraform apply`; the gate rechecks AWS state and resumes an active refresh. Each retry gets a fresh waiting budget and inspects live AWS state.
+
+The module installs the deployment Lambda from a regional Braintrust artifact using the active API release tag: the ECS API version when `enable_ecs_api` is true, or the API Lambda version otherwise. The corresponding `braintrust_api_version_override` or `lambda_version_tag_override` is respected. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
+
+This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
 ## How to use this module
 
@@ -52,6 +63,30 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 ```
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
+
+### S3 Block Public Access ownership
+
+By default, the module manages all four Block Public Access settings on its
+Brainstore, code bundle, Lambda response, and optional VPC flow-log buckets.
+
+For a **new deployment** where your security controls prohibit these writes, set:
+
+```hcl
+manage_s3_public_access_block = false
+```
+
+This skips the bucket-level configuration resources; it does not set any
+protection to `false`. [AWS enables Block Public Access on new buckets by default](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
+The customer owns maintaining these protections, preferably through protected
+account or organization controls. An SCP denying configuration changes does not
+itself enable Block Public Access. Bucket policies, encryption, versioning, and
+other module-managed settings remain unchanged. Caller-provided buckets remain
+outside this module's ownership.
+
+Leave the default enabled for existing deployments. Changing it from `true` to
+`false` plans deletion of the existing bucket-level configurations and requires
+the same permission the SCP may prohibit; it is not a supported ownership
+handoff for an existing deployment.
 
 ## Loop runtime
 

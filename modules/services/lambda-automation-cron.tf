@@ -5,7 +5,7 @@ locals {
 }
 
 resource "aws_lambda_function" "automation_cron" {
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
 
   function_name = local.automation_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
@@ -44,9 +44,6 @@ resource "aws_lambda_function" "automation_cron" {
       FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
       CRON_OVERRIDE_SECRET_KEY                  = random_password.service_token_secret_key.result
       },
-      var.brainstore_enable_export ? {
-        BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
-      } : {},
       local.redis_extra_env_vars,
       var.extra_env_vars.AutomationCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {

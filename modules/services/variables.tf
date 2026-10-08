@@ -317,12 +317,6 @@ variable "url_security_allow_cidrs" {
   default     = ""
 }
 
-variable "brainstore_enable_export" {
-  type        = bool
-  description = "If true, sets BRAINSTORE_EXPORT_MIGRATION_ENABLED=true on the API Handler Lambda."
-  default     = false
-}
-
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
@@ -478,4 +472,10 @@ variable "internal_observability_trace_disabled_plugins" {
   description = "Datadog trace plugins to disable for internal observability."
   type        = string
   default     = ""
+}
+
+variable "brainstore_deployment_id" {
+  description = "Dependency on the completed Brainstore deployment."
+  type        = string
+  default     = null
 }

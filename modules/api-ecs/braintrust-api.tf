@@ -23,6 +23,8 @@ resource "aws_ecs_task_definition" "braintrust_api" {
   }, local.common_tags)
 
   lifecycle {
+    create_before_destroy = true
+
     precondition {
       condition     = contains(keys(local.valid_fargate_memory_by_cpu), tostring(var.braintrust_api_cpu))
       error_message = "braintrust_api_cpu must be a valid Fargate CPU value."
@@ -69,7 +71,7 @@ resource "aws_ecs_service" "braintrust_api" {
 
   # The listener default action associates this target group with the ALB,
   # which ECS requires before CreateService will attach the service.
-  depends_on = [aws_lb_listener.api_ecs_http]
+  depends_on = [terraform_data.brainstore_deployment, aws_lb_listener.api_ecs_http]
 
   lifecycle {
     create_before_destroy = false
