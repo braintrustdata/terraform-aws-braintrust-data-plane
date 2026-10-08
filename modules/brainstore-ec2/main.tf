@@ -15,11 +15,11 @@ locals {
   # If total_instance_storage is 0 or null, instances won't have ephemeral storage
   # The user_data script already validates ephemeral device exists, so this should always be > 0 for valid instance types
   # Postconditions on the data sources guarantee total_instance_storage is non-null
-  # Reduce by 10% to leave buffer space on the disk
-  # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
+  # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage for readers
+  # and 75% for writers
   brainstore_cache_file_size                   = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
-  brainstore_writer_cache_file_size            = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
-  brainstore_automation_writer_cache_file_size = var.cache_file_size_automation_writer != null ? var.cache_file_size_automation_writer : "${floor(data.aws_ec2_instance_type.brainstore_automation_writer.total_instance_storage * 0.9)}gb"
+  brainstore_writer_cache_file_size            = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.75)}gb"
+  brainstore_automation_writer_cache_file_size = var.cache_file_size_automation_writer != null ? var.cache_file_size_automation_writer : "${floor(data.aws_ec2_instance_type.brainstore_automation_writer.total_instance_storage * 0.75)}gb"
   brainstore_fast_reader_cache_file_size       = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage * 0.9)}gb"
 
   # Automation writers handle automations. Other writer-capable nodes handle
