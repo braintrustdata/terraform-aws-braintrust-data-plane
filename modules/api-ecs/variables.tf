@@ -838,6 +838,12 @@ variable "brainstore_deployment_id" {
   default     = null
 }
 
+variable "database_migration_id" {
+  description = "Dependency on the completed database migration invocation."
+  type        = string
+  default     = null
+}
+
 variable "gateway_security_groups" {
   description = "Gateway task security groups authorized to reach the private API listener."
   type        = map(string)

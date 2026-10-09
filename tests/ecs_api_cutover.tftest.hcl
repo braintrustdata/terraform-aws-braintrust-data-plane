@@ -2,6 +2,9 @@
 #
 # APIHandler, AIProxy, and API Gateway are removed. Quarantine and the other
 # Lambdas stay. ECS and CloudFront remain.
+# Also locks the migrate → API ECS services edge: services.database_migration_id
+# is passed into api_ecs (not a module-level depends_on) so the API ECS services
+# wait for schema.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
