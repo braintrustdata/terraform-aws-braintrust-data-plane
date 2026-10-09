@@ -317,6 +317,12 @@ variable "url_security_allow_cidrs" {
   default     = ""
 }
 
+variable "enable_ecs_api" {
+  type        = bool
+  description = "When true, do not create APIHandler or AIProxy. CloudFront is already routing that traffic to ECS. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Setting this back to false creates APIHandler and AIProxy again."
+  default     = false
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
