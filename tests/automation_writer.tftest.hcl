@@ -27,3 +27,31 @@ run "automation_writer_plans" {
     error_message = "an enabled automation writer pool should plan with the Brainstore module"
   }
 }
+
+run "automation_writer_queries_plans" {
+  command = plan
+
+  variables {
+    enable_brainstore_automation_writer_queries = true
+  }
+}
+
+run "automation_writer_queries_with_ecs_cutover_plans" {
+  command = plan
+
+  variables {
+    enable_brainstore_automation_writer_queries = true
+    enable_ecs_api                              = true
+  }
+}
+
+run "automation_writer_queries_require_a_pool" {
+  command = plan
+
+  variables {
+    enable_brainstore_automation_writer_queries = true
+    brainstore_automation_writer_instance_count = 0
+  }
+
+  expect_failures = [var.enable_brainstore_automation_writer_queries]
+}

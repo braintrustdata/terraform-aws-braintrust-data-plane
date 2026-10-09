@@ -1604,6 +1604,17 @@ variable "brainstore_automation_writer_instance_type" {
   default     = "c8gd.8xlarge"
 }
 
+variable "enable_brainstore_automation_writer_queries" {
+  type        = bool
+  description = "Route async-scoring and topics queries to the automation writer pool. Enable in a separate apply after its NLB targets are healthy and the API release supports the automation_writer query pool."
+  default     = false
+
+  validation {
+    condition     = !var.enable_brainstore_automation_writer_queries || (!var.use_deployment_mode_external_eks && var.brainstore_automation_writer_instance_count > 0)
+    error_message = "Automation writer query routing requires module-managed Brainstore with brainstore_automation_writer_instance_count > 0."
+  }
+}
+
 variable "brainstore_extra_env_vars_automation_writer" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore automation writer nodes"

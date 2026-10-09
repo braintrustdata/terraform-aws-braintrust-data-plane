@@ -13,6 +13,12 @@ output "fast_reader_dns_name" {
   value       = one(aws_lb.brainstore_fast_reader[*].dns_name)
 }
 
+output "automation_writer_dns_name" {
+  description = "The DNS name of the Brainstore automation writer NLB, if enabled"
+  value       = one(aws_lb.brainstore_automation_writer[*].dns_name)
+  depends_on  = [aws_lb_listener.brainstore_automation_writer]
+}
+
 output "port" {
   description = "The port used by Brainstore"
   value       = var.port
