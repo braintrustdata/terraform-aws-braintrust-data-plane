@@ -17,25 +17,34 @@ locals {
 
   base_image_arn = "arn:${local.partition}:lambda:${local.region}:aws:microvm-image:al2023-1"
 
-  # AWS-managed network connectors used at RunMicrovm time.
+  # AWS-managed ingress connector used at RunMicrovm time.
   managed_ingress_connector_arn = "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:ALL_INGRESS"
-  managed_egress_connector_arn  = "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:INTERNET_EGRESS"
   ingress_connector_arns        = length(var.ingress_network_connector_arns) > 0 ? var.ingress_network_connector_arns : [local.managed_ingress_connector_arn]
 
-  # Match CloudFormation's fail-closed behavior: only the exact value
-  # "internet" permits public Internet egress from sandbox MicroVMs.
-  use_restricted_egress        = var.sandbox_egress_mode != "internet"
-  create_restricted_egress_vpc = local.use_restricted_egress && var.existing_vpc_id == null
+  create_restricted_egress_vpc = var.existing_vpc_id == null
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
+  restricted_egress_vpc_cidr   = var.existing_vpc_id != null ? data.aws_vpc.restricted_egress_existing[0].cidr_block : aws_vpc.restricted_egress[0].cidr_block
   existing_private_subnet_ids = [
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
     var.existing_private_subnet_3_id,
   ]
   restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
-  egress_connector_arns = local.use_restricted_egress ? [
-    aws_cloudformation_stack.restricted_egress_connector[0].outputs["NetworkConnectorArn"]
-  ] : [local.managed_egress_connector_arn]
+  sandbox_subnet_azs           = var.existing_vpc_id != null ? data.aws_subnet.restricted_egress_existing[*].availability_zone : aws_subnet.restricted_egress[*].availability_zone
+  egress_gateway_nlb_azs       = data.aws_subnet.egress_gateway_nlb[*].availability_zone
+  main_endpoint_subnet_ids = [
+    for az in distinct(local.egress_gateway_nlb_azs) : var.endpoint_subnet_ids[index(local.egress_gateway_nlb_azs, az)]
+  ]
+  sandbox_endpoint_subnet_ids = [
+    for az in distinct(local.sandbox_subnet_azs) : local.restricted_egress_subnet_ids[index(local.sandbox_subnet_azs, az)]
+    if contains(local.egress_gateway_nlb_azs, az)
+  ]
+  egress_connector_arns = [
+    aws_cloudformation_stack.restricted_egress_connector.outputs["NetworkConnectorArn"]
+  ]
+
+  egress_gateway_port     = 4002
+  egress_gateway_dns_name = aws_vpc_endpoint.egress_gateway.dns_entry[0].dns_name
 
   # Resolve the content-addressed artifact key from the published version pointer
   # (same convention as modules/services lambda zips).
@@ -100,6 +109,8 @@ locals {
     AWS_LAMBDA_MICROVM_MAXIMUM_DURATION_SECONDS       = tostring(var.microvm_maximum_duration_seconds)
     AWS_LAMBDA_MICROVM_AUTH_TOKEN_EXPIRATION_MINUTES  = tostring(var.microvm_auth_token_expiration_minutes)
     AWS_LAMBDA_MICROVM_RUNTIME_PORT                   = tostring(var.microvm_runtime_port)
+    LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN         = "0.0.0.0:${local.egress_gateway_port}"
+    LOOP_RUNTIME_SANDBOX_EGRESS_GATEWAY_URL           = "http://${local.egress_gateway_dns_name}:${local.egress_gateway_port}"
     },
     var.enable_microvm_runtime_logs ? {
       AWS_LAMBDA_MICROVM_EXECUTION_ROLE_ARN   = aws_iam_role.microvm_execution[0].arn
@@ -149,8 +160,6 @@ data "aws_iam_policy_document" "microvm_build_assume_role" {
 }
 
 data "aws_iam_policy_document" "network_connector_operator_assume_role" {
-  count = local.use_restricted_egress ? 1 : 0
-
   statement {
     actions = ["sts:AssumeRole", "sts:TagSession"]
     principals {
@@ -158,11 +167,6 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
       identifiers = ["lambda.amazonaws.com"]
     }
   }
-}
-
-data "aws_availability_zones" "available" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
-  state = "available"
 }
 
 resource "aws_vpc" "restricted_egress" {
@@ -190,7 +194,7 @@ resource "aws_route_table" "restricted_egress" {
 resource "aws_subnet" "restricted_egress" {
   count = local.create_restricted_egress_vpc ? 3 : 0
 
-  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
+  availability_zone       = element(local.egress_gateway_nlb_azs, count.index)
   cidr_block              = "10.255.${count.index + 1}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
@@ -233,10 +237,32 @@ resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
   priority                = 100
 }
 
+# AWS stores firewall domains with trailing dots; match that to avoid plan drift.
+resource "aws_route53_resolver_firewall_domain_list" "egress_gateway" {
+  count = local.create_restricted_egress_vpc ? 1 : 0
+
+  domains = ["${local.egress_gateway_dns_name}."]
+  name    = "bt-loop-${var.deployment_name}-egress-gateway-dns"
+  tags    = local.common_tags
+}
+
+resource "aws_route53_resolver_firewall_rule" "egress_gateway_allow" {
+  count = local.create_restricted_egress_vpc ? 1 : 0
+
+  action                  = "ALLOW"
+  firewall_domain_list_id = aws_route53_resolver_firewall_domain_list.egress_gateway[0].id
+  firewall_rule_group_id  = aws_route53_resolver_firewall_rule_group.restricted_egress[0].id
+  name                    = "bt-loop-${var.deployment_name}-dns-allow-egress-gateway"
+  priority                = 50
+}
+
 resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egress" {
   count = local.create_restricted_egress_vpc ? 1 : 0
 
-  depends_on = [aws_route53_resolver_firewall_rule.restricted_egress]
+  depends_on = [
+    aws_route53_resolver_firewall_rule.egress_gateway_allow,
+    aws_route53_resolver_firewall_rule.restricted_egress,
+  ]
 
   firewall_rule_group_id = aws_route53_resolver_firewall_rule_group.restricted_egress[0].id
   name                   = "bt-loop-${var.deployment_name}-dns-assoc"
@@ -245,11 +271,9 @@ resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egre
   tags                   = local.common_tags
 }
 
+# Terraform drops the default allow-all egress; rules below allow the gateway and resolvers.
 resource "aws_security_group" "restricted_egress" {
-  count = local.use_restricted_egress ? 1 : 0
-
   description = "Security group for restricted Loop runtime sandbox egress"
-  egress      = []
   name        = "${var.deployment_name}-loop-runtime-restricted-egress"
   vpc_id      = local.restricted_egress_vpc_id
 
@@ -259,10 +283,8 @@ resource "aws_security_group" "restricted_egress" {
 }
 
 resource "aws_iam_role" "network_connector_operator" {
-  count = local.use_restricted_egress ? 1 : 0
-
   name                 = "${var.deployment_name}-loop-runtime-network-connector"
-  assume_role_policy   = data.aws_iam_policy_document.network_connector_operator_assume_role[0].json
+  assume_role_policy   = data.aws_iam_policy_document.network_connector_operator_assume_role.json
   permissions_boundary = var.permissions_boundary_arn
 
   tags = merge({
@@ -271,9 +293,7 @@ resource "aws_iam_role" "network_connector_operator" {
 }
 
 resource "aws_iam_role_policy_attachment" "network_connector_operator" {
-  count = local.use_restricted_egress ? 1 : 0
-
-  role       = aws_iam_role.network_connector_operator[0].name
+  role       = aws_iam_role.network_connector_operator.name
   policy_arn = "arn:${local.partition}:iam::aws:policy/AWSLambdaNetworkConnectorOperatorPolicy"
 }
 
@@ -281,8 +301,6 @@ resource "aws_iam_role_policy_attachment" "network_connector_operator" {
 # isolated CloudFormation stack alongside the existing MicroVM image stack,
 # while Terraform manages the surrounding network and IAM resources.
 resource "aws_cloudformation_stack" "restricted_egress_connector" {
-  count = local.use_restricted_egress ? 1 : 0
-
   name = "${var.deployment_name}-loop-runtime-restricted-egress-connector"
 
   depends_on = [
@@ -293,8 +311,8 @@ resource "aws_cloudformation_stack" "restricted_egress_connector" {
 
   parameters = {
     ConnectorName   = "bt-loop-${var.deployment_name}-restricted-egress"
-    OperatorRoleArn = aws_iam_role.network_connector_operator[0].arn
-    SecurityGroupId = aws_security_group.restricted_egress[0].id
+    OperatorRoleArn = aws_iam_role.network_connector_operator.arn
+    SecurityGroupId = aws_security_group.restricted_egress.id
     SubnetIds       = join(",", local.restricted_egress_subnet_ids)
   }
 
@@ -469,8 +487,14 @@ resource "aws_cloudformation_stack" "microvm_image" {
   }
 }
 
+data "aws_vpc" "restricted_egress_existing" {
+  count = var.existing_vpc_id != null ? 1 : 0
+
+  id = var.existing_vpc_id
+}
+
 data "aws_subnet" "restricted_egress_existing" {
-  count = local.use_restricted_egress && var.existing_vpc_id != null ? length(local.existing_private_subnet_ids) : 0
+  count = var.existing_vpc_id != null ? length(local.existing_private_subnet_ids) : 0
 
   id = local.existing_private_subnet_ids[count.index]
 
@@ -480,6 +504,12 @@ data "aws_subnet" "restricted_egress_existing" {
       error_message = "Each sandbox subnet must belong to the supplied sandbox VPC."
     }
   }
+}
+
+data "aws_subnet" "egress_gateway_nlb" {
+  count = length(var.endpoint_subnet_ids)
+
+  id = var.endpoint_subnet_ids[count.index]
 }
 
 resource "aws_security_group" "loop_runtime_microvm_endpoint" {
@@ -504,7 +534,7 @@ resource "aws_vpc_endpoint" "loop_runtime_microvm" {
   service_name        = "com.amazonaws.${data.aws_region.current.region}.lambda-microvm"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = var.endpoint_subnet_ids
+  subnet_ids          = local.main_endpoint_subnet_ids
   security_group_ids  = [aws_security_group.loop_runtime_microvm_endpoint.id]
 
   policy = jsonencode({
@@ -522,4 +552,158 @@ resource "aws_vpc_endpoint" "loop_runtime_microvm" {
     }]
   })
   tags = local.common_tags
+}
+
+# --- Sandbox egress gateway ---
+# Sandboxes reach the runtime's port 4002 proxy over PrivateLink. The proxy
+# authorizes each request, so network access alone grants nothing.
+
+resource "aws_security_group" "egress_gateway_nlb" {
+  name        = "${var.deployment_name}-loop-egress-gateway-nlb"
+  description = "Security group for the Loop sandbox egress gateway NLB"
+  vpc_id      = var.endpoint_vpc_id
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-egress-gateway-nlb"
+  }, local.common_tags)
+}
+
+resource "aws_vpc_security_group_egress_rule" "egress_gateway_nlb_to_runtime" {
+  security_group_id            = aws_security_group.egress_gateway_nlb.id
+  referenced_security_group_id = var.runtime_security_group_id
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow the egress gateway NLB to reach Loop runtime tasks."
+  tags                         = local.common_tags
+}
+
+resource "aws_lb" "egress_gateway" {
+  name                             = "${var.deployment_name}-loop-egress"
+  internal                         = true
+  load_balancer_type               = "network"
+  subnets                          = local.main_endpoint_subnet_ids
+  security_groups                  = [aws_security_group.egress_gateway_nlb.id]
+  enable_cross_zone_load_balancing = true
+
+  # Ingress is gated by the endpoint service principals and the endpoint SG.
+  enforce_security_group_inbound_rules_on_private_link_traffic = "off"
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-egress-gateway"
+  }, local.common_tags)
+}
+
+resource "aws_lb_target_group" "egress_gateway" {
+  name                 = "${var.deployment_name}-loop-egress"
+  port                 = local.egress_gateway_port
+  protocol             = "TCP"
+  target_type          = "ip"
+  vpc_id               = var.endpoint_vpc_id
+  deregistration_delay = var.egress_gateway_deregistration_delay
+
+  health_check {
+    protocol = "TCP"
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-egress-gateway"
+  }, local.common_tags)
+}
+
+resource "aws_lb_listener" "egress_gateway" {
+  load_balancer_arn = aws_lb.egress_gateway.arn
+  port              = local.egress_gateway_port
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.egress_gateway.arn
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_vpc_endpoint_service" "egress_gateway" {
+  acceptance_required        = false
+  network_load_balancer_arns = [aws_lb.egress_gateway.arn]
+  allowed_principals         = ["arn:${local.partition}:iam::${data.aws_caller_identity.current.account_id}:root"]
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-egress-gateway"
+  }, local.common_tags)
+}
+
+resource "aws_security_group" "egress_gateway_endpoint" {
+  name        = "${var.deployment_name}-loop-egress-gateway-vpce"
+  description = "Security group for the Loop sandbox egress gateway endpoint"
+  vpc_id      = local.restricted_egress_vpc_id
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-egress-gateway-vpce"
+  }, local.common_tags)
+}
+
+resource "aws_vpc_security_group_ingress_rule" "egress_gateway_endpoint_from_sandbox" {
+  security_group_id            = aws_security_group.egress_gateway_endpoint.id
+  referenced_security_group_id = aws_security_group.restricted_egress.id
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow Loop sandboxes to reach the egress gateway."
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "sandbox_to_egress_gateway" {
+  security_group_id            = aws_security_group.restricted_egress.id
+  referenced_security_group_id = aws_security_group.egress_gateway_endpoint.id
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow Loop sandboxes to reach only the egress gateway."
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_link_local" {
+  for_each = toset(["tcp", "udp"])
+
+  security_group_id = aws_security_group.restricted_egress.id
+  cidr_ipv4         = "169.254.169.253/32"
+  from_port         = 53
+  to_port           = 53
+  ip_protocol       = each.value
+  description       = "Allow Loop sandboxes to query the link-local VPC resolver."
+  tags              = local.common_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_vpc" {
+  for_each = toset(["tcp", "udp"])
+
+  security_group_id = aws_security_group.restricted_egress.id
+  cidr_ipv4         = "${cidrhost(local.restricted_egress_vpc_cidr, 2)}/32"
+  from_port         = 53
+  to_port           = 53
+  ip_protocol       = each.value
+  description       = "Allow Loop sandboxes to query the VPC CIDR resolver."
+  tags              = local.common_tags
+}
+
+resource "aws_vpc_endpoint" "egress_gateway" {
+  vpc_id              = local.restricted_egress_vpc_id
+  service_name        = aws_vpc_endpoint_service.egress_gateway.service_name
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = false
+  subnet_ids          = local.sandbox_endpoint_subnet_ids
+  security_group_ids  = [aws_security_group.egress_gateway_endpoint.id]
+
+  lifecycle {
+    precondition {
+      condition     = length(local.sandbox_endpoint_subnet_ids) > 0
+      error_message = "The sandbox VPC needs a subnet in an availability zone served by the egress gateway NLB."
+    }
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-egress-gateway"
+  }, local.common_tags)
 }

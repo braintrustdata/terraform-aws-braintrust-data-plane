@@ -561,11 +561,11 @@ module "loop_runtime_sandbox_aws_microvm" {
   microvm_maximum_duration_seconds      = var.loop_runtime_microvm_maximum_duration_seconds
   microvm_auth_token_expiration_minutes = var.loop_runtime_microvm_auth_token_expiration_minutes
   enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
-  sandbox_egress_mode                   = var.loop_runtime_sandbox_egress_mode
   existing_vpc_id                       = var.loop_runtime_sandbox_existing_vpc_id
   existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
   existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id
   existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
+  egress_gateway_deregistration_delay   = var.loop_runtime_alb_deregistration_delay
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags
@@ -599,6 +599,11 @@ module "loop_runtime_ecs" {
   target_group_arn               = module.loop_runtime_alb[0].loop_runtime_target_group_arn
   alb_security_group_id          = module.loop_runtime_alb[0].loop_runtime_alb_security_group_id
   loop_runtime_http_listener_arn = module.loop_runtime_alb[0].loop_runtime_http_listener_arn
+
+  sandbox_egress_gateway_target_group_arn = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_target_group_arn
+  sandbox_egress_gateway_authorized_security_groups = {
+    "Loop Sandbox Egress Gateway" = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_security_group_id
+  }
 
   sandbox_env_vars                 = module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
   additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json

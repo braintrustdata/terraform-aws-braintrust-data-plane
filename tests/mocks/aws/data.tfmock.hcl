@@ -23,6 +23,12 @@ mock_data "aws_region" {
   }
 }
 
+mock_data "aws_vpc" {
+  defaults = {
+    cidr_block = "172.20.0.0/16"
+  }
+}
+
 mock_data "aws_secretsmanager_random_password" {
   defaults = {
     random_password = "mock-password-16"

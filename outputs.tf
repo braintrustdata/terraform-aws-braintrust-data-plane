@@ -213,6 +213,11 @@ output "loop_runtime_ai_proxy_url" {
   description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy when enable_ai_gateway, otherwise hosted gateway or CloudFront API /v1/proxy)"
 }
 
+output "loop_runtime_sandbox_egress_gateway_dns_name" {
+  value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_dns_name : null
+  description = "Loop sandbox egress gateway endpoint DNS name. A supplied sandbox VPC must let sandboxes resolve it."
+}
+
 output "loop_runtime_microvm_image_arn" {
   value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
   description = "ARN of the Loop runtime sandbox MicroVM image"

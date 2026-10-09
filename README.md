@@ -121,9 +121,10 @@ the corresponding migration guide before publication.
 
 ### Sandbox isolation
 
-The default `loop_runtime_sandbox_egress_mode = "restricted"` creates a dedicated VPC for sandbox egress.
-The VPC has no outbound route and blocks DNS requests.
-This network isolates untrusted sandbox code from internal networks.
+The module creates a dedicated sandbox VPC with no outbound route.
+Sandboxes can reach only the Loop egress gateway endpoint on port 4002, and its name is the only one they can resolve.
+The endpoint connects over PrivateLink to the Loop runtime proxy, which authorizes each request.
+`loop_runtime_sandbox_egress_mode` is deprecated and only accepts `"restricted"`.
 
 You can supply a dedicated sandbox VPC with these inputs:
 
@@ -135,8 +136,9 @@ loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
 ```
 
 The module verifies that each subnet belongs to the supplied VPC.
-The module also creates a security group without outbound rules.
-The caller controls routes and DNS restrictions in the supplied VPC.
+It creates the sandbox security group and the egress gateway endpoint there.
+At least one supplied subnet must share an availability zone with the main VPC's private subnets.
+The caller controls routes and DNS, and sandboxes must be able to resolve `loop_runtime_sandbox_egress_gateway_dns_name`.
 
 Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
 Configure equivalent DNS restrictions before you enable Loop with a supplied VPC.

@@ -11,6 +11,7 @@ locals {
 
   container_name           = "loop-runtime"
   container_port           = 4001
+  egress_gateway_port      = 4002
   observability_enabled    = var.internal_observability_enabled
   loop_runtime_version_tag = element(reverse(split(":", var.container_image)), 0)
   brainstore_s3_bucket     = var.brainstore_s3_bucket_name
@@ -141,7 +142,12 @@ locals {
         containerPort = local.container_port
         hostPort      = local.container_port
         protocol      = "tcp"
-      }
+      },
+      {
+        containerPort = local.egress_gateway_port
+        hostPort      = local.egress_gateway_port
+        protocol      = "tcp"
+      },
     ]
     environment = [
       for key in sort(keys(local.merged_env_vars)) : {
@@ -288,6 +294,18 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   source_security_group_id = var.alb_security_group_id
   description              = "Allow inbound traffic from Loop runtime ALB to tasks"
   security_group_id        = aws_security_group.task.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "task_from_sandbox_egress_gateway" {
+  for_each = var.sandbox_egress_gateway_authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow sandbox egress traffic from ${each.key}."
+  tags                         = local.common_tags
 }
 
 resource "aws_security_group_rule" "task_egress_all" {
@@ -588,6 +606,12 @@ resource "aws_ecs_service" "loop_runtime" {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
     container_port   = local.container_port
+  }
+
+  load_balancer {
+    target_group_arn = var.sandbox_egress_gateway_target_group_arn
+    container_name   = local.container_name
+    container_port   = local.egress_gateway_port
   }
 
   depends_on = [terraform_data.loop_runtime_http_listener]
