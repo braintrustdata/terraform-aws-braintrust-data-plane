@@ -1,11 +1,12 @@
 locals {
   brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
-  common_tags = merge({
+  common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
-  }, var.custom_tags)
-  architecture          = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
-  has_writer_nodes      = var.writer_instance_count > 0
-  has_fast_reader_nodes = var.fast_reader_instance_count > 0
+  })
+  architecture                = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
+  has_writer_nodes            = var.writer_instance_count > 0
+  has_automation_writer_nodes = var.automation_writer_instance_count > 0
+  has_fast_reader_nodes       = var.fast_reader_instance_count > 0
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id    = split(":::", var.brainstore_s3_bucket_arn)[1]
   lambda_responses_bucket_id = split(":::", var.lambda_responses_s3_bucket_arn)[1]
@@ -14,11 +15,26 @@ locals {
   # If total_instance_storage is 0 or null, instances won't have ephemeral storage
   # The user_data script already validates ephemeral device exists, so this should always be > 0 for valid instance types
   # Postconditions on the data sources guarantee total_instance_storage is non-null
-  # Reduce by 10% to leave buffer space on the disk
-  # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage
-  brainstore_cache_file_size             = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
-  brainstore_writer_cache_file_size      = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.9)}gb"
+  
+  # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage, or 50% for writers
+  brainstore_cache_file_size        = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
   brainstore_fast_reader_cache_file_size = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage * 0.9)}gb"
+  brainstore_writer_cache_file_size = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.5)}gb"
+  brainstore_automation_writer_cache_file_size = local.has_automation_writer_nodes ? (
+    var.cache_file_size_automation_writer != null ? var.cache_file_size_automation_writer : "${floor(data.aws_ec2_instance_type.brainstore_automation_writer[0].total_instance_storage * 0.75)}gb"
+  ) : null
+
+  # Automation writers handle automations. Other writer-capable nodes handle
+  # every writer loop except automations while the automation-writer pool is on.
+  brainstore_writer_extra_env_vars = local.has_automation_writer_nodes ? merge(var.extra_env_vars_writer, {
+    BRAINSTORE_WRITER_LOOP_CONFIG = "exclude:automations"
+  }) : var.extra_env_vars_writer
+  brainstore_automation_writer_extra_env_vars = merge(var.extra_env_vars_automation_writer, {
+    BRAINSTORE_WRITER_LOOP_CONFIG = "include:automations"
+  })
+  brainstore_reader_writer_extra_env_vars = local.has_automation_writer_nodes && !local.has_writer_nodes ? merge(var.extra_env_vars, {
+    BRAINSTORE_WRITER_LOOP_CONFIG = "exclude:automations"
+  }) : var.extra_env_vars
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -77,7 +93,7 @@ resource "aws_launch_template" "brainstore" {
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
     is_dedicated_reader_node        = local.has_writer_nodes ? "true" : "false"
     is_dedicated_writer_node        = "false"
-    extra_env_vars                  = var.extra_env_vars
+    extra_env_vars                  = local.brainstore_reader_writer_extra_env_vars
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
@@ -86,7 +102,6 @@ resource "aws_launch_template" "brainstore" {
     custom_post_install_script      = var.custom_post_install_script
     brainstore_cache_file_size      = local.brainstore_cache_file_size
     skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-    brainstore_enable_export        = var.brainstore_enable_export
     ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
   }))
 
@@ -142,8 +157,11 @@ resource "aws_lb_target_group" "brainstore" {
   target_type = "instance"
 
   connection_termination = true
+  deregistration_delay   = 30
   health_check {
     protocol            = "TCP"
+    matcher             = ""
+    path                = ""
     port                = var.port
     healthy_threshold   = 3
     unhealthy_threshold = 3
@@ -186,15 +204,6 @@ resource "aws_autoscaling_group" "brainstore" {
   lifecycle {
     # If this ever has to be replaced, we want a new ASG to be created before the old one is terminated.
     create_before_destroy = true
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200
-    }
-    triggers = ["tag"]
   }
 
   tag {
@@ -251,6 +260,18 @@ data "aws_ec2_instance_type" "brainstore_writer" {
     postcondition {
       condition     = self.total_instance_storage != null
       error_message = "Writer instance type ${var.writer_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
+    }
+  }
+}
+
+data "aws_ec2_instance_type" "brainstore_automation_writer" {
+  count         = local.has_automation_writer_nodes ? 1 : 0
+  instance_type = var.automation_writer_instance_type
+
+  lifecycle {
+    postcondition {
+      condition     = self.total_instance_storage != null
+      error_message = "Automation writer instance type ${var.automation_writer_instance_type} has no local instance storage. Brainstore requires ephemeral NVMe storage for caching. Use an instance type with local storage."
     }
   }
 }

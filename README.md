@@ -3,6 +3,7 @@
 For the latest guidance, always refer to the official Braintrust documentation:
 
 - [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
+- [Protected Diagnostics transcripts](docs/diagnostics-transcripts.md)
 - [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
 
@@ -15,6 +16,16 @@ Always upgrade **one major version at a time**. For example, go from v4 â†’ v5 â
 Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
+
+### Brainstore and API upgrades
+
+A normal `terraform apply` waits for the reader and, when enabled, fast-reader Brainstore fleets before updating the API ECS services and the API, catchup ETL, automation, and billing Lambda functions. Their launch-template updates keep the existing ASGs and use a deployment Lambda to start and wait for instance refreshes. The writer and AutomationWriter pools use their own asynchronous ASG instance refreshes and do not block API updates.
+
+For the gated reader fleets, the helper checks the exact numbered launch-template version, ASG and target health, and termination of old instances. Healthy instances from the previous version do not satisfy it. Refreshes can temporarily double capacity to preserve availability. API deployments remain blocked if a gated refresh fails, health checks fail, or the final attempt reaches its 14-minute waiting budget. Terraform automatically invokes the controller a second time during the same apply after the first waiting budget expires, resuming the active refresh with another 14-minute budget. The final invocation also rechecks readiness when the first attempt completes. Fix any reported failure and rerun `terraform apply`; the gate rechecks AWS state and resumes an active refresh. Each retry gets a fresh waiting budget and inspects live AWS state.
+
+The module installs the deployment Lambda from a regional Braintrust artifact using the active API release tag: the ECS API version when `enable_ecs_api` is true, or the API Lambda version otherwise. The corresponding `braintrust_api_version_override` or `lambda_version_tag_override` is respected. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
+
+This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
 ## How to use this module
 
@@ -52,6 +63,30 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 ```
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
+
+### S3 Block Public Access ownership
+
+By default, the module manages all four Block Public Access settings on its
+Brainstore, code bundle, Lambda response, and optional VPC flow-log buckets.
+
+For a **new deployment** where your security controls prohibit these writes, set:
+
+```hcl
+manage_s3_public_access_block = false
+```
+
+This skips the bucket-level configuration resources; it does not set any
+protection to `false`. [AWS enables Block Public Access on new buckets by default](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
+The customer owns maintaining these protections, preferably through protected
+account or organization controls. An SCP denying configuration changes does not
+itself enable Block Public Access. Bucket policies, encryption, versioning, and
+other module-managed settings remain unchanged. Caller-provided buckets remain
+outside this module's ownership.
+
+Leave the default enabled for existing deployments. Changing it from `true` to
+`false` plans deletion of the existing bucket-level configurations and requires
+the same permission the SCP may prohibit; it is not a supported ownership
+handoff for an existing deployment.
 
 ## Loop runtime
 
@@ -152,13 +187,23 @@ The module creates these AWS service endpoints in VPCs it manages:
 | Service | Type | Created when | Private DNS |
 | --- | --- | --- | --- |
 | S3 | Gateway | Always, in both main and quarantine VPCs when created; attached to their private route tables | Not applicable |
-| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) | Enabled |
+| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) and `create_ssm_vpc_endpoints = true` (default `true`) | Enabled |
 | Secrets Manager | Interface | Main VPC with `create_secrets_manager_vpc_endpoint = true` (default `true`) | Enabled |
 
 SSM and Secrets Manager endpoints span all three private subnets and share a
 security group allowing HTTPS (TCP 443) from the VPC CIDR. Private DNS lets
 existing SDK and CLI calls use the endpoints without URL overrides. Interface
 endpoint charges apply.
+
+To keep Brainstore SSM access enabled while supplying your own SSM connectivity,
+set `enable_brainstore_ec2_ssm = true` and `create_ssm_vpc_endpoints = false`.
+This opts out of all three module-managed SSM endpoints without changing the
+Brainstore SSM IAM permissions. Provide reachable customer-managed endpoints
+(including DNS and security groups) or outbound HTTPS access to SSM. Disabling
+this option on an existing deployment removes its module-managed SSM endpoints.
+The shared endpoint security group remains while Secrets Manager needs it.
+S3, Secrets Manager, and quarantine endpoints are unaffected. The option has no
+effect when `create_vpc = false`.
 
 Secrets Manager is enabled by default independently of SSM. Upgrading a deployment
 with a module-managed main VPC adds the endpoint and redirects regional Secrets
@@ -173,6 +218,41 @@ Separately, `use_private_gateway_quarantine_proxy` can create an interface endpo
 in quarantine for the private gateway when both VPCs are module-managed and the
 private gateway is enabled for this path. It uses its endpoint-specific DNS name
 with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+
+### Existing ElastiCache subnet group
+
+By default, the module creates an ElastiCache subnet group from the three main
+VPC private subnets. To reuse a customer-managed group, set:
+
+```hcl
+existing_elasticache_subnet_group_name = "my-redis-subnet-group"
+```
+
+The group must already exist in the deployment region and belong to the data
+plane VPC. The module uses its name without creating or managing the group or
+its subnet membership. This works with both the legacy Redis cluster and
+`use_redis_replication_group = true`.
+
+Leaving `existing_elasticache_subnet_group_name` unset preserves the managed subnet
+group and Redis, moving only the group's Terraform address to
+`module.redis.aws_elasticache_subnet_group.main[0]`. Downgrading the module on
+Terraform 1.10 or newer automatically moves the address back without replacing
+the group.
+
+Setting a different subnet-group name replaces the Redis cluster or replication
+group and causes downtime; review the plan before applying. Terraform updates the
+Redis URL secret with the replacement endpoint. The secret-value change alone
+does not redeploy API ECS or Loop services. After the replacement and secret update
+complete, force a new deployment of all enabled API ECS services (API, ingest, and
+background) and the Loop service so their tasks load the updated secret.
+Brainstore's updated user data triggers an autoscaling instance refresh, and
+Lambdas that embed `redis_host` update during the apply. The gateway embeds the
+Redis host in its task environment, so it also updates during the apply.
+
+Switching to an external group also removes the old module-managed subnet group.
+Do not set this input to the module's own group name to transfer ownership: that
+would schedule the still-used group for deletion. Keeping the existing managed
+group requires leaving this input unset.
 
 ### Tagging and Naming
 

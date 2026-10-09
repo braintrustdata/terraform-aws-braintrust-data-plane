@@ -3,6 +3,9 @@
 # Your existing Braintrust data plane module instantiation.
 # See examples/braintrust-data-plane for full configuration options.
 module "braintrust-data-plane" {
+  # Optional existing bootstrap-owned SSM/ECS transcript destination.
+  # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
+  # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # ... your eixsting configuration ...
 
@@ -13,6 +16,8 @@ module "braintrust-data-plane" {
   # The optional Loop runtime is disabled by default.
   enable_loop_runtime = false
 
+  # For new deployments, manage_s3_public_access_block = false delegates bucket
+  # public-access protection to AWS defaults and customer controls (see README).
   # Optional networking inputs, including create_secrets_manager_vpc_endpoint,
   # and URL-security inputs are shown in examples/braintrust-data-plane/main.tf.
 }

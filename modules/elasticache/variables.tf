@@ -8,6 +8,17 @@ variable "subnet_ids" {
   description = "List of subnet IDs for the ElastiCache subnet group"
 }
 
+variable "existing_elasticache_subnet_group_name" {
+  type        = string
+  default     = null
+  description = "Existing ElastiCache subnet group name in this VPC. When null, create a subnet group using subnet_ids. Changing the name on an existing Redis deployment replaces Redis."
+
+  validation {
+    condition     = var.existing_elasticache_subnet_group_name == null ? true : trimspace(var.existing_elasticache_subnet_group_name) != ""
+    error_message = "existing_elasticache_subnet_group_name must be null or a non-empty subnet group name."
+  }
+}
+
 variable "vpc_id" {
   type        = string
   description = "ID of VPC where Elasticache will be deployed."
