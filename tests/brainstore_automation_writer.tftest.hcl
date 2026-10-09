@@ -67,7 +67,8 @@ run "disabled_automation_writer_skips_instance_metadata" {
       length(aws_lb.brainstore_automation_writer) == 0 &&
       length(aws_lb_target_group.brainstore_automation_writer) == 0 &&
       length(aws_lb_listener.brainstore_automation_writer) == 0 &&
-      output.automation_writer_dns_name == null
+      output.automation_writer_dns_name == null &&
+      !contains(keys(output.monitoring_targets), "automation-writer")
     )
     error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
   }
@@ -137,7 +138,12 @@ run "automation_writer_nlb_routes_to_its_asg" {
       aws_autoscaling_group.brainstore_automation_writer[0].target_group_arns == toset([aws_lb_target_group.brainstore_automation_writer[0].arn]) &&
       aws_lb_target_group.brainstore_automation_writer[0].health_check[0].protocol == "HTTP" &&
       aws_lb_target_group.brainstore_automation_writer[0].health_check[0].path == "/" &&
-      output.automation_writer_dns_name == aws_lb.brainstore_automation_writer[0].dns_name
+      output.automation_writer_dns_name == aws_lb.brainstore_automation_writer[0].dns_name &&
+      output.monitoring_targets["automation-writer"] == {
+        asg_name      = aws_autoscaling_group.brainstore_automation_writer[0].name
+        lb_arn_suffix = aws_lb.brainstore_automation_writer[0].arn_suffix
+        tg_arn_suffix = aws_lb_target_group.brainstore_automation_writer[0].arn_suffix
+      }
     )
     error_message = "Automation queries must reach the dedicated ASG through its private NLB and listener."
   }

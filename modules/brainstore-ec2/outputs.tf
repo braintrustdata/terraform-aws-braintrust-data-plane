@@ -46,6 +46,13 @@ output "monitoring_targets" {
         tg_arn_suffix = aws_lb_target_group.brainstore_writer[0].arn_suffix
       }
     } : {},
+    local.has_automation_writer_nodes ? {
+      automation-writer = {
+        asg_name      = aws_autoscaling_group.brainstore_automation_writer[0].name
+        lb_arn_suffix = aws_lb.brainstore_automation_writer[0].arn_suffix
+        tg_arn_suffix = aws_lb_target_group.brainstore_automation_writer[0].arn_suffix
+      }
+    } : {},
     local.has_fast_reader_nodes ? {
       fast-reader = {
         asg_name      = aws_autoscaling_group.brainstore_fast_reader[0].name
