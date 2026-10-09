@@ -1606,7 +1606,7 @@ variable "brainstore_automation_writer_instance_type" {
 
 variable "enable_brainstore_automation_writer_queries" {
   type        = bool
-  description = "Route async-scoring and topics queries to the automation writer pool. Enable in a separate apply after its NLB targets are healthy and the API release supports the automation_writer query pool."
+  description = "Route automation queries to the automation writer pool. Enable in a separate apply after its NLB targets are healthy and a compatible API release is deployed."
   default     = false
 
   validation {

@@ -29,7 +29,7 @@ This ordering applies only to the module-managed reader and fast-reader Brainsto
 
 ## How to use this module
 
-Dedicated automation writers get an internal NLB when `brainstore_automation_writer_instance_count > 0`. To route async-scoring and topics queries there, first apply with `enable_brainstore_automation_writer_queries = false` (the default), wait for healthy NLB targets, then enable it in a separate apply using an API release that supports the `automation_writer` query pool. Turning routing off retains the pool and NLB; automation queries fall back to the normal writer URL.
+Dedicated automation writers get an internal NLB when `brainstore_automation_writer_instance_count > 0`. To route automation queries there, first apply with `enable_brainstore_automation_writer_queries = false` (the default), wait for healthy NLB targets, then enable it in a separate apply using a compatible API release. Turning routing off retains the pool and NLB; automation queries fall back to the normal writer URL.
 
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
 
