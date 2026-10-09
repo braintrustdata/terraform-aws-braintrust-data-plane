@@ -71,7 +71,7 @@ resource "aws_ecs_service" "braintrust_api_background" {
 
   # Path rules associate this target group with the ALB, which ECS requires
   # before CreateService will attach the service.
-  # Require migrate to finish before new tasks start (same contract as API Handler).
+  # Require migrate to finish before new API ECS tasks start (same contract as API Handler).
   depends_on = [
     terraform_data.brainstore_deployment,
     terraform_data.database_migration,

@@ -1,8 +1,9 @@
 # Plan-mode smoke test for the v6 ECS API traffic cutover (enable_ecs_api = true).
 #
 # Primary signal: plan succeeds with Lambdas and ECS API both present for rollback.
-# Also locks the migrate → API ECS edge: services.database_migration_id is passed
-# into api_ecs (not a module-level depends_on) so new tasks wait for schema.
+# Also locks the migrate → API ECS services edge: services.database_migration_id
+# is passed into api_ecs (not a module-level depends_on) so the API ECS services
+# wait for schema.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"

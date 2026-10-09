@@ -45,7 +45,7 @@ output "migrate_database_arn" {
 }
 
 output "database_migration_id" {
-  description = "Completion token for the database migration invocation. API ECS services depend on this so new tasks do not start before migrate finishes."
+  description = "Completion token for the database migration invocation. The API ECS services depend on this so new API ECS tasks do not start before migrate finishes."
   value       = aws_lambda_invocation.invoke_database_migration.id
 }
 
