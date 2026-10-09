@@ -644,6 +644,7 @@ module "api_ecs" {
   count  = local.create_ecs_api ? 1 : 0
 
   brainstore_deployment_id = module.brainstore_deployment[0].completion_id
+  database_migration_id    = module.services[0].database_migration_id
 
   deployment_name      = var.deployment_name
   api_version_override = local.api_version_tag
