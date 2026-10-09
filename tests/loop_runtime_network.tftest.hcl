@@ -100,3 +100,26 @@ run "rejects_empty_existing_sandbox_subnet_3_id" {
   }
   expect_failures = [var.loop_runtime_sandbox_existing_private_subnet_3_id]
 }
+
+run "loop_runtime_version_override_pins_image" {
+  command = plan
+  variables {
+    loop_runtime_version_override = "v1.2.3"
+  }
+  override_data {
+    target = module.loop_runtime_sandbox_aws_microvm[0].data.http.microvm_artifact_version
+    values = { status_code = 200, response_body = "microvm/loop-runtime/versions/v1.2.3.zip" }
+  }
+  assert {
+    condition     = local.loop_runtime_version == "v1.2.3"
+    error_message = "loop_runtime_version_override must pin the Loop runtime version."
+  }
+}
+
+run "accepts_custom_scaling_targets" {
+  command = plan
+  variables {
+    loop_runtime_target_cpu_utilization    = 65
+    loop_runtime_target_memory_utilization = 75
+  }
+}
