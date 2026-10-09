@@ -759,7 +759,7 @@ variable "enable_loop_runtime" {
 
 variable "loop_runtime_version_override" {
   type        = string
-  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  description = "Override the Loop runtime and MicroVM guest version. Restricted sandbox egress requires Loop runtime 2.16.0 or later. Null uses the module's default version."
   default     = null
 }
 
@@ -889,13 +889,19 @@ variable "loop_runtime_sandbox_egress_mode" {
 
 variable "loop_runtime_sandbox_existing_vpc_id" {
   type        = string
-  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and DNS restrictions."
+  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and, unless loop_runtime_sandbox_manage_existing_vpc_dns_firewall is true, DNS restrictions."
   default     = null
 
   validation {
     condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
     error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
   }
+}
+
+variable "loop_runtime_sandbox_manage_existing_vpc_dns_firewall" {
+  type        = bool
+  description = "Manage DNS Firewall in the supplied dedicated sandbox VPC: allow the module-created egress gateway endpoint hostname and block all other names. Defaults to false to preserve caller-managed DNS. The module always manages DNS Firewall in its own sandbox VPC."
+  default     = false
 }
 
 variable "loop_runtime_sandbox_existing_private_subnet_1_id" {

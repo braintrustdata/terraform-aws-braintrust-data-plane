@@ -565,6 +565,7 @@ module "loop_runtime_sandbox_aws_microvm" {
   existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
   existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id
   existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
+  manage_existing_vpc_dns_firewall      = var.loop_runtime_sandbox_manage_existing_vpc_dns_firewall
   egress_gateway_deregistration_delay   = var.loop_runtime_alb_deregistration_delay
 
   kms_key_arn = local.kms_key_arn

@@ -22,6 +22,7 @@ locals {
   ingress_connector_arns        = length(var.ingress_network_connector_arns) > 0 ? var.ingress_network_connector_arns : [local.managed_ingress_connector_arn]
 
   create_restricted_egress_vpc = var.existing_vpc_id == null
+  create_dns_firewall          = local.create_restricted_egress_vpc || var.manage_existing_vpc_dns_firewall
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
   restricted_egress_vpc_cidr   = var.existing_vpc_id != null ? data.aws_vpc.restricted_egress_existing[0].cidr_block : aws_vpc.restricted_egress[0].cidr_block
   existing_private_subnet_ids = [
@@ -30,13 +31,14 @@ locals {
     var.existing_private_subnet_3_id,
   ]
   restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
-  sandbox_subnet_azs           = var.existing_vpc_id != null ? data.aws_subnet.restricted_egress_existing[*].availability_zone : aws_subnet.restricted_egress[*].availability_zone
+  sandbox_gateway_subnet_ids   = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.egress_gateway[*].id
+  sandbox_subnet_azs           = var.existing_vpc_id != null ? data.aws_subnet.restricted_egress_existing[*].availability_zone : aws_subnet.egress_gateway[*].availability_zone
   egress_gateway_nlb_azs       = data.aws_subnet.egress_gateway_nlb[*].availability_zone
   main_endpoint_subnet_ids = [
     for az in distinct(local.egress_gateway_nlb_azs) : var.endpoint_subnet_ids[index(local.egress_gateway_nlb_azs, az)]
   ]
   sandbox_endpoint_subnet_ids = [
-    for az in distinct(local.sandbox_subnet_azs) : local.restricted_egress_subnet_ids[index(local.sandbox_subnet_azs, az)]
+    for az in distinct(local.sandbox_subnet_azs) : local.sandbox_gateway_subnet_ids[index(local.sandbox_subnet_azs, az)]
     if contains(local.egress_gateway_nlb_azs, az)
   ]
   egress_connector_arns = [
@@ -169,6 +171,11 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
   }
 }
 
+data "aws_availability_zones" "available" {
+  count = local.create_restricted_egress_vpc ? 1 : 0
+  state = "available"
+}
+
 resource "aws_vpc" "restricted_egress" {
   count = local.create_restricted_egress_vpc ? 1 : 0
 
@@ -194,7 +201,8 @@ resource "aws_route_table" "restricted_egress" {
 resource "aws_subnet" "restricted_egress" {
   count = local.create_restricted_egress_vpc ? 3 : 0
 
-  availability_zone       = element(local.egress_gateway_nlb_azs, count.index)
+  # Preserve the released connector subnets; replacing them is blocked by its ENIs.
+  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
   cidr_block              = "10.255.${count.index + 1}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
@@ -211,8 +219,28 @@ resource "aws_route_table_association" "restricted_egress" {
   subnet_id      = aws_subnet.restricted_egress[count.index].id
 }
 
+resource "aws_subnet" "egress_gateway" {
+  count = local.create_restricted_egress_vpc ? 3 : 0
+
+  availability_zone       = element(local.egress_gateway_nlb_azs, count.index)
+  cidr_block              = "10.255.${count.index + 4}.0/24"
+  map_public_ip_on_launch = false
+  vpc_id                  = aws_vpc.restricted_egress[0].id
+
+  tags = merge({
+    Name = "${var.deployment_name}-loop-runtime-egress-gateway-subnet-${count.index + 1}"
+  }, local.common_tags)
+}
+
+resource "aws_route_table_association" "egress_gateway" {
+  count = local.create_restricted_egress_vpc ? 3 : 0
+
+  route_table_id = aws_route_table.restricted_egress[0].id
+  subnet_id      = aws_subnet.egress_gateway[count.index].id
+}
+
 resource "aws_route53_resolver_firewall_domain_list" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  count = local.create_dns_firewall ? 1 : 0
 
   domains = ["*."]
   name    = "bt-loop-${var.deployment_name}-dns-domains"
@@ -220,14 +248,14 @@ resource "aws_route53_resolver_firewall_domain_list" "restricted_egress" {
 }
 
 resource "aws_route53_resolver_firewall_rule_group" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  count = local.create_dns_firewall ? 1 : 0
 
   name = "bt-loop-${var.deployment_name}-dns-rules"
   tags = local.common_tags
 }
 
 resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  count = local.create_dns_firewall ? 1 : 0
 
   action                  = "BLOCK"
   block_response          = "NXDOMAIN"
@@ -239,7 +267,7 @@ resource "aws_route53_resolver_firewall_rule" "restricted_egress" {
 
 # AWS stores firewall domains with trailing dots; match that to avoid plan drift.
 resource "aws_route53_resolver_firewall_domain_list" "egress_gateway" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  count = local.create_dns_firewall ? 1 : 0
 
   domains = ["${local.egress_gateway_dns_name}."]
   name    = "bt-loop-${var.deployment_name}-egress-gateway-dns"
@@ -247,7 +275,7 @@ resource "aws_route53_resolver_firewall_domain_list" "egress_gateway" {
 }
 
 resource "aws_route53_resolver_firewall_rule" "egress_gateway_allow" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  count = local.create_dns_firewall ? 1 : 0
 
   action                  = "ALLOW"
   firewall_domain_list_id = aws_route53_resolver_firewall_domain_list.egress_gateway[0].id
@@ -257,7 +285,7 @@ resource "aws_route53_resolver_firewall_rule" "egress_gateway_allow" {
 }
 
 resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  count = local.create_dns_firewall ? 1 : 0
 
   depends_on = [
     aws_route53_resolver_firewall_rule.egress_gateway_allow,
@@ -267,7 +295,7 @@ resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egre
   firewall_rule_group_id = aws_route53_resolver_firewall_rule_group.restricted_egress[0].id
   name                   = "bt-loop-${var.deployment_name}-dns-assoc"
   priority               = 101
-  vpc_id                 = aws_vpc.restricted_egress[0].id
+  vpc_id                 = local.restricted_egress_vpc_id
   tags                   = local.common_tags
 }
 
@@ -664,6 +692,8 @@ resource "aws_vpc_security_group_egress_rule" "sandbox_to_egress_gateway" {
   tags                         = local.common_tags
 }
 
+# Explicit resolver allowances; DNS Firewall controls permitted domains.
+# Ordinary VPC security groups cannot filter AmazonProvidedDNS traffic.
 resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_link_local" {
   for_each = toset(["tcp", "udp"])
 

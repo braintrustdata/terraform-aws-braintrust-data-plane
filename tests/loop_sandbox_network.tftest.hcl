@@ -74,6 +74,18 @@ override_data {
   values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1c" }
 }
 
+# Seed the subnet addresses, AZs, and CIDRs used by v6.8.1 before planning the
+# gateway with main VPC zones that differ from those original connector zones.
+run "legacy_connector_subnet_state" {
+  command = apply
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  plan_options {
+    target = [aws_subnet.restricted_egress, aws_route_table_association.restricted_egress]
+  }
+}
+
 run "managed_isolation_by_default" {
   command = plan
   module {
@@ -108,16 +120,49 @@ run "managed_isolation_by_default" {
     error_message = "Only the runtime security group must receive HTTPS access to the endpoint."
   }
   assert {
-    condition     = length(aws_vpc.restricted_egress) == 1 && length(aws_subnet.restricted_egress) == 3
-    error_message = "Restricted mode must create a dedicated VPC and three subnets by default."
+    condition     = length(aws_vpc.restricted_egress) == 1 && length(aws_subnet.restricted_egress) == 3 && length(aws_subnet.egress_gateway) == 3
+    error_message = "The managed VPC must have three connector subnets and three endpoint subnets."
   }
   assert {
-    condition     = aws_subnet.restricted_egress[*].availability_zone == ["us-east-1d", "us-east-1e", "us-east-1d"]
-    error_message = "Managed sandbox subnets must use the main VPC's endpoint zones."
+    condition     = aws_subnet.restricted_egress[*].availability_zone == ["us-east-1a", "us-east-1b", "us-east-1c"] && aws_subnet.restricted_egress[*].cidr_block == ["10.255.1.0/24", "10.255.2.0/24", "10.255.3.0/24"]
+    error_message = "Connector subnets must preserve their released availability zones and CIDRs."
+  }
+  assert {
+    condition     = aws_subnet.egress_gateway[*].availability_zone == ["us-east-1d", "us-east-1e", "us-east-1d"] && aws_subnet.egress_gateway[*].cidr_block == ["10.255.4.0/24", "10.255.5.0/24", "10.255.6.0/24"]
+    error_message = "Separate endpoint subnets must match the NLB zones without overlapping connector CIDRs."
+  }
+  assert {
+    condition     = aws_cloudformation_stack.restricted_egress_connector.parameters.SubnetIds == join(",", aws_subnet.restricted_egress[*].id)
+    error_message = "The upgrade plan must retain the existing connector subnet IDs."
   }
   assert {
     condition     = length(aws_route53_resolver_firewall_rule_group_association.restricted_egress) == 1 && aws_route53_resolver_firewall_rule.restricted_egress[0].action == "BLOCK" && aws_route53_resolver_firewall_domain_list.restricted_egress[0].domains == toset(["*."])
     error_message = "The managed VPC must retain its DNS block."
+  }
+}
+
+run "existing_vpc_with_module_dns_firewall" {
+  command = apply
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    existing_vpc_id                  = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id     = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id     = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id     = "subnet-0123456789abcdef2"
+    manage_existing_vpc_dns_firewall = true
+  }
+  assert {
+    condition = (
+      aws_route53_resolver_firewall_rule_group_association.restricted_egress[0].vpc_id == var.existing_vpc_id
+      && aws_route53_resolver_firewall_domain_list.egress_gateway[0].domains == toset(["${output.egress_gateway_dns_name}."])
+      && aws_route53_resolver_firewall_domain_list.restricted_egress[0].domains == toset(["*."])
+      && aws_route53_resolver_firewall_rule.egress_gateway_allow[0].action == "ALLOW"
+      && aws_route53_resolver_firewall_rule.restricted_egress[0].action == "BLOCK"
+      && aws_route53_resolver_firewall_rule.egress_gateway_allow[0].priority < aws_route53_resolver_firewall_rule.restricted_egress[0].priority
+    )
+    error_message = "Opting in must associate DNS Firewall with the supplied VPC and allow the created endpoint before blocking other names."
   }
 }
 
@@ -133,12 +178,12 @@ run "existing_vpc_keeps_customer_network" {
     existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
   assert {
-    condition     = length(aws_vpc.restricted_egress) == 0 && length(aws_subnet.restricted_egress) == 0 && length(aws_route_table.restricted_egress) == 0 && length(aws_route_table_association.restricted_egress) == 0
+    condition     = length(aws_vpc.restricted_egress) == 0 && length(aws_subnet.restricted_egress) == 0 && length(aws_subnet.egress_gateway) == 0 && length(aws_route_table.restricted_egress) == 0 && length(aws_route_table_association.restricted_egress) == 0 && length(aws_route_table_association.egress_gateway) == 0
     error_message = "The existing-VPC option must not create a VPC, subnets, or routes."
   }
   assert {
     condition     = length(aws_route53_resolver_firewall_rule_group_association.restricted_egress) == 0 && length(aws_route53_resolver_firewall_rule.restricted_egress) == 0 && length(aws_route53_resolver_firewall_rule.egress_gateway_allow) == 0
-    error_message = "The module must not change DNS policy in a supplied VPC."
+    error_message = "Turning DNS management off must leave DNS policy under the caller's control."
   }
   assert {
     condition     = aws_security_group.restricted_egress.vpc_id == "vpc-0123456789abcdef0"
@@ -322,11 +367,19 @@ run "egress_gateway_in_managed_vpc" {
       aws_vpc_endpoint.egress_gateway.vpc_endpoint_type == "Interface"
       && aws_vpc_endpoint.egress_gateway.service_name == aws_vpc_endpoint_service.egress_gateway.service_name
       && aws_vpc_endpoint.egress_gateway.vpc_id == aws_vpc.restricted_egress[0].id
-      && toset(aws_vpc_endpoint.egress_gateway.subnet_ids) == toset(aws_subnet.restricted_egress[*].id)
+      && toset(aws_vpc_endpoint.egress_gateway.subnet_ids) == toset(aws_subnet.egress_gateway[*].id)
       && aws_vpc_endpoint.egress_gateway.security_group_ids == toset([aws_security_group.egress_gateway_endpoint.id])
       && !aws_vpc_endpoint.egress_gateway.private_dns_enabled
     )
     error_message = "The sandbox VPC must reach the gateway through an interface endpoint in its own subnets."
+  }
+
+  assert {
+    condition = (
+      aws_cloudformation_stack.restricted_egress_connector.parameters.SubnetIds == join(",", aws_subnet.restricted_egress[*].id)
+      && alltrue([for association in aws_route_table_association.egress_gateway : association.route_table_id == aws_route_table.restricted_egress[0].id])
+    )
+    error_message = "The connector must keep its original subnets while the endpoint subnets use the isolated route table."
   }
 
   assert {

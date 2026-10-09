@@ -96,6 +96,10 @@ Loop runtime is optional. Enable it with this input:
 enable_loop_runtime = true
 ```
 
+Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serves the proxy on port 4002.
+The module selects the runtime image and matching MicroVM guest artifact by default.
+Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
+
 When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
 Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
 
@@ -125,23 +129,32 @@ The module creates a dedicated sandbox VPC with no outbound route.
 Sandboxes can reach only the Loop egress gateway endpoint on port 4002, and its name is the only one they can resolve.
 The endpoint connects over PrivateLink to the Loop runtime proxy, which authorizes each request.
 `loop_runtime_sandbox_egress_mode` is deprecated and only accepts `"restricted"`.
+The original three connector subnets keep their availability zones and CIDRs during upgrades; three additional subnets place the endpoint in the main VPC's availability zones.
+The security group declares TCP/UDP port 53 egress to `169.254.169.253` and the VPC's primary IPv4 CIDR address plus two.
+[AmazonProvidedDNS traffic is not filtered by ordinary VPC security groups](https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html); the managed DNS firewall restricts permitted names.
 
 You can supply a dedicated sandbox VPC with these inputs:
 
 ```hcl
-loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
-loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
-loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
-loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+loop_runtime_sandbox_existing_vpc_id                  = "vpc-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_1_id     = "subnet-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_2_id     = "subnet-0123456789abcdef1"
+loop_runtime_sandbox_existing_private_subnet_3_id     = "subnet-0123456789abcdef2"
+loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true
 ```
 
 The module verifies that each subnet belongs to the supplied VPC.
 It creates the sandbox security group and the egress gateway endpoint there.
 At least one supplied subnet must share an availability zone with the main VPC's private subnets.
-The caller controls routes and DNS, and sandboxes must be able to resolve `loop_runtime_sandbox_egress_gateway_dns_name`.
+The caller controls routes.
+With `loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true`, the module associates its DNS Firewall with the supplied VPC, allowing `loop_runtime_sandbox_egress_gateway_dns_name` and blocking all other names.
+Terraform configures the allowlist from the new endpoint's hostname in the same apply; no follow-up DNS update is required.
+Use a dedicated sandbox VPC because these DNS restrictions apply to the entire VPC.
+The flag defaults to `false`, leaving DNS policy under the caller's control.
+The same port 53 resolver rules are declared in either case; DNS Firewall enforces the name restrictions.
 
 Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
-Configure equivalent DNS restrictions before you enable Loop with a supplied VPC.
+When DNS Firewall management is disabled, configure equivalent DNS restrictions and allow `loop_runtime_sandbox_egress_gateway_dns_name` before using the sandboxes.
 
 ## Useful scripts
 
