@@ -811,12 +811,6 @@ variable "loop_runtime_target_conversation_utilization" {
   default     = 50
 }
 
-variable "loop_runtime_drain_timeout_seconds" {
-  type        = number
-  description = "Maximum seconds active Loop runtime turns can finish during task shutdown. Must be between 1 and 105."
-  default     = 90
-}
-
 variable "loop_runtime_log_retention_days" {
   type        = number
   description = "CloudWatch log retention days for Loop runtime container logs."

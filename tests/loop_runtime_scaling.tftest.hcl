@@ -86,11 +86,11 @@ run "scales_and_drains_runtime_by_default" {
       jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].stopTimeout == 120
       && local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "90"
     )
-    error_message = "The runtime must drain for 90 seconds by default within the container's 120-second stop timeout."
+    error_message = "The runtime must drain for 90 seconds within the container's 120-second stop timeout."
   }
 }
 
-run "custom_scaling_and_drain" {
+run "custom_scaling_keeps_fixed_drain" {
   command = plan
   module {
     source = "./modules/loop-runtime-ecs"
@@ -100,7 +100,6 @@ run "custom_scaling_and_drain" {
     target_cpu_utilization          = 65
     target_memory_utilization       = 75
     target_conversation_utilization = 70
-    drain_timeout_seconds           = 105
   }
 
   assert {
@@ -108,21 +107,10 @@ run "custom_scaling_and_drain" {
       aws_appautoscaling_policy.loop_runtime_cpu_target.target_tracking_scaling_policy_configuration[0].target_value == 65
       && aws_appautoscaling_policy.loop_runtime_memory_target.target_tracking_scaling_policy_configuration[0].target_value == 75
       && aws_appautoscaling_policy.loop_runtime_conversation_target.target_tracking_scaling_policy_configuration[0].target_value == 70
-      && local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "105"
+      && local.merged_env_vars["LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS"] == "90"
     )
-    error_message = "Pinned images must retain CPU and memory scaling alongside conversation scaling, using the supplied targets and drain timeout."
+    error_message = "Pinned images must retain CPU and memory scaling alongside conversation scaling, using the supplied targets and a fixed 90-second drain timeout."
   }
-}
-
-run "rejects_drain_timeout_past_stop_timeout" {
-  command = plan
-  module {
-    source = "./modules/loop-runtime-ecs"
-  }
-  variables {
-    drain_timeout_seconds = 106
-  }
-  expect_failures = [var.drain_timeout_seconds]
 }
 
 run "rejects_capacity_metric_override" {

@@ -46,7 +46,7 @@ locals {
       LOOP_RUNTIME_HOST                  = "0.0.0.0"
       LOOP_RUNTIME_PORT                  = tostring(local.container_port)
       LOOP_RUNTIME_LIFECYCLE_LOG         = var.loop_runtime_lifecycle_log
-      LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS = tostring(var.drain_timeout_seconds)
+      LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS = "90"
       LOOP_RUNTIME_REDIS_NAMESPACE       = "loop-runtime:${var.deployment_name}"
 
       LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE    = local.capacity_metric_namespace

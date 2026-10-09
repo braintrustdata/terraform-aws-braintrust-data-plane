@@ -128,17 +128,6 @@ variable "target_conversation_utilization" {
   }
 }
 
-variable "drain_timeout_seconds" {
-  type        = number
-  description = "Maximum seconds active Loop runtime turns can finish after the task receives SIGTERM. The container stop timeout is 120 seconds."
-  default     = 90
-
-  validation {
-    condition     = var.drain_timeout_seconds >= 1 && var.drain_timeout_seconds <= 105
-    error_message = "drain_timeout_seconds must be between 1 and 105."
-  }
-}
-
 variable "log_retention_days" {
   type        = number
   description = "CloudWatch log retention days for Loop runtime container logs."
@@ -338,7 +327,7 @@ variable "extra_env_vars" {
         "LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS",
       ] : !contains(keys(var.extra_env_vars), key)
     ])
-    error_message = "Do not set LOOP_RUNTIME_CAPACITY_METRIC_* or LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS in extra_env_vars; use the dedicated inputs."
+    error_message = "Do not set LOOP_RUNTIME_CAPACITY_METRIC_* or LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS in extra_env_vars; these values are managed by the module."
   }
 }
 
