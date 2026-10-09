@@ -94,6 +94,7 @@ module "braintrust-data-plane" {
   # Disable fast reader and automation writer pools to reduce costs in sandbox.
   brainstore_fast_reader_instance_count       = 0
   brainstore_automation_writer_instance_count = 0
+  enable_brainstore_automation_writer_queries = false
 
   ### WARNING: skip_pg_for_brainstore_objects is safe for fresh sandbox deployments
   ### but can cause data loss or downtime if applied incorrectly to existing

@@ -3,6 +3,25 @@
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
+
+  mock_resource "aws_lb" {
+    defaults = {
+      arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/bt-automation/1234567890123456"
+    }
+  }
+  mock_resource "aws_lb_target_group" {
+    defaults = {
+      arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/bt-automation/1234567890123456"
+    }
+  }
+  mock_resource "aws_iam_instance_profile" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:instance-profile/bt-automation"
+    }
+  }
+  mock_resource "aws_launch_template" {
+    defaults = { id = "lt-0123456789abcdef0" }
+  }
 }
 
 variables {
@@ -44,7 +63,12 @@ run "disabled_automation_writer_skips_instance_metadata" {
       length(data.aws_ec2_instance_type.brainstore_automation_writer) == 0 &&
       local.brainstore_automation_writer_cache_file_size == null &&
       length(aws_launch_template.brainstore_automation_writer) == 0 &&
-      length(aws_autoscaling_group.brainstore_automation_writer) == 0
+      length(aws_autoscaling_group.brainstore_automation_writer) == 0 &&
+      length(aws_lb.brainstore_automation_writer) == 0 &&
+      length(aws_lb_target_group.brainstore_automation_writer) == 0 &&
+      length(aws_lb_listener.brainstore_automation_writer) == 0 &&
+      output.automation_writer_dns_name == null &&
+      !contains(keys(output.monitoring_targets), "automation-writer")
     )
     error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
   }
@@ -68,7 +92,7 @@ run "automation_writer_loop_config_is_rendered" {
       aws_autoscaling_group.brainstore_automation_writer[0].max_size == 1 &&
       aws_autoscaling_group.brainstore_automation_writer[0].health_check_type == "EBS"
     )
-    error_message = "AutomationWriter should be a fixed-size ASG with no load-balancer target group"
+    error_message = "AutomationWriter should retain its fixed-size ASG and EBS health checks."
   }
 
   assert {
@@ -94,6 +118,34 @@ run "automation_writer_loop_config_is_rendered" {
       local.brainstore_fast_reader_cache_file_size == "855gb"
     )
     error_message = "Both reader pools must receive a cache size of 90% of their local storage."
+  }
+}
+
+run "automation_writer_nlb_routes_to_its_asg" {
+  command = apply
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  assert {
+    condition = (
+      aws_lb.brainstore_automation_writer[0].internal &&
+      aws_lb.brainstore_automation_writer[0].subnets == toset(var.private_subnet_ids) &&
+      aws_lb.brainstore_automation_writer[0].security_groups == toset([aws_security_group.brainstore_elb.id]) &&
+      aws_lb_listener.brainstore_automation_writer[0].load_balancer_arn == aws_lb.brainstore_automation_writer[0].arn &&
+      aws_lb_listener.brainstore_automation_writer[0].default_action[0].target_group_arn == aws_lb_target_group.brainstore_automation_writer[0].arn &&
+      aws_autoscaling_group.brainstore_automation_writer[0].target_group_arns == toset([aws_lb_target_group.brainstore_automation_writer[0].arn]) &&
+      aws_lb_target_group.brainstore_automation_writer[0].health_check[0].protocol == "HTTP" &&
+      aws_lb_target_group.brainstore_automation_writer[0].health_check[0].path == "/" &&
+      output.automation_writer_dns_name == aws_lb.brainstore_automation_writer[0].dns_name &&
+      output.monitoring_targets["automation-writer"] == {
+        asg_name      = aws_autoscaling_group.brainstore_automation_writer[0].name
+        lb_arn_suffix = aws_lb.brainstore_automation_writer[0].arn_suffix
+        tg_arn_suffix = aws_lb_target_group.brainstore_automation_writer[0].arn_suffix
+      }
+    )
+    error_message = "Automation queries must reach the dedicated ASG through its private NLB and listener."
   }
 }
 

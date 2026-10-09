@@ -482,6 +482,12 @@ variable "brainstore_fast_reader_hostname" {
   default     = null
 }
 
+variable "brainstore_automation_writer_hostname" {
+  type        = string
+  description = "Optional Brainstore automation writer hostname when query routing is enabled."
+  default     = null
+}
+
 variable "brainstore_s3_bucket_name" {
   type        = string
   description = "Brainstore realtime WAL S3 bucket name."

@@ -43,6 +43,9 @@ module "braintrust-data-plane" {
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
+  # Automation writer query routing is managed by the external EKS deployment.
+  enable_brainstore_automation_writer_queries = false
+
   # Loop runtime is not supported with external EKS deployments.
   enable_loop_runtime              = false
   loop_runtime_sandbox_egress_mode = "restricted"
