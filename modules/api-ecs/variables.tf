@@ -732,3 +732,9 @@ variable "brainstore_deployment_id" {
   type        = string
   default     = null
 }
+
+variable "database_migration_id" {
+  description = "Dependency on the completed database migration invocation."
+  type        = string
+  default     = null
+}
