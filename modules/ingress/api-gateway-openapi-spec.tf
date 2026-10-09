@@ -121,6 +121,18 @@ locals {
           ]
         })
       }
+      "/brainstore/backfill/status/object/{object_id}/metric-columnstore-artifacts" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "object_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/brainstore/backfill/status/project/{project_id}" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
@@ -152,6 +164,12 @@ locals {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/brainstore/automation/upsert-object-cursor" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/diagnostics" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/automation/schedule-retry" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/brainstore/object-data-exists" = {
@@ -222,6 +240,45 @@ locals {
       }
       "/btql" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/btql/async" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/btql/async/{automation_id}" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "automation_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/btql/async/{automation_id}/result" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "automation_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/btql/async/{automation_id}/cancel" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "automation_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
       }
       "/crud/base_experiments" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
@@ -716,6 +773,39 @@ locals {
           ]
         })
       }
+      "/automation/cron/{id}/migrate" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/automation/cron/migrate" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/automation/loop/retry" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/automation/scoring" = {
+        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/automation/scoring/{automation_id}" = {
+        for method in ["options", "patch"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "automation_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/billing/status" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
@@ -748,6 +838,39 @@ locals {
       }
       "/brainstore/time_based_retention" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/pools" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/pools/{action}" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "action"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/brainstore/routes" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_text_method
+      }
+      "/brainstore/routes/{action}" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "action"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/brainstore/segment-flags" = {
+        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
       }
       "/.well-known/{resource}" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
@@ -831,6 +954,78 @@ locals {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
       "/mcp-client/oauth-register" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/mcp-client/project" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/integrations/{integration}/execute" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "integration"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/integrations/{integration}/deliver" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "integration"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/simulations" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/simulations/{id}" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/simulations/{id}/events" = {
+        for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/simulations/{id}/cancel" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_text_method, {
+          parameters = [
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/topic-map-btmap-url" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
+      "/protected-field-policy/refresh" = {
         for method in ["options", "post"] : method => local.snippet_api_json_text_method
       }
     }
