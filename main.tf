@@ -806,6 +806,8 @@ module "services_common" {
   lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
   attachment_s3_bucket_arn                  = local.attachment_s3_bucket_arn
   attachment_s3_bucket_kms_key_arn          = local.attachment_s3_bucket_kms_key_arn
+  external_attachment_s3_bucket_arns        = var.external_attachment_s3_bucket_arns
+  external_attachment_kms_key_arns          = var.external_attachment_kms_key_arns
   service_additional_policy_arns            = var.service_additional_policy_arns
   brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
   brainstore_enable_export                  = var.brainstore_enable_export

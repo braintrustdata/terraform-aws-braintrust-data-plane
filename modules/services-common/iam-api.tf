@@ -116,6 +116,42 @@ resource "aws_iam_role_policy" "api_handler_cloudwatch_metrics" {
   })
 }
 
+# Read-only access to caller-owned buckets that traces link to as external
+# attachments, so the attachment endpoint can sign downloads. Object reads only:
+# without list access the role can open just the keys a trace names.
+resource "aws_iam_role_policy" "api_handler_external_attachment_read" {
+  count = length(var.external_attachment_s3_bucket_arns) > 0 ? 1 : 0
+  name  = "ExternalAttachmentRead"
+  role  = aws_iam_role.api_handler_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat(
+      [
+        {
+          Sid      = "ExternalAttachmentObjectRead"
+          Effect   = "Allow"
+          Action   = ["s3:GetObject"]
+          Resource = [for arn in var.external_attachment_s3_bucket_arns : "${arn}/*"]
+        }
+      ],
+      length(var.external_attachment_kms_key_arns) > 0 ? [
+        {
+          Sid      = "ExternalAttachmentKMSDecrypt"
+          Effect   = "Allow"
+          Action   = ["kms:Decrypt"]
+          Resource = var.external_attachment_kms_key_arns
+          Condition = {
+            StringLike = {
+              "kms:ViaService" = "s3.*.amazonaws.com"
+            }
+          }
+        }
+      ] : []
+    )
+  })
+}
+
 resource "aws_iam_policy" "api_handler_policy" {
   name = "${var.deployment_name}-APIHandlerRolePolicy"
   policy = jsonencode({ # nosemgrep

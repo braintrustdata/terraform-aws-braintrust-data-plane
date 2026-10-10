@@ -200,6 +200,12 @@ module "braintrust-data-plane" {
   #   "arn:aws:iam::*:role/braintrust-export-*",
   # ]
 
+  # Opt-in: let the API role read caller-owned buckets that traces link to as external
+  # attachments (s3:GetObject only, plus kms:Decrypt through S3 for SSE-KMS buckets).
+  # Buckets and keys in another account must also grant the API role in their policies.
+  # external_attachment_s3_bucket_arns = ["arn:aws:s3:::your-attachment-bucket"]
+  # external_attachment_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
+
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # Only applies when create_ai_gateway is true.
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
