@@ -55,6 +55,51 @@
       "Resource": "*"
     },
     {
+      "Sid": "AllowCloudWatchCrossAccountLinks",
+      "Effect": "Allow",
+      "Action": [
+        "oam:DeleteLink",
+        "oam:ListTagsForResource",
+        "oam:TagResource",
+        "oam:UntagResource"
+      ],
+      "Resource": "arn:aws:oam:*:*:link/*"
+    },
+    {
+      "Sid": "AllowCloudWatchCrossAccountMetricLinkUpdates",
+      "Effect": "Allow",
+      "Action": "oam:UpdateLink",
+      "Resource": "arn:aws:oam:*:*:link/*",
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "oam:ResourceTypes": "AWS::CloudWatch::Metric"
+        }
+      }
+    },
+    {
+      "Sid": "AllowCloudWatchCrossAccountMetricLinksToBraintrustSinks",
+      "Effect": "Allow",
+      "Action": "oam:CreateLink",
+      "Resource": "arn:aws:oam:*:*:sink/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceAccount": "611723957092"
+        },
+        "ForAllValues:StringEquals": {
+          "oam:ResourceTypes": "AWS::CloudWatch::Metric"
+        }
+      }
+    },
+    {
+      "Sid": "AllowCloudWatchCrossAccountLinkReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "oam:GetLink",
+        "oam:ListLinks"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "DenyEc2DataExfiltrationPaths",
       "Effect": "Deny",
       "Action": [
