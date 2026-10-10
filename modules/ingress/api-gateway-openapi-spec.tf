@@ -217,6 +217,9 @@ locals {
       "/brainstore/locks-delete" = {
         for method in ["post", "options"] : method => local.snippet_api_json_text_method
       }
+      "/brainstore/segment-flags" = {
+        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/broadcast-key" = {
         for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
       }
