@@ -28,30 +28,23 @@ run "automation_writer_plans" {
   }
 }
 
-run "automation_writer_queries_plans" {
+run "automation_writer_with_ecs_cutover_plans" {
   command = plan
 
   variables {
-    enable_brainstore_automation_writer_queries = true
+    enable_ecs_api = true
   }
 }
 
-run "automation_writer_queries_with_ecs_cutover_plans" {
+run "disabled_automation_writer_plans" {
   command = plan
 
   variables {
-    enable_brainstore_automation_writer_queries = true
-    enable_ecs_api                              = true
-  }
-}
-
-run "automation_writer_queries_require_a_pool" {
-  command = plan
-
-  variables {
-    enable_brainstore_automation_writer_queries = true
     brainstore_automation_writer_instance_count = 0
   }
 
-  expect_failures = [var.enable_brainstore_automation_writer_queries]
+  assert {
+    condition     = module.brainstore[0].automation_writer_dns_name == null
+    error_message = "A disabled automation writer pool must not expose a query endpoint."
+  }
 }
