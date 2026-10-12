@@ -67,6 +67,12 @@ data "aws_subnet" "private" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "cluster" {
+  name              = "/aws/eks/${local.cluster_name}/cluster"
+  retention_in_days = var.log_retention_days
+  tags              = local.common_tags
+}
+
 resource "aws_eks_cluster" "sandbox" {
   name     = local.cluster_name
   role_arn = aws_iam_role.cluster.arn
@@ -84,7 +90,7 @@ resource "aws_eks_cluster" "sandbox" {
   enabled_cluster_log_types = ["api", "audit", "authenticator"]
   tags                      = local.common_tags
 
-  depends_on = [aws_iam_role_policy_attachment.cluster]
+  depends_on = [aws_iam_role_policy_attachment.cluster, aws_cloudwatch_log_group.cluster]
 }
 
 resource "aws_route53_zone" "sandbox" {
@@ -109,6 +115,10 @@ resource "aws_launch_template" "system" {
   tag_specifications {
     resource_type = "network-interface"
     tags          = merge(local.common_tags, { "cluster.k8s.amazonaws.com/name" = local.cluster_name })
+  }
+  tag_specifications {
+    resource_type = "volume"
+    tags          = local.common_tags
   }
   tags = local.common_tags
 }
@@ -168,6 +178,10 @@ resource "aws_launch_template" "workers" {
   tag_specifications {
     resource_type = "network-interface"
     tags          = merge(local.common_tags, { "cluster.k8s.amazonaws.com/name" = local.cluster_name })
+  }
+  tag_specifications {
+    resource_type = "volume"
+    tags          = local.common_tags
   }
   tags = local.common_tags
 }

@@ -260,10 +260,11 @@ resource "aws_cloudformation_stack" "release" {
       Release = {
         Type = "Custom::SandboxServiceRelease"
         Properties = {
-          ServiceToken       = { Ref = "ReleaseFunctionArn" }
-          ServiceTimeout     = 360
-          ClusterName        = { Ref = "ClusterName" }
-          NodeGroupName      = { Ref = "Workers" }
+          ServiceToken   = { Ref = "ReleaseFunctionArn" }
+          ServiceTimeout = 360
+          ClusterName    = { Ref = "ClusterName" }
+          # Ref returns cluster/name; the installer needs only the group name.
+          NodeGroupName      = { "Fn::GetAtt" = ["Workers", "NodegroupName"] }
           ChartUrl           = { Ref = "ChartUrl" }
           HelmValues         = { Ref = "HelmValues" }
           ServerTlsSecretArn = { "Fn::GetAtt" = ["Tls", "ServerTlsSecretArn"] }
@@ -274,7 +275,7 @@ resource "aws_cloudformation_stack" "release" {
     }
     Outputs = {
       ClientTlsSecretArn = { Value = { "Fn::GetAtt" = ["Tls", "ClientTlsSecretArn"] } }
-      NodeGroupName      = { Value = { Ref = "Workers" } }
+      NodeGroupName      = { Value = { "Fn::GetAtt" = ["Workers", "NodegroupName"] } }
     }
   })
   tags = local.common_tags
