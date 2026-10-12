@@ -6,7 +6,7 @@ the service uses the root module's three numbered private subnet inputs.
 
 Terraform owns the private EKS cluster, system node group, launch templates,
 security groups, IAM roles, Pod Identity associations, private DNS zone, bootstrap
-Lambdas and three Secrets Manager secrets. Worker nodes use local NVMe storage and
+Lambdas, three Secrets Manager secrets and a private Secrets Manager endpoint. Worker nodes use local NVMe storage and
 nested virtualization. System nodes run DNS, the worker controller and autoscaler.
 
 The release stack owns the worker node group, TLS provisioning and Helm release.
@@ -14,6 +14,8 @@ It uses published bootstrap and chart artifacts pinned in `VERSIONS.json`.
 Installing the chart from a VPC-local Lambda supports a private EKS endpoint in
 the first apply without requiring Kubernetes access from the Terraform runner.
 Private keys are generated in Secrets Manager and never read into Terraform state.
+The installer uses an endpoint-specific Secrets Manager URL with access limited
+to its role and the two TLS bundles; existing VPC private DNS remains unchanged.
 
 The workers' inbound rules allow the controller and the named
 `authorized_security_groups` on TCP 9400. Node egress allows the private Kubernetes
@@ -25,9 +27,13 @@ is owned by the root module, where both security groups are available.
 
 Existing VPCs must provide DNS support, available subnet addresses and outbound
 connectivity to public image registries, AWS APIs and the artifact bucket.
+S3 endpoint policies must permit downloads from the regional `braintrust-cf-*`
+artifact bucket, and any existing private AWS API endpoints must permit the
+system nodes to reach the required APIs.
 The module does not change existing routes or VPC DNS settings.
 Choose a region and Availability Zones that offer the configured worker types.
-This adds an EKS cluster, one system instance and worker instances; it does not
+This adds an EKS cluster, one system instance, worker instances and a three-AZ
+Secrets Manager interface endpoint; it does not
 reuse the Lambda sandbox VPC.
 
 Hardware changes create a new worker pool while CloudFormation retains the old
