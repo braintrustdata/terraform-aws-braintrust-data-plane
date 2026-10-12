@@ -218,6 +218,16 @@ output "loop_runtime_sandbox_egress_gateway_dns_name" {
   description = "Loop sandbox egress gateway endpoint DNS name. A supplied sandbox VPC must let sandboxes resolve it."
 }
 
+output "sandbox_service_endpoint" {
+  value       = var.create_sandbox_service ? module.sandbox_service[0].endpoint : null
+  description = "Private mTLS Sandbox Service endpoint."
+}
+
+output "sandbox_service_cluster_name" {
+  value       = var.create_sandbox_service ? module.sandbox_service[0].cluster_name : null
+  description = "Sandbox Service EKS cluster name."
+}
+
 output "loop_runtime_microvm_image_arn" {
   value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
   description = "ARN of the Loop runtime sandbox MicroVM image"
