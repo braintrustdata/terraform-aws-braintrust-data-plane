@@ -108,6 +108,11 @@ run "managed_isolation_by_default" {
   }
 
   assert {
+    condition     = length(aws_vpc_security_group_ingress_rule.egress_gateway_nlb_from_authorized_security_groups) == 0
+    error_message = "Lambda-only deployments must not open direct NLB ingress in the main VPC."
+  }
+
+  assert {
     condition     = aws_vpc_endpoint.loop_runtime_microvm.private_dns_enabled && aws_vpc_endpoint.loop_runtime_microvm.service_name == "com.amazonaws.us-east-1.lambda-microvm" && aws_vpc_endpoint.loop_runtime_microvm.vpc_id == var.endpoint_vpc_id
     error_message = "The MicroVM endpoint must use private DNS in the main VPC."
   }
@@ -138,6 +143,26 @@ run "managed_isolation_by_default" {
   assert {
     condition     = length(aws_route53_resolver_firewall_rule_group_association.restricted_egress) == 1 && aws_route53_resolver_firewall_rule.restricted_egress[0].action == "BLOCK" && aws_route53_resolver_firewall_domain_list.restricted_egress[0].domains == toset(["*."])
     error_message = "The managed VPC must retain its DNS block."
+  }
+}
+
+run "service_workers_reach_only_the_egress_listener" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    egress_gateway_authorized_security_groups = { "Sandbox Service" = "sg-44444444444444444" }
+  }
+  assert {
+    condition = (
+      length(aws_vpc_security_group_ingress_rule.egress_gateway_nlb_from_authorized_security_groups) == 1 &&
+      aws_vpc_security_group_ingress_rule.egress_gateway_nlb_from_authorized_security_groups["Sandbox Service"].referenced_security_group_id == "sg-44444444444444444" &&
+      aws_vpc_security_group_ingress_rule.egress_gateway_nlb_from_authorized_security_groups["Sandbox Service"].from_port == 4002 &&
+      aws_vpc_security_group_ingress_rule.egress_gateway_nlb_from_authorized_security_groups["Sandbox Service"].to_port == 4002 &&
+      aws_vpc_security_group_ingress_rule.egress_gateway_nlb_from_authorized_security_groups["Sandbox Service"].ip_protocol == "tcp"
+    )
+    error_message = "Direct sandbox-worker access must be limited to the authorized SG on the NLB's TCP 4002 listener."
   }
 }
 

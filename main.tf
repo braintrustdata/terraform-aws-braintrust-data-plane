@@ -137,7 +137,11 @@ locals {
   loop_runtime_version = (
     var.loop_runtime_version_override != null
     ? var.loop_runtime_version_override
-    : jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
+    : (
+      var.create_sandbox_service
+      ? jsondecode(file("${path.module}/modules/sandbox-service/VERSIONS.json"))["loop-runtime"]
+      : jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"]
+    )
   )
 
   loop_runtime_brainstore_reader_url = local.create_loop_runtime ? format(
@@ -567,6 +571,9 @@ module "loop_runtime_sandbox_aws_microvm" {
   existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
   manage_existing_vpc_dns_firewall      = var.loop_runtime_sandbox_manage_existing_vpc_dns_firewall
   egress_gateway_deregistration_delay   = var.loop_runtime_alb_deregistration_delay
+  egress_gateway_authorized_security_groups = var.create_sandbox_service ? {
+    "Sandbox Service" = module.sandbox_service[0].worker_security_group_id
+  } : {}
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags
@@ -630,6 +637,15 @@ module "loop_runtime_ecs" {
 
   sandbox_env_vars                 = module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
   additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
+  sandbox_service = var.create_sandbox_service ? {
+    endpoint              = module.sandbox_service[0].endpoint
+    image                 = module.sandbox_service[0].sandbox_image
+    egress_gateway_url    = "http://${module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_nlb_dns_name}:4002"
+    client_tls_secret_arn = module.sandbox_service[0].client_tls_secret_arn
+    vcpu_count            = var.sandbox_service_vcpu_count
+    memory_mib            = var.sandbox_service_memory_mib
+  } : null
+  feature_flags_secret = var.loop_runtime_feature_flags_secret
 
   database_url_secret_arn   = local.database_url_secret_arn
   redis_url_secret_arn      = module.redis.redis_url_secret_arn
@@ -665,6 +681,20 @@ module "loop_runtime_ecs" {
 
   # Greenfield both-flags-true: do not roll Loop before gateway ECS is up.
   depends_on = [module.gateway_ecs]
+}
+
+# The root owns this connection between sibling modules; the destination module
+# owns NLB ingress through egress_gateway_authorized_security_groups.
+resource "aws_vpc_security_group_egress_rule" "sandbox_workers_to_loop_egress_gateway" {
+  count = var.create_sandbox_service ? 1 : 0
+
+  security_group_id            = module.sandbox_service[0].worker_security_group_id
+  referenced_security_group_id = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_security_group_id
+  from_port                    = 4002
+  to_port                      = 4002
+  ip_protocol                  = "tcp"
+  description                  = "Sandbox Service access to the Loop egress gateway"
+  tags                         = merge(local.all_custom_tags, { BraintrustDeploymentName = var.deployment_name })
 }
 
 module "api_ecs" {

@@ -596,6 +596,18 @@ resource "aws_security_group" "egress_gateway_nlb" {
   }, local.common_tags)
 }
 
+resource "aws_vpc_security_group_ingress_rule" "egress_gateway_nlb_from_authorized_security_groups" {
+  for_each = var.egress_gateway_authorized_security_groups
+
+  security_group_id            = aws_security_group.egress_gateway_nlb.id
+  referenced_security_group_id = each.value
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow sandbox egress traffic from ${each.key}."
+  tags                         = local.common_tags
+}
+
 resource "aws_vpc_security_group_egress_rule" "egress_gateway_nlb_to_runtime" {
   security_group_id            = aws_security_group.egress_gateway_nlb.id
   referenced_security_group_id = var.runtime_security_group_id

@@ -196,6 +196,28 @@ variable "sandbox_env_vars" {
   default     = {}
 }
 
+variable "sandbox_service" {
+  type = object({
+    endpoint              = string
+    image                 = string
+    egress_gateway_url    = string
+    client_tls_secret_arn = string
+    vcpu_count            = number
+    memory_mib            = number
+  })
+  description = "Optional additional Sandbox Service connection. Object presence enables mTLS setup while the existing sandbox backend stays configured."
+  default     = null
+}
+
+variable "feature_flags_secret" {
+  type = object({
+    secret_arn  = string
+    kms_key_arn = optional(string)
+  })
+  description = "Optional Secrets Manager secret containing the feature-flag SDK key, with its customer-managed KMS key if used."
+  default     = null
+}
+
 variable "additional_task_role_policy_json" {
   type        = string
   description = "IAM policy JSON attached to the task role for the sandbox backend (e.g. MicroVM lifecycle). Must not grant Secrets Manager access."

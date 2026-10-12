@@ -46,6 +46,7 @@ module "braintrust-data-plane" {
   # Loop runtime is not supported with external EKS deployments.
   enable_loop_runtime                                   = false
   create_sandbox_service                                = false
+  loop_runtime_feature_flags_secret                     = null
   sandbox_service_instance_types                        = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
   sandbox_service_vcpu_count                            = 1
   sandbox_service_memory_mib                            = 2048
