@@ -206,7 +206,22 @@ locals {
     healthCheck = {
       command = [
         "CMD-SHELL",
-        "curl --silent --fail --output /dev/null --max-time 5 --write-out '{\"msg\":\"API health check result\",\"event\":\"ecs_health_check\",\"curl\":%%{json}}\\n' http://localhost:8000/ >> /proc/1/fd/1"
+        <<-EOT
+        python3 -c '
+        import json, time, urllib.request
+        result = {"msg": "API health check result", "event": "ecs_health_check"}
+        start = time.monotonic()
+        try:
+            with urllib.request.urlopen("http://localhost:8000/", timeout=5) as response:
+                result["response_code"] = response.status
+        except Exception as e:
+            result["response_code"] = getattr(e, "code", 0)
+            result["errormsg"] = str(e)
+        result["time_total"] = round(time.monotonic() - start, 6)
+        print(json.dumps(result), flush=True)
+        raise SystemExit("errormsg" in result)
+        ' >> /proc/1/fd/1
+        EOT
       ]
       interval    = 30
       retries     = 3
