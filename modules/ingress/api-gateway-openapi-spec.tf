@@ -362,6 +362,9 @@ locals {
       "/v1/insert" = {
         for method in ["options", "post"] : method => local.snippet_api_json_method
       }
+      "/v1/organization/api_keys" = {
+        for method in ["get", "options"] : method => local.snippet_api_json_method
+      }
       "/v1/prompt" = {
         for method in ["get", "options", "post", "put"] : method => local.snippet_api_json_method
       }
