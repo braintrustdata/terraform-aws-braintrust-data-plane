@@ -73,7 +73,8 @@ run "private_cluster_and_safe_worker_release" {
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.DeletionPolicy == "Retain" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.UpdateReplacePolicy == "Retain" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.Properties.NodegroupName["Fn::Sub"] == "sandbox-$${WorkerRevision}" &&
-      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Release.Properties.NodeGroupName.Ref == "Workers"
+      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Release.Properties.NodeGroupName["Fn::GetAtt"] == ["Workers", "NodegroupName"] &&
+      yamldecode(aws_cloudformation_stack.release.template_body).Outputs.NodeGroupName.Value["Fn::GetAtt"] == ["Workers", "NodegroupName"]
     )
     error_message = "Worker replacement must create a new pool and retain occupied pools for controller draining."
   }
@@ -105,6 +106,8 @@ run "private_cluster_and_safe_worker_release" {
       aws_iam_role.release.permissions_boundary == var.permissions_boundary_arn &&
       aws_iam_role.tls.permissions_boundary == var.permissions_boundary_arn &&
       aws_lambda_function.release.tags.BraintrustDeploymentName == var.deployment_name &&
+      aws_cloudwatch_log_group.cluster.tags.BraintrustDeploymentName == var.deployment_name &&
+      one([for spec in aws_launch_template.workers.tag_specifications : spec.tags if spec.resource_type == "volume"]).BraintrustDeploymentName == var.deployment_name &&
       aws_route53_zone.sandbox.tags.Example == "sandbox"
     )
     error_message = "The service must stay within prefix-list SG quotas and preserve deployment tags and IAM boundaries."
