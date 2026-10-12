@@ -133,7 +133,7 @@ resource "aws_iam_role_policy" "quarantine_function_deny_logs_outside_lambda" {
         ]
         Resource = "*"
         Condition = {
-          ArnNotEqualsIfExists = {
+          ArnNotLikeIfExists = {
             "lambda:SourceFunctionArn" = "arn:aws:lambda:*:*:function:*"
           }
         }
