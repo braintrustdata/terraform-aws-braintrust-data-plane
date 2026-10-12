@@ -91,6 +91,9 @@ module "braintrust-data-plane" {
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "c8gd.xlarge"
 
+  # Optionally pin an existing regular-reader launch-template version while scaling.
+  # brainstore_reader_launch_template_version = null
+
   # Disable fast reader and automation writer pools to reduce costs in sandbox.
   brainstore_fast_reader_instance_count       = 0
   brainstore_automation_writer_instance_count = 0

@@ -1,5 +1,6 @@
 locals {
-  brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
+  brainstore_release_version     = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
+  reader_launch_template_version = coalesce(var.reader_launch_template_version, aws_launch_template.brainstore.latest_version)
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
@@ -197,7 +198,7 @@ resource "aws_autoscaling_group" "brainstore" {
   wait_for_elb_capacity     = var.instance_count
   launch_template {
     id      = aws_launch_template.brainstore.id
-    version = aws_launch_template.brainstore.latest_version
+    version = tostring(local.reader_launch_template_version)
   }
 
   lifecycle {

@@ -93,6 +93,9 @@ module "braintrust-data-plane" {
   brainstore_instance_count = 2
   brainstore_instance_type  = "c8gd.4xlarge"
 
+  # Optionally pin an existing regular-reader launch-template version while scaling.
+  # brainstore_reader_launch_template_version = null
+
   # The number of Brainstore fast reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_fast_reader_instance_count = 2
