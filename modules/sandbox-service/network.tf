@@ -19,6 +19,52 @@ resource "aws_security_group" "public_egress" {
   tags        = local.common_tags
 }
 
+resource "aws_security_group" "secrets_manager" {
+  name        = "${var.deployment_name}-sandbox-secrets-endpoint"
+  description = "Private TLS bundle access for the Sandbox Service installer"
+  vpc_id      = var.vpc_id
+  tags        = local.common_tags
+}
+
+resource "aws_vpc_security_group_ingress_rule" "secrets_manager_from_system" {
+  security_group_id            = aws_security_group.secrets_manager.id
+  referenced_security_group_id = aws_security_group.system.id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+  description                  = "TLS bundle reads from the release installer"
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "system_to_secrets_manager" {
+  security_group_id            = aws_security_group.system.id
+  referenced_security_group_id = aws_security_group.secrets_manager.id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+  description                  = "Private Secrets Manager access"
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_endpoint" "secrets_manager" {
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.secretsmanager"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.private_subnet_ids
+  security_group_ids  = [aws_security_group.secrets_manager.id]
+  private_dns_enabled = false
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = aws_iam_role.release.arn }
+      Action    = "secretsmanager:GetSecretValue"
+      Resource  = [aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn]
+    }]
+  })
+  tags = local.common_tags
+}
+
 resource "aws_ec2_managed_prefix_list" "public_ipv4" {
   for_each = {
     first  = slice(local.public_ipv4_cidrs, 0, 52)

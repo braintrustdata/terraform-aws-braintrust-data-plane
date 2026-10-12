@@ -148,6 +148,11 @@ resource "aws_lambda_function" "release" {
   memory_size                    = 256
   timeout                        = 300
   reserved_concurrent_executions = 1
+  environment {
+    variables = {
+      AWS_ENDPOINT_URL_SECRETS_MANAGER = "https://${aws_vpc_endpoint.secrets_manager.dns_entry[0].dns_name}"
+    }
+  }
   vpc_config {
     subnet_ids         = var.private_subnet_ids
     security_group_ids = [aws_security_group.system.id, aws_security_group.public_egress.id]
@@ -295,5 +300,7 @@ resource "aws_cloudformation_stack" "release" {
     aws_vpc_security_group_egress_rule.system_public,
     aws_vpc_security_group_egress_rule.workers_public,
     aws_vpc_security_group_egress_rule.additional_public,
+    aws_vpc_security_group_ingress_rule.secrets_manager_from_system,
+    aws_vpc_security_group_egress_rule.system_to_secrets_manager,
   ]
 }

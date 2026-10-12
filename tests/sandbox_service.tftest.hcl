@@ -15,6 +15,11 @@ mock_provider "aws" {
   mock_resource "aws_launch_template" {
     defaults = { id = "lt-0123456789abcdef0", latest_version = 1 }
   }
+  mock_resource "aws_vpc_endpoint" {
+    defaults = {
+      dns_entry = [{ dns_name = "vpce-secrets.example.internal", hosted_zone_id = "ZEXAMPLE" }]
+    }
+  }
   mock_resource "aws_cloudformation_stack" {
     defaults = {
       outputs = {
@@ -44,6 +49,17 @@ run "private_cluster_and_safe_worker_release" {
     source = "./modules/sandbox-service"
   }
 
+  assert {
+    condition = (
+      !aws_vpc_endpoint.secrets_manager.private_dns_enabled &&
+      aws_vpc_security_group_ingress_rule.secrets_manager_from_system.referenced_security_group_id == aws_security_group.system.id &&
+      aws_vpc_security_group_egress_rule.system_to_secrets_manager.referenced_security_group_id == aws_security_group.secrets_manager.id &&
+      aws_lambda_function.release.environment[0].variables.AWS_ENDPOINT_URL_SECRETS_MANAGER == "https://vpce-secrets.example.internal" &&
+      jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Principal.AWS == aws_iam_role.release.arn &&
+      toset(jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Resource) == toset([aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn])
+    )
+    error_message = "The installer must reach only its TLS secrets through a private endpoint without changing existing VPC DNS."
+  }
   assert {
     condition = (
       aws_eks_cluster.sandbox.vpc_config[0].endpoint_private_access &&
