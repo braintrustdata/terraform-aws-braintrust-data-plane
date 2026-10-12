@@ -790,7 +790,7 @@ variable "loop_runtime_min_capacity" {
 variable "loop_runtime_max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 4
+  default     = 50
 }
 
 variable "loop_runtime_target_cpu_utilization" {
@@ -802,6 +802,12 @@ variable "loop_runtime_target_cpu_utilization" {
 variable "loop_runtime_target_memory_utilization" {
   type        = number
   description = "Target average memory use percentage for Loop runtime autoscaling."
+  default     = 50
+}
+
+variable "loop_runtime_target_conversation_utilization" {
+  type        = number
+  description = "Target average claimed conversation use percentage for Loop runtime autoscaling."
   default     = 50
 }
 
