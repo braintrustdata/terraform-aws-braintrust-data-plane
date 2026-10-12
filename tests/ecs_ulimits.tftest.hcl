@@ -176,6 +176,8 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
     internal_observability_enabled            = true
     internal_observability_api_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:datadog"
     internal_observability_env_name           = "test"
+
+    sandbox_egress_gateway_target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/loop-egress/1234567890123456"
   }
 
   assert {
