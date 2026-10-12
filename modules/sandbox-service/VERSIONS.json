@@ -1,0 +1,9 @@
+{
+  "loop-runtime": "b96d95eaa269031cdd6f286a17b9b3e4795355d1",
+  "sandbox-service": "public.ecr.aws/braintrust/sandbox-service:b96d95eaa269031cdd6f286a17b9b3e4795355d1",
+  "sandbox-image": "public.ecr.aws/braintrust/codex-runtime@sha256:35db9c98d4a74e20758a29b82f8a3a6552be0002eb439c8c1a0f434ac573ee21",
+  "chart-key": "sandbox-service/cd27a3983e304932a7e1617adf3105c2b7320a340f26bfea577df781827142f9/sandbox-service-0.1.0.tgz",
+  "bootstrap-key": "81339ab16536f13ed5a3b79ddca64b74",
+  "bootstrap-sha256": "c13b341d67611f51a3194db6237e2d508d3509ff2d3d8b4c1b8dc45465d6a40f",
+  "bootstrap-code-hash": "wTs0HWdhH1GjGU22I34tUI01Cf8tPYtMG43EVGXWpA8="
+}

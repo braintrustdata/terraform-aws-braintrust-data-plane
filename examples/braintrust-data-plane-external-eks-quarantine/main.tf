@@ -47,6 +47,10 @@ module "braintrust-data-plane" {
   enable_loop_runtime = false
   # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
   # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
+  create_sandbox_service         = false
+  sandbox_service_instance_types = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
+  sandbox_service_vcpu_count     = 1
+  sandbox_service_memory_mib     = 2048
 
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles
