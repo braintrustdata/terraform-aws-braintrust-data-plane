@@ -879,8 +879,6 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   default     = false
 }
 
-# Deprecated: sandboxes always use restricted egress. Kept so existing
-# configurations still plan; remove in the next major version.
 # tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
@@ -906,7 +904,7 @@ variable "loop_runtime_sandbox_existing_vpc_id" {
 
 variable "loop_runtime_sandbox_manage_existing_vpc_dns_firewall" {
   type        = bool
-  description = "Manage DNS Firewall in the supplied dedicated sandbox VPC: allow the module-created egress gateway endpoint hostname and block all other names. Defaults to false to preserve caller-managed DNS. The module always manages DNS Firewall in its own sandbox VPC."
+  description = "Manage DNS Firewall in the supplied dedicated sandbox VPC, allowing only the egress gateway endpoint hostname. False leaves DNS policy to the caller. DNS Firewall is always managed in the module-created sandbox VPC."
   default     = false
 }
 

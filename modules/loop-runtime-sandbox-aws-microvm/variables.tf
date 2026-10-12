@@ -213,14 +213,3 @@ variable "runtime_security_group_id" {
   type        = string
   description = "Loop runtime security group that can access the MicroVM endpoint."
 }
-
-variable "egress_gateway_deregistration_delay" {
-  type        = number
-  description = "Deregistration delay in seconds for the sandbox egress gateway NLB target group."
-  default     = 900
-
-  validation {
-    condition     = var.egress_gateway_deregistration_delay >= 0 && var.egress_gateway_deregistration_delay <= 3600
-    error_message = "egress_gateway_deregistration_delay must be between 0 and 3600."
-  }
-}

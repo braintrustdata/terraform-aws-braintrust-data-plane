@@ -126,8 +126,7 @@ the corresponding migration guide before publication.
 ### Sandbox isolation
 
 The module creates a dedicated sandbox VPC with no outbound route.
-Sandboxes can reach only the Loop egress gateway endpoint on port 4002, and its name is the only one they can resolve.
-The endpoint connects over PrivateLink to the Loop runtime proxy, which authorizes each request.
+Sandboxes reach the Loop runtime proxy through a PrivateLink endpoint on port 4002; the proxy authorizes each request, and DNS Firewall allows only the endpoint hostname.
 `loop_runtime_sandbox_egress_mode` is deprecated and only accepts `"restricted"`.
 The original three connector subnets keep their availability zones and CIDRs during upgrades; three additional subnets place the endpoint in the main VPC's availability zones.
 The security group declares TCP/UDP port 53 egress to `169.254.169.253` and the VPC's primary IPv4 CIDR address plus two.
@@ -146,15 +145,12 @@ loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true
 The module verifies that each subnet belongs to the supplied VPC.
 It creates the sandbox security group and the egress gateway endpoint there.
 At least one supplied subnet must share an availability zone with the main VPC's private subnets.
-The caller controls routes.
-With `loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true`, the module associates its DNS Firewall with the supplied VPC, allowing `loop_runtime_sandbox_egress_gateway_dns_name` and blocking all other names.
-Terraform configures the allowlist from the new endpoint's hostname in the same apply; no follow-up DNS update is required.
-Use a dedicated sandbox VPC because these DNS restrictions apply to the entire VPC.
-The flag defaults to `false`, leaving DNS policy under the caller's control.
-The same port 53 resolver rules are declared in either case; DNS Firewall enforces the name restrictions.
+With `loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true`, the module allows the created endpoint's hostname and blocks all other names in the supplied VPC during the same apply.
+These restrictions apply to the entire VPC; use a dedicated sandbox VPC.
+The flag defaults to `false`, leaving DNS policy to the caller; port 53 resolver allowances are declared in both cases.
 
 Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
-When DNS Firewall management is disabled, configure equivalent DNS restrictions and allow `loop_runtime_sandbox_egress_gateway_dns_name` before using the sandboxes.
+The caller controls routes and, when DNS Firewall management is disabled, must restrict DNS to `loop_runtime_sandbox_egress_gateway_dns_name` before using the sandboxes.
 
 ## Useful scripts
 

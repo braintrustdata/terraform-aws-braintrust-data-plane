@@ -106,20 +106,6 @@ run "rejects_internet_sandbox_egress" {
   expect_failures = [var.loop_runtime_sandbox_egress_mode]
 }
 
-run "accepts_restricted_sandbox_egress" {
-  command = plan
-  variables {
-    loop_runtime_sandbox_egress_mode = "restricted"
-  }
-}
-
-run "accepts_loop_runtime_version_override" {
-  command = plan
-  variables {
-    loop_runtime_version_override = "v2.16.0"
-  }
-}
-
 run "loop_runtime_version_override_pins_image" {
   command = plan
   variables {

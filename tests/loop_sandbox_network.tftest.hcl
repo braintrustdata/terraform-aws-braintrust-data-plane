@@ -132,7 +132,7 @@ run "managed_isolation_by_default" {
     error_message = "Separate endpoint subnets must match the NLB zones without overlapping connector CIDRs."
   }
   assert {
-    condition     = aws_cloudformation_stack.restricted_egress_connector.parameters.SubnetIds == join(",", aws_subnet.restricted_egress[*].id)
+    condition     = aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == join(",", aws_subnet.restricted_egress[*].id)
     error_message = "The upgrade plan must retain the existing connector subnet IDs."
   }
   assert {
@@ -186,11 +186,11 @@ run "existing_vpc_keeps_customer_network" {
     error_message = "Turning DNS management off must leave DNS policy under the caller's control."
   }
   assert {
-    condition     = aws_security_group.restricted_egress.vpc_id == "vpc-0123456789abcdef0"
+    condition     = aws_security_group.restricted_egress[0].vpc_id == "vpc-0123456789abcdef0"
     error_message = "The sandbox security group must live in the supplied VPC."
   }
   assert {
-    condition     = aws_cloudformation_stack.restricted_egress_connector.parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2"
+    condition     = aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2"
     error_message = "The connector must use the supplied subnets."
   }
 }
@@ -308,7 +308,7 @@ run "egress_gateway_in_managed_vpc" {
         "10.255.0.2/32"      = aws_vpc_security_group_egress_rule.sandbox_to_dns_vpc
         } : [
         for protocol in ["tcp", "udp"] :
-        rules[protocol].security_group_id == aws_security_group.restricted_egress.id
+        rules[protocol].security_group_id == aws_security_group.restricted_egress[0].id
         && rules[protocol].cidr_ipv4 == cidr
         && rules[protocol].from_port == 53 && rules[protocol].to_port == 53
         && rules[protocol].ip_protocol == protocol
@@ -376,7 +376,7 @@ run "egress_gateway_in_managed_vpc" {
 
   assert {
     condition = (
-      aws_cloudformation_stack.restricted_egress_connector.parameters.SubnetIds == join(",", aws_subnet.restricted_egress[*].id)
+      aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == join(",", aws_subnet.restricted_egress[*].id)
       && alltrue([for association in aws_route_table_association.egress_gateway : association.route_table_id == aws_route_table.restricted_egress[0].id])
     )
     error_message = "The connector must keep its original subnets while the endpoint subnets use the isolated route table."
@@ -385,7 +385,7 @@ run "egress_gateway_in_managed_vpc" {
   assert {
     condition = (
       aws_vpc_security_group_ingress_rule.egress_gateway_endpoint_from_sandbox.security_group_id == aws_security_group.egress_gateway_endpoint.id
-      && aws_vpc_security_group_ingress_rule.egress_gateway_endpoint_from_sandbox.referenced_security_group_id == aws_security_group.restricted_egress.id
+      && aws_vpc_security_group_ingress_rule.egress_gateway_endpoint_from_sandbox.referenced_security_group_id == aws_security_group.restricted_egress[0].id
       && aws_vpc_security_group_ingress_rule.egress_gateway_endpoint_from_sandbox.from_port == 4002
       && aws_vpc_security_group_ingress_rule.egress_gateway_endpoint_from_sandbox.to_port == 4002
       && aws_vpc_security_group_egress_rule.sandbox_to_egress_gateway.referenced_security_group_id == aws_security_group.egress_gateway_endpoint.id
@@ -446,7 +446,7 @@ run "egress_gateway_in_existing_vpc" {
         "172.20.0.2/32"      = aws_vpc_security_group_egress_rule.sandbox_to_dns_vpc
         } : [
         for protocol in ["tcp", "udp"] :
-        rules[protocol].security_group_id == aws_security_group.restricted_egress.id
+        rules[protocol].security_group_id == aws_security_group.restricted_egress[0].id
         && rules[protocol].cidr_ipv4 == cidr
         && rules[protocol].from_port == 53 && rules[protocol].to_port == 53
         && rules[protocol].ip_protocol == protocol

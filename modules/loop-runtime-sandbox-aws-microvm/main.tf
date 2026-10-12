@@ -42,7 +42,7 @@ locals {
     if contains(local.egress_gateway_nlb_azs, az)
   ]
   egress_connector_arns = [
-    aws_cloudformation_stack.restricted_egress_connector.outputs["NetworkConnectorArn"]
+    aws_cloudformation_stack.restricted_egress_connector[0].outputs["NetworkConnectorArn"]
   ]
 
   egress_gateway_port     = 4002
@@ -162,6 +162,9 @@ data "aws_iam_policy_document" "microvm_build_assume_role" {
 }
 
 data "aws_iam_policy_document" "network_connector_operator_assume_role" {
+  # Keep the released count addresses for the connector and its supporting resources.
+  count = 1
+
   statement {
     actions = ["sts:AssumeRole", "sts:TagSession"]
     principals {
@@ -301,6 +304,8 @@ resource "aws_route53_resolver_firewall_rule_group_association" "restricted_egre
 
 # Terraform drops the default allow-all egress; rules below allow the gateway and resolvers.
 resource "aws_security_group" "restricted_egress" {
+  count = 1
+
   description = "Security group for restricted Loop runtime sandbox egress"
   name        = "${var.deployment_name}-loop-runtime-restricted-egress"
   vpc_id      = local.restricted_egress_vpc_id
@@ -311,8 +316,10 @@ resource "aws_security_group" "restricted_egress" {
 }
 
 resource "aws_iam_role" "network_connector_operator" {
+  count = 1
+
   name                 = "${var.deployment_name}-loop-runtime-network-connector"
-  assume_role_policy   = data.aws_iam_policy_document.network_connector_operator_assume_role.json
+  assume_role_policy   = data.aws_iam_policy_document.network_connector_operator_assume_role[0].json
   permissions_boundary = var.permissions_boundary_arn
 
   tags = merge({
@@ -321,7 +328,9 @@ resource "aws_iam_role" "network_connector_operator" {
 }
 
 resource "aws_iam_role_policy_attachment" "network_connector_operator" {
-  role       = aws_iam_role.network_connector_operator.name
+  count = 1
+
+  role       = aws_iam_role.network_connector_operator[0].name
   policy_arn = "arn:${local.partition}:iam::aws:policy/AWSLambdaNetworkConnectorOperatorPolicy"
 }
 
@@ -329,6 +338,8 @@ resource "aws_iam_role_policy_attachment" "network_connector_operator" {
 # isolated CloudFormation stack alongside the existing MicroVM image stack,
 # while Terraform manages the surrounding network and IAM resources.
 resource "aws_cloudformation_stack" "restricted_egress_connector" {
+  count = 1
+
   name = "${var.deployment_name}-loop-runtime-restricted-egress-connector"
 
   depends_on = [
@@ -339,8 +350,8 @@ resource "aws_cloudformation_stack" "restricted_egress_connector" {
 
   parameters = {
     ConnectorName   = "bt-loop-${var.deployment_name}-restricted-egress"
-    OperatorRoleArn = aws_iam_role.network_connector_operator.arn
-    SecurityGroupId = aws_security_group.restricted_egress.id
+    OperatorRoleArn = aws_iam_role.network_connector_operator[0].arn
+    SecurityGroupId = aws_security_group.restricted_egress[0].id
     SubnetIds       = join(",", local.restricted_egress_subnet_ids)
   }
 
@@ -582,9 +593,7 @@ resource "aws_vpc_endpoint" "loop_runtime_microvm" {
   tags = local.common_tags
 }
 
-# --- Sandbox egress gateway ---
-# Sandboxes reach the runtime's port 4002 proxy over PrivateLink. The proxy
-# authorizes each request, so network access alone grants nothing.
+# Sandboxes reach the runtime's authenticated port 4002 proxy over PrivateLink.
 
 resource "aws_security_group" "egress_gateway_nlb" {
   name        = "${var.deployment_name}-loop-egress-gateway-nlb"
@@ -628,7 +637,7 @@ resource "aws_lb_target_group" "egress_gateway" {
   protocol             = "TCP"
   target_type          = "ip"
   vpc_id               = var.endpoint_vpc_id
-  deregistration_delay = var.egress_gateway_deregistration_delay
+  deregistration_delay = 900
 
   health_check {
     protocol = "TCP"
@@ -674,7 +683,7 @@ resource "aws_security_group" "egress_gateway_endpoint" {
 
 resource "aws_vpc_security_group_ingress_rule" "egress_gateway_endpoint_from_sandbox" {
   security_group_id            = aws_security_group.egress_gateway_endpoint.id
-  referenced_security_group_id = aws_security_group.restricted_egress.id
+  referenced_security_group_id = aws_security_group.restricted_egress[0].id
   from_port                    = local.egress_gateway_port
   to_port                      = local.egress_gateway_port
   ip_protocol                  = "tcp"
@@ -683,7 +692,7 @@ resource "aws_vpc_security_group_ingress_rule" "egress_gateway_endpoint_from_san
 }
 
 resource "aws_vpc_security_group_egress_rule" "sandbox_to_egress_gateway" {
-  security_group_id            = aws_security_group.restricted_egress.id
+  security_group_id            = aws_security_group.restricted_egress[0].id
   referenced_security_group_id = aws_security_group.egress_gateway_endpoint.id
   from_port                    = local.egress_gateway_port
   to_port                      = local.egress_gateway_port
@@ -697,7 +706,7 @@ resource "aws_vpc_security_group_egress_rule" "sandbox_to_egress_gateway" {
 resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_link_local" {
   for_each = toset(["tcp", "udp"])
 
-  security_group_id = aws_security_group.restricted_egress.id
+  security_group_id = aws_security_group.restricted_egress[0].id
   cidr_ipv4         = "169.254.169.253/32"
   from_port         = 53
   to_port           = 53
@@ -709,7 +718,7 @@ resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_link_local" {
 resource "aws_vpc_security_group_egress_rule" "sandbox_to_dns_vpc" {
   for_each = toset(["tcp", "udp"])
 
-  security_group_id = aws_security_group.restricted_egress.id
+  security_group_id = aws_security_group.restricted_egress[0].id
   cidr_ipv4         = "${cidrhost(local.restricted_egress_vpc_cidr, 2)}/32"
   from_port         = 53
   to_port           = 53
