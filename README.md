@@ -176,7 +176,33 @@ The same three main-VPC private subnets are used for managed and existing VPCs.
 Existing VPCs must provide DNS support and outbound access for image downloads,
 AWS APIs and deployment artifacts.
 The service adds EKS and EC2 costs and preserves the existing Lambda backend.
-Loop Runtime integration is a separate change.
+Loop Runtime remains on ECS and prepares both backends.
+Lambda remains the default, with its own image and restricted-egress endpoint.
+Sandbox Service uses its separately pinned guest image, private port 9400 mTLS
+endpoint and a main-VPC connection to the same egress proxy on port 4002.
+Both backends use restricted egress.
+
+Enabling Sandbox Service selects the module's compatible published Loop Runtime
+release and Lambda guest artifact by default.
+`loop_runtime_version_override` remains supported; an override must be compatible
+with the pinned Sandbox Service release to support both backends.
+The egress proxy requires Loop Runtime **2.16.0 or later**.
+
+Per-organization backend selection requires the runtime's feature-flag SDK key:
+
+```hcl
+loop_runtime_feature_flags_secret = {
+  secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:loop-feature-flags"
+  # kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/example"
+}
+```
+
+Store the SDK key as the secret's string value.
+Configure organization targeting in the feature-flag service; provisioning
+Sandbox Service alone does not switch existing organizations.
+Without the SDK key, the runtime uses Lambda as its default backend.
+TLS bundles and the SDK key use native ECS secret injection and are readable by
+the execution role; the Loop task role receives no Secrets Manager access.
 See [Sandbox Service](modules/sandbox-service/README.md) for resource ownership,
 private networking and worker draining during upgrades and deletion.
 

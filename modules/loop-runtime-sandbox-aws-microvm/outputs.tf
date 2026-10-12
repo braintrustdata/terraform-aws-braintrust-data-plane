@@ -33,3 +33,8 @@ output "egress_gateway_dns_name" {
   description = "Egress gateway endpoint DNS name."
   value       = local.egress_gateway_dns_name
 }
+
+output "egress_gateway_nlb_dns_name" {
+  description = "Main-VPC egress gateway NLB DNS name for private service callers."
+  value       = aws_lb.egress_gateway.dns_name
+}

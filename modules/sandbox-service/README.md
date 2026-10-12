@@ -49,5 +49,9 @@ Retained EKS node groups must be removed once empty before deleting the cluster.
 Do not remove the cluster, node roles or network rules while a retained pool is active.
 
 This deployment module exposes the endpoint and client TLS secret ARN for Loop
-Runtime integration. Deploying it alone does not change Loop's default provider,
-Lambda image, connector or IAM permissions.
+Runtime integration. The root keeps the Lambda backend configured alongside
+Sandbox Service, uses separate guest images and egress URLs, and injects the
+client TLS bundle into an ECS initialization container. Loop starts only after
+the initialization container has written the client files successfully.
+Organization selection uses the runtime's feature-flag client; Lambda remains
+the default when no SDK key is configured or an organization is not opted in.

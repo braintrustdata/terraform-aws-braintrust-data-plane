@@ -14,11 +14,12 @@ module "braintrust-data-plane" {
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime            = false
-  create_sandbox_service         = false
-  sandbox_service_instance_types = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
-  sandbox_service_vcpu_count     = 1
-  sandbox_service_memory_mib     = 2048
+  enable_loop_runtime               = false
+  create_sandbox_service            = false
+  loop_runtime_feature_flags_secret = null
+  sandbox_service_instance_types    = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
+  sandbox_service_vcpu_count        = 1
+  sandbox_service_memory_mib        = 2048
 
   # For new deployments, manage_s3_public_access_block = false delegates bucket
   # public-access protection to AWS defaults and customer controls (see README).

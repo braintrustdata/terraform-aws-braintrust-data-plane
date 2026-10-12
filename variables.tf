@@ -890,6 +890,15 @@ variable "create_sandbox_service" {
   }
 }
 
+variable "loop_runtime_feature_flags_secret" {
+  type = object({
+    secret_arn  = string
+    kms_key_arn = optional(string)
+  })
+  description = "Secrets Manager secret containing the Loop Runtime feature-flag SDK key, plus the customer-managed encryption key if used. Enables per-organization sandbox selection when configured."
+  default     = null
+}
+
 variable "sandbox_service_instance_types" {
   type        = list(string)
   description = "Sandbox Service worker instance types with local NVMe and nested virtualization support."

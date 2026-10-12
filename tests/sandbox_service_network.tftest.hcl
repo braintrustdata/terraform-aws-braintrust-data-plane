@@ -42,7 +42,9 @@ run "service_alongside_lambda_in_managed_vpc" {
     condition = (
       length(module.sandbox_service) == 1 &&
       length(module.loop_runtime_sandbox_aws_microvm) == 1 &&
-      length(module.loop_runtime_ecs) == 1
+      length(module.loop_runtime_ecs) == 1 &&
+      local.loop_runtime_version == jsondecode(file("./modules/sandbox-service/VERSIONS.json"))["loop-runtime"] &&
+      length(aws_vpc_security_group_egress_rule.sandbox_workers_to_loop_egress_gateway) == 1
     )
     error_message = "Sandbox Service must add one service without removing Lambda or duplicating Loop Runtime."
   }
@@ -66,6 +68,18 @@ run "service_alongside_lambda_in_existing_vpc" {
       local.main_vpc_private_subnet_ids == ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
     )
     error_message = "Sandbox Service must reuse the supplied main VPC and all three private subnets."
+  }
+}
+
+run "explicit_runtime_override_remains_supported" {
+  command = plan
+  variables {
+    create_sandbox_service        = true
+    loop_runtime_version_override = "compatible-custom-release"
+  }
+  assert {
+    condition     = local.loop_runtime_version == "compatible-custom-release"
+    error_message = "Sandbox Service must preserve explicit compatible Loop Runtime overrides."
   }
 }
 

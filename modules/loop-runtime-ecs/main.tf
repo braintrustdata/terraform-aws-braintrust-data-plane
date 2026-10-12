@@ -89,7 +89,25 @@ locals {
     } : {},
   )
 
-  merged_env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
+  sandbox_service_env = var.sandbox_service == null ? {} : {
+    EXO_SANDBOX_SERVICE_DNS_URL                     = var.sandbox_service.endpoint
+    EXO_SANDBOX_SERVICE_IMAGE                       = var.sandbox_service.image
+    EXO_SANDBOX_VCPU_COUNT                          = tostring(var.sandbox_service.vcpu_count)
+    EXO_SANDBOX_MEMORY_MIB                          = tostring(var.sandbox_service.memory_mib)
+    SANDBOX_SERVICE_TLS_CERT                        = "/etc/sandbox-tls/cert.pem"
+    SANDBOX_SERVICE_TLS_KEY                         = "/etc/sandbox-tls/key.pem"
+    SANDBOX_SERVICE_TLS_CA                          = "/etc/sandbox-tls/ca_cert.pem"
+    LOOP_RUNTIME_SANDBOX_SERVICE_EGRESS_GATEWAY_URL = var.sandbox_service.egress_gateway_url
+    LOOP_RUNTIME_SANDBOX_EGRESS_MODE                = "restricted"
+    LOOP_RUNTIME_ENABLE_SANDBOX_ADMIN               = "true"
+  }
+  merged_env_vars = merge(
+    local.core_env,
+    var.sandbox_env_vars,
+    local.sandbox_service_env,
+    var.feature_flags_secret == null ? {} : { LAUNCHDARKLY_ENABLED = "true" },
+    var.extra_env_vars,
+  )
 
   container_secrets = concat(
     [
@@ -103,7 +121,51 @@ locals {
     local.use_object_store_locks ? [] : [
       { name = "BRAINSTORE_LOCKS_URI", valueFrom = var.redis_url_secret_arn },
     ],
+    var.feature_flags_secret == null ? [] : [
+      { name = "LAUNCHDARKLY_SDK_KEY", valueFrom = var.feature_flags_secret.secret_arn },
+    ],
   )
+
+  sandbox_tls_init_containers = var.sandbox_service == null ? [] : [{
+    name      = "sandbox-tls-init"
+    image     = var.container_image
+    user      = "0:0"
+    essential = false
+    entryPoint = ["node", "-e", <<-JS
+      const fs = require('fs');
+      let bundle;
+      try { bundle = JSON.parse(process.env.TLS_BUNDLE); }
+      catch { throw new Error('Invalid sandbox TLS bundle'); }
+      if (!bundle || typeof bundle !== 'object') {
+        throw new Error('Invalid sandbox TLS bundle');
+      }
+      for (const field of ['cert', 'key', 'ca_cert']) {
+        if (typeof bundle[field] !== 'string' || !bundle[field]) {
+          throw new Error('Invalid sandbox TLS bundle');
+        }
+        const path = '/tls/' + field + '.pem';
+        fs.writeFileSync(path, bundle[field], { mode: 0o400 });
+        fs.chownSync(path, 1000, 1000);
+      }
+    JS
+    ]
+    secrets = [{ name = "TLS_BUNDLE", valueFrom = var.sandbox_service.client_tls_secret_arn }]
+    mountPoints = [{
+      sourceVolume = "sandbox-tls", containerPath = "/tls", readOnly = false
+    }]
+    environment    = []
+    portMappings   = []
+    systemControls = []
+    volumesFrom    = []
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.service.name
+        awslogs-region        = data.aws_region.current.region
+        awslogs-stream-prefix = "sandbox-tls-init"
+      }
+    }
+  }]
 
   app_log_configuration = jsondecode(local.observability_enabled ? jsonencode({
     logDriver = "awsfirelens"
@@ -166,12 +228,14 @@ locals {
       }
     ]
     secrets = local.container_secrets
-    dependsOn = [
+    dependsOn = concat([
       for dep in [
         { containerName = "log-router", condition = "START" },
         { containerName = "datadog-agent", condition = "START" },
       ] : dep if local.observability_enabled
-    ]
+      ], var.sandbox_service == null ? [] : [
+      { containerName = "sandbox-tls-init", condition = "SUCCESS" },
+    ])
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:${local.container_port}/health/liveness || exit 1"]
       interval    = 30
@@ -180,9 +244,11 @@ locals {
       timeout     = 5
     }
     logConfiguration = local.app_log_configuration
-    mountPoints      = []
-    systemControls   = []
-    volumesFrom      = []
+    mountPoints = var.sandbox_service == null ? [] : [{
+      sourceVolume = "sandbox-tls", containerPath = "/etc/sandbox-tls", readOnly = true
+    }]
+    systemControls = []
+    volumesFrom    = []
   }
 
   observability_sidecars = [
@@ -349,7 +415,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Effect = "Allow"
         Action = ["secretsmanager:GetSecretValue"]
@@ -360,6 +426,8 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
             var.redis_url_secret_arn,
           ],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
+          var.sandbox_service == null ? [] : [var.sandbox_service.client_tls_secret_arn],
+          var.feature_flags_secret == null ? [] : [var.feature_flags_secret.secret_arn],
         )
       },
       {
@@ -372,7 +440,16 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           }
         }
       }
-    ]
+      ], try(var.feature_flags_secret.kms_key_arn, null) == null ? [] : [{
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = var.feature_flags_secret.kms_key_arn
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
+    }])
   })
 }
 
@@ -566,7 +643,14 @@ resource "aws_ecs_task_definition" "loop_runtime" {
     }
   }
 
-  container_definitions = jsonencode(concat([local.loop_runtime_container_definition], local.observability_sidecars))
+  dynamic "volume" {
+    for_each = var.sandbox_service == null ? [] : ["sandbox-tls"]
+    content {
+      name = volume.value
+    }
+  }
+
+  container_definitions = jsonencode(concat([local.loop_runtime_container_definition], local.sandbox_tls_init_containers, local.observability_sidecars))
 
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime"

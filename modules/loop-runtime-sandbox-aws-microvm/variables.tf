@@ -1,3 +1,9 @@
+variable "egress_gateway_authorized_security_groups" {
+  type        = map(string)
+  description = "Named main-VPC callers allowed to reach the egress NLB directly on port 4002."
+  default     = {}
+}
+
 variable "deployment_name" {
   type        = string
   description = "Name of this deployment. Will be included in resource names."
