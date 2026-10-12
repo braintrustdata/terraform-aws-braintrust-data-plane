@@ -132,6 +132,19 @@ The original three connector subnets keep their availability zones and CIDRs dur
 The security group declares TCP/UDP port 53 egress to `169.254.169.253` and the VPC's primary IPv4 CIDR address plus two.
 [AmazonProvidedDNS traffic is not filtered by ordinary VPC security groups](https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html); the managed DNS firewall restricts permitted names.
 
+For a module-managed sandbox VPC, `loop_runtime_sandbox_vpc_cidr` defaults to
+`"10.255.0.0/16"`. You can choose an IPv4 CIDR from `/16` through `/21`, for example:
+
+```hcl
+loop_runtime_sandbox_vpc_cidr = "10.255.0.0/21"
+```
+
+The module creates six `/24` subnets at offsets 1 through 6 within that CIDR:
+three connector subnets followed by three egress gateway endpoint subnets.
+The default preserves the existing VPC and subnet CIDRs. Changing the CIDR on an
+existing deployment replaces the sandbox VPC and subnets and interrupts sandbox
+connectivity. This input is ignored when supplying an existing sandbox VPC.
+
 You can supply a dedicated sandbox VPC with these inputs:
 
 ```hcl
