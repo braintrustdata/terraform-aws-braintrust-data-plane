@@ -112,6 +112,36 @@ resource "aws_iam_role_policy" "quarantine_function_deny_ec2" {
   })
 }
 
+# Lambda includes lambda:SourceFunctionArn on its log writes, including writes
+# made by the service on behalf of a function. Requiring that context prevents
+# the role's log permissions from being replayed with credentials outside Lambda.
+# EC2 ENI operations remain attached through AWSLambdaVPCAccessExecutionRole:
+# Lambda's service-side ENI calls do not include lambda:SourceFunctionArn.
+resource "aws_iam_role_policy" "quarantine_function_deny_logs_outside_lambda" {
+  count = var.enable_quarantine_vpc ? 1 : 0
+  name  = "DenyLogsOutsideLambda"
+  role  = aws_iam_role.quarantine_function_role[0].id
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Deny"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnNotEqualsIfExists = {
+            "lambda:SourceFunctionArn" = "arn:aws:lambda:*:*:function:*"
+          }
+        }
+      }
+    ]
+  })
+}
+
 # Policy attached to the API handler role for quarantine operations
 resource "aws_iam_policy" "api_handler_quarantine" {
   count = var.enable_quarantine_vpc ? 1 : 0
