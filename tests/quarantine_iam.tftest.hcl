@@ -57,6 +57,19 @@ run "quarantine_function_role_is_hardened" {
     condition     = aws_iam_role_policy_attachment.quarantine_function_role[0].policy_arn == "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
     error_message = "quarantine should retain AWSLambdaVPCAccessExecutionRole"
   }
+  assert {
+    condition = (
+      length(aws_iam_role_policy.quarantine_function_deny_logs_outside_lambda) == 1 &&
+      jsondecode(aws_iam_role_policy.quarantine_function_deny_logs_outside_lambda[0].policy).Statement[0].Effect == "Deny" &&
+      jsondecode(aws_iam_role_policy.quarantine_function_deny_logs_outside_lambda[0].policy).Statement[0].Condition.ArnNotLikeIfExists["lambda:SourceFunctionArn"] == "arn:aws:lambda:*:*:function:*" &&
+      toset(jsondecode(aws_iam_role_policy.quarantine_function_deny_logs_outside_lambda[0].policy).Statement[0].Action) == toset([
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ])
+    )
+    error_message = "quarantine log writes should be denied without Lambda source-function context"
+  }
 }
 
 run "quarantine_function_role_is_disabled_with_quarantine" {
@@ -75,7 +88,8 @@ run "quarantine_function_role_is_disabled_with_quarantine" {
     condition = (
       length(aws_iam_role.quarantine_function_role) == 0 &&
       length(aws_iam_role_policy.quarantine_function_deny_ec2) == 0 &&
-      length(aws_iam_role_policy_attachment.quarantine_function_role) == 0
+      length(aws_iam_role_policy_attachment.quarantine_function_role) == 0 &&
+      length(aws_iam_role_policy.quarantine_function_deny_logs_outside_lambda) == 0
     )
     error_message = "quarantine function IAM resources should share the quarantine count gate"
   }
