@@ -38,16 +38,15 @@ locals {
     } : {},
   )
 
-  # Pulse (BRAINSTORE_CONTROL_PLANE_TELEMETRY) carries Loop metrics, logs, and
-  # traces to Datadog, so the internal Datadog agent skips the signals Pulse
-  # carries. Sandbox and extra env vars are merged last, so read effective values.
+  # The internal Datadog agent skips the signals that the effective
+  # BRAINSTORE_CONTROL_PLANE_TELEMETRY (Pulse) already sends to Datadog.
   control_plane_telemetry = join(",", [var.monitoring_telemetry, "metrics", "traces"])
   env_overrides           = merge(var.sandbox_env_vars, var.extra_env_vars)
   pulse_signals = [
     for signal in split(",", lower(lookup(local.env_overrides, "BRAINSTORE_CONTROL_PLANE_TELEMETRY", local.control_plane_telemetry))) : trimspace(signal)
     if !contains(["", "none"], trimspace(signal))
   ]
-  # An explicit endpoint means the caller owns the OTLP export, so keep its signals.
+  # A caller-set endpoint owns its export, so keep its signals.
   datadog_agent_otlp_signals = [
     for signal in split(",", lower(lookup(local.env_overrides, "BRAINSTORE_OTLP_TELEMETRY", "metrics,traces"))) : trimspace(signal)
     if contains(keys(local.env_overrides), "BRAINSTORE_OTLP_HTTP_ENDPOINT") || !contains(local.pulse_signals, trimspace(signal))
@@ -56,7 +55,7 @@ locals {
     BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
     BRAINSTORE_OTLP_TELEMETRY     = join(",", local.datadog_agent_otlp_signals)
   }
-  # FireLens ships app logs to Datadog. When Pulse carries logs, use CloudWatch.
+  # FireLens ships app logs to Datadog; use CloudWatch when Pulse carries logs.
   datadog_firelens_logs = local.observability_enabled && !contains(local.pulse_signals, "logs")
 
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are

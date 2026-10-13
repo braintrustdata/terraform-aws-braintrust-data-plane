@@ -36,47 +36,41 @@ locals {
     BRAINSTORE_WRITER_LOOP_CONFIG = "exclude:automations"
   }) : var.extra_env_vars
 
-  # Pulse (BRAINSTORE_CONTROL_PLANE_TELEMETRY) already carries Brainstore metrics,
-  # logs, and traces to Datadog, so the internal Datadog agent skips the signals
-  # each role's Pulse setting carries. Extra env vars come later in
-  # /etc/brainstore.env and win, so read each role's effective values.
+  # The internal Datadog agent skips the Brainstore signals that each role's
+  # effective BRAINSTORE_CONTROL_PLANE_TELEMETRY (Pulse) already sends to Datadog.
   brainstore_role_extra_env_vars = {
     reader            = local.brainstore_reader_writer_extra_env_vars
     writer            = local.brainstore_writer_extra_env_vars
     fast_reader       = var.extra_env_vars_fast_reader
     automation_writer = local.brainstore_automation_writer_extra_env_vars
   }
-  brainstore_pulse_signals = {
-    for role, env in local.brainstore_role_extra_env_vars : role => [
-      for signal in split(",", lower(lookup(env, "BRAINSTORE_CONTROL_PLANE_TELEMETRY", var.monitoring_telemetry))) : trimspace(signal)
-      if !contains(["", "none"], trimspace(signal))
+  # Empty without the internal key, so customer user_data is unchanged.
+  datadog_agent_skipped_signals = {
+    for role, env in local.brainstore_role_extra_env_vars : role => var.internal_observability_api_key == "" ? [] : [
+      for signal in ["metrics", "logs", "traces"] : signal
+      if contains([for s in split(",", lower(lookup(env, "BRAINSTORE_CONTROL_PLANE_TELEMETRY", var.monitoring_telemetry))) : trimspace(s)], signal)
     ]
   }
-  # The role's BRAINSTORE_OTLP_TELEMETRY (or Brainstore's default) minus Pulse's signals.
   datadog_agent_otlp_signals = {
     for role, env in local.brainstore_role_extra_env_vars : role => [
       for signal in split(",", lower(lookup(env, "BRAINSTORE_OTLP_TELEMETRY", "metrics,logs,traces"))) : trimspace(signal)
-      if !contains(local.brainstore_pulse_signals[role], trimspace(signal))
+      if !contains(local.datadog_agent_skipped_signals[role], trimspace(signal))
     ]
   }
-  # Env vars user_data appends to point Brainstore OTLP at the agent. Without the
-  # internal key, user_data skips the agent block, so its text stays unchanged.
-  # An explicit endpoint or signal list in extra env vars is never overwritten.
+  # user_data appends these after extra env vars, so never set a key the caller set.
   datadog_agent_otlp_env_vars = {
     for role, env in local.brainstore_role_extra_env_vars : role => (
-      var.internal_observability_api_key == "" ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
-      contains(keys(env), "BRAINSTORE_OTLP_HTTP_ENDPOINT") ? {} :
-      length(local.datadog_agent_otlp_signals[role]) == 0 ? {} :
-      contains(keys(env), "BRAINSTORE_OTLP_TELEMETRY") || length(local.datadog_agent_otlp_signals[role]) == 3 ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
+      length(local.datadog_agent_skipped_signals[role]) == 0 ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
+      contains(keys(env), "BRAINSTORE_OTLP_HTTP_ENDPOINT") || length(local.datadog_agent_otlp_signals[role]) == 0 ? {} :
+      contains(keys(env), "BRAINSTORE_OTLP_TELEMETRY") ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
       {
         BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
         BRAINSTORE_OTLP_TELEMETRY     = join(",", local.datadog_agent_otlp_signals[role])
       }
     )
   }
-  # The agent's Docker log collection duplicates the Brainstore logs Pulse carries.
   datadog_agent_container_logs = {
-    for role, signals in local.brainstore_pulse_signals : role => var.internal_observability_api_key == "" || !contains(signals, "logs")
+    for role, signals in local.datadog_agent_skipped_signals : role => !contains(signals, "logs")
   }
 }
 
