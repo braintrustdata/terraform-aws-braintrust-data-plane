@@ -874,9 +874,6 @@ locals {
           ]
         })
       }
-      "/brainstore/segment-flags" = {
-        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
-      }
       "/.well-known/{resource}" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_text_method, {
           parameters = [
