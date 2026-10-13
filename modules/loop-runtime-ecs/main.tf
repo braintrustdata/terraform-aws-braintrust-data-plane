@@ -38,6 +38,27 @@ locals {
     } : {},
   )
 
+  # Pulse (BRAINSTORE_CONTROL_PLANE_TELEMETRY) carries Loop metrics, logs, and
+  # traces to Datadog, so the internal Datadog agent skips the signals Pulse
+  # carries. Sandbox and extra env vars are merged last, so read effective values.
+  control_plane_telemetry = join(",", [var.monitoring_telemetry, "metrics", "traces"])
+  env_overrides           = merge(var.sandbox_env_vars, var.extra_env_vars)
+  pulse_signals = [
+    for signal in split(",", lower(lookup(local.env_overrides, "BRAINSTORE_CONTROL_PLANE_TELEMETRY", local.control_plane_telemetry))) : trimspace(signal)
+    if !contains(["", "none"], trimspace(signal))
+  ]
+  # An explicit endpoint means the caller owns the OTLP export, so keep its signals.
+  datadog_agent_otlp_signals = [
+    for signal in split(",", lower(lookup(local.env_overrides, "BRAINSTORE_OTLP_TELEMETRY", "metrics,traces"))) : trimspace(signal)
+    if contains(keys(local.env_overrides), "BRAINSTORE_OTLP_HTTP_ENDPOINT") || !contains(local.pulse_signals, trimspace(signal))
+  ]
+  datadog_agent_otlp_env = length(local.datadog_agent_otlp_signals) == 0 ? {} : {
+    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
+    BRAINSTORE_OTLP_TELEMETRY     = join(",", local.datadog_agent_otlp_signals)
+  }
+  # FireLens ships app logs to Datadog. When Pulse carries logs, use CloudWatch.
+  datadog_firelens_logs = local.observability_enabled && !contains(local.pulse_signals, "logs")
+
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes
   # from var.sandbox_env_vars so this module stays sandbox-agnostic.
@@ -64,7 +85,7 @@ locals {
       BRAINSTORE_REALTIME_WAL_URI        = "s3://${local.brainstore_s3_bucket}/brainstore/wal"
       BRAINSTORE_CODE_BUNDLE_URI         = "s3://${var.code_bundle_bucket}"
       BRAINSTORE_CACHE_DIR               = "/mnt/tmp/brainstore"
-      BRAINSTORE_CONTROL_PLANE_TELEMETRY = join(",", [var.monitoring_telemetry, "metrics", "traces"])
+      BRAINSTORE_CONTROL_PLANE_TELEMETRY = local.control_plane_telemetry
       BRAINSTORE_DISABLE_STATUS_UPDATES  = var.brainstore_disable_status_updates
       NO_COLOR                           = "1"
       AWS_DEFAULT_REGION                 = data.aws_region.current.region
@@ -82,11 +103,10 @@ locals {
     },
     local.observability_enabled ? {
       BRAINSTORE_STATSD_ENDPOINT                   = "127.0.0.1:8125"
-      BRAINSTORE_OTLP_HTTP_ENDPOINT                = "http://localhost:4318"
-      BRAINSTORE_OTLP_TELEMETRY                    = "metrics,traces"
       BRAINSTORE_ENABLE_OTEL_ENV_RESOURCE_DETECTOR = "true"
       OTEL_RESOURCE_ATTRIBUTES                     = "deployment.environment.name=${var.internal_observability_env_name},env=${var.internal_observability_env_name}"
     } : {},
+    local.observability_enabled ? local.datadog_agent_otlp_env : {},
   )
 
   merged_env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
@@ -105,7 +125,7 @@ locals {
     ],
   )
 
-  app_log_configuration = jsondecode(local.observability_enabled ? jsonencode({
+  app_log_configuration = jsondecode(local.datadog_firelens_logs ? jsonencode({
     logDriver = "awsfirelens"
     options = {
       Name           = "datadog"
@@ -170,7 +190,7 @@ locals {
       for dep in [
         { containerName = "log-router", condition = "START" },
         { containerName = "datadog-agent", condition = "START" },
-      ] : dep if local.observability_enabled
+      ] : dep if local.observability_enabled && (dep.containerName != "log-router" || local.datadog_firelens_logs)
     ]
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:${local.container_port}/health/liveness || exit 1"]
@@ -251,7 +271,7 @@ locals {
           timeout     = 5
         }
       }
-    ] : sidecar if local.observability_enabled
+    ] : sidecar if local.observability_enabled && (sidecar.name != "log-router" || local.datadog_firelens_logs)
   ]
 
   valid_fargate_memory_by_cpu = {
