@@ -97,12 +97,13 @@ resource "aws_launch_template" "brainstore_writer" {
 }
 
 resource "aws_lb" "brainstore_writer" {
-  count              = local.has_writer_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-w"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
+  count                            = local.has_writer_nodes ? 1 : 0
+  name                             = "${var.deployment_name}-bstr-w"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
 
   lifecycle {
     create_before_destroy = true
