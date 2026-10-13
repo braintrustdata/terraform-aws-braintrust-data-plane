@@ -121,14 +121,14 @@ resource "aws_lb_target_group" "brainstore_automation_writer" {
   connection_termination = true
   deregistration_delay   = 30
   health_check {
-    protocol            = "HTTP"
-    path                = "/"
-    matcher             = "200-399"
-    port                = "traffic-port"
+    protocol            = "TCP"
+    matcher             = ""
+    path                = ""
+    port                = var.port
     healthy_threshold   = 3
-    unhealthy_threshold = 2
+    unhealthy_threshold = 3
     timeout             = 10
-    interval            = 15
+    interval            = 10
   }
 
   tags = local.common_tags
@@ -152,12 +152,13 @@ resource "aws_autoscaling_group" "brainstore_automation_writer" {
   count                     = local.has_automation_writer_nodes ? 1 : 0
   name_prefix               = "${var.deployment_name}-brainstore-automation-writer"
   min_size                  = var.automation_writer_instance_count
-  max_size                  = var.automation_writer_instance_count
+  max_size                  = var.automation_writer_instance_count * 2
   desired_capacity          = var.automation_writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
-  health_check_type         = "EBS"
+  health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_automation_writer[0].arn]
+  wait_for_elb_capacity     = var.automation_writer_instance_count
   launch_template {
     id      = aws_launch_template.brainstore_automation_writer[0].id
     version = aws_launch_template.brainstore_automation_writer[0].latest_version

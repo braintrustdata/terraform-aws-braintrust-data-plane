@@ -89,10 +89,13 @@ run "automation_writer_loop_config_is_rendered" {
     condition = (
       aws_launch_template.brainstore_writer[0].user_data != aws_launch_template.brainstore_automation_writer[0].user_data &&
       aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
-      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 1 &&
-      aws_autoscaling_group.brainstore_automation_writer[0].health_check_type == "EBS"
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].desired_capacity == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].health_check_type == aws_autoscaling_group.brainstore_writer[0].health_check_type &&
+      aws_autoscaling_group.brainstore_automation_writer[0].health_check_grace_period == aws_autoscaling_group.brainstore_writer[0].health_check_grace_period &&
+      aws_autoscaling_group.brainstore_automation_writer[0].wait_for_elb_capacity == 1
     )
-    error_message = "AutomationWriter should retain its fixed-size ASG and EBS health checks."
+    error_message = "AutomationWriter ASG should size, health-check, and wait for load balancer capacity like the regular writer."
   }
 
   assert {
@@ -136,8 +139,8 @@ run "automation_writer_nlb_routes_to_its_asg" {
       aws_lb_listener.brainstore_automation_writer[0].load_balancer_arn == aws_lb.brainstore_automation_writer[0].arn &&
       aws_lb_listener.brainstore_automation_writer[0].default_action[0].target_group_arn == aws_lb_target_group.brainstore_automation_writer[0].arn &&
       aws_autoscaling_group.brainstore_automation_writer[0].target_group_arns == toset([aws_lb_target_group.brainstore_automation_writer[0].arn]) &&
-      aws_lb_target_group.brainstore_automation_writer[0].health_check[0].protocol == "HTTP" &&
-      aws_lb_target_group.brainstore_automation_writer[0].health_check[0].path == "/" &&
+      aws_lb_target_group.brainstore_automation_writer[0].health_check == aws_lb_target_group.brainstore_writer[0].health_check &&
+      aws_lb_target_group.brainstore_automation_writer[0].deregistration_delay == aws_lb_target_group.brainstore_writer[0].deregistration_delay &&
       output.automation_writer_dns_name == aws_lb.brainstore_automation_writer[0].dns_name &&
       output.monitoring_targets["automation-writer"] == {
         asg_name      = aws_autoscaling_group.brainstore_automation_writer[0].name
