@@ -27,19 +27,16 @@ run "loop_private_endpoint" {
     condition     = length(module.loop_runtime_ecs) == 1 && length(module.loop_runtime_sandbox_aws_microvm) == 1
     error_message = "Loop must create the runtime and MicroVM modules."
   }
-  assert {
-    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
-    error_message = "MicroVM egress must default to restricted."
-  }
 }
 
-run "loop_with_existing_sandbox_vpc" {
+run "loop_with_existing_sandbox_vpc_dns_firewall" {
   command = plan
   variables {
-    loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
-    loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
-    loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
-    loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+    loop_runtime_sandbox_existing_vpc_id                  = "vpc-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_1_id     = "subnet-0123456789abcdef0"
+    loop_runtime_sandbox_existing_private_subnet_2_id     = "subnet-0123456789abcdef1"
+    loop_runtime_sandbox_existing_private_subnet_3_id     = "subnet-0123456789abcdef2"
+    loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true
   }
 }
 
@@ -99,6 +96,14 @@ run "rejects_empty_existing_sandbox_subnet_3_id" {
     loop_runtime_sandbox_existing_private_subnet_3_id = "  "
   }
   expect_failures = [var.loop_runtime_sandbox_existing_private_subnet_3_id]
+}
+
+run "rejects_internet_sandbox_egress" {
+  command = plan
+  variables {
+    loop_runtime_sandbox_egress_mode = "internet"
+  }
+  expect_failures = [var.loop_runtime_sandbox_egress_mode]
 }
 
 run "loop_runtime_version_override_pins_image" {
