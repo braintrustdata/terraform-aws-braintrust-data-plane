@@ -1,6 +1,3 @@
-# The internal Datadog agent skips the Loop telemetry that the effective
-# BRAINSTORE_CONTROL_PLANE_TELEMETRY (Pulse) already carries.
-
 mock_provider "aws" {
   source = "./tests/mocks/aws"
 }
@@ -34,27 +31,6 @@ variables {
   monitoring_telemetry                      = "status,metrics,usage,memprof,traces,logs"
 }
 
-run "pulse_off_keeps_datadog_agent_path" {
-  command = plan
-
-  module {
-    source = "./modules/loop-runtime-ecs"
-  }
-
-  variables {
-    extra_env_vars = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "" }
-  }
-
-  assert {
-    condition = (
-      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "http://localhost:4318" }) &&
-      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "metrics,traces" }) &&
-      jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].logConfiguration.logDriver == "awsfirelens"
-    )
-    error_message = "With Pulse off, Loop must keep Datadog OTLP and FireLens logs."
-  }
-}
-
 run "full_pulse_skips_datadog_agent_telemetry" {
   command = plan
 
@@ -62,55 +38,16 @@ run "full_pulse_skips_datadog_agent_telemetry" {
     source = "./modules/loop-runtime-ecs"
   }
 
+  variables {
+    extra_env_vars = { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://collector.example.internal:4318" }
+  }
+
   assert {
     condition = (
-      [for env in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment : env if startswith(env.name, "BRAINSTORE_OTLP_")] == [{ name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "" }] &&
+      [for env in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment : env if startswith(env.name, "BRAINSTORE_OTLP_")] == [{ name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "" }, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "metrics,traces" }] &&
       jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].logConfiguration.logDriver == "awslogs" &&
       [for container in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions) : container.name] == ["loop-runtime", "datadog-agent"]
     )
-    error_message = "With full Pulse, Loop must skip Datadog OTLP and FireLens but keep the Datadog agent."
-  }
-}
-
-run "partial_pulse_skips_only_overlapping_signals" {
-  command = plan
-
-  module {
-    source = "./modules/loop-runtime-ecs"
-  }
-
-  variables {
-    extra_env_vars = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "status,metrics" }
-  }
-
-  assert {
-    condition = (
-      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "traces" }) &&
-      jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].logConfiguration.logDriver == "awsfirelens"
-    )
-    error_message = "When Pulse carries only metrics, Loop must send traces to Datadog and keep FireLens logs."
-  }
-}
-
-run "explicit_otlp_signals_skip_only_pulse_signals" {
-  command = plan
-
-  module {
-    source = "./modules/loop-runtime-ecs"
-  }
-
-  variables {
-    extra_env_vars = {
-      BRAINSTORE_CONTROL_PLANE_TELEMETRY = "status,metrics"
-      BRAINSTORE_OTLP_TELEMETRY          = "metrics,logs"
-    }
-  }
-
-  assert {
-    condition = (
-      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "http://localhost:4318" }) &&
-      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "logs" })
-    )
-    error_message = "An explicit Loop OTLP signal list must keep the Datadog agent endpoint for the signals Pulse does not send."
+    error_message = "With full Pulse, Loop must disable OTLP and FireLens but keep the Datadog agent."
   }
 }

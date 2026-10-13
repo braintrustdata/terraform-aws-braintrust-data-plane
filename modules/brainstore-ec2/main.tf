@@ -46,10 +46,7 @@ module "datadog_agent_telemetry" {
     automation_writer = local.brainstore_automation_writer_extra_env_vars
   }
 
-  enabled                 = var.internal_observability_api_key != ""
-  env_vars                = each.value
-  control_plane_telemetry = var.monitoring_telemetry
-  otlp_telemetry          = "metrics,logs,traces"
+  env_vars = var.internal_observability_api_key == "" ? {} : merge({ BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry }, each.value)
 }
 
 resource "aws_launch_template" "brainstore" {

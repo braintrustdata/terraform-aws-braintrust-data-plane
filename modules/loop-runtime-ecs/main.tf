@@ -38,8 +38,7 @@ locals {
     } : {},
   )
 
-  control_plane_telemetry = join(",", [var.monitoring_telemetry, "metrics", "traces"])
-  datadog_firelens_logs   = local.observability_enabled && module.datadog_agent_telemetry.container_logs
+  datadog_firelens_logs = local.observability_enabled && module.datadog_agent_telemetry.container_logs
 
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes
@@ -67,7 +66,7 @@ locals {
       BRAINSTORE_REALTIME_WAL_URI        = "s3://${local.brainstore_s3_bucket}/brainstore/wal"
       BRAINSTORE_CODE_BUNDLE_URI         = "s3://${var.code_bundle_bucket}"
       BRAINSTORE_CACHE_DIR               = "/mnt/tmp/brainstore"
-      BRAINSTORE_CONTROL_PLANE_TELEMETRY = local.control_plane_telemetry
+      BRAINSTORE_CONTROL_PLANE_TELEMETRY = join(",", [var.monitoring_telemetry, "metrics", "traces"])
       BRAINSTORE_DISABLE_STATUS_UPDATES  = var.brainstore_disable_status_updates
       NO_COLOR                           = "1"
       AWS_DEFAULT_REGION                 = data.aws_region.current.region
@@ -85,6 +84,8 @@ locals {
     },
     local.observability_enabled ? {
       BRAINSTORE_STATSD_ENDPOINT                   = "127.0.0.1:8125"
+      BRAINSTORE_OTLP_HTTP_ENDPOINT                = "http://localhost:4318"
+      BRAINSTORE_OTLP_TELEMETRY                    = "metrics,traces"
       BRAINSTORE_ENABLE_OTEL_ENV_RESOURCE_DETECTOR = "true"
       OTEL_RESOURCE_ATTRIBUTES                     = "deployment.environment.name=${var.internal_observability_env_name},env=${var.internal_observability_env_name}"
     } : {},
@@ -274,10 +275,7 @@ locals {
 module "datadog_agent_telemetry" {
   source = "../datadog-agent-telemetry"
 
-  enabled                 = local.observability_enabled
-  env_vars                = merge(var.sandbox_env_vars, var.extra_env_vars)
-  control_plane_telemetry = local.control_plane_telemetry
-  otlp_telemetry          = "metrics,traces"
+  env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
 }
 
 data "aws_region" "current" {}
