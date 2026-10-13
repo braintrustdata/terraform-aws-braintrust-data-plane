@@ -44,6 +44,66 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
   tags = local.common_tags
 }
 
+# Dedicated execution role for AutomationCron so it does not share the broad APIHandlerRole.
+resource "aws_iam_role" "automation_cron_role" {
+  name = "${var.deployment_name}-AutomationCronRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "automation_cron_vpc_access" {
+  role       = aws_iam_role.automation_cron_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy" "automation_cron_topic_map_report_read" {
+  name = "${var.deployment_name}-AutomationCronTopicMapReportRead"
+  role = aws_iam_role.automation_cron_role.id
+
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = concat(
+      [
+        {
+          Sid      = "TopicMapReportRead"
+          Action   = ["s3:GetObject"]
+          Effect   = "Allow"
+          Resource = "${var.code_bundle_bucket_arn}/bundles/topic_maps/*/*.report.json"
+        }
+      ],
+      # The code bundle bucket uses SSE-KMS with this key when set.
+      var.kms_key_arn != null ? [
+        {
+          Sid      = "TopicMapReportDecrypt"
+          Action   = ["kms:Decrypt"]
+          Effect   = "Allow"
+          Resource = var.kms_key_arn
+          Condition = {
+            StringEquals = {
+              "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+            }
+          }
+        }
+      ] : []
+    )
+  })
+}
+
 resource "aws_iam_role" "default_role" {
   name = "${var.deployment_name}-DefaultRole"
 
