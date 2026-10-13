@@ -37,7 +37,8 @@ Secrets Manager interface endpoint; it does not
 reuse the Lambda sandbox VPC.
 
 Hardware changes create a new worker pool while CloudFormation retains the old
-pool. The release installer includes retained pools in autoscaling and lowers
+pool. If the operation that creates a pool rolls back, CloudFormation deletes
+that new pool so the next apply can reuse its name. The release installer includes retained pools in autoscaling and lowers
 their minimum capacity to zero. The chart controller drains occupied sandboxes
 before retiring workers; long-lived sandboxes can keep an old pool active after
 Terraform completes. Image changes update the chart without replacing the pool.

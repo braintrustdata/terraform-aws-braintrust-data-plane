@@ -27,7 +27,8 @@ run "lambda_only_by_default" {
       length(module.sandbox_service) == 0 &&
       length(module.loop_runtime_sandbox_aws_microvm) == 1 &&
       length(module.loop_runtime_ecs) == 1 &&
-      local.loop_runtime_version == "v2.17.0"
+      local.loop_runtime_version == "v2.17.0" &&
+      output.sandbox_service_client_tls_secret_arn == null
     )
     error_message = "Existing Loop deployments must retain their Lambda backend and runtime release by default."
   }
@@ -45,6 +46,25 @@ run "service_alongside_lambda_in_managed_vpc" {
       length(module.loop_runtime_ecs) == 1
     )
     error_message = "Sandbox Service must add one service without removing Lambda or duplicating Loop Runtime."
+  }
+}
+
+run "exposes_client_tls_secret_arn" {
+  command = plan
+  variables {
+    create_sandbox_service = true
+  }
+  override_module {
+    target = module.sandbox_service
+    outputs = {
+      endpoint              = "https://nodes.bt-test.sandbox.internal:9400"
+      cluster_name          = "bt-test-sandbox-service"
+      client_tls_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-sandbox-service-client-tls"
+    }
+  }
+  assert {
+    condition     = output.sandbox_service_client_tls_secret_arn == "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-sandbox-service-client-tls"
+    error_message = "Root callers must receive the Sandbox Service client TLS secret ARN required by the mTLS endpoint."
   }
 }
 

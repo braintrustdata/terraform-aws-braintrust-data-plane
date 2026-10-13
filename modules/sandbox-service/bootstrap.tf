@@ -177,6 +177,8 @@ resource "aws_lambda_function_event_invoke_config" "release" {
 
 # CloudFormation retains replaced worker pools while the chart drains their
 # sandboxes. A Terraform node-group replacement would delete an occupied pool.
+# RetainExceptOnCreate deletes a pool only when the operation that created it
+# rolls back, so a failed install does not leave its name taken.
 # The same stack owns the release so retained pools carry its exact StackId.
 resource "aws_cloudformation_stack" "release" {
   name = local.stack_name
@@ -221,7 +223,7 @@ resource "aws_cloudformation_stack" "release" {
     Resources = {
       Workers = {
         Type                = "AWS::EKS::Nodegroup"
-        DeletionPolicy      = "Retain"
+        DeletionPolicy      = "RetainExceptOnCreate"
         UpdateReplacePolicy = "Retain"
         Properties = {
           ClusterName   = { Ref = "ClusterName" }

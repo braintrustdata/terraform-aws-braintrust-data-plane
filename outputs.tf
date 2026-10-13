@@ -228,6 +228,11 @@ output "sandbox_service_cluster_name" {
   description = "Sandbox Service EKS cluster name."
 }
 
+output "sandbox_service_client_tls_secret_arn" {
+  value       = var.create_sandbox_service ? module.sandbox_service[0].client_tls_secret_arn : null
+  description = "ARN of the Secrets Manager secret holding the Sandbox Service client TLS bundle."
+}
+
 output "loop_runtime_microvm_image_arn" {
   value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
   description = "ARN of the Loop runtime sandbox MicroVM image"

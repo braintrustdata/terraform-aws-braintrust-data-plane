@@ -70,7 +70,7 @@ run "private_cluster_and_safe_worker_release" {
   }
   assert {
     condition = (
-      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.DeletionPolicy == "Retain" &&
+      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.DeletionPolicy == "RetainExceptOnCreate" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.UpdateReplacePolicy == "Retain" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.Properties.NodegroupName["Fn::Sub"] == "sandbox-$${WorkerRevision}" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Release.Properties.NodeGroupName["Fn::GetAtt"] == ["Workers", "NodegroupName"] &&
