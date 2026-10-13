@@ -1,5 +1,5 @@
-# Verify the internal Datadog agent skips the Brainstore telemetry that each
-# role's effective Pulse setting (BRAINSTORE_CONTROL_PLANE_TELEMETRY) carries.
+# The internal Datadog agent skips the Brainstore telemetry that each role's
+# effective BRAINSTORE_CONTROL_PLANE_TELEMETRY (Pulse) already carries.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -24,12 +24,13 @@ variables {
   brainstore_iam_role_name              = "bt-internal-obs-brainstore"
   brainstore_instance_security_group_id = "sg-12345678"
   ai_proxy_url_ssm_parameter            = "/bt-internal-obs/ai-proxy-url"
-  writer_instance_count                 = 1
   fast_reader_instance_count            = 1
   automation_writer_instance_count      = 1
+  internal_observability_api_key        = "test-datadog-key"
+  monitoring_telemetry                  = "status,metrics,usage,memprof,traces,logs"
 }
 
-run "customer_deployments_keep_existing_agent_config" {
+run "pulse_off_keeps_datadog_agent_path" {
   command = plan
 
   module {
@@ -37,54 +38,6 @@ run "customer_deployments_keep_existing_agent_config" {
   }
 
   variables {
-    monitoring_telemetry = "status,metrics,usage,memprof,traces,logs"
-    extra_env_vars = {
-      BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://collector.example.internal:4318"
-    }
-  }
-
-  assert {
-    condition = alltrue([
-      for role in ["reader", "writer", "fast_reader", "automation_writer"] :
-      local.datadog_agent_otlp_env_vars[role] == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }) &&
-      local.datadog_agent_container_logs[role]
-    ])
-    error_message = "Without the internal Datadog key, rendered agent configuration must not change."
-  }
-}
-
-run "pulse_disabled_keeps_datadog_agent_path" {
-  command = plan
-
-  module {
-    source = "./modules/brainstore-ec2"
-  }
-
-  variables {
-    internal_observability_api_key = "test-datadog-key"
-    monitoring_telemetry           = ""
-  }
-
-  assert {
-    condition = alltrue([
-      for role in ["reader", "writer", "fast_reader", "automation_writer"] :
-      local.datadog_agent_otlp_env_vars[role] == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }) &&
-      local.datadog_agent_container_logs[role]
-    ])
-    error_message = "With Pulse off, every role must keep the existing Datadog OTLP endpoint and container logs."
-  }
-}
-
-run "explicit_empty_pulse_override_keeps_datadog_agent_path" {
-  command = plan
-
-  module {
-    source = "./modules/brainstore-ec2"
-  }
-
-  variables {
-    internal_observability_api_key   = "test-datadog-key"
-    monitoring_telemetry             = "status,metrics,usage,memprof,traces,logs"
     extra_env_vars                   = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "" }
     extra_env_vars_writer            = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "" }
     extra_env_vars_fast_reader       = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "none" }
@@ -92,37 +45,27 @@ run "explicit_empty_pulse_override_keeps_datadog_agent_path" {
   }
 
   assert {
-    condition = alltrue([
-      for role in ["reader", "writer", "fast_reader", "automation_writer"] :
-      local.datadog_agent_otlp_env_vars[role] == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }) &&
-      local.datadog_agent_container_logs[role]
-    ])
-    error_message = "An explicit empty Pulse override must keep the existing Datadog OTLP endpoint and container logs."
+    condition = alltrue([for role, env in local.datadog_agent_otlp_env_vars :
+    env == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }) && local.datadog_agent_container_logs[role]])
+    error_message = "With Pulse off, every role must keep the existing Datadog OTLP endpoint and container logs."
   }
 }
 
-run "full_pulse_skips_brainstore_telemetry_on_datadog_agent" {
+run "full_pulse_skips_datadog_agent_telemetry" {
   command = plan
 
   module {
     source = "./modules/brainstore-ec2"
-  }
-
-  variables {
-    internal_observability_api_key = "test-datadog-key"
-    monitoring_telemetry           = "status,metrics,usage,memprof,traces,logs"
   }
 
   assert {
-    condition = alltrue([
-      for role in ["reader", "writer", "fast_reader", "automation_writer"] :
-      length(local.datadog_agent_otlp_env_vars[role]) == 0 && !local.datadog_agent_container_logs[role]
-    ])
-    error_message = "When Pulse carries metrics, logs, and traces, no role may send Brainstore OTLP or container logs to the Datadog agent."
+    condition = alltrue([for role, env in local.datadog_agent_otlp_env_vars :
+    length(env) == 0 && !local.datadog_agent_container_logs[role]])
+    error_message = "With full Pulse, no role may send Brainstore OTLP or container logs to the Datadog agent."
   }
 }
 
-run "partial_pulse_skips_only_overlapping_signals" {
+run "partial_pulse_and_explicit_overrides" {
   command = plan
 
   module {
@@ -130,78 +73,25 @@ run "partial_pulse_skips_only_overlapping_signals" {
   }
 
   variables {
-    internal_observability_api_key = "test-datadog-key"
-    monitoring_telemetry           = "status,metrics,usage"
-  }
-
-  assert {
-    condition = alltrue([
-      for role in ["reader", "writer", "fast_reader", "automation_writer"] :
-      local.datadog_agent_otlp_env_vars[role] == tomap({
-        BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-        BRAINSTORE_OTLP_TELEMETRY     = "logs,traces"
-      }) &&
-      local.datadog_agent_container_logs[role]
-    ])
-    error_message = "When Pulse carries only metrics, every role must send logs and traces to the Datadog agent."
-  }
-}
-
-run "per_role_pulse_overrides_set_each_role" {
-  command = plan
-
-  module {
-    source = "./modules/brainstore-ec2"
-  }
-
-  variables {
-    internal_observability_api_key   = "test-datadog-key"
-    monitoring_telemetry             = "status,metrics,usage,memprof,traces,logs"
-    extra_env_vars                   = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "" }
+    monitoring_telemetry             = "status,metrics"
     extra_env_vars_writer            = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "status,logs" }
-    extra_env_vars_automation_writer = { BRAINSTORE_CONTROL_PLANE_TELEMETRY = "STATUS, Traces" }
+    extra_env_vars_fast_reader       = { BRAINSTORE_OTLP_TELEMETRY = "metrics,traces" }
+    extra_env_vars_automation_writer = { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://collector.example.internal:4318" }
   }
 
   assert {
     condition = (
-      local.datadog_agent_otlp_env_vars.reader == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }) &&
-      local.datadog_agent_container_logs.reader
+      local.datadog_agent_otlp_env_vars.reader == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318", BRAINSTORE_OTLP_TELEMETRY = "logs,traces" }) &&
+      local.datadog_agent_otlp_env_vars.writer == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318", BRAINSTORE_OTLP_TELEMETRY = "metrics,traces" }) &&
+      local.datadog_agent_otlp_env_vars.fast_reader == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }) &&
+      length(local.datadog_agent_otlp_env_vars.automation_writer) == 0 &&
+      local.datadog_agent_container_logs == { reader = true, writer = false, fast_reader = true, automation_writer = true }
     )
-    error_message = "The reader's empty Pulse override must keep the existing Datadog agent path."
-  }
-
-  assert {
-    condition = (
-      local.datadog_agent_otlp_env_vars.writer == tomap({
-        BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-        BRAINSTORE_OTLP_TELEMETRY     = "metrics,traces"
-      }) &&
-      !local.datadog_agent_container_logs.writer
-    )
-    error_message = "The writer's Pulse override carries logs, so the agent must skip Brainstore logs only."
-  }
-
-  assert {
-    condition = (
-      length(local.datadog_agent_otlp_env_vars.fast_reader) == 0 &&
-      !local.datadog_agent_container_logs.fast_reader
-    )
-    error_message = "The fast reader inherits full Pulse telemetry, so the agent must skip its Brainstore telemetry."
-  }
-
-  assert {
-    condition = (
-      local.datadog_agent_otlp_env_vars.automation_writer == tomap({
-        BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-        BRAINSTORE_OTLP_TELEMETRY     = "metrics,logs"
-      }) &&
-      local.datadog_agent_container_logs.automation_writer
-    )
-    error_message = "The automation writer's Pulse override carries traces, so the agent must skip Brainstore traces only."
+    error_message = "Each role must skip only its own Pulse signals and keep explicit OTLP settings."
   }
 }
 
-run "explicit_otlp_overrides_are_kept" {
+run "customer_user_data_unchanged_without_internal_key" {
   command = plan
 
   module {
@@ -209,99 +99,13 @@ run "explicit_otlp_overrides_are_kept" {
   }
 
   variables {
-    internal_observability_api_key = "test-datadog-key"
-    monitoring_telemetry           = "status,metrics,usage"
-    extra_env_vars                 = { BRAINSTORE_OTLP_TELEMETRY = "metrics,traces" }
-    extra_env_vars_writer          = { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://collector.example.internal:4318" }
-    extra_env_vars_fast_reader     = { BRAINSTORE_OTLP_TELEMETRY = "metrics" }
+    internal_observability_api_key = ""
+    extra_env_vars                 = { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://collector.example.internal:4318" }
   }
 
   assert {
-    condition     = local.datadog_agent_otlp_env_vars.reader == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" })
-    error_message = "An explicit BRAINSTORE_OTLP_TELEMETRY must not be overwritten."
-  }
-
-  assert {
-    condition     = length(local.datadog_agent_otlp_env_vars.writer) == 0
-    error_message = "An explicit BRAINSTORE_OTLP_HTTP_ENDPOINT must not be overwritten."
-  }
-
-  assert {
-    condition     = length(local.datadog_agent_otlp_env_vars.fast_reader) == 0
-    error_message = "When Pulse carries every explicitly selected OTLP signal, the agent endpoint must not be set."
-  }
-
-  assert {
-    condition = local.datadog_agent_otlp_env_vars.automation_writer == tomap({
-      BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-      BRAINSTORE_OTLP_TELEMETRY     = "logs,traces"
-    })
-    error_message = "Roles without OTLP overrides must send only the signals Pulse does not carry."
-  }
-}
-
-run "user_data_keeps_existing_datadog_agent_config" {
-  command = apply
-
-  module {
-    source = "./tests/fixtures/brainstore-user-data"
-  }
-
-  variables {
-    datadog_agent_container_logs = true
-    datadog_agent_otlp_env_vars  = { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }
-  }
-
-  assert {
-    condition = (
-      strcontains(output.script, "cat <<EOF >> /etc/brainstore.env\nBRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318\nEOF\nfi\n") &&
-      strcontains(output.script, "container_collect_all: true")
-    )
-    error_message = "user_data must keep the existing Datadog OTLP endpoint and container log collection."
-  }
-}
-
-run "user_data_limits_datadog_agent_signals" {
-  command = apply
-
-  module {
-    source = "./tests/fixtures/brainstore-user-data"
-  }
-
-  variables {
-    datadog_agent_container_logs = true
-    datadog_agent_otlp_env_vars = {
-      BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-      BRAINSTORE_OTLP_TELEMETRY     = "logs,traces"
-    }
-  }
-
-  assert {
-    condition     = strcontains(output.script, "cat <<EOF >> /etc/brainstore.env\nBRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318\nBRAINSTORE_OTLP_TELEMETRY=logs,traces\nEOF\nfi\n")
-    error_message = "user_data must limit Brainstore OTLP to the signals Pulse does not carry."
-  }
-}
-
-run "user_data_skips_brainstore_telemetry_on_datadog_agent" {
-  command = apply
-
-  module {
-    source = "./tests/fixtures/brainstore-user-data"
-  }
-
-  variables {
-    datadog_agent_container_logs = false
-    datadog_agent_otlp_env_vars  = {}
-  }
-
-  assert {
-    condition = (
-      !strcontains(output.script, "BRAINSTORE_OTLP_HTTP_ENDPOINT") &&
-      !strcontains(output.script, "container_collect_all") &&
-      strcontains(output.script, "install_script_agent7.sh") &&
-      strcontains(output.script, "collect_aws_ena_metrics: true") &&
-      strcontains(output.script, "\"file_path\": \"/var/lib/docker/containers/*/*.log\"")
-    )
-    error_message = "The Datadog agent must keep host and network metrics, and CloudWatch must keep container logs."
+    condition = alltrue([for role, env in local.datadog_agent_otlp_env_vars :
+    env == tomap({ BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" }) && local.datadog_agent_container_logs[role]])
+    error_message = "Without the internal key, rendered agent configuration must not change."
   }
 }

@@ -52,8 +52,7 @@ locals {
       if !contains(["", "none"], trimspace(signal))
     ]
   }
-  # The role's BRAINSTORE_OTLP_TELEMETRY (or Brainstore's default) minus the
-  # signals Pulse carries.
+  # The role's BRAINSTORE_OTLP_TELEMETRY (or Brainstore's default) minus Pulse's signals.
   datadog_agent_otlp_signals = {
     for role, env in local.brainstore_role_extra_env_vars : role => [
       for signal in split(",", lower(lookup(env, "BRAINSTORE_OTLP_TELEMETRY", "metrics,logs,traces"))) : trimspace(signal)
@@ -68,8 +67,7 @@ locals {
       var.internal_observability_api_key == "" ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
       contains(keys(env), "BRAINSTORE_OTLP_HTTP_ENDPOINT") ? {} :
       length(local.datadog_agent_otlp_signals[role]) == 0 ? {} :
-      contains(keys(env), "BRAINSTORE_OTLP_TELEMETRY") ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
-      local.datadog_agent_otlp_signals[role] == ["metrics", "logs", "traces"] ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
+      contains(keys(env), "BRAINSTORE_OTLP_TELEMETRY") || length(local.datadog_agent_otlp_signals[role]) == 3 ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
       {
         BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
         BRAINSTORE_OTLP_TELEMETRY     = join(",", local.datadog_agent_otlp_signals[role])
@@ -78,9 +76,7 @@ locals {
   }
   # The agent's Docker log collection duplicates the Brainstore logs Pulse carries.
   datadog_agent_container_logs = {
-    for role, signals in local.brainstore_pulse_signals : role => (
-      var.internal_observability_api_key == "" || !contains(signals, "logs")
-    )
+    for role, signals in local.brainstore_pulse_signals : role => var.internal_observability_api_key == "" || !contains(signals, "logs")
   }
 }
 
