@@ -66,6 +66,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop runtime security groups authorized to reach RDS. Kept separate so baseline ingress does not wait for Loop startup."
+  default     = {}
+}
+
 variable "custom_security_group_ids" {
   type        = list(string)
   description = "Advanced: Use existing security group IDs instead of the one created by this module. When non-empty, this module will not create or manage the RDS security group or its ingress/egress rules."

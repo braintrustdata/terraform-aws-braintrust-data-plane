@@ -110,7 +110,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "brainstore" {
 }
 
 resource "aws_s3_bucket_public_access_block" "brainstore" {
-  count = var.create_brainstore_s3_bucket ? 1 : 0
+  count = var.create_brainstore_s3_bucket && var.manage_s3_public_access_block ? 1 : 0
 
   bucket = aws_s3_bucket.brainstore[0].id
 

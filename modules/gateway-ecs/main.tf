@@ -3,6 +3,12 @@ locals {
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
 
+  nofile_ulimits = [{
+    name      = "nofile"
+    softLimit = 1048576
+    hardLimit = 1048576
+  }]
+
   container_name           = "gateway"
   container_port           = 8080
   observability_enabled    = var.internal_observability_enabled
@@ -51,6 +57,7 @@ locals {
     name      = local.container_name
     image     = var.container_image
     essential = true
+    ulimits   = local.nofile_ulimits
     portMappings = [
       {
         containerPort = local.container_port

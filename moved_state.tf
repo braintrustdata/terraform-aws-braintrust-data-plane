@@ -133,6 +133,18 @@ moved {
   to   = module.storage.aws_s3_bucket_versioning.lambda_responses_bucket
 }
 
+# The code bundle and Lambda response public access blocks became optional.
+# Keep existing configurations in place when management remains enabled.
+moved {
+  from = module.storage.aws_s3_bucket_public_access_block.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_public_access_block.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket
+  to   = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket[0]
+}
+
 # CloudFront and API Gateway resources moved from services -> ingress
 moved {
   from = module.services.aws_cloudfront_distribution.dataplane
@@ -238,6 +250,12 @@ moved {
   to   = module.database.aws_db_subnet_group.main[0]
 }
 
+# ElastiCache subnet group is now optional; preserve existing managed groups.
+moved {
+  from = module.redis.aws_elasticache_subnet_group.main
+  to   = module.redis.aws_elasticache_subnet_group.main[0]
+}
+
 # Quarantine IAM resources moved from services -> services-common
 # These IAM roles are no longer in 'services' they are in 'services-common'
 moved {
@@ -329,4 +347,26 @@ moved {
 moved {
   from = module.services_common.aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_from_cloudfront_vpc_origin[0]
+}
+
+# Loop data-store ingress rules moved to the modules that own the destination
+# security groups. These moves preserve the existing AWS rules during upgrade.
+moved {
+  from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.postgres_from_task[0]
+  to   = module.database.aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
+}
+
+moved {
+  from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.redis_from_task[0]
+  to   = module.redis.aws_vpc_security_group_ingress_rule.elasticache_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
+}
+
+moved {
+  from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.brainstore_from_task[0]
+  to   = module.brainstore[0].aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_loop_runtime_security_groups["Loop Runtime"]
+}
+
+moved {
+  from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.gateway_from_task[0]
+  to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_ingress_from_loop_runtime_security_groups["Loop Runtime"]
 }

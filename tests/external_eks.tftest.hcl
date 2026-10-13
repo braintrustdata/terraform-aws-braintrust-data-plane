@@ -39,4 +39,8 @@ run "external_eks_plans" {
     condition     = length(module.brainstore) == 0
     error_message = "external EKS mode should skip the brainstore module"
   }
+  assert {
+    condition     = length(module.brainstore_deployment) == 0
+    error_message = "External EKS must not create an EC2 rollout controller."
+  }
 }

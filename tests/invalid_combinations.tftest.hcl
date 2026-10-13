@@ -6,6 +6,9 @@ mock_provider "aws" {
 }
 
 mock_provider "random" {}
+mock_provider "http" {
+  source = "./tests/mocks/http"
+}
 
 variables {
   braintrust_org_name    = "test-org"

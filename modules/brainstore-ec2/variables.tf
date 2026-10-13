@@ -58,6 +58,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop runtime security groups authorized to reach the Brainstore ELB. Kept separate so baseline ingress does not wait for Loop startup."
+  default     = {}
+}
+
 variable "authorized_security_groups_ssh" {
   type        = map(string)
   description = "Map of security group names to their IDs that are authorized to access Brainstore instances via SSH. Format: { name = <security_group_id> }"
@@ -227,7 +233,31 @@ variable "cache_file_size_reader" {
 
 variable "cache_file_size_writer" {
   type        = string
-  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 50% of the ephemeral storage size."
+  default     = null
+}
+
+variable "automation_writer_instance_count" {
+  type        = number
+  description = "The number of dedicated automation writer nodes to create"
+  default     = 0
+}
+
+variable "automation_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore automation writer nodes"
+  default     = "c8gd.8xlarge"
+}
+
+variable "extra_env_vars_automation_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore automation writer nodes if enabled"
+  default     = {}
+}
+
+variable "cache_file_size_automation_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 75% of the ephemeral storage size."
   default     = null
 }
 
@@ -263,12 +293,6 @@ variable "skip_pg_for_brainstore_objects" {
     condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
     error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
   }
-}
-
-variable "brainstore_enable_export" {
-  type        = bool
-  description = "If true, sets BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED=true on Brainstore writer nodes."
-  default     = false
 }
 
 variable "locks_s3_path" {

@@ -64,7 +64,6 @@ resource "aws_launch_template" "brainstore_fast_reader" {
     custom_post_install_script      = var.custom_post_install_script
     brainstore_cache_file_size      = local.brainstore_fast_reader_cache_file_size
     skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-    brainstore_enable_export        = var.brainstore_enable_export
     ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
   }))
 
@@ -98,12 +97,13 @@ resource "aws_launch_template" "brainstore_fast_reader" {
 }
 
 resource "aws_lb" "brainstore_fast_reader" {
-  count              = local.has_fast_reader_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-fr"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
+  count                            = local.has_fast_reader_nodes ? 1 : 0
+  name                             = "${var.deployment_name}-bstr-fr"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
 
   lifecycle {
     create_before_destroy = true
@@ -121,8 +121,11 @@ resource "aws_lb_target_group" "brainstore_fast_reader" {
   target_type = "instance"
 
   connection_termination = true
+  deregistration_delay   = 30
   health_check {
     protocol            = "TCP"
+    matcher             = ""
+    path                = ""
     port                = var.port
     healthy_threshold   = 3
     unhealthy_threshold = 3
@@ -164,15 +167,6 @@ resource "aws_autoscaling_group" "brainstore_fast_reader" {
 
   lifecycle {
     create_before_destroy = true
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200
-    }
-    triggers = ["tag"]
   }
 
   tag {

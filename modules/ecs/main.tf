@@ -10,7 +10,15 @@ resource "aws_ecs_cluster" "dataplane" {
   configuration {
     execute_command_configuration {
       kms_key_id = var.kms_key_arn
-      logging    = "DEFAULT"
+      logging    = var.diagnostics_transcript_log_group_name == null ? "DEFAULT" : "OVERRIDE"
+
+      dynamic "log_configuration" {
+        for_each = var.diagnostics_transcript_log_group_name == null ? [] : [var.diagnostics_transcript_log_group_name]
+        content {
+          cloud_watch_log_group_name     = log_configuration.value
+          cloud_watch_encryption_enabled = false
+        }
+      }
     }
 
     managed_storage_configuration {

@@ -73,7 +73,7 @@ variable "ephemeral_storage_gib" {
   default     = null
 
   validation {
-    condition     = var.ephemeral_storage_gib == null || (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
+    condition     = var.ephemeral_storage_gib == null ? true : (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
     error_message = "ephemeral_storage_gib must be between 21 and 200 when set."
   }
 }
@@ -87,7 +87,7 @@ variable "min_capacity" {
 variable "max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 4
+  default     = 50
 
   validation {
     condition     = var.max_capacity >= var.min_capacity
@@ -114,6 +114,17 @@ variable "target_memory_utilization" {
   validation {
     condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
     error_message = "target_memory_utilization must be between 1 and 100."
+  }
+}
+
+variable "target_conversation_utilization" {
+  type        = number
+  description = "Target average claimed conversation utilization percentage for Loop runtime ECS service autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.target_conversation_utilization > 0 && var.target_conversation_utilization <= 100
+    error_message = "target_conversation_utilization must be between 1 and 100."
   }
 }
 
@@ -165,6 +176,17 @@ variable "loop_runtime_http_listener_arn" {
   type        = string
   description = "ARN of the Loop runtime ALB HTTP listener; orders ECS registration after the listener exists."
   nullable    = true
+}
+
+variable "sandbox_egress_gateway_target_group_arn" {
+  type        = string
+  description = "Egress gateway target group for the runtime's port 4002."
+}
+
+variable "sandbox_egress_gateway_authorized_security_groups" {
+  type        = map(string)
+  description = "Security groups allowed to reach the tasks on port 4002."
+  default     = {}
 }
 
 # --- Sandbox seam (from loop-runtime-sandbox-* module) ---
@@ -268,55 +290,6 @@ variable "monitoring_telemetry" {
   default     = "status,metrics,usage,traces,logs"
 }
 
-# --- Service-side SG ingress targets ---
-variable "database_security_group_id" {
-  type        = string
-  description = "Security group ID of Postgres; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "database_port" {
-  type        = number
-  description = "Postgres port."
-  default     = 5432
-}
-
-variable "redis_security_group_id" {
-  type        = string
-  description = "Security group ID of Redis; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "redis_port" {
-  type        = number
-  description = "Redis port."
-  default     = 6379
-}
-
-variable "brainstore_security_group_id" {
-  type        = string
-  description = "Security group ID of Brainstore instances; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "brainstore_port" {
-  type        = number
-  description = "Brainstore service port."
-  default     = 4000
-}
-
-variable "gateway_security_group_id" {
-  type        = string
-  description = "Security group ID of the private gateway ALB; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "gateway_port" {
-  type        = number
-  description = "Private gateway ALB listener port."
-  default     = 80
-}
-
 # --- Runtime config ---
 variable "org_name" {
   type        = string
@@ -355,6 +328,18 @@ variable "extra_env_vars" {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
     error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
   }
+
+  validation {
+    condition = alltrue([
+      for key in [
+        "LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE",
+        "LOOP_RUNTIME_CAPACITY_METRIC_CLUSTER_NAME",
+        "LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME",
+        "LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS",
+      ] : !contains(keys(var.extra_env_vars), key)
+    ])
+    error_message = "Do not set LOOP_RUNTIME_CAPACITY_METRIC_* or LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS in extra_env_vars; these values are managed by the module."
+  }
 }
 
 # --- Observability ---
@@ -386,4 +371,14 @@ variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)
   default     = {}
+}
+variable "diagnostics_transcript_log_group_name" {
+  description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null preserves existing logging and permissions; session enablement flags remain independent."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
+    error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
+  }
 }

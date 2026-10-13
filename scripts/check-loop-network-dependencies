@@ -1,0 +1,86 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
+"""Check bootstrap ordering that mocked Terraform plans cannot exercise.
+
+Run after terraform init, or pass a saved `terraform graph -type=plan` DOT file.
+This reads the dependency graph only; it never plans or applies AWS resources.
+"""
+
+import argparse
+from collections import defaultdict, deque
+from pathlib import Path
+import re
+import subprocess
+
+
+def dependency_path(graph, start, target):
+    pending = deque([(start, [start])])
+    visited = {start}
+    while pending:
+        node, path = pending.popleft()
+        if node == target:
+            return path
+        for dependency in graph[node]:
+            if dependency not in visited:
+                visited.add(dependency)
+                pending.append((dependency, path + [dependency]))
+    return None
+
+
+def check_graph(dot):
+    graph = defaultdict(list)
+    for source, target in re.findall(r'"([^"\n]+)" -> "([^"\n]+)"', dot):
+        graph[source].append(target)
+
+    def node(suffix):
+        matches = [name for name in graph if name.endswith(suffix + " (expand)")]
+        if len(matches) != 1:
+            raise ValueError(f"Expected one graph node for {suffix}, found {len(matches)}")
+        return matches[0]
+
+    migration = node("module.services.aws_lambda_invocation.invoke_database_migration")
+    loop_group = node("module.loop_runtime_ecs.aws_security_group.task")
+    baseline_rules = [
+        node("module.database.aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_authorized_security_groups"),
+        node("module.redis.aws_vpc_security_group_ingress_rule.elasticache_allow_ingress_from_authorized_security_groups"),
+        node("module.brainstore.aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups"),
+    ]
+    errors = []
+    for rule in baseline_rules:
+        for blocker in [migration, loop_group]:
+            path = dependency_path(graph, rule, blocker)
+            if path:
+                errors.append("Baseline ingress must not wait for Loop or migration:\n  " + "\n  -> ".join(path))
+
+    if not dependency_path(graph, migration, baseline_rules[0]):
+        errors.append("Database migration must wait for baseline RDS ingress.")
+
+    loop_service = node("module.loop_runtime_ecs.aws_ecs_service.loop_runtime")
+    gateway_service = node("module.gateway_ecs.aws_ecs_service.gateway")
+    if not dependency_path(graph, loop_service, gateway_service):
+        errors.append("Loop must retain its Gateway-before-Loop startup ordering.")
+
+    if errors:
+        raise ValueError("\n\n".join(errors))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--graph-file", type=Path, help="Read an existing Terraform DOT graph instead of invoking Terraform.")
+    parser.add_argument("--directory", type=Path, default=Path(__file__).resolve().parent.parent)
+    args = parser.parse_args()
+    dot = args.graph_file.read_text() if args.graph_file else subprocess.check_output(
+        ["terraform", "graph", "-type=plan"], cwd=args.directory, text=True
+    )
+    try:
+        check_graph(dot)
+    except ValueError as error:
+        parser.exit(1, f"{error}\n")
+    print("Loop network dependencies: baseline ingress precedes migration; Gateway still precedes Loop.")
+
+
+if __name__ == "__main__":
+    main()

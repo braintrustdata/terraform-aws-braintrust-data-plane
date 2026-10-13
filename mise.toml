@@ -16,6 +16,7 @@ run = """
 #!/usr/bin/env bash
 set -e
 terraform init -backend=false -upgrade
+uv run scripts/check-loop-network-dependencies
 terraform test
 """
 

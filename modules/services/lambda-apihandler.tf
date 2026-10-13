@@ -88,9 +88,6 @@ locals {
     (var.brainstore_wal_footer_version != "" || var.skip_pg_for_brainstore_objects != "") ? {
       BRAINSTORE_WAL_USE_EFFICIENT_FORMAT = "true"
     } : {},
-    var.brainstore_enable_export ? {
-      BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
-    } : {},
     # Attachments bucket is wired into the API Handler during the transition
     # phase (Lambda handler + ECS API coexisting). Omitted when unconfigured.
     var.attachment_bucket_name != null ? {
@@ -102,7 +99,7 @@ locals {
 
 resource "aws_lambda_function" "api_handler" {
   # Require the DB migrations to be run before the API handler is deployed
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
 
   function_name                  = local.api_handler_function_name
   s3_bucket                      = local.lambda_s3_bucket

@@ -1,6 +1,10 @@
 output "postgres_database_address" {
   value       = aws_db_instance.main.address
   description = "The domain name of the main Postgres database"
+
+  # A ready RDS instance is not reachable until baseline ingress exists.
+  # Do not wait for Loop ingress: Loop itself starts after database migration.
+  depends_on = [aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_authorized_security_groups]
 }
 
 output "postgres_database_port" {
