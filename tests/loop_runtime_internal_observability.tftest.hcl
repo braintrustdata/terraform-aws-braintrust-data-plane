@@ -91,3 +91,23 @@ run "partial_pulse_skips_only_overlapping_signals" {
     error_message = "When Pulse carries only metrics, Loop must send traces to Datadog and keep FireLens logs."
   }
 }
+
+run "explicit_otlp_signals_keep_datadog_agent_endpoint" {
+  command = plan
+
+  module {
+    source = "./modules/loop-runtime-ecs"
+  }
+
+  variables {
+    extra_env_vars = { BRAINSTORE_OTLP_TELEMETRY = "metrics" }
+  }
+
+  assert {
+    condition = (
+      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "http://localhost:4318" }) &&
+      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "metrics" })
+    )
+    error_message = "An explicit Loop OTLP signal list must keep the Datadog agent endpoint."
+  }
+}

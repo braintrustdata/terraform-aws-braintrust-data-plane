@@ -36,42 +36,32 @@ locals {
     BRAINSTORE_WRITER_LOOP_CONFIG = "exclude:automations"
   }) : var.extra_env_vars
 
-  # The internal Datadog agent skips the Brainstore signals that each role's
-  # effective BRAINSTORE_CONTROL_PLANE_TELEMETRY (Pulse) already sends to Datadog.
-  brainstore_role_extra_env_vars = {
+  # Without Pulse overlap, keep the existing endpoint-only user_data.
+  datadog_agent_otlp_env_vars = {
+    for role, telemetry in module.datadog_agent_telemetry : role => (
+      telemetry.otlp_telemetry == "metrics,logs,traces" ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
+      telemetry.otlp_telemetry == "" ? {} :
+      {
+        BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
+        BRAINSTORE_OTLP_TELEMETRY     = telemetry.otlp_telemetry
+      }
+    )
+  }
+}
+
+module "datadog_agent_telemetry" {
+  source = "../datadog-agent-telemetry"
+  for_each = {
     reader            = local.brainstore_reader_writer_extra_env_vars
     writer            = local.brainstore_writer_extra_env_vars
     fast_reader       = var.extra_env_vars_fast_reader
     automation_writer = local.brainstore_automation_writer_extra_env_vars
   }
-  # Empty without the internal key, so customer user_data is unchanged.
-  datadog_agent_skipped_signals = {
-    for role, env in local.brainstore_role_extra_env_vars : role => var.internal_observability_api_key == "" ? [] : [
-      for signal in ["metrics", "logs", "traces"] : signal
-      if contains([for s in split(",", lower(lookup(env, "BRAINSTORE_CONTROL_PLANE_TELEMETRY", var.monitoring_telemetry))) : trimspace(s)], signal)
-    ]
-  }
-  datadog_agent_otlp_signals = {
-    for role, env in local.brainstore_role_extra_env_vars : role => [
-      for signal in split(",", lower(lookup(env, "BRAINSTORE_OTLP_TELEMETRY", "metrics,logs,traces"))) : trimspace(signal)
-      if !contains(local.datadog_agent_skipped_signals[role], trimspace(signal))
-    ]
-  }
-  # user_data appends these after extra env vars, so never set a key the caller set.
-  datadog_agent_otlp_env_vars = {
-    for role, env in local.brainstore_role_extra_env_vars : role => (
-      length(local.datadog_agent_skipped_signals[role]) == 0 ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
-      contains(keys(env), "BRAINSTORE_OTLP_HTTP_ENDPOINT") || length(local.datadog_agent_otlp_signals[role]) == 0 ? {} :
-      contains(keys(env), "BRAINSTORE_OTLP_TELEMETRY") ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
-      {
-        BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-        BRAINSTORE_OTLP_TELEMETRY     = join(",", local.datadog_agent_otlp_signals[role])
-      }
-    )
-  }
-  datadog_agent_container_logs = {
-    for role, signals in local.datadog_agent_skipped_signals : role => !contains(signals, "logs")
-  }
+
+  enabled                 = var.internal_observability_api_key != ""
+  env_vars                = each.value
+  control_plane_telemetry = var.monitoring_telemetry
+  otlp_telemetry          = "metrics,logs,traces"
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -134,8 +124,8 @@ resource "aws_launch_template" "brainstore" {
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
-    datadog_agent_container_logs    = local.datadog_agent_container_logs.reader
-    datadog_agent_otlp_env_vars     = local.datadog_agent_otlp_env_vars.reader
+    datadog_agent_container_logs    = module.datadog_agent_telemetry["reader"].container_logs
+    datadog_agent_otlp_env_vars     = local.datadog_agent_otlp_env_vars["reader"]
     service_token_secret_arn        = var.service_token_secret_arn
     custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script      = var.custom_post_install_script

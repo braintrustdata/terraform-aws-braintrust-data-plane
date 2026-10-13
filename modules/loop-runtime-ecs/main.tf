@@ -38,25 +38,12 @@ locals {
     } : {},
   )
 
-  # The internal Datadog agent skips the signals that the effective
-  # BRAINSTORE_CONTROL_PLANE_TELEMETRY (Pulse) already sends to Datadog.
   control_plane_telemetry = join(",", [var.monitoring_telemetry, "metrics", "traces"])
-  env_overrides           = merge(var.sandbox_env_vars, var.extra_env_vars)
-  pulse_signals = [
-    for signal in split(",", lower(lookup(local.env_overrides, "BRAINSTORE_CONTROL_PLANE_TELEMETRY", local.control_plane_telemetry))) : trimspace(signal)
-    if !contains(["", "none"], trimspace(signal))
-  ]
-  # A caller-set endpoint owns its export, so keep its signals.
-  datadog_agent_otlp_signals = [
-    for signal in split(",", lower(lookup(local.env_overrides, "BRAINSTORE_OTLP_TELEMETRY", "metrics,traces"))) : trimspace(signal)
-    if contains(keys(local.env_overrides), "BRAINSTORE_OTLP_HTTP_ENDPOINT") || !contains(local.pulse_signals, trimspace(signal))
-  ]
-  datadog_agent_otlp_env = length(local.datadog_agent_otlp_signals) == 0 ? {} : {
+  datadog_agent_otlp_env = module.datadog_agent_telemetry.otlp_telemetry == "" ? {} : {
     BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-    BRAINSTORE_OTLP_TELEMETRY     = join(",", local.datadog_agent_otlp_signals)
+    BRAINSTORE_OTLP_TELEMETRY     = module.datadog_agent_telemetry.otlp_telemetry
   }
-  # FireLens ships app logs to Datadog; use CloudWatch when Pulse carries logs.
-  datadog_firelens_logs = local.observability_enabled && !contains(local.pulse_signals, "logs")
+  datadog_firelens_logs = local.observability_enabled && module.datadog_agent_telemetry.container_logs
 
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes
@@ -282,6 +269,15 @@ locals {
     "8192"  = [for value in range(16384, 61441, 4096) : value]
     "16384" = [for value in range(32768, 122881, 8192) : value]
   }
+}
+
+module "datadog_agent_telemetry" {
+  source = "../datadog-agent-telemetry"
+
+  enabled                 = local.observability_enabled
+  env_vars                = merge(var.sandbox_env_vars, var.extra_env_vars)
+  control_plane_telemetry = local.control_plane_telemetry
+  otlp_telemetry          = "metrics,traces"
 }
 
 data "aws_region" "current" {}
