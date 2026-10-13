@@ -35,18 +35,6 @@ locals {
   brainstore_reader_writer_extra_env_vars = local.has_automation_writer_nodes && !local.has_writer_nodes ? merge(var.extra_env_vars, {
     BRAINSTORE_WRITER_LOOP_CONFIG = "exclude:automations"
   }) : var.extra_env_vars
-
-  # Without Pulse overlap, keep the existing endpoint-only user_data.
-  datadog_agent_otlp_env_vars = {
-    for role, telemetry in module.datadog_agent_telemetry : role => (
-      telemetry.otlp_telemetry == "metrics,logs,traces" ? { BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318" } :
-      telemetry.otlp_telemetry == "" ? {} :
-      {
-        BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-        BRAINSTORE_OTLP_TELEMETRY     = telemetry.otlp_telemetry
-      }
-    )
-  }
 }
 
 module "datadog_agent_telemetry" {
@@ -125,7 +113,7 @@ resource "aws_launch_template" "brainstore" {
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
     datadog_agent_container_logs    = module.datadog_agent_telemetry["reader"].container_logs
-    datadog_agent_otlp_env_vars     = local.datadog_agent_otlp_env_vars["reader"]
+    datadog_agent_otlp_env_vars     = module.datadog_agent_telemetry["reader"].otlp_env_vars
     service_token_secret_arn        = var.service_token_secret_arn
     custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script      = var.custom_post_install_script

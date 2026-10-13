@@ -39,11 +39,7 @@ locals {
   )
 
   control_plane_telemetry = join(",", [var.monitoring_telemetry, "metrics", "traces"])
-  datadog_agent_otlp_env = module.datadog_agent_telemetry.otlp_telemetry == "" ? {} : {
-    BRAINSTORE_OTLP_HTTP_ENDPOINT = "http://localhost:4318"
-    BRAINSTORE_OTLP_TELEMETRY     = module.datadog_agent_telemetry.otlp_telemetry
-  }
-  datadog_firelens_logs = local.observability_enabled && module.datadog_agent_telemetry.container_logs
+  datadog_firelens_logs   = local.observability_enabled && module.datadog_agent_telemetry.container_logs
 
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes
@@ -92,10 +88,14 @@ locals {
       BRAINSTORE_ENABLE_OTEL_ENV_RESOURCE_DETECTOR = "true"
       OTEL_RESOURCE_ATTRIBUTES                     = "deployment.environment.name=${var.internal_observability_env_name},env=${var.internal_observability_env_name}"
     } : {},
-    local.observability_enabled ? local.datadog_agent_otlp_env : {},
   )
 
-  merged_env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
+  merged_env_vars = merge(
+    local.core_env,
+    var.sandbox_env_vars,
+    var.extra_env_vars,
+    local.observability_enabled ? module.datadog_agent_telemetry.otlp_env_vars : {},
+  )
 
   container_secrets = concat(
     [

@@ -64,7 +64,7 @@ run "full_pulse_skips_datadog_agent_telemetry" {
 
   assert {
     condition = (
-      length([for env in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment : env if startswith(env.name, "BRAINSTORE_OTLP_")]) == 0 &&
+      [for env in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment : env if startswith(env.name, "BRAINSTORE_OTLP_")] == [{ name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "" }] &&
       jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].logConfiguration.logDriver == "awslogs" &&
       [for container in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions) : container.name] == ["loop-runtime", "datadog-agent"]
     )
@@ -92,7 +92,7 @@ run "partial_pulse_skips_only_overlapping_signals" {
   }
 }
 
-run "explicit_otlp_signals_keep_datadog_agent_endpoint" {
+run "explicit_otlp_signals_skip_only_pulse_signals" {
   command = plan
 
   module {
@@ -100,14 +100,17 @@ run "explicit_otlp_signals_keep_datadog_agent_endpoint" {
   }
 
   variables {
-    extra_env_vars = { BRAINSTORE_OTLP_TELEMETRY = "metrics" }
+    extra_env_vars = {
+      BRAINSTORE_CONTROL_PLANE_TELEMETRY = "status,metrics"
+      BRAINSTORE_OTLP_TELEMETRY          = "metrics,logs"
+    }
   }
 
   assert {
     condition = (
       contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "http://localhost:4318" }) &&
-      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "metrics" })
+      contains(jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "logs" })
     )
-    error_message = "An explicit Loop OTLP signal list must keep the Datadog agent endpoint."
+    error_message = "An explicit Loop OTLP signal list must keep the Datadog agent endpoint for the signals Pulse does not send."
   }
 }

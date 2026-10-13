@@ -15,5 +15,5 @@ variable "control_plane_telemetry" {
 
 variable "otlp_telemetry" {
   type        = string
-  description = "Signals the service sends to the Datadog agent over OTLP without Pulse."
+  description = "OTLP signals the service sends to the Datadog agent when env_vars does not set BRAINSTORE_OTLP_TELEMETRY."
 }

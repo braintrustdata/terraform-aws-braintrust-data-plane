@@ -279,7 +279,6 @@ EOF
 
   systemctl daemon-reload
   systemctl enable datadog-agent
-%{ if length(datadog_agent_otlp_env_vars) > 0 ~}
 
   # Configure Brainstore to send traces to Datadog
   cat <<EOF >> /etc/brainstore.env
@@ -287,7 +286,6 @@ EOF
 ${env_key}=${env_value}
 %{ endfor ~}
 EOF
-%{ endif ~}
 fi
 
 BRAINSTORE_RELEASE_VERSION=${brainstore_release_version}

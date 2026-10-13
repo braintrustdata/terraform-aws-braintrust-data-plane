@@ -1,9 +1,11 @@
-output "otlp_telemetry" {
-  description = "Signals to send to the Datadog agent over OTLP, or empty when Pulse sends them all."
-  value = join(",", [
-    for signal in split(",", var.otlp_telemetry) : signal
-    if local.caller_sets_otlp || !contains(local.pulse_signals, signal)
-  ])
+output "otlp_env_vars" {
+  description = "OTLP env vars for the Datadog agent. They must override caller env vars. An empty endpoint disables OTLP when Pulse sends every signal."
+  value = tomap(merge(
+    { BRAINSTORE_OTLP_HTTP_ENDPOINT = length(local.datadog_agent_signals) == 0 ? "" : "http://localhost:4318" },
+    length(local.datadog_agent_signals) == 0 || local.datadog_agent_signals == local.brainstore_signals ? {} : {
+      BRAINSTORE_OTLP_TELEMETRY = join(",", local.datadog_agent_signals)
+    },
+  ))
 }
 
 output "container_logs" {
