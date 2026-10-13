@@ -240,6 +240,7 @@ DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
 DD_COLLECT_EC2_TAGS=true
 DD_COLLECT_EC2_TAGS_USE_IMDS=true
 EOF
+%{ if datadog_agent_container_logs ~}
   # Configure Datadog Agent to collect Docker logs
   cat <<EOF >> /etc/datadog-agent/datadog.yaml
 logs_enabled: true
@@ -251,6 +252,7 @@ config_providers:
 logs_config:
     container_collect_all: true
 EOF
+%{ endif ~}
 
   # Configure Datadog agent to collect network metrics
   cat <<EOF > /etc/datadog-agent/conf.d/network.d/conf.yaml
@@ -277,11 +279,15 @@ EOF
 
   systemctl daemon-reload
   systemctl enable datadog-agent
+%{ if length(datadog_agent_otlp_env_vars) > 0 ~}
 
   # Configure Brainstore to send traces to Datadog
   cat <<EOF >> /etc/brainstore.env
-BRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318
+%{ for env_key, env_value in datadog_agent_otlp_env_vars ~}
+${env_key}=${env_value}
+%{ endfor ~}
 EOF
+%{ endif ~}
 fi
 
 BRAINSTORE_RELEASE_VERSION=${brainstore_release_version}
