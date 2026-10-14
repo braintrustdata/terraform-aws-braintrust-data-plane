@@ -195,7 +195,7 @@ run "existing_vpc_keeps_customer_network" {
   }
 }
 
-run "rejects_missing_subnet" {
+run "accepts_two_existing_subnets" {
   command = plan
   module {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
@@ -205,7 +205,29 @@ run "rejects_missing_subnet" {
     existing_private_subnet_1_id = "subnet-0123456789abcdef0"
     existing_private_subnet_2_id = "subnet-0123456789abcdef1"
   }
-  expect_failures = [var.existing_private_subnet_3_id]
+  assert {
+    condition     = aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1"
+    error_message = "Two sandbox subnets must be enough for the connector."
+  }
+}
+
+run "managed_vpc_with_two_zones" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  override_data {
+    target = data.aws_availability_zones.available[0]
+    values = { names = ["us-east-1a", "us-east-1b"] }
+  }
+  assert {
+    condition     = length(aws_subnet.restricted_egress) == 2 && aws_subnet.restricted_egress[*].availability_zone == ["us-east-1a", "us-east-1b"] && aws_subnet.restricted_egress[*].cidr_block == ["10.255.1.0/24", "10.255.2.0/24"]
+    error_message = "Two availability zones must produce two connector subnets."
+  }
+  assert {
+    condition     = length(aws_subnet.egress_gateway) == 3 && aws_subnet.egress_gateway[*].cidr_block == ["10.255.4.0/24", "10.255.5.0/24", "10.255.6.0/24"]
+    error_message = "Endpoint subnets stay one per supplied main-VPC subnet."
+  }
 }
 
 run "rejects_empty_subnet_1_id" {

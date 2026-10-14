@@ -24,8 +24,8 @@ output "private_subnet_2_id" {
 }
 
 output "private_subnet_3_id" {
-  description = "ID of private subnet 3"
-  value       = aws_subnet.private_subnet_3.id
+  description = "ID of private subnet 3. Null when the region has only two availability zones."
+  value       = one(aws_subnet.private_subnet_3[*].id)
 }
 
 output "private_route_table_id" {

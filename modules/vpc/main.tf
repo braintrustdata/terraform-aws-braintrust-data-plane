@@ -20,6 +20,15 @@ locals {
     var.s3_vpc_endpoint_resource_account_ids,
     [data.aws_caller_identity.current.account_id]
   ))
+
+  private_subnet_ids = var.private_subnet_3_az == null ? [
+    aws_subnet.private_subnet_1.id,
+    aws_subnet.private_subnet_2.id,
+    ] : [
+    aws_subnet.private_subnet_1.id,
+    aws_subnet.private_subnet_2.id,
+    aws_subnet.private_subnet_3[0].id,
+  ]
 }
 
 # Use aws_iam_policy_document (not jsonencode + ternary locals) so unrestricted vs
@@ -227,6 +236,8 @@ resource "aws_subnet" "private_subnet_2" {
 }
 
 resource "aws_subnet" "private_subnet_3" {
+  count = var.private_subnet_3_az == null ? 0 : 1
+
   vpc_id            = aws_vpc.vpc.id
   cidr_block        = var.private_subnet_3_cidr
   availability_zone = var.private_subnet_3_az
@@ -251,7 +262,9 @@ resource "aws_route_table_association" "private_subnet_2_association" {
 }
 
 resource "aws_route_table_association" "private_subnet_3_association" {
-  subnet_id      = aws_subnet.private_subnet_3.id
+  count = length(aws_subnet.private_subnet_3)
+
+  subnet_id      = aws_subnet.private_subnet_3[0].id
   route_table_id = aws_route_table.private_route_table.id
 }
 
@@ -303,11 +316,7 @@ resource "aws_vpc_endpoint" "ec2_ssm_endpoint" {
   ]
 
   private_dns_enabled = true
-  subnet_ids = [
-    aws_subnet.private_subnet_1.id,
-    aws_subnet.private_subnet_2.id,
-    aws_subnet.private_subnet_3.id,
-  ]
+  subnet_ids          = local.private_subnet_ids
 
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-${each.key}-endpoint"
@@ -322,11 +331,7 @@ resource "aws_vpc_endpoint" "secrets_manager" {
 
   security_group_ids  = [aws_security_group.vpc_endpoints_tls[0].id]
   private_dns_enabled = true
-  subnet_ids = [
-    aws_subnet.private_subnet_1.id,
-    aws_subnet.private_subnet_2.id,
-    aws_subnet.private_subnet_3.id,
-  ]
+  subnet_ids          = local.private_subnet_ids
 
   tags = merge({
     Name = "${var.deployment_name}-${var.vpc_name}-secretsmanager-endpoint"

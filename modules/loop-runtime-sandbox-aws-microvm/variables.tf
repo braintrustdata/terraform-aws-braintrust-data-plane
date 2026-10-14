@@ -176,13 +176,8 @@ variable "existing_private_subnet_2_id" {
 
 variable "existing_private_subnet_3_id" {
   type        = string
-  description = "ID of existing private subnet 3 in the sandbox VPC. Required with existing_vpc_id."
+  description = "ID of existing private subnet 3 in the sandbox VPC. Optional when that VPC has only two private subnets."
   default     = null
-
-  validation {
-    condition     = (var.existing_vpc_id == null) == (var.existing_private_subnet_3_id == null)
-    error_message = "existing_vpc_id and existing_private_subnet_3_id must be supplied together."
-  }
 
   validation {
     condition     = var.existing_private_subnet_3_id == null ? true : trimspace(var.existing_private_subnet_3_id) != ""
@@ -190,11 +185,15 @@ variable "existing_private_subnet_3_id" {
   }
 
   validation {
-    condition = var.existing_vpc_id == null || length(distinct([
+    condition = var.existing_vpc_id == null || length(distinct(compact([
       var.existing_private_subnet_1_id,
       var.existing_private_subnet_2_id,
       var.existing_private_subnet_3_id,
-    ])) == 3
+      ]))) == length(compact([
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id,
+    ]))
     error_message = "The existing private subnet IDs must be distinct."
   }
 }

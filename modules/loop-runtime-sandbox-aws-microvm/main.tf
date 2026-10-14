@@ -25,11 +25,12 @@ locals {
   create_dns_firewall          = local.create_restricted_egress_vpc || var.manage_existing_vpc_dns_firewall
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
   restricted_egress_vpc_cidr   = var.existing_vpc_id != null ? data.aws_vpc.restricted_egress_existing[0].cidr_block : aws_vpc.restricted_egress[0].cidr_block
-  existing_private_subnet_ids = [
+  existing_private_subnet_ids = compact([
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
     var.existing_private_subnet_3_id,
-  ]
+  ])
+  restricted_egress_azs        = local.create_restricted_egress_vpc ? slice(data.aws_availability_zones.available[0].names, 0, min(3, length(data.aws_availability_zones.available[0].names))) : []
   restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
   sandbox_gateway_subnet_ids   = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.egress_gateway[*].id
   sandbox_subnet_azs           = var.existing_vpc_id != null ? data.aws_subnet.restricted_egress_existing[*].availability_zone : aws_subnet.egress_gateway[*].availability_zone
@@ -202,10 +203,10 @@ resource "aws_route_table" "restricted_egress" {
 }
 
 resource "aws_subnet" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = length(local.restricted_egress_azs)
 
   # Preserve the released connector subnets; replacing them is blocked by its ENIs.
-  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
+  availability_zone       = local.restricted_egress_azs[count.index]
   cidr_block              = "10.255.${count.index + 1}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
@@ -216,7 +217,7 @@ resource "aws_subnet" "restricted_egress" {
 }
 
 resource "aws_route_table_association" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = length(aws_subnet.restricted_egress)
 
   route_table_id = aws_route_table.restricted_egress[0].id
   subnet_id      = aws_subnet.restricted_egress[count.index].id

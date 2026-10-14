@@ -216,7 +216,10 @@ resource "aws_vpc_endpoint" "quarantine_gateway" {
   service_name        = aws_vpc_endpoint_service.gateway_quarantine[0].service_name
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = false
-  subnet_ids = [
+  subnet_ids = local.quarantine_private_subnet_3_az == null ? [
+    module.quarantine_vpc[0].private_subnet_1_id,
+    module.quarantine_vpc[0].private_subnet_2_id,
+    ] : [
     module.quarantine_vpc[0].private_subnet_1_id,
     module.quarantine_vpc[0].private_subnet_2_id,
     module.quarantine_vpc[0].private_subnet_3_id,

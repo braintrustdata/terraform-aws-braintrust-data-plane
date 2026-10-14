@@ -135,8 +135,8 @@ variable "quarantine_vpc_private_subnets" {
   description = "The private subnets of the quarantine VPC"
   default     = []
   validation {
-    condition     = var.use_quarantine_vpc ? length(var.quarantine_vpc_private_subnets) == 3 : true
-    error_message = "Quarantine VPC must have 3 private subnets."
+    condition     = !var.use_quarantine_vpc || (length(var.quarantine_vpc_private_subnets) >= 2 && length(var.quarantine_vpc_private_subnets) <= 3)
+    error_message = "Quarantine VPC must have 2 or 3 private subnets."
   }
 }
 

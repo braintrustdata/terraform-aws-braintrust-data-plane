@@ -49,8 +49,9 @@ variable "private_subnet_3_cidr" {
 }
 
 variable "private_subnet_3_az" {
-  description = "Availability zone for private subnet 3"
+  description = "Availability zone for private subnet 3. Null omits the subnet."
   type        = string
+  nullable    = true
 }
 
 variable "custom_tags" {

@@ -1,15 +1,65 @@
 locals {
-  # Lookup and choose an AZ if not provided
-  private_subnet_1_az = var.private_subnet_1_az != null ? var.private_subnet_1_az : data.aws_availability_zones.available.names[0]
-  private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : data.aws_availability_zones.available.names[1]
-  private_subnet_3_az = var.private_subnet_3_az != null ? var.private_subnet_3_az : data.aws_availability_zones.available.names[2]
-  public_subnet_1_az  = var.public_subnet_1_az != null ? var.public_subnet_1_az : data.aws_availability_zones.available.names[0]
+  az_names = data.aws_availability_zones.available.names
+
+  # Lookup and choose an AZ if not provided. Regions with only two zones omit subnet 3.
+  private_subnet_1_az = var.private_subnet_1_az != null ? var.private_subnet_1_az : local.az_names[0]
+  private_subnet_2_az = var.private_subnet_2_az != null ? var.private_subnet_2_az : local.az_names[1]
+  private_subnet_3_az = var.private_subnet_3_az != null ? var.private_subnet_3_az : (length(local.az_names) > 2 ? local.az_names[2] : null)
+  public_subnet_1_az  = var.public_subnet_1_az != null ? var.public_subnet_1_az : local.az_names[0]
 
   # Lookup and choose an AZ if not provided for Quarantine VPC
-  quarantine_private_subnet_1_az = var.quarantine_private_subnet_1_az != null ? var.quarantine_private_subnet_1_az : data.aws_availability_zones.available.names[0]
-  quarantine_private_subnet_2_az = var.quarantine_private_subnet_2_az != null ? var.quarantine_private_subnet_2_az : data.aws_availability_zones.available.names[1]
-  quarantine_private_subnet_3_az = var.quarantine_private_subnet_3_az != null ? var.quarantine_private_subnet_3_az : data.aws_availability_zones.available.names[2]
-  quarantine_public_subnet_1_az  = var.quarantine_public_subnet_1_az != null ? var.quarantine_public_subnet_1_az : data.aws_availability_zones.available.names[0]
+  quarantine_private_subnet_1_az = var.quarantine_private_subnet_1_az != null ? var.quarantine_private_subnet_1_az : local.az_names[0]
+  quarantine_private_subnet_2_az = var.quarantine_private_subnet_2_az != null ? var.quarantine_private_subnet_2_az : local.az_names[1]
+  quarantine_private_subnet_3_az = var.quarantine_private_subnet_3_az != null ? var.quarantine_private_subnet_3_az : (length(local.az_names) > 2 ? local.az_names[2] : null)
+  quarantine_public_subnet_1_az  = var.quarantine_public_subnet_1_az != null ? var.quarantine_public_subnet_1_az : local.az_names[0]
+}
+
+check "at_least_two_availability_zones" {
+  assert {
+    condition     = length(local.az_names) >= 2
+    error_message = "The data plane needs at least two availability zones."
+  }
+}
+
+check "private_subnet_zones_distinct" {
+  assert {
+    condition = local.private_subnet_3_az == null || (
+      local.private_subnet_3_az != local.private_subnet_1_az &&
+      local.private_subnet_3_az != local.private_subnet_2_az
+    )
+    error_message = "private_subnet_3_az must differ from the first two private subnet zones."
+  }
+}
+
+check "quarantine_private_subnet_zones_distinct" {
+  assert {
+    condition = local.quarantine_private_subnet_3_az == null || (
+      local.quarantine_private_subnet_3_az != local.quarantine_private_subnet_1_az &&
+      local.quarantine_private_subnet_3_az != local.quarantine_private_subnet_2_az
+    )
+    error_message = "quarantine_private_subnet_3_az must differ from the first two quarantine private subnet zones."
+  }
+}
+
+check "existing_private_subnet_3_when_three_zones" {
+  assert {
+    condition     = var.create_vpc || length(local.az_names) < 3 || var.existing_private_subnet_3_id != null
+    error_message = "existing_private_subnet_3_id is required when the region has three or more availability zones."
+  }
+}
+
+check "existing_quarantine_private_subnet_3_when_three_zones" {
+  assert {
+    condition     = var.existing_quarantine_vpc_id == null || length(local.az_names) < 3 || var.existing_quarantine_private_subnet_3_id != null
+    error_message = "existing_quarantine_private_subnet_3_id is required when the region has three or more availability zones."
+  }
+}
+
+check "loop_sandbox_subnet_3_when_three_zones" {
+  assert {
+    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || length(local.az_names) < 3 || var.loop_runtime_sandbox_existing_private_subnet_3_id != null
+    error_message = "loop_runtime_sandbox_existing_private_subnet_3_id is required when the region has three or more availability zones."
+  }
 }
 
 variable "braintrust_org_name" {
@@ -163,10 +213,22 @@ variable "existing_private_subnet_2_id" {
 variable "existing_private_subnet_3_id" {
   type        = string
   default     = null
-  description = "ID of existing private subnet 3 (required when create_vpc is false)"
+  description = "ID of existing private subnet 3. Optional when create_vpc is false and the VPC has only two private subnets."
   validation {
-    condition     = var.create_vpc || var.existing_private_subnet_3_id != null
-    error_message = "existing_private_subnet_3_id is required when create_vpc is false."
+    condition     = var.existing_private_subnet_3_id == null ? true : trimspace(var.existing_private_subnet_3_id) != ""
+    error_message = "existing_private_subnet_3_id must be null or a nonempty subnet ID."
+  }
+  validation {
+    condition = var.create_vpc || length(distinct(compact([
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id,
+      ]))) == length(compact([
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id,
+    ]))
+    error_message = "Existing private subnet IDs must be distinct."
   }
 }
 
@@ -195,7 +257,7 @@ variable "private_subnet_2_az" {
 variable "private_subnet_3_az" {
   type        = string
   default     = null
-  description = "Availability zone for the third private subnet. Leave blank to choose the third available zone"
+  description = "Availability zone for the third private subnet. Leave blank to choose the third available zone, or to omit the subnet when the region has only two zones."
 }
 
 variable "public_subnet_1_az" {
@@ -246,10 +308,22 @@ variable "existing_quarantine_private_subnet_2_id" {
 variable "existing_quarantine_private_subnet_3_id" {
   type        = string
   default     = null
-  description = "ID of existing Quarantine private subnet 3 (required when existing_quarantine_vpc_id is provided)"
+  description = "ID of existing Quarantine private subnet 3. Optional when the quarantine VPC has only two private subnets."
   validation {
-    condition     = var.existing_quarantine_vpc_id == null || var.existing_quarantine_private_subnet_3_id != null
-    error_message = "existing_quarantine_private_subnet_3_id is required when existing_quarantine_vpc_id is provided."
+    condition     = var.existing_quarantine_private_subnet_3_id == null ? true : trimspace(var.existing_quarantine_private_subnet_3_id) != ""
+    error_message = "existing_quarantine_private_subnet_3_id must be null or a nonempty subnet ID."
+  }
+  validation {
+    condition = var.existing_quarantine_vpc_id == null || length(distinct(compact([
+      var.existing_quarantine_private_subnet_1_id,
+      var.existing_quarantine_private_subnet_2_id,
+      var.existing_quarantine_private_subnet_3_id,
+      ]))) == length(compact([
+      var.existing_quarantine_private_subnet_1_id,
+      var.existing_quarantine_private_subnet_2_id,
+      var.existing_quarantine_private_subnet_3_id,
+    ]))
+    error_message = "Existing quarantine private subnet IDs must be distinct."
   }
 }
 
@@ -268,7 +342,7 @@ variable "quarantine_private_subnet_2_az" {
 variable "quarantine_private_subnet_3_az" {
   type        = string
   default     = null
-  description = "Availability zone for the third private subnet. Leave blank to choose the third available zone"
+  description = "Availability zone for the third private subnet. Leave blank to choose the third available zone, or to omit the subnet when the region has only two zones."
 }
 
 variable "quarantine_public_subnet_1_az" {
@@ -942,13 +1016,8 @@ variable "loop_runtime_sandbox_existing_private_subnet_2_id" {
 
 variable "loop_runtime_sandbox_existing_private_subnet_3_id" {
   type        = string
-  description = "ID of existing private subnet 3 in the Loop runtime sandbox VPC. Required with loop_runtime_sandbox_existing_vpc_id."
+  description = "ID of existing private subnet 3 in the Loop runtime sandbox VPC. Optional when that VPC has only two private subnets."
   default     = null
-
-  validation {
-    condition     = (var.loop_runtime_sandbox_existing_vpc_id == null) == (var.loop_runtime_sandbox_existing_private_subnet_3_id == null)
-    error_message = "loop_runtime_sandbox_existing_vpc_id and loop_runtime_sandbox_existing_private_subnet_3_id must be supplied together."
-  }
 
   validation {
     condition     = var.loop_runtime_sandbox_existing_private_subnet_3_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_private_subnet_3_id) != ""
@@ -956,11 +1025,15 @@ variable "loop_runtime_sandbox_existing_private_subnet_3_id" {
   }
 
   validation {
-    condition = var.loop_runtime_sandbox_existing_vpc_id == null || length(distinct([
+    condition = var.loop_runtime_sandbox_existing_vpc_id == null || length(distinct(compact([
       var.loop_runtime_sandbox_existing_private_subnet_1_id,
       var.loop_runtime_sandbox_existing_private_subnet_2_id,
       var.loop_runtime_sandbox_existing_private_subnet_3_id,
-    ])) == 3
+      ]))) == length(compact([
+      var.loop_runtime_sandbox_existing_private_subnet_1_id,
+      var.loop_runtime_sandbox_existing_private_subnet_2_id,
+      var.loop_runtime_sandbox_existing_private_subnet_3_id,
+    ]))
     error_message = "The Loop runtime sandbox private subnet IDs must be distinct."
   }
 }
