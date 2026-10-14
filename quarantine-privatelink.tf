@@ -216,15 +216,8 @@ resource "aws_vpc_endpoint" "quarantine_gateway" {
   service_name        = aws_vpc_endpoint_service.gateway_quarantine[0].service_name
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = false
-  subnet_ids = local.quarantine_private_subnet_3_az == null ? [
-    module.quarantine_vpc[0].private_subnet_1_id,
-    module.quarantine_vpc[0].private_subnet_2_id,
-    ] : [
-    module.quarantine_vpc[0].private_subnet_1_id,
-    module.quarantine_vpc[0].private_subnet_2_id,
-    module.quarantine_vpc[0].private_subnet_3_id,
-  ]
-  security_group_ids = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
+  subnet_ids          = local.quarantine_vpc_private_subnet_ids
+  security_group_ids  = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
 
   # Ensure the account root is allow-listed before the consumer VPCE is created.
   depends_on = [aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account]

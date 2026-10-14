@@ -41,29 +41,30 @@ locals {
   quarantine_vpc_private_subnet_1_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_1_id : module.quarantine_vpc[0].private_subnet_1_id) : null
   quarantine_vpc_private_subnet_2_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_2_id : module.quarantine_vpc[0].private_subnet_2_id) : null
   quarantine_vpc_private_subnet_3_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id : module.quarantine_vpc[0].private_subnet_3_id) : null
-  # Key off values known at plan time. compact() of a subnet ID that is not known
-  # until apply makes the list length unknown and breaks resources that count it.
-  include_main_private_subnet_3 = var.create_vpc ? local.private_subnet_3_az != null : var.existing_private_subnet_3_id != null
-  include_quarantine_private_subnet_3 = !var.enable_quarantine_vpc ? false : (
-    var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id != null : local.quarantine_private_subnet_3_az != null
-  )
-  main_vpc_private_subnet_ids = local.include_main_private_subnet_3 ? [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id,
-    ] : [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-  ]
-  quarantine_vpc_private_subnet_ids = !var.enable_quarantine_vpc ? [] : (
-    local.include_quarantine_private_subnet_3 ? [
-      local.quarantine_vpc_private_subnet_1_id,
-      local.quarantine_vpc_private_subnet_2_id,
-      local.quarantine_vpc_private_subnet_3_id,
+  # Managed VPCs take the list from the VPC module, which already omitted subnet 3
+  # when its zone is null. Bring-your-own IDs use a null check so the length stays
+  # known when the IDs themselves are not known until apply.
+  main_vpc_private_subnet_ids = var.create_vpc ? module.main_vpc[0].private_subnet_ids : (
+    var.existing_private_subnet_3_id == null ? [
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
       ] : [
-      local.quarantine_vpc_private_subnet_1_id,
-      local.quarantine_vpc_private_subnet_2_id,
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id,
     ]
+  )
+  quarantine_vpc_private_subnet_ids = !var.enable_quarantine_vpc ? [] : (
+    var.existing_quarantine_vpc_id != null ? (
+      var.existing_quarantine_private_subnet_3_id == null ? [
+        var.existing_quarantine_private_subnet_1_id,
+        var.existing_quarantine_private_subnet_2_id,
+        ] : [
+        var.existing_quarantine_private_subnet_1_id,
+        var.existing_quarantine_private_subnet_2_id,
+        var.existing_quarantine_private_subnet_3_id,
+      ]
+    ) : module.quarantine_vpc[0].private_subnet_ids
   )
 
   # Database subnet configuration - use custom subnets if provided, otherwise use main VPC private subnets

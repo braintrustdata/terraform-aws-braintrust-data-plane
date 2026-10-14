@@ -12,6 +12,8 @@ The main and quarantine VPCs omit private subnet 3 when the region has only two 
 
 Quarantine in a two-zone region leaves `QUARANTINE_PRIVATE_SUBNET_3_ID` empty. Current data plane releases treat that empty value as "Lambda quarantine is not enabled" and skip warmup and function creation. Use a data plane release that accepts two quarantine subnets before relying on user-defined functions in a two-zone region. Three-zone regions still set all three IDs, so this does not change them.
 
+If a bring-your-own VPC set `existing_private_subnet_3_id` to the same ID as subnet 1 or subnet 2, remove that duplicate before upgrading. v7 rejects repeated subnet IDs. In a two-zone region, leave the third ID unset. In a three-zone region, supply the real third subnet.
+
 ## Upgrade steps
 
 1. **Bump the module to v7** and run `terraform plan`.
@@ -22,4 +24,4 @@ Quarantine in a two-zone region leaves `QUARANTINE_PRIVATE_SUBNET_3_ID` empty. C
 
 ## Downgrade
 
-Do not downgrade to v6 after applying v7. v6 has no reverse `moved` block, so the next plan recreates private subnet 3 and its route association in each module-managed VPC. That replacement interrupts the load balancer, database, and cache attachments that use the subnet.
+Do not downgrade to v6 after applying v7. v6 has no reverse `moved` block, so the next plan destroys private subnet 3 at its counted address and creates it again without an index, in each module-managed VPC. RDS, ElastiCache, Lambda, and load balancers still use that subnet. AWS refuses to delete a subnet that has those attachments, so the apply fails partway through: the replacement subnet is not in place, and the original subnet is still there. Stay on v7.

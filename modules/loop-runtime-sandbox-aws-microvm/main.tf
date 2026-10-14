@@ -229,9 +229,9 @@ resource "aws_route_table_association" "restricted_egress" {
 }
 
 resource "aws_subnet" "egress_gateway" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = local.create_restricted_egress_vpc ? length(local.egress_gateway_nlb_azs) : 0
 
-  availability_zone       = element(local.egress_gateway_nlb_azs, count.index)
+  availability_zone       = local.egress_gateway_nlb_azs[count.index]
   cidr_block              = "10.255.${count.index + 4}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
@@ -242,7 +242,7 @@ resource "aws_subnet" "egress_gateway" {
 }
 
 resource "aws_route_table_association" "egress_gateway" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = length(aws_subnet.egress_gateway)
 
   route_table_id = aws_route_table.restricted_egress[0].id
   subnet_id      = aws_subnet.egress_gateway[count.index].id

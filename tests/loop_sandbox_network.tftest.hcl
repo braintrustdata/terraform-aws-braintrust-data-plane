@@ -216,17 +216,28 @@ run "managed_vpc_with_two_zones" {
   module {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
+  variables {
+    endpoint_subnet_ids = ["subnet-11111111111111111", "subnet-22222222222222222"]
+  }
   override_data {
     target = data.aws_availability_zones.available[0]
     values = { names = ["us-east-1a", "us-east-1b"] }
+  }
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[0]
+    values = { availability_zone = "us-east-1a" }
+  }
+  override_data {
+    target = data.aws_subnet.egress_gateway_nlb[1]
+    values = { availability_zone = "us-east-1b" }
   }
   assert {
     condition     = length(aws_subnet.restricted_egress) == 2 && aws_subnet.restricted_egress[*].availability_zone == ["us-east-1a", "us-east-1b"] && aws_subnet.restricted_egress[*].cidr_block == ["10.255.1.0/24", "10.255.2.0/24"]
     error_message = "Two availability zones must produce two connector subnets."
   }
   assert {
-    condition     = length(aws_subnet.egress_gateway) == 3 && aws_subnet.egress_gateway[*].cidr_block == ["10.255.4.0/24", "10.255.5.0/24", "10.255.6.0/24"]
-    error_message = "Endpoint subnets stay one per supplied main-VPC subnet."
+    condition     = length(aws_subnet.egress_gateway) == 2 && aws_subnet.egress_gateway[*].availability_zone == ["us-east-1a", "us-east-1b"] && aws_subnet.egress_gateway[*].cidr_block == ["10.255.4.0/24", "10.255.5.0/24"]
+    error_message = "Two main-VPC endpoint subnets must produce two gateway subnets, one in each zone."
   }
 }
 

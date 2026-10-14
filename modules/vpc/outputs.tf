@@ -28,6 +28,11 @@ output "private_subnet_3_id" {
   value       = one(aws_subnet.private_subnet_3[*].id)
 }
 
+output "private_subnet_ids" {
+  description = "IDs of the private subnets, in order. The third entry is omitted when private subnet 3 is not created."
+  value       = local.private_subnet_ids
+}
+
 output "private_route_table_id" {
   description = "ID of the private route table"
   value       = aws_route_table.private_route_table.id
