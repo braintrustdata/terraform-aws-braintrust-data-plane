@@ -57,7 +57,9 @@ locals {
 
     SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
     CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
-  }, local.url_security_env_vars, local.redis_extra_env_vars)
+    }, var.brainstore_enabled && var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != "" ? {
+    BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"
+  } : {}, local.url_security_env_vars, local.redis_extra_env_vars)
   api_fast_reader_env_vars = local.using_brainstore_fast_reader ? {
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
     BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
