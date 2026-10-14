@@ -100,6 +100,9 @@ locals {
     local.quarantine_proxy_env_vars,
     local.url_security_env_vars,
     local.btql_audit_log_env_vars,
+    var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != "" ? {
+      BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"
+    } : {},
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
       BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"
