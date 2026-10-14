@@ -135,11 +135,12 @@ resource "aws_launch_template" "brainstore" {
 }
 
 resource "aws_lb" "brainstore" {
-  name               = "${var.deployment_name}-brainstore"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
+  name                             = "${var.deployment_name}-brainstore"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
 
   lifecycle {
     # Changing security groups requires a new NLB.
