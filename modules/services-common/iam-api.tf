@@ -135,12 +135,12 @@ resource "aws_iam_role_policy" "api_handler_external_attachment_read" {
           Resource = [for arn in var.external_attachment_s3_bucket_arns : "${arn}/*"]
         }
       ],
-      length(var.external_attachment_kms_key_arns) > 0 ? [
+      length(var.external_attachment_s3_bucket_kms_key_arns) > 0 ? [
         {
           Sid      = "ExternalAttachmentKMSDecrypt"
           Effect   = "Allow"
           Action   = ["kms:Decrypt"]
-          Resource = var.external_attachment_kms_key_arns
+          Resource = var.external_attachment_s3_bucket_kms_key_arns
           Condition = {
             StringLike = {
               "kms:ViaService" = "s3.*.amazonaws.com"

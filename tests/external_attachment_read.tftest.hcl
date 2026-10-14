@@ -1,6 +1,6 @@
 # Plan-mode tests for read-only access to caller-owned buckets that traces link
 # to as external attachments (external_attachment_s3_bucket_arns /
-# external_attachment_kms_key_arns).
+# external_attachment_s3_bucket_kms_key_arns).
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -59,8 +59,8 @@ run "grants_decrypt_through_s3_only" {
   module { source = "./modules/services-common" }
 
   variables {
-    external_attachment_s3_bucket_arns = ["arn:aws:s3:::example-a"]
-    external_attachment_kms_key_arns   = ["arn:aws:kms:us-east-1:210987654321:key/11111111-1111-1111-1111-111111111111"]
+    external_attachment_s3_bucket_arns         = ["arn:aws:s3:::example-a"]
+    external_attachment_s3_bucket_kms_key_arns = ["arn:aws:kms:us-east-1:210987654321:key/11111111-1111-1111-1111-111111111111"]
   }
 
   assert {
@@ -93,13 +93,13 @@ run "rejects_kms_without_bucket" {
   command = plan
 
   variables {
-    braintrust_org_name              = "test-org"
-    primary_org_name                 = "test-org"
-    brainstore_license_key           = "test-license"
-    external_attachment_kms_key_arns = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
+    braintrust_org_name                        = "test-org"
+    primary_org_name                           = "test-org"
+    brainstore_license_key                     = "test-license"
+    external_attachment_s3_bucket_kms_key_arns = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
   }
 
   expect_failures = [
-    var.external_attachment_kms_key_arns,
+    var.external_attachment_s3_bucket_kms_key_arns,
   ]
 }

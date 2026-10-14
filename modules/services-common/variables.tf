@@ -111,7 +111,7 @@ variable "external_attachment_s3_bucket_arns" {
   default     = []
 }
 
-variable "external_attachment_kms_key_arns" {
+variable "external_attachment_s3_bucket_kms_key_arns" {
   type        = list(string)
   description = "ARNs of the KMS keys that encrypt the external attachment buckets. When non-empty, the API role is granted kms:Decrypt on them through S3."
   default     = []

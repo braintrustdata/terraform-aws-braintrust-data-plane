@@ -1458,19 +1458,19 @@ variable "external_attachment_s3_bucket_arns" {
   }
 }
 
-variable "external_attachment_kms_key_arns" {
+variable "external_attachment_s3_bucket_kms_key_arns" {
   description = "Opt-in. ARNs of the KMS keys that encrypt the external_attachment_s3_bucket_arns buckets. The API role is granted kms:Decrypt on these keys through S3 only. A key in another account must also grant the API role in its key policy. Leave empty when the buckets use SSE-S3 (AES256)."
   type        = list(string)
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.external_attachment_kms_key_arns : can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-zA-Z-]+$", arn))])
-    error_message = "external_attachment_kms_key_arns must contain complete KMS key ARNs of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_kms_key_arns : can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-zA-Z-]+$", arn))])
+    error_message = "external_attachment_s3_bucket_kms_key_arns must contain complete KMS key ARNs of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
   }
 
   validation {
-    condition     = length(var.external_attachment_kms_key_arns) == 0 || length(var.external_attachment_s3_bucket_arns) > 0
-    error_message = "external_attachment_s3_bucket_arns is required when external_attachment_kms_key_arns is set."
+    condition     = length(var.external_attachment_s3_bucket_kms_key_arns) == 0 || length(var.external_attachment_s3_bucket_arns) > 0
+    error_message = "external_attachment_s3_bucket_arns is required when external_attachment_s3_bucket_kms_key_arns is set."
   }
 }
 
