@@ -42,27 +42,36 @@ locals {
   quarantine_vpc_private_subnet_2_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_2_id : module.quarantine_vpc[0].private_subnet_2_id) : null
   quarantine_vpc_private_subnet_3_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id : module.quarantine_vpc[0].private_subnet_3_id) : null
   # Managed VPCs take the list from the VPC module, which already omitted subnet 3
-  # when its zone is null. Bring-your-own IDs use a null check so the length stays
-  # known when the IDs themselves are not known until apply.
+  # when its zone is null. Bring-your-own list length follows the zone count, which
+  # is known during planning. A subnet ID from another resource is not: comparing
+  # it to null cannot decide the length.
+  include_existing_main_subnet_3 = (
+    var.use_existing_private_subnet_3 != null ? var.use_existing_private_subnet_3 :
+    length(local.az_names) >= 3
+  )
+  include_existing_quarantine_subnet_3 = (
+    var.use_existing_quarantine_private_subnet_3 != null ? var.use_existing_quarantine_private_subnet_3 :
+    length(local.az_names) >= 3
+  )
   main_vpc_private_subnet_ids = var.create_vpc ? module.main_vpc[0].private_subnet_ids : (
-    var.existing_private_subnet_3_id == null ? [
+    local.include_existing_main_subnet_3 ? [
       var.existing_private_subnet_1_id,
       var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id == null ? var.existing_private_subnet_1_id : var.existing_private_subnet_3_id,
       ] : [
       var.existing_private_subnet_1_id,
       var.existing_private_subnet_2_id,
-      var.existing_private_subnet_3_id,
     ]
   )
   quarantine_vpc_private_subnet_ids = !var.enable_quarantine_vpc ? [] : (
     var.existing_quarantine_vpc_id != null ? (
-      var.existing_quarantine_private_subnet_3_id == null ? [
+      local.include_existing_quarantine_subnet_3 ? [
         var.existing_quarantine_private_subnet_1_id,
         var.existing_quarantine_private_subnet_2_id,
+        var.existing_quarantine_private_subnet_3_id == null ? var.existing_quarantine_private_subnet_1_id : var.existing_quarantine_private_subnet_3_id,
         ] : [
         var.existing_quarantine_private_subnet_1_id,
         var.existing_quarantine_private_subnet_2_id,
-        var.existing_quarantine_private_subnet_3_id,
       ]
     ) : module.quarantine_vpc[0].private_subnet_ids
   )
@@ -223,6 +232,63 @@ locals {
   quarantine_vpc_flow_log = merge(var.quarantine_vpc_flow_log, {
     kms_key_arn = coalesce(var.quarantine_vpc_flow_log.kms_key_arn, local.kms_key_arn)
   })
+}
+
+# Preconditions fail the plan. check blocks only warn, so a three-zone
+# bring-your-own VPC could omit subnet 3 and still deploy.
+resource "terraform_data" "network_zone_requirements" {
+  lifecycle {
+    precondition {
+      condition     = length(local.az_names) >= 2
+      error_message = "The data plane needs at least two availability zones."
+    }
+
+    precondition {
+      condition = local.private_subnet_3_az == null || (
+        local.private_subnet_3_az != local.private_subnet_1_az &&
+        local.private_subnet_3_az != local.private_subnet_2_az
+      )
+      error_message = "private_subnet_3_az must differ from the first two private subnet zones."
+    }
+
+    precondition {
+      condition = local.quarantine_private_subnet_3_az == null || (
+        local.quarantine_private_subnet_3_az != local.quarantine_private_subnet_1_az &&
+        local.quarantine_private_subnet_3_az != local.quarantine_private_subnet_2_az
+      )
+      error_message = "quarantine_private_subnet_3_az must differ from the first two quarantine private subnet zones."
+    }
+
+    precondition {
+      condition     = var.create_vpc || length(local.az_names) < 3 || var.existing_private_subnet_3_id != null
+      error_message = "existing_private_subnet_3_id is required when the region has three or more availability zones."
+    }
+
+    precondition {
+      condition     = var.existing_quarantine_vpc_id == null || length(local.az_names) < 3 || var.existing_quarantine_private_subnet_3_id != null
+      error_message = "existing_quarantine_private_subnet_3_id is required when the region has three or more availability zones."
+    }
+
+    precondition {
+      condition     = var.loop_runtime_sandbox_existing_vpc_id == null || length(local.az_names) < 3 || var.loop_runtime_sandbox_existing_private_subnet_3_id != null
+      error_message = "loop_runtime_sandbox_existing_private_subnet_3_id is required when the region has three or more availability zones."
+    }
+
+    precondition {
+      condition     = var.use_existing_private_subnet_3 != true || var.existing_private_subnet_3_id != null
+      error_message = "existing_private_subnet_3_id is required when use_existing_private_subnet_3 is true."
+    }
+
+    precondition {
+      condition     = var.use_existing_quarantine_private_subnet_3 != true || var.existing_quarantine_private_subnet_3_id != null
+      error_message = "existing_quarantine_private_subnet_3_id is required when use_existing_quarantine_private_subnet_3 is true."
+    }
+
+    precondition {
+      condition     = var.loop_runtime_sandbox_use_existing_private_subnet_3 != true || var.loop_runtime_sandbox_existing_private_subnet_3_id != null
+      error_message = "loop_runtime_sandbox_existing_private_subnet_3_id is required when loop_runtime_sandbox_use_existing_private_subnet_3 is true."
+    }
+  }
 }
 
 module "main_vpc" {
@@ -571,6 +637,7 @@ module "loop_runtime_sandbox_aws_microvm" {
   existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
   existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id
   existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
+  use_existing_private_subnet_3         = var.loop_runtime_sandbox_use_existing_private_subnet_3
   manage_existing_vpc_dns_firewall      = var.loop_runtime_sandbox_manage_existing_vpc_dns_firewall
 
   kms_key_arn = local.kms_key_arn

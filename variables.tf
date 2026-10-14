@@ -162,10 +162,16 @@ variable "existing_private_subnet_2_id" {
   }
 }
 
+variable "use_existing_private_subnet_3" {
+  type        = bool
+  default     = null
+  description = "Include existing_private_subnet_3_id when create_vpc is false. Leave unset to follow the region: three or more availability zones include it, and two zones omit it. Set this when a two-zone region passes a third subnet ID from another resource. That ID is unknown until apply and cannot decide the subnet list length."
+}
+
 variable "existing_private_subnet_3_id" {
   type        = string
   default     = null
-  description = "ID of existing private subnet 3. Required when create_vpc is false and the region has three or more availability zones. Leave unset when the VPC has only two private subnets."
+  description = "ID of existing private subnet 3. Required when create_vpc is false and the region has three or more availability zones. In a two-zone region, leave unset for two subnets, or set this together with use_existing_private_subnet_3 when the VPC has a third subnet."
   validation {
     condition     = var.existing_private_subnet_3_id == null ? true : trimspace(var.existing_private_subnet_3_id) != ""
     error_message = "existing_private_subnet_3_id must be null or a nonempty subnet ID."
@@ -257,10 +263,16 @@ variable "existing_quarantine_private_subnet_2_id" {
   }
 }
 
+variable "use_existing_quarantine_private_subnet_3" {
+  type        = bool
+  default     = null
+  description = "Include existing_quarantine_private_subnet_3_id. Leave unset to follow the region: three or more availability zones include it, and two zones omit it. Set this when a two-zone region passes a third quarantine subnet ID from another resource. That ID is unknown until apply and cannot decide the subnet list length."
+}
+
 variable "existing_quarantine_private_subnet_3_id" {
   type        = string
   default     = null
-  description = "ID of existing Quarantine private subnet 3. Optional when the quarantine VPC has only two private subnets."
+  description = "ID of existing Quarantine private subnet 3. Required when an existing quarantine VPC is set and the region has three or more availability zones. In a two-zone region, set this together with use_existing_quarantine_private_subnet_3 when that VPC has a third subnet."
   validation {
     condition     = var.existing_quarantine_private_subnet_3_id == null ? true : trimspace(var.existing_quarantine_private_subnet_3_id) != ""
     error_message = "existing_quarantine_private_subnet_3_id must be null or a nonempty subnet ID."
@@ -966,9 +978,15 @@ variable "loop_runtime_sandbox_existing_private_subnet_2_id" {
   }
 }
 
+variable "loop_runtime_sandbox_use_existing_private_subnet_3" {
+  type        = bool
+  description = "Include loop_runtime_sandbox_existing_private_subnet_3_id. Leave unset to follow the region: three or more availability zones include it, and two zones omit it. Set this when a two-zone region passes a third sandbox subnet ID from another resource. That ID is unknown until apply and cannot decide the subnet count."
+  default     = null
+}
+
 variable "loop_runtime_sandbox_existing_private_subnet_3_id" {
   type        = string
-  description = "ID of existing private subnet 3 in the Loop runtime sandbox VPC. Optional when that VPC has only two private subnets."
+  description = "ID of existing private subnet 3 in the Loop runtime sandbox VPC. Required when the region has three or more availability zones. In a two-zone region, set this together with loop_runtime_sandbox_use_existing_private_subnet_3 when the sandbox VPC has a third subnet."
   default     = null
 
   validation {

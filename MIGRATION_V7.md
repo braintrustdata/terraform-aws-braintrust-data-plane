@@ -10,7 +10,7 @@ The main and quarantine VPCs omit private subnet 3 when the region has only two 
 
 `moved` blocks keep an existing private subnet 3, and its route table association, in place. A normal upgrade in a three-zone region does not replace those subnets.
 
-Quarantine in a two-zone region leaves `QUARANTINE_PRIVATE_SUBNET_3_ID` empty. Current data plane releases treat that empty value as "Lambda quarantine is not enabled" and skip warmup and function creation. Use a data plane release that accepts two quarantine subnets before relying on user-defined functions in a two-zone region. Three-zone regions still set all three IDs, so this does not change them.
+Quarantine in a two-zone region leaves `QUARANTINE_PRIVATE_SUBNET_3_ID` empty. This module pins the Lambda image to `v2.17.0` (`lambda_version_tag` in `modules/services/VERSIONS.json`) and the API image to `v2.17.0` (`api` in `modules/api-ecs/VERSIONS.json`). v2.17.0 still requires three quarantine subnet IDs, so a default apply in a two-zone region turns quarantine off. Do not tag v7 until both pins are a release that includes the two-subnet quarantine change. Three-zone regions still set all three IDs, so those pins do not change them.
 
 If a bring-your-own VPC set `existing_private_subnet_3_id` to the same ID as subnet 1 or subnet 2, remove that duplicate before upgrading. v7 rejects repeated subnet IDs. In a two-zone region, leave the third ID unset. In a three-zone region, supply the real third subnet.
 
@@ -18,9 +18,9 @@ If a bring-your-own VPC set `existing_private_subnet_3_id` to the same ID as sub
 
 1. **Bump the module to v7** and run `terraform plan`.
 
-   In a three-zone region the plan should move private subnet 3 and its route association in the main VPC, and the same pair in the quarantine VPC when that VPC is module-managed. It should not show those subnets as destroy and create.
+   In a three-zone region the plan moves private subnet 3 and its route association in the main VPC, and the same pair in the quarantine VPC when that VPC is module-managed. Every stack also creates `terraform_data.network_zone_requirements`. That resource holds the zone checks and does not create AWS infrastructure. The plan should not destroy and create private subnet 3.
 
-2. **Apply** once the plan shows only the moves, plus any unrelated changes you expect.
+2. **Apply** once the plan shows those moves, the new `terraform_data.network_zone_requirements` resource, and any unrelated changes you expect.
 
 ## Downgrade
 

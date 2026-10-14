@@ -33,3 +33,8 @@ output "egress_gateway_dns_name" {
   description = "Egress gateway endpoint DNS name."
   value       = local.egress_gateway_dns_name
 }
+
+output "existing_private_subnet_count" {
+  description = "Number of existing sandbox private subnets. Zero when this module creates the sandbox VPC."
+  value       = var.existing_vpc_id == null ? 0 : length(local.existing_private_subnet_ids)
+}

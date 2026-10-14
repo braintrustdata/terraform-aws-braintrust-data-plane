@@ -25,15 +25,21 @@ locals {
   create_dns_firewall          = local.create_restricted_egress_vpc || var.manage_existing_vpc_dns_firewall
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
   restricted_egress_vpc_cidr   = var.existing_vpc_id != null ? data.aws_vpc.restricted_egress_existing[0].cidr_block : aws_vpc.restricted_egress[0].cidr_block
-  # Null is plan-known. compact() is not: an ID that is unknown until apply might
-  # be empty, so the list length becomes unknown and cannot be used as a count.
-  existing_private_subnet_ids = var.existing_private_subnet_3_id == null ? [
+  # A subnet ID from another resource is unknown until apply, so comparing it
+  # to null cannot decide a count. Zone count is known during planning.
+  include_existing_private_subnet_3 = (
+    var.use_existing_private_subnet_3 != null ? var.use_existing_private_subnet_3 :
+    length(data.aws_availability_zones.available[0].names) >= 3
+  )
+  existing_private_subnet_ids = local.include_existing_private_subnet_3 ? [
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
+    # Known null cannot be a subnet ID. Repeat subnet 1 so the list length stays
+    # known; the zone check below fails that plan. An unknown ID stays unknown.
+    var.existing_private_subnet_3_id == null ? var.existing_private_subnet_1_id : var.existing_private_subnet_3_id,
     ] : [
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
-    var.existing_private_subnet_3_id,
   ]
   restricted_egress_azs        = local.create_restricted_egress_vpc ? slice(data.aws_availability_zones.available[0].names, 0, min(3, length(data.aws_availability_zones.available[0].names))) : []
   restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
@@ -181,8 +187,19 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
 }
 
 data "aws_availability_zones" "available" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  # Always read. Existing-VPC plans need the zone count to size the subnet list,
+  # and that count has to stay known when a subnet ID is not.
+  count = 1
   state = "available"
+}
+
+resource "terraform_data" "existing_subnet_requirements" {
+  lifecycle {
+    precondition {
+      condition     = var.use_existing_private_subnet_3 != true || var.existing_private_subnet_3_id != null
+      error_message = "existing_private_subnet_3_id is required when use_existing_private_subnet_3 is true."
+    }
+  }
 }
 
 resource "aws_vpc" "restricted_egress" {
