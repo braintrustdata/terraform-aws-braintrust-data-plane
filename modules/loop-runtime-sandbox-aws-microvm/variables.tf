@@ -174,15 +174,9 @@ variable "existing_private_subnet_2_id" {
   }
 }
 
-variable "use_existing_private_subnet_3" {
-  type        = bool
-  description = "Include existing_private_subnet_3_id. Leave unset to follow the region: three or more availability zones include it, and two zones omit it. Set this when a two-zone region passes a third subnet ID from another resource. That ID is unknown until apply and cannot decide the subnet count."
-  default     = null
-}
-
 variable "existing_private_subnet_3_id" {
   type        = string
-  description = "ID of existing private subnet 3 in the sandbox VPC. Required when the region has three or more availability zones. In a two-zone region, set this together with use_existing_private_subnet_3 when the sandbox VPC has a third subnet."
+  description = "ID of existing private subnet 3 in the sandbox VPC. Required when an existing VPC is set and the region has three or more availability zones. Leave unset when the region has two availability zones."
   default     = null
 
   validation {

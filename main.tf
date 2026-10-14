@@ -41,23 +41,15 @@ locals {
   quarantine_vpc_private_subnet_1_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_1_id : module.quarantine_vpc[0].private_subnet_1_id) : null
   quarantine_vpc_private_subnet_2_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_2_id : module.quarantine_vpc[0].private_subnet_2_id) : null
   quarantine_vpc_private_subnet_3_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id : module.quarantine_vpc[0].private_subnet_3_id) : null
-  # Managed VPCs take the list from the VPC module, which already omitted subnet 3
-  # when its zone is null. Bring-your-own list length follows the zone count, which
-  # is known during planning. A subnet ID from another resource is not: comparing
-  # it to null cannot decide the length.
-  include_existing_main_subnet_3 = (
-    var.use_existing_private_subnet_3 != null ? var.use_existing_private_subnet_3 :
-    length(local.az_names) >= 3
-  )
-  include_existing_quarantine_subnet_3 = (
-    var.use_existing_quarantine_private_subnet_3 != null ? var.use_existing_quarantine_private_subnet_3 :
-    length(local.az_names) >= 3
-  )
+  # Managed VPCs take the list from the VPC module. Bring-your-own list length
+  # follows the zone count, which is known during planning. A subnet ID from
+  # another resource is not, so it cannot decide the length. A two-zone region
+  # leaves subnet 3 unset, matching the managed VPC.
   main_vpc_private_subnet_ids = var.create_vpc ? module.main_vpc[0].private_subnet_ids : (
-    local.include_existing_main_subnet_3 ? [
+    length(local.az_names) >= 3 ? [
       var.existing_private_subnet_1_id,
       var.existing_private_subnet_2_id,
-      var.existing_private_subnet_3_id == null ? var.existing_private_subnet_1_id : var.existing_private_subnet_3_id,
+      var.existing_private_subnet_3_id,
       ] : [
       var.existing_private_subnet_1_id,
       var.existing_private_subnet_2_id,
@@ -65,10 +57,10 @@ locals {
   )
   quarantine_vpc_private_subnet_ids = !var.enable_quarantine_vpc ? [] : (
     var.existing_quarantine_vpc_id != null ? (
-      local.include_existing_quarantine_subnet_3 ? [
+      length(local.az_names) >= 3 ? [
         var.existing_quarantine_private_subnet_1_id,
         var.existing_quarantine_private_subnet_2_id,
-        var.existing_quarantine_private_subnet_3_id == null ? var.existing_quarantine_private_subnet_1_id : var.existing_quarantine_private_subnet_3_id,
+        var.existing_quarantine_private_subnet_3_id,
         ] : [
         var.existing_quarantine_private_subnet_1_id,
         var.existing_quarantine_private_subnet_2_id,
@@ -275,18 +267,18 @@ resource "terraform_data" "network_zone_requirements" {
     }
 
     precondition {
-      condition     = var.use_existing_private_subnet_3 != true || var.existing_private_subnet_3_id != null
-      error_message = "existing_private_subnet_3_id is required when use_existing_private_subnet_3 is true."
+      condition     = length(local.az_names) >= 3 || var.existing_private_subnet_3_id == null
+      error_message = "Leave existing_private_subnet_3_id unset when the region has two availability zones."
     }
 
     precondition {
-      condition     = var.use_existing_quarantine_private_subnet_3 != true || var.existing_quarantine_private_subnet_3_id != null
-      error_message = "existing_quarantine_private_subnet_3_id is required when use_existing_quarantine_private_subnet_3 is true."
+      condition     = length(local.az_names) >= 3 || var.existing_quarantine_private_subnet_3_id == null
+      error_message = "Leave existing_quarantine_private_subnet_3_id unset when the region has two availability zones."
     }
 
     precondition {
-      condition     = var.loop_runtime_sandbox_use_existing_private_subnet_3 != true || var.loop_runtime_sandbox_existing_private_subnet_3_id != null
-      error_message = "loop_runtime_sandbox_existing_private_subnet_3_id is required when loop_runtime_sandbox_use_existing_private_subnet_3 is true."
+      condition     = length(local.az_names) >= 3 || var.loop_runtime_sandbox_existing_private_subnet_3_id == null
+      error_message = "Leave loop_runtime_sandbox_existing_private_subnet_3_id unset when the region has two availability zones."
     }
   }
 }
@@ -637,7 +629,6 @@ module "loop_runtime_sandbox_aws_microvm" {
   existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
   existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id
   existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
-  use_existing_private_subnet_3         = var.loop_runtime_sandbox_use_existing_private_subnet_3
   manage_existing_vpc_dns_firewall      = var.loop_runtime_sandbox_manage_existing_vpc_dns_firewall
 
   kms_key_arn = local.kms_key_arn

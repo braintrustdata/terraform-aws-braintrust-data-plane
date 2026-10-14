@@ -25,18 +25,14 @@ locals {
   create_dns_firewall          = local.create_restricted_egress_vpc || var.manage_existing_vpc_dns_firewall
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
   restricted_egress_vpc_cidr   = var.existing_vpc_id != null ? data.aws_vpc.restricted_egress_existing[0].cidr_block : aws_vpc.restricted_egress[0].cidr_block
-  # A subnet ID from another resource is unknown until apply, so comparing it
-  # to null cannot decide a count. Zone count is known during planning.
-  include_existing_private_subnet_3 = (
-    var.use_existing_private_subnet_3 != null ? var.use_existing_private_subnet_3 :
-    length(data.aws_availability_zones.available[0].names) >= 3
-  )
+  # Zone count is known during planning. A subnet ID from another resource is
+  # not, so comparing it to null cannot decide this list's length. A two-zone
+  # region leaves subnet 3 unset, matching a managed VPC.
+  include_existing_private_subnet_3 = length(data.aws_availability_zones.available[0].names) >= 3
   existing_private_subnet_ids = local.include_existing_private_subnet_3 ? [
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
-    # Known null cannot be a subnet ID. Repeat subnet 1 so the list length stays
-    # known; the zone check below fails that plan. An unknown ID stays unknown.
-    var.existing_private_subnet_3_id == null ? var.existing_private_subnet_1_id : var.existing_private_subnet_3_id,
+    var.existing_private_subnet_3_id,
     ] : [
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
@@ -196,8 +192,13 @@ data "aws_availability_zones" "available" {
 resource "terraform_data" "existing_subnet_requirements" {
   lifecycle {
     precondition {
-      condition     = var.use_existing_private_subnet_3 != true || var.existing_private_subnet_3_id != null
-      error_message = "existing_private_subnet_3_id is required when use_existing_private_subnet_3 is true."
+      condition     = var.existing_vpc_id == null || length(data.aws_availability_zones.available[0].names) < 3 || var.existing_private_subnet_3_id != null
+      error_message = "existing_private_subnet_3_id is required when the region has three or more availability zones."
+    }
+
+    precondition {
+      condition     = var.existing_vpc_id == null || length(data.aws_availability_zones.available[0].names) >= 3 || var.existing_private_subnet_3_id == null
+      error_message = "Leave existing_private_subnet_3_id unset when the region has two availability zones."
     }
   }
 }
@@ -375,7 +376,10 @@ resource "aws_cloudformation_stack" "restricted_egress_connector" {
     ConnectorName   = "bt-loop-${var.deployment_name}-restricted-egress"
     OperatorRoleArn = aws_iam_role.network_connector_operator[0].arn
     SecurityGroupId = aws_security_group.restricted_egress[0].id
-    SubnetIds       = join(",", local.restricted_egress_subnet_ids)
+    # A known null is not a subnet ID. Repeat the first subnet so this argument can
+    # be planned; existing_subnet_requirements fails that plan. An unknown ID stays
+    # unknown, so the list length stays known.
+    SubnetIds = join(",", [for subnet_id in local.restricted_egress_subnet_ids : subnet_id == null ? local.restricted_egress_subnet_ids[0] : subnet_id])
   }
 
   template_body = <<-YAML
@@ -558,7 +562,9 @@ data "aws_vpc" "restricted_egress_existing" {
 data "aws_subnet" "restricted_egress_existing" {
   count = var.existing_vpc_id != null ? length(local.existing_private_subnet_ids) : 0
 
-  id = local.existing_private_subnet_ids[count.index]
+  # A missing third ID is null. Read subnet 1 so this data source can be planned
+  # while existing_subnet_requirements fails that plan. An unknown ID stays unknown.
+  id = coalesce(local.existing_private_subnet_ids[count.index], var.existing_private_subnet_1_id)
 
   lifecycle {
     postcondition {

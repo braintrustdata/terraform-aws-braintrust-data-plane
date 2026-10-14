@@ -12,7 +12,7 @@ The main and quarantine VPCs omit private subnet 3 when the region has only two 
 
 Quarantine in a two-zone region leaves `QUARANTINE_PRIVATE_SUBNET_3_ID` empty. This module pins the Lambda image to `v2.17.0` (`lambda_version_tag` in `modules/services/VERSIONS.json`) and the API image to `v2.17.0` (`api` in `modules/api-ecs/VERSIONS.json`). v2.17.0 still requires three quarantine subnet IDs, so a default apply in a two-zone region turns quarantine off. Do not tag v7 until both pins are a release that includes the two-subnet quarantine change. Three-zone regions still set all three IDs, so those pins do not change them.
 
-If a bring-your-own VPC set `existing_private_subnet_3_id` to the same ID as subnet 1 or subnet 2, remove that duplicate before upgrading. v7 rejects repeated subnet IDs. In a two-zone region, leave the third ID unset. In a three-zone region, supply the real third subnet.
+If a bring-your-own VPC set `existing_private_subnet_3_id` to the same ID as subnet 1 or subnet 2, remove that duplicate before upgrading. v7 rejects repeated subnet IDs. In a two-zone region, leave the third ID unset. Setting it fails the plan. In a three-zone region, supply the real third subnet.
 
 ## Upgrade steps
 

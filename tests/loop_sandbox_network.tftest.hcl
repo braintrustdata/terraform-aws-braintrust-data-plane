@@ -215,26 +215,35 @@ run "accepts_two_existing_subnets" {
   }
 }
 
-run "two_zones_include_third_subnet_when_asked" {
+run "rejects_subnet_3_in_two_zones" {
   command = plan
   module {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
-    existing_vpc_id               = "vpc-0123456789abcdef0"
-    existing_private_subnet_1_id  = "subnet-0123456789abcdef0"
-    existing_private_subnet_2_id  = "subnet-0123456789abcdef1"
-    existing_private_subnet_3_id  = "subnet-0123456789abcdef2"
-    use_existing_private_subnet_3 = true
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+    existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
   override_data {
     target = data.aws_availability_zones.available[0]
     values = { names = ["us-east-1a", "us-east-1b"] }
   }
-  assert {
-    condition     = aws_cloudformation_stack.restricted_egress_connector[0].parameters.SubnetIds == "subnet-0123456789abcdef0,subnet-0123456789abcdef1,subnet-0123456789abcdef2"
-    error_message = "A two-zone region must keep a third subnet when use_existing_private_subnet_3 is true."
+  expect_failures = [terraform_data.existing_subnet_requirements]
+}
+
+run "rejects_missing_subnet_3_in_three_zones" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
+  variables {
+    existing_vpc_id              = "vpc-0123456789abcdef0"
+    existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+    existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+  }
+  expect_failures = [terraform_data.existing_subnet_requirements]
 }
 
 run "managed_vpc_with_two_zones" {
