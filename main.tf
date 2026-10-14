@@ -379,7 +379,6 @@ module "services" {
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -562,11 +561,11 @@ module "loop_runtime_sandbox_aws_microvm" {
   microvm_maximum_duration_seconds      = var.loop_runtime_microvm_maximum_duration_seconds
   microvm_auth_token_expiration_minutes = var.loop_runtime_microvm_auth_token_expiration_minutes
   enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
-  sandbox_egress_mode                   = var.loop_runtime_sandbox_egress_mode
   existing_vpc_id                       = var.loop_runtime_sandbox_existing_vpc_id
   existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
   existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id
   existing_private_subnet_3_id          = var.loop_runtime_sandbox_existing_private_subnet_3_id
+  manage_existing_vpc_dns_firewall      = var.loop_runtime_sandbox_manage_existing_vpc_dns_firewall
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags
@@ -597,9 +596,16 @@ module "loop_runtime_ecs" {
   permissions_boundary_arn  = var.permissions_boundary_arn
   enable_execute_command    = var.loop_runtime_enable_execute_command
 
+  target_conversation_utilization = var.loop_runtime_target_conversation_utilization
+
   target_group_arn               = module.loop_runtime_alb[0].loop_runtime_target_group_arn
   alb_security_group_id          = module.loop_runtime_alb[0].loop_runtime_alb_security_group_id
   loop_runtime_http_listener_arn = module.loop_runtime_alb[0].loop_runtime_http_listener_arn
+
+  sandbox_egress_gateway_target_group_arn = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_target_group_arn
+  sandbox_egress_gateway_authorized_security_groups = {
+    "Loop Sandbox Egress Gateway" = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_security_group_id
+  }
 
   sandbox_env_vars                 = module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
   additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
@@ -672,7 +678,6 @@ module "api_ecs" {
   brainstore_etl_batch_size       = var.brainstore_etl_batch_size
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export        = var.brainstore_enable_export
   brainstore_license_key          = var.brainstore_license_key
 
   # Storage
@@ -839,7 +844,6 @@ module "brainstore" {
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
   skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
-  brainstore_enable_export              = var.brainstore_enable_export
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
   writer_instance_count                 = var.brainstore_writer_instance_count

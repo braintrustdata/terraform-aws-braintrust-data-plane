@@ -11,10 +11,14 @@ locals {
 
   container_name           = "loop-runtime"
   container_port           = 4001
+  egress_gateway_port      = 4002
+  service_name             = "${var.deployment_name}-loop-runtime"
   observability_enabled    = var.internal_observability_enabled
   loop_runtime_version_tag = element(reverse(split(":", var.container_image)), 0)
   brainstore_s3_bucket     = var.brainstore_s3_bucket_name
   use_object_store_locks   = var.brainstore_object_store_locks
+
+  capacity_metric_namespace = "Braintrust/LoopRuntime"
 
   # Normalize like modules/brainstore-ec2 so Loop uses the deployment's shared
   # lock prefix (the writers must acquire locks from the same S3 namespace).
@@ -43,7 +47,13 @@ locals {
       LOOP_RUNTIME_HOST                  = "0.0.0.0"
       LOOP_RUNTIME_PORT                  = tostring(local.container_port)
       LOOP_RUNTIME_LIFECYCLE_LOG         = var.loop_runtime_lifecycle_log
+      LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS = "90"
       LOOP_RUNTIME_REDIS_NAMESPACE       = "loop-runtime:${var.deployment_name}"
+
+      LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE    = local.capacity_metric_namespace
+      LOOP_RUNTIME_CAPACITY_METRIC_CLUSTER_NAME = var.ecs_cluster_name
+      LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME = local.service_name
+
       LOOP_RUNTIME_STATE_DIR             = "/mnt/tmp/loop-runtime"
       ORG_NAME                           = var.org_name
       BRAINTRUST_API_URL                 = var.braintrust_api_url
@@ -121,11 +131,12 @@ locals {
   }))
 
   loop_runtime_container_definition = {
-    name      = local.container_name
-    image     = var.container_image
-    essential = true
-    user      = "1000:1000"
-    ulimits   = local.nofile_ulimits
+    name        = local.container_name
+    image       = var.container_image
+    essential   = true
+    user        = "1000:1000"
+    ulimits     = local.nofile_ulimits
+    stopTimeout = 120
     linuxParameters = {
       initProcessEnabled = true
       capabilities = {
@@ -141,7 +152,12 @@ locals {
         containerPort = local.container_port
         hostPort      = local.container_port
         protocol      = "tcp"
-      }
+      },
+      {
+        containerPort = local.egress_gateway_port
+        hostPort      = local.egress_gateway_port
+        protocol      = "tcp"
+      },
     ]
     environment = [
       for key in sort(keys(local.merged_env_vars)) : {
@@ -288,6 +304,18 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   source_security_group_id = var.alb_security_group_id
   description              = "Allow inbound traffic from Loop runtime ALB to tasks"
   security_group_id        = aws_security_group.task.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "task_from_sandbox_egress_gateway" {
+  for_each = var.sandbox_egress_gateway_authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow sandbox egress traffic from ${each.key}."
+  tags                         = local.common_tags
 }
 
 resource "aws_security_group_rule" "task_egress_all" {
@@ -561,7 +589,7 @@ resource "terraform_data" "loop_runtime_http_listener" {
 }
 
 resource "aws_ecs_service" "loop_runtime" {
-  name                              = "${var.deployment_name}-loop-runtime"
+  name                              = local.service_name
   cluster                           = var.ecs_cluster_arn
   task_definition                   = aws_ecs_task_definition.loop_runtime.arn
   desired_count                     = var.min_capacity
@@ -588,6 +616,12 @@ resource "aws_ecs_service" "loop_runtime" {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
     container_port   = local.container_port
+  }
+
+  load_balancer {
+    target_group_arn = var.sandbox_egress_gateway_target_group_arn
+    container_name   = local.container_name
+    container_port   = local.egress_gateway_port
   }
 
   depends_on = [terraform_data.loop_runtime_http_listener]

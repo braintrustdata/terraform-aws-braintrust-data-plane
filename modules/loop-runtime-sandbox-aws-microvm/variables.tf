@@ -93,12 +93,6 @@ variable "ingress_network_connector_arns" {
   default     = []
 }
 
-variable "sandbox_egress_mode" {
-  type        = string
-  description = "Exactly \"internet\" uses AWS-managed Internet egress. Every other value selects the restricted egress connector."
-  default     = "restricted"
-}
-
 variable "enable_microvm_runtime_logs" {
   type        = bool
   description = "Export MicroVM stdout/stderr to CloudWatch (can include sandbox output). Creates an execution role and grants the task role PassRole."
@@ -133,18 +127,19 @@ variable "custom_tags" {
 
 variable "existing_vpc_id" {
   type        = string
-  description = "Optional dedicated VPC for restricted sandbox egress. Prefer the module-managed isolated VPC. This network is not for internal connectivity. The caller owns routes and DNS restrictions."
+  description = "Optional dedicated VPC for restricted sandbox egress. Prefer the module-managed isolated VPC. This network is not for internal connectivity. The caller owns routes and, unless manage_existing_vpc_dns_firewall is true, DNS restrictions."
   default     = null
 
   validation {
     condition     = var.existing_vpc_id == null ? true : trimspace(var.existing_vpc_id) != ""
     error_message = "existing_vpc_id must be null or a nonempty VPC ID."
   }
+}
 
-  validation {
-    condition     = var.existing_vpc_id == null || var.sandbox_egress_mode != "internet"
-    error_message = "existing_vpc_id requires restricted sandbox egress."
-  }
+variable "manage_existing_vpc_dns_firewall" {
+  type        = bool
+  description = "Manage DNS Firewall in the supplied dedicated sandbox VPC: allow the egress gateway endpoint hostname and block all other names. The module always manages DNS Firewall in its own sandbox VPC."
+  default     = false
 }
 
 variable "existing_private_subnet_1_id" {

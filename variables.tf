@@ -759,7 +759,7 @@ variable "enable_loop_runtime" {
 
 variable "loop_runtime_version_override" {
   type        = string
-  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  description = "Override the Loop runtime and MicroVM guest version. Restricted sandbox egress requires Loop runtime 2.16.0 or later. Null uses the module's default version."
   default     = null
 }
 
@@ -790,7 +790,7 @@ variable "loop_runtime_min_capacity" {
 variable "loop_runtime_max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 4
+  default     = 50
 }
 
 variable "loop_runtime_target_cpu_utilization" {
@@ -802,6 +802,12 @@ variable "loop_runtime_target_cpu_utilization" {
 variable "loop_runtime_target_memory_utilization" {
   type        = number
   description = "Target average memory use percentage for Loop runtime autoscaling."
+  default     = 50
+}
+
+variable "loop_runtime_target_conversation_utilization" {
+  type        = number
+  description = "Target average claimed conversation use percentage for Loop runtime autoscaling."
   default     = 50
 }
 
@@ -873,26 +879,33 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   default     = false
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
-  description = "Outbound network mode for Loop runtime sandbox MicroVMs. The value internet permits public access. Every other value blocks outbound access."
+  description = "Deprecated. Loop runtime sandboxes always use restricted egress; the only accepted value is restricted."
   default     = "restricted"
+
+  validation {
+    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
+    error_message = "loop_runtime_sandbox_egress_mode only supports \"restricted\"; internet egress was removed."
+  }
 }
 
 variable "loop_runtime_sandbox_existing_vpc_id" {
   type        = string
-  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and DNS restrictions."
+  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and, unless loop_runtime_sandbox_manage_existing_vpc_dns_firewall is true, DNS restrictions."
   default     = null
 
   validation {
     condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
     error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
   }
+}
 
-  validation {
-    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || var.loop_runtime_sandbox_egress_mode != "internet"
-    error_message = "loop_runtime_sandbox_existing_vpc_id requires restricted sandbox egress."
-  }
+variable "loop_runtime_sandbox_manage_existing_vpc_dns_firewall" {
+  type        = bool
+  description = "Manage DNS Firewall in the supplied dedicated sandbox VPC, allowing only the egress gateway endpoint hostname. False leaves DNS policy to the caller. DNS Firewall is always managed in the module-created sandbox VPC."
+  default     = false
 }
 
 variable "loop_runtime_sandbox_existing_private_subnet_1_id" {
@@ -1663,13 +1676,13 @@ variable "brainstore_cache_file_size_reader" {
 
 variable "brainstore_cache_file_size_writer" {
   type        = string
-  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 50% of the ephemeral storage size."
   default     = null
 }
 
 variable "brainstore_cache_file_size_automation_writer" {
   type        = string
-  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 75% of the ephemeral storage size."
   default     = null
 }
 
@@ -1707,8 +1720,8 @@ variable "skip_pg_for_brainstore_objects" {
 
 variable "brainstore_enable_export" {
   type        = bool
-  description = "Enable Brainstore-based export and migrate progress state of existing export automations. Sets BRAINSTORE_EXPORT_MIGRATION_ENABLED on the API handler Lambda and BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED on Brainstore writer nodes."
-  default     = false
+  description = "Enable Brainstore export IAM permissions, setting to false will cause export failures due to insufficient permissions."
+  default     = true
 }
 
 variable "s3_export_assume_role_arns" {
