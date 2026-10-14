@@ -134,6 +134,7 @@ run "automation_writer_nlb_routes_to_its_asg" {
   assert {
     condition = (
       aws_lb.brainstore_automation_writer[0].internal &&
+      aws_lb.brainstore_automation_writer[0].enable_cross_zone_load_balancing &&
       aws_lb.brainstore_automation_writer[0].subnets == toset(var.private_subnet_ids) &&
       aws_lb.brainstore_automation_writer[0].security_groups == toset([aws_security_group.brainstore_elb.id]) &&
       aws_lb_listener.brainstore_automation_writer[0].load_balancer_arn == aws_lb.brainstore_automation_writer[0].arn &&
