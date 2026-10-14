@@ -32,6 +32,23 @@ variable "existing_brainstore_s3_bucket_arn" {
   }
 }
 
+variable "create_code_bundle_s3_bucket" {
+  type        = bool
+  description = "Whether this module creates and manages the code bundle S3 bucket. When false, existing_code_bundle_s3_bucket_arn must be provided and no bucket resources are created."
+  default     = true
+}
+
+variable "existing_code_bundle_s3_bucket_arn" {
+  type        = string
+  description = "ARN of a caller-provided code bundle S3 bucket to consume when create_code_bundle_s3_bucket is false. The module reads the bucket but does not manage its lifecycle, policy, encryption, versioning, CORS, or access configuration."
+  default     = null
+
+  validation {
+    condition     = var.create_code_bundle_s3_bucket ? var.existing_code_bundle_s3_bucket_arn == null : var.existing_code_bundle_s3_bucket_arn != null
+    error_message = "existing_code_bundle_s3_bucket_arn must be set when create_code_bundle_s3_bucket is false, and must be null when create_code_bundle_s3_bucket is true."
+  }
+}
+
 variable "s3_additional_allowed_origins" {
   description = "Additional CORS origins applied to both the code bundle and lambda responses buckets. Merged with any bucket-specific values from s3_code_bundle_additional_allowed_origins and s3_lambda_responses_additional_allowed_origins. Supports wildcards in the domain name."
   type        = list(string)

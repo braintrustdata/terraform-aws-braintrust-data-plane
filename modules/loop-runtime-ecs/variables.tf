@@ -14,6 +14,12 @@ variable "brainstore_s3_bucket_kms_key_arn" {
   default     = null
 }
 
+variable "code_bundle_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional ARN of the KMS key encrypting a caller-provided code bundle bucket. When set, the Loop runtime task role is granted use of this key, in addition to kms_key_arn."
+  default     = null
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to the Loop runtime task role."

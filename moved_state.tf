@@ -72,6 +72,38 @@ moved {
   to   = module.storage.aws_s3_bucket_policy.brainstore[0]
 }
 
+# The code bundle bucket resources became conditional (create_code_bundle_s3_bucket)
+# and gain a count index. Chains with the services -> storage moves below.
+moved {
+  from = module.storage.aws_s3_bucket.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_server_side_encryption_configuration.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_server_side_encryption_configuration.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_versioning.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_versioning.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_cors_configuration.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_cors_configuration.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_lifecycle_configuration.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_lifecycle_configuration.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_policy.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_policy.code_bundle_bucket[0]
+}
+
 # Code Bundle/Lambda Responses S3 buckets moved from services -> storage
 moved {
   from = module.services.aws_s3_bucket.code_bundle_bucket

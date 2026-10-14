@@ -248,10 +248,11 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
           "kms:GenerateDataKey*",
           "kms:DescribeKey"
         ]
-        Resource = var.brainstore_s3_bucket_kms_key_arn != null ? [
+        Resource = distinct(compact([
           var.kms_key_arn,
           var.brainstore_s3_bucket_kms_key_arn,
-        ] : [var.kms_key_arn]
+          var.code_bundle_s3_bucket_kms_key_arn,
+        ]))
       }
     ]
   })
