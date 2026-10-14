@@ -10,6 +10,8 @@ The main and quarantine VPCs omit private subnet 3 when the region has only two 
 
 `moved` blocks keep an existing private subnet 3, and its route table association, in place. A normal upgrade in a three-zone region does not replace those subnets.
 
+Quarantine in a two-zone region leaves `QUARANTINE_PRIVATE_SUBNET_3_ID` empty. Current data plane releases treat that empty value as "Lambda quarantine is not enabled" and skip warmup and function creation. Use a data plane release that accepts two quarantine subnets before relying on user-defined functions in a two-zone region. Three-zone regions still set all three IDs, so this does not change them.
+
 ## Upgrade steps
 
 1. **Bump the module to v7** and run `terraform plan`.
