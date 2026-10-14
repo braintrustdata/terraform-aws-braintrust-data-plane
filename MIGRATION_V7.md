@@ -6,7 +6,7 @@ v7 lets the data plane run in a region that has only two availability zones. Thr
 
 ## What changed
 
-The main and quarantine VPCs omit private subnet 3 when the region has only two zones. In that case `existing_private_subnet_3_id`, `existing_quarantine_private_subnet_3_id`, and the Loop sandbox's third subnet ID are optional. A region with three or more zones still requires them. The Loop runtime sandbox creates two connector subnets when only two zones exist, instead of indexing a third zone.
+The main and quarantine VPCs omit private subnet 3 when the region has only two zones. In that case leave `existing_private_subnet_3_id`, `existing_quarantine_private_subnet_3_id`, and the Loop sandbox's third subnet ID unset. Setting one fails the plan. A region with three or more zones still requires them. The Loop runtime sandbox creates two connector subnets when only two zones exist, instead of indexing a third zone.
 
 `moved` blocks keep an existing private subnet 3, and its route table association, in place. A normal upgrade in a three-zone region does not replace those subnets.
 

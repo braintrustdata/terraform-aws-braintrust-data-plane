@@ -206,7 +206,7 @@ run "accepts_two_existing_subnets" {
     existing_private_subnet_2_id = "subnet-0123456789abcdef1"
   }
   override_data {
-    target = data.aws_availability_zones.available[0]
+    target = data.aws_availability_zones.available
     values = { names = ["us-east-1a", "us-east-1b"] }
   }
   assert {
@@ -227,7 +227,7 @@ run "rejects_subnet_3_in_two_zones" {
     existing_private_subnet_3_id = "subnet-0123456789abcdef2"
   }
   override_data {
-    target = data.aws_availability_zones.available[0]
+    target = data.aws_availability_zones.available
     values = { names = ["us-east-1a", "us-east-1b"] }
   }
   expect_failures = [terraform_data.existing_subnet_requirements]
@@ -243,7 +243,10 @@ run "rejects_missing_subnet_3_in_three_zones" {
     existing_private_subnet_1_id = "subnet-0123456789abcdef0"
     existing_private_subnet_2_id = "subnet-0123456789abcdef1"
   }
-  expect_failures = [terraform_data.existing_subnet_requirements]
+  expect_failures = [
+    terraform_data.existing_subnet_requirements,
+    data.aws_subnet.restricted_egress_existing[2],
+  ]
 }
 
 run "managed_vpc_with_two_zones" {
@@ -255,7 +258,7 @@ run "managed_vpc_with_two_zones" {
     endpoint_subnet_ids = ["subnet-11111111111111111", "subnet-22222222222222222"]
   }
   override_data {
-    target = data.aws_availability_zones.available[0]
+    target = data.aws_availability_zones.available
     values = { names = ["us-east-1a", "us-east-1b"] }
   }
   override_data {

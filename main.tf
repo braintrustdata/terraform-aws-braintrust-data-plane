@@ -262,11 +262,6 @@ resource "terraform_data" "network_zone_requirements" {
     }
 
     precondition {
-      condition     = var.loop_runtime_sandbox_existing_vpc_id == null || length(local.az_names) < 3 || var.loop_runtime_sandbox_existing_private_subnet_3_id != null
-      error_message = "loop_runtime_sandbox_existing_private_subnet_3_id is required when the region has three or more availability zones."
-    }
-
-    precondition {
       condition     = length(local.az_names) >= 3 || var.existing_private_subnet_3_id == null
       error_message = "Leave existing_private_subnet_3_id unset when the region has two availability zones."
     }
@@ -274,11 +269,6 @@ resource "terraform_data" "network_zone_requirements" {
     precondition {
       condition     = length(local.az_names) >= 3 || var.existing_quarantine_private_subnet_3_id == null
       error_message = "Leave existing_quarantine_private_subnet_3_id unset when the region has two availability zones."
-    }
-
-    precondition {
-      condition     = length(local.az_names) >= 3 || var.loop_runtime_sandbox_existing_private_subnet_3_id == null
-      error_message = "Leave loop_runtime_sandbox_existing_private_subnet_3_id unset when the region has two availability zones."
     }
   }
 }

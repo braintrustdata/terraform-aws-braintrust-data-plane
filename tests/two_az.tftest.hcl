@@ -134,3 +134,21 @@ run "rejects_subnet_3_in_two_zones" {
 
   expect_failures = [terraform_data.network_zone_requirements]
 }
+
+run "rejects_quarantine_subnet_3_in_two_zones" {
+  command = plan
+
+  variables {
+    existing_quarantine_vpc_id              = "vpc-12345679"
+    existing_quarantine_private_subnet_1_id = "subnet-55555555"
+    existing_quarantine_private_subnet_2_id = "subnet-66666666"
+    existing_quarantine_private_subnet_3_id = "subnet-77777777"
+  }
+
+  override_data {
+    target = data.aws_availability_zones.available
+    values = { names = ["us-west-1a", "us-west-1c"] }
+  }
+
+  expect_failures = [terraform_data.network_zone_requirements]
+}

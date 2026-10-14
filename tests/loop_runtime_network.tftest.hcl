@@ -29,17 +29,6 @@ run "loop_private_endpoint" {
   }
 }
 
-run "rejects_missing_sandbox_subnet_3_in_three_zones" {
-  command = plan
-  variables {
-    enable_loop_runtime                               = false
-    loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
-    loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
-    loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
-  }
-  expect_failures = [terraform_data.network_zone_requirements]
-}
-
 run "loop_with_existing_sandbox_vpc_dns_firewall" {
   command = plan
   variables {
