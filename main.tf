@@ -380,6 +380,8 @@ module "services" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
 
+  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
   lambda_responses_bucket_arn = module.storage.lambda_responses_bucket_arn
@@ -679,6 +681,8 @@ module "api_ecs" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
   brainstore_license_key          = var.brainstore_license_key
+
+  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
 
   # Storage
   code_bundle_bucket     = module.storage.code_bundle_bucket_id
