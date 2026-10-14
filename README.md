@@ -128,6 +128,7 @@ the corresponding migration guide before publication.
 The module creates a dedicated sandbox VPC with no outbound route.
 Sandboxes reach the Loop runtime proxy through a PrivateLink endpoint on port 4002; the proxy authorizes each request, and DNS Firewall allows only the endpoint hostname.
 `loop_runtime_sandbox_egress_mode` is deprecated and only accepts `"restricted"`.
+
 The original three connector subnets keep their availability zones and CIDRs during upgrades; three additional subnets place the endpoint in the main VPC's availability zones.
 The security group declares TCP/UDP port 53 egress to `169.254.169.253` and the VPC's primary IPv4 CIDR address plus two.
 [AmazonProvidedDNS traffic is not filtered by ordinary VPC security groups](https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html); the managed DNS firewall restricts permitted names.
@@ -151,6 +152,29 @@ The flag defaults to `false`, leaving DNS policy to the caller; port 53 resolver
 
 Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
 The caller controls routes and, when DNS Firewall management is disabled, must restrict DNS to `loop_runtime_sandbox_egress_gateway_dns_name` before using the sandboxes.
+
+### Sandbox Service
+
+An additional Sandbox Service can be deployed into the main data-plane VPC:
+
+```hcl
+enable_loop_runtime        = true
+create_sandbox_service     = true
+sandbox_service_vcpu_count = 1
+sandbox_service_memory_mib = 2048
+```
+
+This creates a private EKS cluster with system and worker node groups, DNS,
+automatic TLS provisioning and the published Sandbox Service chart.
+Workers require local NVMe storage and nested virtualization; the default
+`sandbox_service_instance_types` list uses `c8id` instances.
+The same three main-VPC private subnets are used for managed and existing VPCs.
+Existing VPCs must provide DNS support and outbound access for image downloads,
+AWS APIs and deployment artifacts.
+The service adds EKS and EC2 costs and preserves the existing Lambda backend.
+Loop Runtime integration is a separate change.
+See [Sandbox Service](modules/sandbox-service/README.md) for resource ownership,
+private networking and worker draining during upgrades and deletion.
 
 ## Useful scripts
 

@@ -879,6 +879,35 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   default     = false
 }
 
+variable "create_sandbox_service" {
+  type        = bool
+  description = "Deploy an additional private EKS Sandbox Service alongside the Lambda sandbox backend. Requires enable_loop_runtime."
+  default     = false
+
+  validation {
+    condition     = !var.create_sandbox_service || var.enable_loop_runtime
+    error_message = "create_sandbox_service requires enable_loop_runtime = true."
+  }
+}
+
+variable "sandbox_service_instance_types" {
+  type        = list(string)
+  description = "Sandbox Service worker instance types with local NVMe and nested virtualization support."
+  default     = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
+}
+
+variable "sandbox_service_vcpu_count" {
+  type        = number
+  description = "Virtual CPUs per Sandbox Service sandbox."
+  default     = 1
+}
+
+variable "sandbox_service_memory_mib" {
+  type        = number
+  description = "Memory per Sandbox Service sandbox, in MiB."
+  default     = 2048
+}
+
 # tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
