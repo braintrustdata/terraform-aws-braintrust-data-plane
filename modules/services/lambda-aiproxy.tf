@@ -67,6 +67,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
     allow_headers = [
       "authorization",
       "content-type",
+      "traceparent",
+      "tracestate",
       "x-bt-org-name",
       "x-bt-project-id",
       "x-bt-auth-token",
