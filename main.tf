@@ -344,13 +344,12 @@ module "redis" {
     ),
     local.bastion_security_group,
   )
-  loop_runtime_security_groups        = local.loop_runtime_authorized_security_groups
-  use_redis_replication_group         = var.use_redis_replication_group
-  redis_rg_auth_token_update_strategy = var.redis_rg_auth_token_update_strategy
-  redis_instance_type                 = var.redis_instance_type
-  redis_version                       = var.redis_version
-  apply_immediately                   = var.redis_apply_immediately
-  custom_tags                         = local.all_custom_tags
+  loop_runtime_security_groups = local.loop_runtime_authorized_security_groups
+  use_redis_replication_group  = var.use_redis_replication_group
+  redis_instance_type          = var.redis_instance_type
+  redis_version                = var.redis_version
+  apply_immediately            = var.redis_apply_immediately
+  custom_tags                  = local.all_custom_tags
 }
 
 module "storage" {

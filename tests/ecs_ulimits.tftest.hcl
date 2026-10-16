@@ -102,6 +102,25 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     ])
     error_message = "Every API ECS application container must have a nofile soft and hard limit of 1048576."
   }
+
+  assert {
+    condition = alltrue([
+      for task_definition in [
+        aws_ecs_task_definition.braintrust_api,
+        aws_ecs_task_definition.braintrust_api_ingest,
+        aws_ecs_task_definition.braintrust_api_background,
+        ] : endswith(
+        one([
+          for secret in one([
+            for container in jsondecode(task_definition.container_definitions) : container
+            if container.name == "api"
+          ]).secrets : secret.valueFrom if secret.name == "REDIS_URL"
+        ]),
+        ":::aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      )
+    ])
+    error_message = "API ECS REDIS_URL secrets must pin the Secrets Manager version id in valueFrom."
+  }
 }
 
 run "gateway_containers_have_one_million_nofile_limit" {
@@ -143,6 +162,22 @@ run "gateway_containers_have_one_million_nofile_limit" {
       ])
     )
     error_message = "Only the Gateway ECS application container must have a nofile soft and hard limit of 1048576."
+  }
+
+  assert {
+    condition = alltrue([
+      for secret_name in ["COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"] :
+      endswith(
+        one([
+          for secret in one([
+            for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+            if container.name == "gateway"
+          ]).secrets : secret.valueFrom if secret.name == secret_name
+        ]),
+        ":::aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      )
+    ])
+    error_message = "Gateway Redis URL secrets must pin the Secrets Manager version id in valueFrom."
   }
 }
 
@@ -194,5 +229,21 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
       ])
     )
     error_message = "Only the Loop Runtime ECS application container must have a nofile soft and hard limit of 1048576."
+  }
+
+  assert {
+    condition = alltrue([
+      for secret_name in ["BRAINSTORE_XACT_MANAGER_URI", "BRAINSTORE_REDIS_URI"] :
+      endswith(
+        one([
+          for secret in one([
+            for container in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions) : container
+            if container.name == "loop-runtime"
+          ]).secrets : secret.valueFrom if secret.name == secret_name
+        ]),
+        ":::aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      )
+    ])
+    error_message = "Loop Redis URL secrets must pin the Secrets Manager version id in valueFrom."
   }
 }

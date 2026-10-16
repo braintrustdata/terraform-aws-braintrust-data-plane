@@ -56,15 +56,25 @@ allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000
 
 This module supports both `aws_elasticache_cluster` (legacy) and `aws_elasticache_replication_group` resource for deploying Elasticache for Redis with enhanced security features. The default deploys `aws_elasticache_cluster` to prevent accidental resource replacement on existing deployments. Stronger security defaults are available with `aws_elasticache_replication_group`.
 
-> [!IMPORTANT] Data plane v2.1.0 introduced support for `aws_elasticache_replication_group`, but it did not enable encryption at rest and used the default KMS key for encryption. If you deployed v2.1.0 **and** enabled `aws_elasticache_replication_group`, the `aws_elasticache_replication_group` will be destroyed and replaced with a new one.
+> [!IMPORTANT]
+> Module v6.1.0 introduced support for `aws_elasticache_replication_group`, but it did not enable encryption at rest and used the default KMS key for encryption. If you deployed v6.1.0 **and** enabled `aws_elasticache_replication_group`, the replication group will be destroyed and replaced with a new one.
 
 Encryption in transit and at rest, as well as auth token support, are available by setting `use_redis_replication_group` to `true` in the module invocation. **This is safe for new deployments.** Setting `use_redis_replication_group` to `true` on an existing deployment will replace the `aws_elasticache_cluster` with an `aws_elasticache_replication_group`. This should be considered a downtime event.
 
 #### Redis auth token management
 
-When `use_redis_replication_group` is enabled, Terraform generates a random auth token, configures the replication group with `auth_token_update_strategy = SET` (default), and stores a fully-rendered `rediss://` URL (including the token) in Secrets Manager. Clients (API ECS, gateway, Loop, Brainstore, and the support bastion) load that URL from Secrets Manager. Lambdas that cannot use Secrets Manager still receive an inline authenticated URL.
+When `use_redis_replication_group` is enabled, Terraform generates a random auth token, configures the replication group with `auth_token_update_strategy = SET`, and stores a fully-rendered `rediss://` URL (including the token) in Secrets Manager. Clients (API ECS, gateway, Loop, Brainstore, and the support bastion) load that URL from Secrets Manager. Lambdas that cannot use Secrets Manager still receive an inline authenticated URL.
 
 **Token rotation is not supported yet.** Leave the generated token in place. The auth-token secret uses `ignore_changes` on `secret_string` (same anti-churn pattern as RDS password secrets), so Terraform will not push a new token on apply. Do not hand-edit the auth-token or Redis URL secrets and expect apply to rotate ElastiCache safely — that path can rewrite clients back to a stale token. Coordinated rotation (ElastiCache `ModifyReplicationGroup` + secret updates + client rollouts) will come in a later module change.
+
+#### Upgrading to this release
+
+This change ships as a **minor** module bump (next tag after v6.10.0). Expect apply impact on **every** stack, not only replication-group users:
+
+- New ECS task definitions for API, ingest, background, gateway, and Loop (pinned Redis URL secret version) → rolling service deployments
+- Brainstore launch-template user-data change → autoscaling instance refresh
+- Support bastion replacement when `enable_braintrust_support_shell_access` is enabled (`user_data_replace_on_change = true`)
+- Existing replication-group stacks: Redis **replace** (auth token / at-rest encryption ForceNew). Plan for Redis downtime. A downgrade can replace Redis again.
 
 ### BTQL audit logging
 

@@ -66,7 +66,7 @@ resource "aws_elasticache_replication_group" "main" {
   transit_encryption_mode    = "required"
   kms_key_id                 = var.kms_key_arn
   auth_token                 = local.redis_auth_token
-  auth_token_update_strategy = var.redis_rg_auth_token_update_strategy
+  auth_token_update_strategy = "SET"
 
   tags = local.common_tags
 }
