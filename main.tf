@@ -528,6 +528,7 @@ module "gateway_ecs" {
   log_retention_days           = var.ai_gateway_log_retention_days
   permissions_boundary_arn     = var.permissions_boundary_arn
   redis_url_secret_arn         = module.redis.redis_url_secret_arn
+  redis_url_secret_version_id  = module.redis.redis_url_secret_version_id
   redis_port                   = module.redis.redis_port
   redis_security_group_id      = module.redis.redis_security_group_id
   target_group_arn             = module.gateway_alb[0].gateway_target_group_arn
@@ -637,9 +638,10 @@ module "loop_runtime_ecs" {
   sandbox_env_vars                 = module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
   additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
 
-  database_url_secret_arn   = local.database_url_secret_arn
-  redis_url_secret_arn      = module.redis.redis_url_secret_arn
-  function_tools_secret_arn = module.services_common.function_tools_secret_arn
+  database_url_secret_arn     = local.database_url_secret_arn
+  redis_url_secret_arn        = module.redis.redis_url_secret_arn
+  redis_url_secret_version_id = module.redis.redis_url_secret_version_id
+  function_tools_secret_arn   = module.services_common.function_tools_secret_arn
 
   brainstore_s3_bucket_name        = module.storage.brainstore_bucket_id
   brainstore_s3_bucket_arn         = module.storage.brainstore_bucket_arn
@@ -692,6 +694,7 @@ module "api_ecs" {
   # Data stores
   database_url_secret_arn      = local.database_url_secret_arn
   redis_url_secret_arn         = module.redis.redis_url_secret_arn
+  redis_url_secret_version_id  = module.redis.redis_url_secret_version_id
   function_tools_secret_arn    = module.services_common.function_tools_secret_arn
   custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
@@ -891,6 +894,7 @@ module "brainstore" {
   database_port                         = module.database.postgres_database_port
   database_secret_arn                   = local.postgres_credentials_secret_arn
   redis_url_secret_arn                  = module.redis.redis_url_secret_arn
+  redis_url_secret_version_id           = module.redis.redis_url_secret_version_id
   service_token_secret_arn              = module.services_common.function_tools_secret_arn
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn

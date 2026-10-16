@@ -27,6 +27,9 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
   base_env_vars = merge({
     GATEWAY_ENV        = "production"
     GATEWAY_REGION     = data.aws_region.current.region
@@ -76,11 +79,11 @@ locals {
       [
         {
           name      = "COMPLETIONS_CACHE_REDIS_URL"
-          valueFrom = var.redis_url_secret_arn
+          valueFrom = local.redis_url_secret_value_from
         },
         {
           name      = "AUTH_CACHE_REDIS_URL"
-          valueFrom = var.redis_url_secret_arn
+          valueFrom = local.redis_url_secret_value_from
         },
       ],
     )

@@ -118,9 +118,10 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
-  # When use_redis_replication_group is enabled, first apply with ROTATE,
-  # then apply again with SET to require token authentication.
-  # redis_rg_auth_token_update_strategy = "ROTATE"
+  # Default SET requires the Redis auth token immediately when using a
+  # replication group. Leave unset unless Braintrust asks you to use ROTATE
+  # for a deliberate dual-token cutover.
+  # redis_rg_auth_token_update_strategy = "SET"
 
   ### Tagging
   # Optionally add any custom AWS tags you want to apply to all resources created by the module

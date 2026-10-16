@@ -54,8 +54,8 @@ variable "use_redis_replication_group" {
 
 variable "redis_rg_auth_token_update_strategy" {
   type        = string
-  description = "Update strategy for the Redis auth token. Use ROTATE for initial deployment, then SET to require authentication."
-  default     = "ROTATE"
+  description = "Auth token update strategy for ModifyReplicationGroup. Default SET requires the token immediately on create and after in-place token changes. Use ROTATE only when deliberately running a dual-token cutover."
+  default     = "SET"
   validation {
     condition     = contains(["ROTATE", "SET"], var.redis_rg_auth_token_update_strategy)
     error_message = "redis_rg_auth_token_update_strategy must be one of: ROTATE, SET"

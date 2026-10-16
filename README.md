@@ -62,16 +62,11 @@ Encryption in transit and at rest, as well as auth token support, are available 
 
 #### Redis auth token management
 
-When `use_redis_replication_group` is initially deployed, a random auth token is generated and stored in AWS Secrets Manager. The initial auth token strategy is `ROTATE`. Once the replication group is deployed and clients use the authenticated Redis URL from Secrets Manager, set `redis_rg_auth_token_update_strategy` to `SET` and apply again to require authentication (closing the passwordless grace window).
+When `use_redis_replication_group` is enabled, Terraform generates a random auth token, configures the replication group with `auth_token_update_strategy = SET` (default), and stores a fully-rendered `rediss://` URL (including the token) in Secrets Manager. Clients (API ECS, gateway, Loop, Brainstore, and the support bastion) load that URL from Secrets Manager. Lambdas that cannot use Secrets Manager still receive an inline authenticated URL.
 
-Token rotation is **not automated by this module** (`ignore_changes` on the auth-token secret, same pattern as RDS). Rotate manually:
+`SET` requires the token immediately on create and after in-place token changes. Use `ROTATE` only when deliberately running a dual-token cutover with Braintrust guidance.
 
-1. Put the new token in Secrets Manager (new version of the Redis auth-token secret).
-2. Set `redis_rg_auth_token_update_strategy = "ROTATE"` in Terraform so config matches intent, then run `ModifyReplicationGroup` with the new token and `ROTATE` (AWS CLI/console is fine; Terraform will not push a new `secret_string` while `ignore_changes` is set).
-3. Update the Redis URL secret to `rediss://:<new-token>@host:port` and roll clients (ECS redeploy, Brainstore instance refresh, Lambdas if they still use inline `REDIS_URL`).
-4. Confirm all clients are on the new token.
-5. Run `ModifyReplicationGroup` again with the same new token and `SET` to drop the old token / passwordless grace.
-6. Set `redis_rg_auth_token_update_strategy = "SET"` in Terraform so config matches AWS.
+Token rotation is **not automated by this module**. The auth-token secret uses `ignore_changes` on `secret_string` (same churn-prevention pattern as RDS). Do not treat a manual Secrets Manager edit plus apply as a supported rotation runbook; coordinated ElastiCache `ModifyReplicationGroup` and client rollout support is forthcoming.
 
 ### BTQL audit logging
 
@@ -286,13 +281,10 @@ the group.
 
 Setting a different subnet-group name replaces the Redis cluster or replication
 group and causes downtime; review the plan before applying. Terraform updates the
-Redis URL secret with the replacement endpoint. The secret-value change alone
-does not redeploy API ECS or Loop services. After the replacement and secret update
-complete, force a new deployment of all enabled API ECS services (API, ingest, and
-background) and the Loop service so their tasks load the updated secret.
-Brainstore's updated user data triggers an autoscaling instance refresh, and
-Lambdas that embed `redis_host` update during the apply. The gateway embeds the
-Redis host in its task environment, so it also updates during the apply.
+Redis URL secret with the replacement endpoint. ECS (API, gateway, Loop) pins the
+secret version in task `valueFrom`, and Brainstore/bastion pin it in user data, so
+the new version forces task-definition updates and instance refresh. Lambdas that
+embed `redis_host` update during the apply.
 
 Switching to an external group also removes the old module-managed subnet group.
 Do not set this input to the module's own group name to transfer ownership: that

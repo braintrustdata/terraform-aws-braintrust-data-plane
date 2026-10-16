@@ -96,6 +96,11 @@ variable "redis_url_secret_arn" {
   description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Fetched at boot to set BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI."
 }
 
+variable "redis_url_secret_version_id" {
+  type        = string
+  description = "Secrets Manager version id for the Redis URL secret. Passed into user data so secret content changes force a launch-template update and instance refresh."
+}
+
 variable "extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore reader or dual use nodes"

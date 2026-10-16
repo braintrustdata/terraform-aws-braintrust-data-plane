@@ -225,6 +225,11 @@ variable "redis_url_secret_arn" {
   description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Injected into COMPLETIONS_CACHE_REDIS_URL and AUTH_CACHE_REDIS_URL via the ECS task execution role."
 }
 
+variable "redis_url_secret_version_id" {
+  type        = string
+  description = "Secrets Manager version id for the Redis URL secret. Pinned in ECS valueFrom so secret content changes create a new task definition revision."
+}
+
 variable "redis_port" {
   type        = number
   description = "Redis port used by the gateway auth cache."

@@ -26,8 +26,16 @@ output "redis_security_group_id" {
 }
 
 output "redis_url_secret_arn" {
+  # depends_on the version so callers (Brainstore launch templates, ECS) are not
+  # created until the secret value exists. The ARN alone does not wait for that.
   value       = aws_secretsmanager_secret.redis_url.arn
-  description = "ARN of the secret containing the fully-rendered Redis URL (rediss:// scheme & auth token when a replication group is used)"
+  depends_on  = [aws_secretsmanager_secret_version.redis_url]
+  description = "ARN of the secret containing the fully-rendered Redis URL (rediss:// scheme and auth token when a replication group is used). Safe for IAM and GetSecretValue."
+}
+
+output "redis_url_secret_version_id" {
+  value       = aws_secretsmanager_secret_version.redis_url.version_id
+  description = "Secrets Manager version id for the Redis URL secret. Pin ECS secrets valueFrom and Brainstore/bastion fetches to this so secret content changes force rollouts."
 }
 
 output "redis_auth_token" {

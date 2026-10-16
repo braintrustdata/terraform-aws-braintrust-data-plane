@@ -16,6 +16,7 @@ run "deployment_tag_cannot_be_overridden" {
     database_host                         = "database.example.com"
     database_port                         = "5432"
     redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-redis-url"
+    redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:token-test"
     ai_proxy_url_ssm_parameter            = "/bt-test/ai-proxy-url"
     brainstore_s3_bucket_arn              = "arn:aws:s3:::test-brainstore"

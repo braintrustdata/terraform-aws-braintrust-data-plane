@@ -23,6 +23,7 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     braintrust_org_name                   = "test-org"
     database_url_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
     redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     brainstore_hostname                   = "brainstore.example.internal"
     brainstore_port                       = 9000
     response_bucket                       = "bt-test-responses"
@@ -122,6 +123,7 @@ run "gateway_containers_have_one_million_nofile_limit" {
     alb_security_group_id                     = "sg-0123456789abcdef2"
     gateway_http_listener_arn                 = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
     redis_url_secret_arn                      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id               = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     redis_port                                = 6379
     redis_security_group_id                   = "sg-0123456789abcdef1"
     internal_observability_enabled            = true
@@ -164,6 +166,7 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
     loop_runtime_http_listener_arn            = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/loop-runtime/1234567890123456/1234567890123456"
     database_url_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
     redis_url_secret_arn                      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id               = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     function_tools_secret_arn                 = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
     brainstore_s3_bucket_name                 = "bt-test-brainstore"
     brainstore_s3_bucket_arn                  = "arn:aws:s3:::bt-test-brainstore"

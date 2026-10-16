@@ -34,6 +34,7 @@ variables {
   database_host                         = "database.example.internal"
   database_port                         = "5432"
   redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-automation-writer-redis-url"
+  redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-automation-writer-service-token"
   brainstore_s3_bucket_arn              = "arn:aws:s3:::bt-automation-writer-brainstore"
   lambda_responses_s3_bucket_arn        = "arn:aws:s3:::bt-automation-writer-lambda-responses"

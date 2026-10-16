@@ -130,12 +130,19 @@ systemctl enable amazon-cloudwatch-agent
 
 get_secret_value_with_retry() {
   local secret_id="$1"
+  local version_id="$${2:-}"
   local attempt
   local retry_delay
 
   for attempt in 1 2 3 4 5; do
-    if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
-      return 0
+    if [ -n "$version_id" ]; then
+      if aws secretsmanager get-secret-value --secret-id "$secret_id" --version-id "$version_id" --query SecretString --output text; then
+        return 0
+      fi
+    else
+      if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
+        return 0
+      fi
     fi
 
     if [ "$attempt" -eq 5 ]; then
@@ -168,8 +175,8 @@ fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
 %{ endif ~}
 
-# Get the fully-rendered Redis URL from Secrets Manager
-if ! REDIS_URL=$(get_secret_value_with_retry "${redis_url_secret_arn}"); then
+# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so user-data changes force refresh)
+if ! REDIS_URL=$(get_secret_value_with_retry "${redis_url_secret_arn}" "${redis_url_secret_version_id}"); then
   exit 1
 fi
 
