@@ -90,6 +90,43 @@ Leave the default enabled for existing deployments. Changing it from `true` to
 the same permission the SCP may prohibit; it is not a supported ownership
 handoff for an existing deployment.
 
+## Private AI gateway cutover
+
+Standard deployments enable the private AI gateway by default. These inputs default to `true`:
+
+```hcl
+create_ai_gateway             = true
+enable_ai_gateway             = true
+use_private_ai_gateway_origin = true
+```
+
+`create_ai_gateway` creates the internal ALB and gateway ECS service. `enable_ai_gateway` selects that gateway for API services and Loop.
+`use_private_ai_gateway_origin` routes CloudFront `/v1/proxy` traffic to the private gateway through a VPC origin.
+Existing standard deployments that omit these inputs adopt this behavior on their next apply. The gateway infrastructure adds AWS charges.
+Terraform waits for the gateway ECS service to reach steady state before caller updates.
+The service uses the ALB `/health` check. A failed initial deployment blocks cutover and leaves existing callers on their previous configuration.
+
+The CloudFront private origin and the module-managed quarantine PrivateLink endpoint also wait for gateway ECS steady state.
+Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
+An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
+
+External EKS deployments ignore all three inputs. Helm manages the gateway in that mode.
+Terraform does not create the gateway or enable its routes when `use_deployment_mode_external_eks = true`.
+
+For standard deployments, all three inputs must be `false` to disable the private gateway and its CloudFront origin.
+
+The gateway receives the private API ECS ALB as its default data-plane API address, including deployments with Lambda ingress.
+An API address from organization authentication can override this value.
+The API ECS service already exists in standard deployments. Its listener accepts traffic from the gateway task security group.
+The listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
+This private address removes the dependency cycle between gateway startup and CloudFront cutover.
+External EKS deployments configure the gateway API URL through Helm.
+
+The gate checks service startup. It does not test authenticated inference or health across the complete PrivateLink path.
+Caller-supplied network paths retain their own readiness requirements.
+Existing deployments retain their resource addresses. The change adds one ingress rule for the gateway on the API ALB.
+The separate gateway authorization map preserves the existing legacy rules and follows the separate Loop authorization maps in adjacent modules.
+
 ## Loop runtime
 
 Loop runtime is optional. Enable it with this input:

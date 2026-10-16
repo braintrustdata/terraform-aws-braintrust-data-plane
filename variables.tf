@@ -553,18 +553,18 @@ variable "redis_apply_immediately" {
 ## Services
 
 variable "create_ai_gateway" {
-  description = "Create the private gateway infrastructure (internal ALB and ECS gateway service)."
+  description = "Create the private gateway infrastructure (internal ALB and ECS gateway service). External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  description = "Route API services and Loop through the private gateway. Requires create_ai_gateway. Both flags can be true in one apply. Caller updates wait for the gateway ECS service to reach steady state. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
-  default     = false
+  default     = true
 
   validation {
-    condition     = !var.enable_ai_gateway || var.create_ai_gateway
+    condition     = var.use_deployment_mode_external_eks || !var.enable_ai_gateway || var.create_ai_gateway
     error_message = "enable_ai_gateway requires create_ai_gateway."
   }
 }
@@ -607,6 +607,15 @@ variable "ai_gateway_min_capacity" {
   description = "Minimum task count for the gateway ECS service"
   type        = number
   default     = 2
+
+  validation {
+    condition = !(local.create_ai_gateway && (
+      local.enable_ai_gateway || local.enable_private_ai_gateway_origin || (
+        local.create_quarantine_gateway_privatelink && local.quarantine_proxy_url_override == null
+      )
+    )) || var.ai_gateway_min_capacity >= 1
+    error_message = "ai_gateway_min_capacity must be at least 1 when a gateway route is enabled."
+  }
 }
 
 variable "ai_gateway_max_capacity" {
@@ -1312,14 +1321,9 @@ variable "api_ecs_enable_execute_command" {
 }
 
 variable "braintrust_api_url" {
-  description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
+  description = "Legacy API URL input for external EKS deployments. Configure the gateway API URL through Helm."
   type        = string
   default     = null
-
-  validation {
-    condition     = !(var.use_deployment_mode_external_eks && var.create_ai_gateway) || var.braintrust_api_url != null
-    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and create_ai_gateway are both true."
-  }
 }
 
 variable "api_handler_provisioned_concurrency" {
@@ -1537,7 +1541,7 @@ variable "use_private_gateway_quarantine_proxy" {
   default     = false
 
   validation {
-    condition     = !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
+    condition     = !var.use_private_gateway_quarantine_proxy || local.create_ai_gateway
     error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
   }
 }
@@ -2002,17 +2006,17 @@ variable "use_global_ai_gateway_origin" {
 }
 
 variable "use_private_ai_gateway_origin" {
-  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin."
+  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
-  default     = false
+  default     = true
 
   validation {
-    condition     = !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
-    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true."
+    condition     = var.use_deployment_mode_external_eks || !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
+    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true. If use_global_ai_gateway_origin is true, set use_private_ai_gateway_origin to false."
   }
 
   validation {
-    condition     = !var.use_private_ai_gateway_origin || var.create_ai_gateway
+    condition     = var.use_deployment_mode_external_eks || !var.use_private_ai_gateway_origin || var.create_ai_gateway
     error_message = "use_private_ai_gateway_origin requires create_ai_gateway."
   }
 }

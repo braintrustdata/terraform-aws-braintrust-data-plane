@@ -121,6 +121,7 @@ run "gateway_containers_have_one_million_nofile_limit" {
     target_group_arn                          = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/gateway/1234567890123456"
     alb_security_group_id                     = "sg-0123456789abcdef2"
     gateway_http_listener_arn                 = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
+    gateway_url                               = "http://gateway.internal"
     use_redis_replication_group               = false
     redis_host                                = "redis.example.internal"
     redis_port                                = 6379

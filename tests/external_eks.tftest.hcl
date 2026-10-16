@@ -8,6 +8,10 @@ mock_provider "aws" {
 
 mock_provider "random" {}
 
+mock_provider "http" {
+  source = "./tests/mocks/http"
+}
+
 variables {
   braintrust_org_name              = "test-org"
   primary_org_name                 = "test-org"
@@ -19,6 +23,16 @@ variables {
 
 run "external_eks_plans" {
   command = plan
+
+  assert {
+    condition     = length(module.gateway_ecs) == 0 && length(module.gateway_alb) == 0
+    error_message = "External EKS must leave gateway resources to Helm by default."
+  }
+
+  assert {
+    condition     = !local.enable_ai_gateway && !local.enable_private_ai_gateway_origin
+    error_message = "External EKS must not enable Terraform gateway routes by default."
+  }
 
   assert {
     condition     = length(module.services) == 0
@@ -42,5 +56,34 @@ run "external_eks_plans" {
   assert {
     condition     = length(module.brainstore_deployment) == 0
     error_message = "External EKS must not create an EC2 rollout controller."
+  }
+}
+
+run "external_eks_ignores_gateway_flags" {
+  command = plan
+
+  variables {
+    create_ai_gateway             = false
+    enable_ai_gateway             = true
+    use_private_ai_gateway_origin = true
+    ai_gateway_min_capacity       = 0
+  }
+
+  assert {
+    condition     = length(module.gateway_ecs) == 0 && length(module.gateway_alb) == 0 && length(local.gateway_env_vars) == 0
+    error_message = "External EKS must ignore gateway flags and leave the gateway to Helm."
+  }
+}
+
+run "standard_gateway_defaults" {
+  command = plan
+
+  variables {
+    use_deployment_mode_external_eks = false
+  }
+
+  assert {
+    condition     = length(module.gateway_ecs) == 1 && local.enable_ai_gateway && local.enable_private_ai_gateway_origin
+    error_message = "Standard deployments must enable the private gateway and its CloudFront origin by default."
   }
 }

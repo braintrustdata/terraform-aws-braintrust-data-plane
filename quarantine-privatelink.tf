@@ -223,8 +223,17 @@ resource "aws_vpc_endpoint" "quarantine_gateway" {
   ]
   security_group_ids = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
 
-  # Ensure the account root is allow-listed before the consumer VPCE is created.
-  depends_on = [aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account]
+  # The endpoint URL must not reach callers before the gateway is ready.
+  depends_on = [
+    aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account,
+    aws_lb_listener.gateway_quarantine_privatelink_http,
+    aws_lb_target_group_attachment.gateway_quarantine_privatelink_alb,
+    aws_vpc_security_group_egress_rule.gateway_quarantine_privatelink_nlb_to_alb,
+    aws_vpc_security_group_ingress_rule.gateway_alb_from_quarantine_privatelink_nlb,
+    aws_vpc_security_group_ingress_rule.quarantine_gateway_privatelink_endpoint_http,
+    aws_vpc_security_group_egress_rule.quarantine_gateway_privatelink_endpoint_all,
+    module.gateway_ecs,
+  ]
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl"
