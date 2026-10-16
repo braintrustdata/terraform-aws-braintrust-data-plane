@@ -41,13 +41,35 @@ locals {
   quarantine_vpc_private_subnet_1_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_1_id : module.quarantine_vpc[0].private_subnet_1_id) : null
   quarantine_vpc_private_subnet_2_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_2_id : module.quarantine_vpc[0].private_subnet_2_id) : null
   quarantine_vpc_private_subnet_3_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id : module.quarantine_vpc[0].private_subnet_3_id) : null
+  # Managed VPCs take the list from the VPC module. Bring-your-own list length
+  # follows the zone count, which is known during planning. A subnet ID from
+  # another resource is not, so it cannot decide the length. A two-zone region
+  # leaves subnet 3 unset, matching the managed VPC.
+  main_vpc_private_subnet_ids = var.create_vpc ? module.main_vpc[0].private_subnet_ids : (
+    length(local.az_names) >= 3 ? [
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+      var.existing_private_subnet_3_id,
+      ] : [
+      var.existing_private_subnet_1_id,
+      var.existing_private_subnet_2_id,
+    ]
+  )
+  quarantine_vpc_private_subnet_ids = !var.enable_quarantine_vpc ? [] : (
+    var.existing_quarantine_vpc_id != null ? (
+      length(local.az_names) >= 3 ? [
+        var.existing_quarantine_private_subnet_1_id,
+        var.existing_quarantine_private_subnet_2_id,
+        var.existing_quarantine_private_subnet_3_id,
+        ] : [
+        var.existing_quarantine_private_subnet_1_id,
+        var.existing_quarantine_private_subnet_2_id,
+      ]
+    ) : module.quarantine_vpc[0].private_subnet_ids
+  )
 
   # Database subnet configuration - use custom subnets if provided, otherwise use main VPC private subnets
-  database_subnet_ids = var.database_subnet_ids != null ? var.database_subnet_ids : [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id
-  ]
+  database_subnet_ids = var.database_subnet_ids != null ? var.database_subnet_ids : local.main_vpc_private_subnet_ids
   # Object presence remains plan-known even when its fields reference resources
   # whose values will not be known until apply.
   use_postgres_connection_override = var.postgres_connection_override != null
@@ -172,11 +194,6 @@ locals {
   loop_runtime_lambda_env_vars = local.create_loop_runtime ? {
     LOOP_RUNTIME_URL = module.loop_runtime_alb[0].loop_runtime_url
   } : {}
-  main_vpc_private_subnet_ids = [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id,
-  ]
 
   # Optional caller-provided attachment bucket. The module never creates, owns,
   # or modifies the bucket; it only derives the name for the ATTACHMENT_BUCKET
@@ -207,6 +224,53 @@ locals {
   quarantine_vpc_flow_log = merge(var.quarantine_vpc_flow_log, {
     kms_key_arn = coalesce(var.quarantine_vpc_flow_log.kms_key_arn, local.kms_key_arn)
   })
+}
+
+# Preconditions fail the plan. check blocks only warn, so a three-zone
+# bring-your-own VPC could omit subnet 3 and still deploy.
+resource "terraform_data" "network_zone_requirements" {
+  lifecycle {
+    precondition {
+      condition     = length(local.az_names) >= 2
+      error_message = "The data plane needs at least two availability zones."
+    }
+
+    precondition {
+      condition = local.private_subnet_3_az == null || (
+        local.private_subnet_3_az != local.private_subnet_1_az &&
+        local.private_subnet_3_az != local.private_subnet_2_az
+      )
+      error_message = "private_subnet_3_az must differ from the first two private subnet zones."
+    }
+
+    precondition {
+      condition = local.quarantine_private_subnet_3_az == null || (
+        local.quarantine_private_subnet_3_az != local.quarantine_private_subnet_1_az &&
+        local.quarantine_private_subnet_3_az != local.quarantine_private_subnet_2_az
+      )
+      error_message = "quarantine_private_subnet_3_az must differ from the first two quarantine private subnet zones."
+    }
+
+    precondition {
+      condition     = var.create_vpc || length(local.az_names) < 3 || var.existing_private_subnet_3_id != null
+      error_message = "existing_private_subnet_3_id is required when the region has three or more availability zones."
+    }
+
+    precondition {
+      condition     = var.existing_quarantine_vpc_id == null || length(local.az_names) < 3 || var.existing_quarantine_private_subnet_3_id != null
+      error_message = "existing_quarantine_private_subnet_3_id is required when the region has three or more availability zones."
+    }
+
+    precondition {
+      condition     = length(local.az_names) >= 3 || var.existing_private_subnet_3_id == null
+      error_message = "Leave existing_private_subnet_3_id unset when the region has two availability zones."
+    }
+
+    precondition {
+      condition     = length(local.az_names) >= 3 || var.existing_quarantine_private_subnet_3_id == null
+      error_message = "Leave existing_quarantine_private_subnet_3_id unset when the region has two availability zones."
+    }
+  }
 }
 
 module "main_vpc" {
@@ -301,12 +365,8 @@ module "database" {
 module "redis" {
   source = "./modules/elasticache"
 
-  deployment_name = var.deployment_name
-  subnet_ids = [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id
-  ]
+  deployment_name                        = var.deployment_name
+  subnet_ids                             = local.main_vpc_private_subnet_ids
   vpc_id                                 = local.main_vpc_id
   kms_key_arn                            = local.kms_key_arn
   existing_elasticache_subnet_group_name = var.existing_elasticache_subnet_group_name
@@ -411,21 +471,13 @@ module "services" {
   billing_telemetry_log_level           = var.billing_telemetry_log_level
 
   # Networking
-  vpc_id = local.main_vpc_id
-  service_subnet_ids = [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id
-  ]
+  vpc_id             = local.main_vpc_id
+  service_subnet_ids = local.main_vpc_private_subnet_ids
 
   # Quarantine VPC
-  use_quarantine_vpc = var.enable_quarantine_vpc
-  quarantine_vpc_id  = local.quarantine_vpc_id
-  quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
-    local.quarantine_vpc_private_subnet_1_id,
-    local.quarantine_vpc_private_subnet_2_id,
-    local.quarantine_vpc_private_subnet_3_id
-  ] : []
+  use_quarantine_vpc             = var.enable_quarantine_vpc
+  quarantine_vpc_id              = local.quarantine_vpc_id
+  quarantine_vpc_private_subnets = local.quarantine_vpc_private_subnet_ids
 
   kms_key_arn                         = local.kms_key_arn
   permissions_boundary_arn            = var.permissions_boundary_arn
@@ -729,13 +781,9 @@ module "api_ecs" {
   extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars)
 
   # Quarantine VPC
-  use_quarantine_vpc = var.enable_quarantine_vpc
-  quarantine_vpc_id  = local.quarantine_vpc_id
-  quarantine_vpc_private_subnets = var.enable_quarantine_vpc ? [
-    local.quarantine_vpc_private_subnet_1_id,
-    local.quarantine_vpc_private_subnet_2_id,
-    local.quarantine_vpc_private_subnet_3_id
-  ] : []
+  use_quarantine_vpc                  = var.enable_quarantine_vpc
+  quarantine_vpc_id                   = local.quarantine_vpc_id
+  quarantine_vpc_private_subnets      = local.quarantine_vpc_private_subnet_ids
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
@@ -894,11 +942,7 @@ module "brainstore" {
     local.instance_connect_endpoint_security_group
   )
 
-  private_subnet_ids = [
-    local.main_vpc_private_subnet_1_id,
-    local.main_vpc_private_subnet_2_id,
-    local.main_vpc_private_subnet_3_id
-  ]
+  private_subnet_ids = local.main_vpc_private_subnet_ids
 
   kms_key_arn                = local.kms_key_arn
   brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name

@@ -30,7 +30,7 @@ output "main_vpc_private_subnet_2_id" {
 
 output "main_vpc_private_subnet_3_id" {
   value       = local.main_vpc_private_subnet_3_id
-  description = "ID of the third private subnet in the main VPC"
+  description = "ID of the third private subnet in the main VPC. Null when the region has only two availability zones."
 }
 
 output "main_vpc_public_route_table_id" {
@@ -358,7 +358,7 @@ output "quarantine_private_subnet_2_id" {
 
 output "quarantine_private_subnet_3_id" {
   value       = local.quarantine_vpc_private_subnet_3_id
-  description = "ID of the third private subnet in the quarantine VPC"
+  description = "ID of the third private subnet in the quarantine VPC. Null when the region has only two availability zones."
 }
 
 output "quarantine_lambda_security_group_id" {

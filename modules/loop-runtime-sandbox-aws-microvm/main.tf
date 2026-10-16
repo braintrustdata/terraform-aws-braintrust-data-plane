@@ -25,11 +25,19 @@ locals {
   create_dns_firewall          = local.create_restricted_egress_vpc || var.manage_existing_vpc_dns_firewall
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
   restricted_egress_vpc_cidr   = var.existing_vpc_id != null ? data.aws_vpc.restricted_egress_existing[0].cidr_block : aws_vpc.restricted_egress[0].cidr_block
-  existing_private_subnet_ids = [
+  # Zone count is known during planning. A subnet ID from another resource is
+  # not, so comparing it to null cannot decide this list's length. A two-zone
+  # region leaves subnet 3 unset, matching a managed VPC.
+  include_existing_private_subnet_3 = length(data.aws_availability_zones.available.names) >= 3
+  existing_private_subnet_ids = local.include_existing_private_subnet_3 ? [
     var.existing_private_subnet_1_id,
     var.existing_private_subnet_2_id,
     var.existing_private_subnet_3_id,
+    ] : [
+    var.existing_private_subnet_1_id,
+    var.existing_private_subnet_2_id,
   ]
+  restricted_egress_azs        = local.create_restricted_egress_vpc ? slice(data.aws_availability_zones.available.names, 0, min(3, length(data.aws_availability_zones.available.names))) : []
   restricted_egress_subnet_ids = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.restricted_egress[*].id
   sandbox_gateway_subnet_ids   = var.existing_vpc_id != null ? local.existing_private_subnet_ids : aws_subnet.egress_gateway[*].id
   sandbox_subnet_azs           = var.existing_vpc_id != null ? data.aws_subnet.restricted_egress_existing[*].availability_zone : aws_subnet.egress_gateway[*].availability_zone
@@ -175,8 +183,23 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
 }
 
 data "aws_availability_zones" "available" {
-  count = local.create_restricted_egress_vpc ? 1 : 0
+  # Existing-VPC plans need the zone count to size the subnet list, and that
+  # count has to stay known when a subnet ID is not.
   state = "available"
+}
+
+resource "terraform_data" "existing_subnet_requirements" {
+  lifecycle {
+    precondition {
+      condition     = var.existing_vpc_id == null || length(data.aws_availability_zones.available.names) < 3 || var.existing_private_subnet_3_id != null
+      error_message = "existing_private_subnet_3_id is required when the region has three or more availability zones."
+    }
+
+    precondition {
+      condition     = var.existing_vpc_id == null || length(data.aws_availability_zones.available.names) >= 3 || var.existing_private_subnet_3_id == null
+      error_message = "Leave existing_private_subnet_3_id unset when the region has two availability zones."
+    }
+  }
 }
 
 resource "aws_vpc" "restricted_egress" {
@@ -202,10 +225,10 @@ resource "aws_route_table" "restricted_egress" {
 }
 
 resource "aws_subnet" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = length(local.restricted_egress_azs)
 
   # Preserve the released connector subnets; replacing them is blocked by its ENIs.
-  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
+  availability_zone       = local.restricted_egress_azs[count.index]
   cidr_block              = "10.255.${count.index + 1}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
@@ -216,16 +239,16 @@ resource "aws_subnet" "restricted_egress" {
 }
 
 resource "aws_route_table_association" "restricted_egress" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = length(aws_subnet.restricted_egress)
 
   route_table_id = aws_route_table.restricted_egress[0].id
   subnet_id      = aws_subnet.restricted_egress[count.index].id
 }
 
 resource "aws_subnet" "egress_gateway" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = local.create_restricted_egress_vpc ? length(local.egress_gateway_nlb_azs) : 0
 
-  availability_zone       = element(local.egress_gateway_nlb_azs, count.index)
+  availability_zone       = local.egress_gateway_nlb_azs[count.index]
   cidr_block              = "10.255.${count.index + 4}.0/24"
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
@@ -236,7 +259,7 @@ resource "aws_subnet" "egress_gateway" {
 }
 
 resource "aws_route_table_association" "egress_gateway" {
-  count = local.create_restricted_egress_vpc ? 3 : 0
+  count = length(aws_subnet.egress_gateway)
 
   route_table_id = aws_route_table.restricted_egress[0].id
   subnet_id      = aws_subnet.egress_gateway[count.index].id
@@ -352,7 +375,11 @@ resource "aws_cloudformation_stack" "restricted_egress_connector" {
     ConnectorName   = "bt-loop-${var.deployment_name}-restricted-egress"
     OperatorRoleArn = aws_iam_role.network_connector_operator[0].arn
     SecurityGroupId = aws_security_group.restricted_egress[0].id
-    SubnetIds       = join(",", local.restricted_egress_subnet_ids)
+    # join cannot represent null. Leave a null out of this string. Do not
+    # substitute another subnet. The data source precondition and
+    # existing_subnet_requirements fail that plan. An unknown ID stays unknown,
+    # so the list length stays known.
+    SubnetIds = join(",", [for subnet_id in local.restricted_egress_subnet_ids : subnet_id if subnet_id != null])
   }
 
   template_body = <<-YAML
@@ -535,9 +562,16 @@ data "aws_vpc" "restricted_egress_existing" {
 data "aws_subnet" "restricted_egress_existing" {
   count = var.existing_vpc_id != null ? length(local.existing_private_subnet_ids) : 0
 
+  # Read the real subnet ID. An unknown ID stays unknown. A known null fails
+  # the precondition below. Do not substitute another subnet.
   id = local.existing_private_subnet_ids[count.index]
 
   lifecycle {
+    precondition {
+      condition     = local.existing_private_subnet_ids[count.index] != null
+      error_message = "Each sandbox subnet ID must be set."
+    }
+
     postcondition {
       condition     = self.vpc_id == var.existing_vpc_id
       error_message = "Each sandbox subnet must belong to the supplied sandbox VPC."
