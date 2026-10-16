@@ -194,6 +194,9 @@ BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 BRAINSTORE_ASYNC_SCORING_OBJECTS=${skip_pg_for_brainstore_objects}
 BRAINSTORE_LOG_AUTOMATIONS_OBJECTS=${skip_pg_for_brainstore_objects}
 %{ endif ~}
+%{ if internal_observability_api_key != "" ~}
+BRAINSTORE_OTLP_TELEMETRY=metrics
+%{ endif ~}
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}
 %{ endfor ~}
@@ -230,8 +233,6 @@ if [ -n "${internal_observability_api_key}" ]; then
   # Install Datadog Agent
   export DD_API_KEY="${internal_observability_api_key}"
   export DD_SITE="${internal_observability_region}.datadoghq.com"
-  export DD_APM_INSTRUMENTATION_ENABLED=host
-  export DD_APM_INSTRUMENTATION_LIBRARIES=java:1,python:3,js:5,php:1,dotnet:3
   bash -c "$(curl -L https://install.datadoghq.com/scripts/install_script_agent7.sh)"
   usermod -a -G docker dd-agent
 
@@ -239,6 +240,8 @@ if [ -n "${internal_observability_api_key}" ]; then
 DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
 DD_COLLECT_EC2_TAGS=true
 DD_COLLECT_EC2_TAGS_USE_IMDS=true
+DD_APM_ENABLED=false
+DD_OTLP_CONFIG_TRACES_ENABLED=false
 EOF
   # Configure Datadog Agent to collect Docker logs
   cat <<EOF >> /etc/datadog-agent/datadog.yaml
@@ -278,7 +281,7 @@ EOF
   systemctl daemon-reload
   systemctl enable datadog-agent
 
-  # Configure Brainstore to send traces to Datadog
+  # Configure Brainstore OTLP export to Datadog
   cat <<EOF >> /etc/brainstore.env
 BRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318
 EOF
