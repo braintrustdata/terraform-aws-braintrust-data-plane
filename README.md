@@ -3,6 +3,7 @@
 For the latest guidance, always refer to the official Braintrust documentation:
 
 - [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
+- [Protected Diagnostics transcripts](docs/diagnostics-transcripts.md)
 - [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
 
@@ -27,6 +28,8 @@ The module installs the deployment Lambda from a regional Braintrust artifact us
 This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
 ## How to use this module
+
+Dedicated automation writers get an internal NLB and an API endpoint when `brainstore_automation_writer_instance_count > 0`. The application decides which queries use this endpoint. Deployments without an automation writer pool continue using the normal writer URL.
 
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
 
@@ -84,6 +87,30 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
 
+### S3 Block Public Access ownership
+
+By default, the module manages all four Block Public Access settings on its
+Brainstore, code bundle, Lambda response, and optional VPC flow-log buckets.
+
+For a **new deployment** where your security controls prohibit these writes, set:
+
+```hcl
+manage_s3_public_access_block = false
+```
+
+This skips the bucket-level configuration resources; it does not set any
+protection to `false`. [AWS enables Block Public Access on new buckets by default](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
+The customer owns maintaining these protections, preferably through protected
+account or organization controls. An SCP denying configuration changes does not
+itself enable Block Public Access. Bucket policies, encryption, versioning, and
+other module-managed settings remain unchanged. Caller-provided buckets remain
+outside this module's ownership.
+
+Leave the default enabled for existing deployments. Changing it from `true` to
+`false` plans deletion of the existing bucket-level configurations and requires
+the same permission the SCP may prohibit; it is not a supported ownership
+handoff for an existing deployment.
+
 ## Loop runtime
 
 Loop runtime is optional. Enable it with this input:
@@ -91,6 +118,10 @@ Loop runtime is optional. Enable it with this input:
 ```hcl
 enable_loop_runtime = true
 ```
+
+Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serves the proxy on port 4002.
+The module selects the runtime image and matching MicroVM guest artifact by default.
+Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
 
 When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
 Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
@@ -117,25 +148,45 @@ the corresponding migration guide before publication.
 
 ### Sandbox isolation
 
-The default `loop_runtime_sandbox_egress_mode = "restricted"` creates a dedicated VPC for sandbox egress.
-The VPC has no outbound route and blocks DNS requests.
-This network isolates untrusted sandbox code from internal networks.
+The module creates a dedicated sandbox VPC with no outbound route.
+Sandboxes reach the Loop runtime proxy through a PrivateLink endpoint on port 4002; the proxy authorizes each request, and DNS Firewall allows only the endpoint hostname.
+`loop_runtime_sandbox_egress_mode` is deprecated and only accepts `"restricted"`.
+The original three connector subnets keep their availability zones and CIDRs during upgrades; three additional subnets place the endpoint in the main VPC's availability zones.
+The security group declares TCP/UDP port 53 egress to `169.254.169.253` and the VPC's primary IPv4 CIDR address plus two.
+[AmazonProvidedDNS traffic is not filtered by ordinary VPC security groups](https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html); the managed DNS firewall restricts permitted names.
+
+For a module-managed sandbox VPC, `loop_runtime_sandbox_vpc_cidr` defaults to
+`"10.255.0.0/16"`. You can choose an IPv4 CIDR from `/16` through `/21`, for example:
+
+```hcl
+loop_runtime_sandbox_vpc_cidr = "10.255.0.0/21"
+```
+
+The module creates six `/24` subnets at offsets 1 through 6 within that CIDR:
+three connector subnets followed by three egress gateway endpoint subnets.
+The default preserves the existing VPC and subnet CIDRs. Changing the CIDR on an
+existing deployment replaces the sandbox VPC and subnets and interrupts sandbox
+connectivity. This input is ignored when supplying an existing sandbox VPC.
 
 You can supply a dedicated sandbox VPC with these inputs:
 
 ```hcl
-loop_runtime_sandbox_existing_vpc_id              = "vpc-0123456789abcdef0"
-loop_runtime_sandbox_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
-loop_runtime_sandbox_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
-loop_runtime_sandbox_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+loop_runtime_sandbox_existing_vpc_id                  = "vpc-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_1_id     = "subnet-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_2_id     = "subnet-0123456789abcdef1"
+loop_runtime_sandbox_existing_private_subnet_3_id     = "subnet-0123456789abcdef2"
+loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true
 ```
 
 The module verifies that each subnet belongs to the supplied VPC.
-The module also creates a security group without outbound rules.
-The caller controls routes and DNS restrictions in the supplied VPC.
+It creates the sandbox security group and the egress gateway endpoint there.
+At least one supplied subnet must share an availability zone with the main VPC's private subnets.
+With `loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true`, the module allows the created endpoint's hostname and blocks all other names in the supplied VPC during the same apply.
+These restrictions apply to the entire VPC; use a dedicated sandbox VPC.
+The flag defaults to `false`, leaving DNS policy to the caller; port 53 resolver allowances are declared in both cases.
 
 Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
-Configure equivalent DNS restrictions before you enable Loop with a supplied VPC.
+The caller controls routes and, when DNS Firewall management is disabled, must restrict DNS to `loop_runtime_sandbox_egress_gateway_dns_name` before using the sandboxes.
 
 ## Useful scripts
 

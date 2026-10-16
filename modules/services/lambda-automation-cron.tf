@@ -5,12 +5,18 @@ locals {
 }
 
 resource "aws_lambda_function" "automation_cron" {
-  depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
+  depends_on = [
+    aws_lambda_invocation.invoke_database_migration,
+    terraform_data.brainstore_deployment,
+    # VPC ENI permissions must be attached before the function config is updated.
+    aws_iam_role_policy_attachment.automation_cron_vpc_access,
+    aws_iam_role_policy.automation_cron_topic_map_report_read,
+  ]
 
   function_name = local.automation_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions[local.automation_cron_base_function_name]
-  role          = var.api_handler_role_arn
+  role          = aws_iam_role.automation_cron_role.arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.automation_cron_original_handler
   runtime       = "nodejs22.x"
   timeout       = 300
@@ -41,12 +47,10 @@ resource "aws_lambda_function" "automation_cron" {
       BRAINSTORE_URL                            = local.brainstore_url
       BRAINSTORE_WRITER_URL                     = local.brainstore_writer_url
       BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
+      CODE_BUNDLE_BUCKET                        = local.code_bundle_bucket_id
       FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
       CRON_OVERRIDE_SECRET_KEY                  = random_password.service_token_secret_key.result
       },
-      var.brainstore_enable_export ? {
-        BRAINSTORE_EXPORT_MIGRATION_ENABLED = "true"
-      } : {},
       local.redis_extra_env_vars,
       var.extra_env_vars.AutomationCron,
       local.observability_enabled ? merge(local.datadog_env_vars, {

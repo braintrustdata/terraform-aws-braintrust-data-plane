@@ -71,6 +71,13 @@ variable "create_ssm_vpc_endpoints" {
   default     = true
 }
 
+variable "manage_s3_public_access_block" {
+  description = "Manage all four Block Public Access settings on the module-created S3 flow-log bucket. Set false only for new deployments with protection managed outside this module; disabling it later deletes the existing managed configuration."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to IAM roles created by this module"

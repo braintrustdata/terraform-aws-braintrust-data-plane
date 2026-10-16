@@ -189,7 +189,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "flow_log" {
 }
 
 resource "aws_s3_bucket_public_access_block" "flow_log" {
-  count = local.create_flow_log_bucket ? 1 : 0
+  count = local.create_flow_log_bucket && var.manage_s3_public_access_block ? 1 : 0
 
   bucket = aws_s3_bucket.flow_log[0].id
 

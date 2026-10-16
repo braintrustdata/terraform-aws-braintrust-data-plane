@@ -57,12 +57,13 @@ resource "aws_launch_template" "brainstore_fast_reader" {
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
+    datadog_agent_container_logs    = module.datadog_agent_telemetry["fast_reader"].container_logs
+    datadog_agent_otlp_env_vars     = module.datadog_agent_telemetry["fast_reader"].otlp_env_vars
     service_token_secret_arn        = var.service_token_secret_arn
     custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script      = var.custom_post_install_script
     brainstore_cache_file_size      = local.brainstore_fast_reader_cache_file_size
     skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-    brainstore_enable_export        = var.brainstore_enable_export
     ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
   }))
 
@@ -96,12 +97,13 @@ resource "aws_launch_template" "brainstore_fast_reader" {
 }
 
 resource "aws_lb" "brainstore_fast_reader" {
-  count              = local.has_fast_reader_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-fr"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
+  count                            = local.has_fast_reader_nodes ? 1 : 0
+  name                             = "${var.deployment_name}-bstr-fr"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
 
   lifecycle {
     create_before_destroy = true

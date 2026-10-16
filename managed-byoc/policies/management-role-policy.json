@@ -106,6 +106,12 @@
       "Resource": "*"
     },
     {
+      "Sid": "DenyS3BucketAclChanges",
+      "Effect": "Deny",
+      "Action": "s3:PutBucketAcl",
+      "Resource": "*"
+    },
+    {
       "Sid": "AllowLimitedIam",
       "Effect": "Allow",
       "Action": [

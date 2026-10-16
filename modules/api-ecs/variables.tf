@@ -482,6 +482,12 @@ variable "brainstore_fast_reader_hostname" {
   default     = null
 }
 
+variable "brainstore_automation_writer_hostname" {
+  type        = string
+  description = "Optional Brainstore automation writer hostname when query routing is enabled."
+  default     = null
+}
+
 variable "brainstore_s3_bucket_name" {
   type        = string
   description = "Brainstore realtime WAL S3 bucket name."
@@ -515,12 +521,6 @@ variable "skip_pg_for_brainstore_objects" {
   type        = string
   description = "Controls which object types bypass PostgreSQL and write directly to Brainstore."
   default     = ""
-}
-
-variable "brainstore_enable_export" {
-  type        = bool
-  description = "If true, sets BRAINSTORE_EXPORT_MIGRATION_ENABLED=true on the API ECS container."
-  default     = false
 }
 
 variable "whitelisted_origins" {
@@ -626,7 +626,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), or AI Proxy Function URL. Null or blank omits the env var so api-ts getRuntimeEnv falls back to the caller proxy URL."
+  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), the AI Proxy Function URL while that Lambda exists, or the CloudFront /v1/proxy URL once it is gone. Null or blank omits the variable; api-ts uses the caller proxy URL, which is http://localhost:8000/v1/proxy in this ECS configuration. A quarantine Lambda cannot call that address."
   default     = null
 }
 

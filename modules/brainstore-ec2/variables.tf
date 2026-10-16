@@ -223,7 +223,7 @@ variable "cache_file_size_reader" {
 
 variable "cache_file_size_writer" {
   type        = string
-  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 50% of the ephemeral storage size."
   default     = null
 }
 
@@ -247,7 +247,7 @@ variable "extra_env_vars_automation_writer" {
 
 variable "cache_file_size_automation_writer" {
   type        = string
-  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 75% of the ephemeral storage size."
   default     = null
 }
 
@@ -283,12 +283,6 @@ variable "skip_pg_for_brainstore_objects" {
     condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
     error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
   }
-}
-
-variable "brainstore_enable_export" {
-  type        = bool
-  description = "If true, sets BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED=true on Brainstore writer nodes."
-  default     = false
 }
 
 variable "locks_s3_path" {

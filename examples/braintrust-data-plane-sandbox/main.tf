@@ -1,6 +1,9 @@
 # tflint-ignore-file: terraform_module_pinned_source
 
 module "braintrust-data-plane" {
+  # Optional existing bootstrap-owned SSM/ECS transcript destination.
+  # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
+  # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
@@ -32,8 +35,9 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "restricted"
+  enable_loop_runtime = false
+  # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
+  # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
@@ -154,6 +158,11 @@ module "braintrust-data-plane" {
   # Adds interface endpoint charges; Private DNS redirects regional API calls.
   # create_secrets_manager_vpc_endpoint = false # Opt out.
 
+  ### S3 Block Public Access
+  # New deployments only: skip bucket Block Public Access configuration when
+  # customer controls own protection. Do not change this on an existing stack.
+  # manage_s3_public_access_block = false
+
   ### S3 CORS configuration
   # Additional CORS origins for the code bundle and lambda responses buckets.
   # Use s3_additional_allowed_origins to apply the same origins to both buckets,
@@ -188,6 +197,12 @@ module "braintrust-data-plane" {
   #   "arn:aws:iam::123456789012:role/customer-export-role",
   #   "arn:aws:iam::*:role/braintrust-export-*",
   # ]
+
+  # Opt-in: let the API role read caller-owned buckets that traces link to as external
+  # attachments (s3:GetObject only, plus kms:Decrypt through S3 for SSE-KMS buckets).
+  # Buckets and keys in another account must also grant the API role in their policies.
+  # external_attachment_s3_bucket_arns           = ["arn:aws:s3:::your-attachment-bucket"]
+  # external_attachment_s3_bucket_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
