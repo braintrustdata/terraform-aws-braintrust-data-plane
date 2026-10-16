@@ -2012,7 +2012,7 @@ variable "use_private_ai_gateway_origin" {
 
   validation {
     condition     = var.use_deployment_mode_external_eks || !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
-    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true."
+    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true. If use_global_ai_gateway_origin is true, set use_private_ai_gateway_origin to false."
   }
 
   validation {

@@ -144,7 +144,8 @@ run "reject_privatelink_without_tasks" {
 run "allow_zero_tasks_before_cutover" {
   command = plan
   variables {
-    ai_gateway_min_capacity = 0
+    use_private_ai_gateway_origin = false
+    ai_gateway_min_capacity       = 0
   }
 }
 
@@ -153,7 +154,13 @@ run "hosted_gateway_keeps_privatelink_noop" {
   variables {
     ai_gateway_min_capacity              = 0
     use_global_ai_gateway_origin         = true
+    use_private_ai_gateway_origin        = false
     use_private_gateway_quarantine_proxy = true
+  }
+
+  assert {
+    condition     = !local.enable_private_ai_gateway_origin && !local.create_quarantine_gateway_privatelink
+    error_message = "The global origin must leave the private origin and quarantine PrivateLink disabled."
   }
 }
 
@@ -163,5 +170,16 @@ run "quarantine_override_does_not_require_gateway_tasks" {
     ai_gateway_min_capacity              = 0
     use_private_gateway_quarantine_proxy = true
     quarantine_proxy_url                 = "https://proxy.example.com/v1/proxy"
+    use_private_ai_gateway_origin        = false
   }
+}
+
+run "reject_global_and_private_gateway_origins" {
+  command = plan
+  variables {
+    use_global_ai_gateway_origin  = true
+    use_private_ai_gateway_origin = true
+  }
+
+  expect_failures = [var.use_private_ai_gateway_origin]
 }
