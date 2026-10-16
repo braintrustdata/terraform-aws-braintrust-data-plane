@@ -24,6 +24,8 @@ locals {
     var.cache_file_size_automation_writer != null ? var.cache_file_size_automation_writer : "${floor(data.aws_ec2_instance_type.brainstore_automation_writer[0].total_instance_storage * 0.75)}gb"
   ) : null
 
+  brainstore_default_env_vars = var.internal_observability_api_key == "" ? {} : { BRAINSTORE_OTLP_TELEMETRY = "metrics" }
+
   # Automation writers handle automations. Other writer-capable nodes handle
   # every writer loop except automations while the automation-writer pool is on.
   brainstore_writer_extra_env_vars = local.has_automation_writer_nodes ? merge(var.extra_env_vars_writer, {
@@ -46,7 +48,7 @@ module "datadog_agent_telemetry" {
     automation_writer = local.brainstore_automation_writer_extra_env_vars
   }
 
-  env_vars = var.internal_observability_api_key == "" ? {} : merge({ BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry }, each.value)
+  env_vars = var.internal_observability_api_key == "" ? {} : merge({ BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry }, local.brainstore_default_env_vars, each.value)
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -105,7 +107,7 @@ resource "aws_launch_template" "brainstore" {
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
     is_dedicated_reader_node        = local.has_writer_nodes ? "true" : "false"
     is_dedicated_writer_node        = "false"
-    extra_env_vars                  = local.brainstore_reader_writer_extra_env_vars
+    extra_env_vars                  = merge(local.brainstore_default_env_vars, local.brainstore_reader_writer_extra_env_vars)
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
