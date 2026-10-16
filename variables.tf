@@ -555,13 +555,13 @@ variable "redis_apply_immediately" {
 variable "create_ai_gateway" {
   description = "Create the private gateway infrastructure (internal ALB and ECS gateway service)."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  description = "Route API services and Loop through the private gateway. Requires create_ai_gateway. Both flags can be true in one apply. Caller updates wait for the gateway ECS service to reach steady state."
   type        = bool
-  default     = false
+  default     = true
 
   validation {
     condition     = !var.enable_ai_gateway || var.create_ai_gateway
@@ -607,6 +607,15 @@ variable "ai_gateway_min_capacity" {
   description = "Minimum task count for the gateway ECS service"
   type        = number
   default     = 2
+
+  validation {
+    condition = !(var.create_ai_gateway && (
+      var.enable_ai_gateway || var.use_private_ai_gateway_origin || (
+        local.create_quarantine_gateway_privatelink && local.quarantine_proxy_url_override == null
+      )
+    )) || var.ai_gateway_min_capacity >= 1
+    error_message = "ai_gateway_min_capacity must be at least 1 when a gateway route is enabled."
+  }
 }
 
 variable "ai_gateway_max_capacity" {
@@ -2004,7 +2013,7 @@ variable "use_global_ai_gateway_origin" {
 variable "use_private_ai_gateway_origin" {
   description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin."
   type        = bool
-  default     = false
+  default     = true
 
   validation {
     condition     = !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)

@@ -159,7 +159,7 @@ output "gateway_target_group_arn" {
 }
 
 output "gateway_url" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_url : null
+  value       = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
   description = "Private in-VPC gateway URL. Set enable_ai_gateway to wire GATEWAY_URL on api-ts services."
 }
 

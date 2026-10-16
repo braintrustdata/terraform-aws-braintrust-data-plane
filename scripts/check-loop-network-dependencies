@@ -63,6 +63,51 @@ def check_graph(dot):
     if not dependency_path(graph, loop_service, gateway_service):
         errors.append("Loop must retain its Gateway-before-Loop startup ordering.")
 
+    gateway_url = node("module.gateway_ecs.output.gateway_url")
+    if not dependency_path(graph, gateway_url, gateway_service):
+        errors.append("The gateway URL must wait for the ECS service.")
+
+    # Check each input directly. Inactive branches also appear in this graph.
+    gateway_inputs = [
+        node("module.services.var.gateway_url"),
+        node("module.api_ecs.var.extra_env_vars"),
+        node("module.loop_runtime_ecs.var.ai_proxy_url"),
+        node("module.ingress.var.gateway_alb_dns_name"),
+    ]
+    for gateway_input in gateway_inputs:
+        if not dependency_path(graph, gateway_input, gateway_url):
+            errors.append(f"The caller input must use the gateway readiness output: {gateway_input}")
+
+    callers = [
+        node("module.services.aws_lambda_function.api_handler"),
+        node("module.services.aws_lambda_function.ai_proxy"),
+        node("module.api_ecs.aws_ecs_task_definition.braintrust_api"),
+        node("module.api_ecs.aws_ecs_task_definition.braintrust_api_ingest"),
+        node("module.api_ecs.aws_ecs_task_definition.braintrust_api_background"),
+        node("module.loop_runtime_ecs.aws_ecs_task_definition.loop_runtime"),
+        node("module.ingress.aws_cloudfront_distribution.dataplane"),
+        node("aws_vpc_endpoint.quarantine_gateway"),
+    ]
+    for caller in callers:
+        if not dependency_path(graph, caller, gateway_service):
+            errors.append(f"Gateway cutover must wait for the ECS service: {caller}")
+
+    api_alb = node("module.api_ecs.aws_lb.api_ecs")
+    cloudfront = node("module.ingress.aws_cloudfront_distribution.dataplane")
+    api_url = node("module.api_ecs.output.http_url")
+    gateway_api_url = node("module.gateway_ecs.var.braintrust_api_url")
+    if not dependency_path(graph, gateway_api_url, api_url):
+        errors.append("Gateway API calls must use the private API endpoint.")
+
+    gateway_api_ingress = node("module.api_ecs.aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway")
+    if not dependency_path(graph, gateway_service, gateway_api_ingress):
+        errors.append("Gateway startup must wait for its private API ingress rule.")
+
+    for start, target in [(migration, gateway_service), (api_alb, gateway_service), (gateway_service, cloudfront)]:
+        path = dependency_path(graph, start, target)
+        if path:
+            errors.append("Gateway bootstrap dependency is circular or blocks migration:\n  " + "\n  -> ".join(path))
+
     if errors:
         raise ValueError("\n\n".join(errors))
 
@@ -79,7 +124,7 @@ def main():
         check_graph(dot)
     except ValueError as error:
         parser.exit(1, f"{error}\n")
-    print("Loop network dependencies: baseline ingress precedes migration; Gateway still precedes Loop.")
+    print("Network dependencies pass. Gateway readiness precedes cutover. Migration and the private API ALB remain independent.")
 
 
 if __name__ == "__main__":

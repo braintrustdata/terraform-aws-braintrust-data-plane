@@ -146,7 +146,7 @@ locals {
     )
   )
   gateway_env_vars = local.enable_ai_gateway ? {
-    GATEWAY_URL = module.gateway_alb[0].gateway_url
+    GATEWAY_URL = module.gateway_ecs[0].gateway_url
   } : {}
 
   # Loop runtime requires the ECS API data plane and Brainstore. It is fronted
@@ -176,7 +176,7 @@ locals {
   )
   loop_runtime_ai_proxy_url = (
     local.enable_ai_gateway
-    ? "${one(module.gateway_alb[*].gateway_url)}/v1/proxy"
+    ? "${module.gateway_ecs[0].gateway_url}/v1/proxy"
     : (
       var.use_global_ai_gateway_origin
       ? local.hosted_ai_gateway_proxy_url
@@ -211,7 +211,6 @@ locals {
     var.service_extra_env_vars,
     { for svc in local.lambda_env_services : svc => merge(
       lookup(var.service_extra_env_vars, svc, {}),
-      local.gateway_env_vars,
       local.loop_runtime_lambda_env_vars,
     ) },
     { for svc in local.loop_runtime_lambda_env_services : svc => merge(
@@ -374,6 +373,7 @@ module "services" {
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   brainstore_deployment_id = module.brainstore_deployment[0].completion_id
+  gateway_url              = local.enable_ai_gateway ? module.gateway_ecs[0].gateway_url : null
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = local.lambda_version_tag
@@ -532,6 +532,7 @@ module "gateway_ecs" {
   target_group_arn             = module.gateway_alb[0].gateway_target_group_arn
   alb_security_group_id        = module.gateway_alb[0].gateway_alb_security_group_id
   gateway_http_listener_arn    = module.gateway_alb[0].gateway_http_listener_arn
+  gateway_url                  = module.gateway_alb[0].gateway_url
   extra_env_vars               = var.ai_gateway_extra_env_vars
   custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
@@ -539,7 +540,7 @@ module "gateway_ecs" {
   brainstore_license_key       = var.brainstore_license_key
   enable_execute_command       = var.ai_gateway_enable_execute_command
   braintrust_app_url           = var.ai_gateway_braintrust_app_url
-  braintrust_api_url           = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.ingress[0].api_url
+  braintrust_api_url           = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.api_ecs[0].http_url
   unsafe_url_request_mode      = var.unsafe_url_request_mode
   url_security_dns_servers     = var.url_security_dns_servers
   url_security_allow_cidrs     = var.url_security_allow_cidrs
@@ -667,9 +668,6 @@ module "loop_runtime_ecs" {
   internal_observability_region             = var.internal_observability_region
 
   custom_tags = local.all_custom_tags
-
-  # Greenfield both-flags-true: do not roll Loop before gateway ECS is up.
-  depends_on = [module.gateway_ecs]
 }
 
 module "api_ecs" {
@@ -776,6 +774,9 @@ module "api_ecs" {
     var.braintrust_api_authorized_security_groups,
   )
   authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
+  gateway_security_groups = local.create_ai_gateway ? {
+    "AI Gateway" = module.gateway_ecs[0].task_security_group_id
+  } : {}
 
   alb_certificate_arn            = var.braintrust_api_alb_certificate_arn
   alb_custom_domain              = var.braintrust_api_alb_custom_domain
@@ -806,7 +807,7 @@ module "ingress" {
   use_private_ai_gateway_origin       = local.enable_private_ai_gateway_origin
   global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
   gateway_alb_arn                     = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name                = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_dns_name : null
+  gateway_alb_dns_name                = local.enable_private_ai_gateway_origin ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : null
   gateway_cloudfront_ingress_rule_id  = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
