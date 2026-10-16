@@ -24,7 +24,7 @@
 # non-overlapping range (or append into unused numbers).
 
 locals {
-  alb_path_routes = [
+  alb_path_routes_static = [
     # braintrust-api-ingest
     { path = "/logs3", method = "POST", priority = 100, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/otel/v1/*", method = "POST", priority = 110, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
@@ -50,6 +50,13 @@ locals {
     { path = "/v1/proxy/chat/completions", priority = 280, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/responses", priority = 290, target_group = aws_lb_target_group.braintrust_api_background.arn },
   ]
+
+  alb_path_routes = concat(
+    local.alb_path_routes_static,
+    var.enable_ecs_api_background_function_invoke ? [
+      { path = "/function/invoke", method = "POST", priority = 245, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    ] : [],
+  )
 
   alb_path_listener_rules = {
     for route in local.alb_path_routes :

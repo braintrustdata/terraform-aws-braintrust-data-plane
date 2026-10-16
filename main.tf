@@ -718,6 +718,7 @@ module "api_ecs" {
   braintrust_api_background_cpu_autoscaling                    = var.braintrust_api_background_cpu_autoscaling
   braintrust_api_background_event_loop_utilization_autoscaling = var.braintrust_api_background_event_loop_utilization_autoscaling
   braintrust_api_background_event_loop_delay_autoscaling       = var.braintrust_api_background_event_loop_delay_autoscaling
+  enable_ecs_api_background_function_invoke                    = var.enable_ecs_api_background_function_invoke
   whitelisted_origins                                          = var.whitelisted_origins
   outbound_rate_limit_window_minutes                           = var.outbound_rate_limit_window_minutes
   outbound_rate_limit_max_requests                             = var.outbound_rate_limit_max_requests

@@ -248,6 +248,12 @@ variable "braintrust_api_ingest_event_loop_delay_autoscaling" {
   }
 }
 
+variable "enable_ecs_api_background_function_invoke" {
+  type        = bool
+  description = "Route POST /function/invoke to the braintrust-api-background ECS service."
+  default     = false
+}
+
 variable "braintrust_api_background_cpu" {
   type        = number
   description = "CPU units for the braintrust-api-background ECS task definition."

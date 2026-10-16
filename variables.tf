@@ -987,6 +987,17 @@ variable "enable_ecs_api" {
   }
 }
 
+variable "enable_ecs_api_background_function_invoke" {
+  type        = bool
+  description = "Route POST /function/invoke to the API ECS background service. Requires enable_ecs_api = true."
+  default     = false
+
+  validation {
+    condition     = !var.enable_ecs_api_background_function_invoke || var.enable_ecs_api
+    error_message = "enable_ecs_api_background_function_invoke requires enable_ecs_api = true."
+  }
+}
+
 variable "braintrust_api_log_retention_days" {
   description = "CloudWatch log retention period (days) for API ECS logs."
   type        = number
