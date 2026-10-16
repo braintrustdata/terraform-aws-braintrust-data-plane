@@ -1,5 +1,7 @@
 # Cover managed and customer-managed subnet groups for both Redis resource types.
-mock_provider "aws" {}
+mock_provider "aws" {
+  source = "./tests/mocks/aws"
+}
 
 variables {
   deployment_name             = "bt-test"
@@ -76,6 +78,23 @@ run "replication_managed_group" {
     condition     = aws_elasticache_replication_group.main[0].subnet_group_name == "bt-test-elasticache-subnet-group"
     error_message = "Redis must use the selected subnet group in either Redis mode."
   }
+
+  assert {
+    condition = (
+      tostring(aws_elasticache_replication_group.main[0].at_rest_encryption_enabled) == "true" &&
+      tostring(aws_elasticache_replication_group.main[0].transit_encryption_enabled) == "true" &&
+      aws_elasticache_replication_group.main[0].kms_key_id == var.kms_key_arn &&
+      aws_elasticache_replication_group.main[0].auth_token_update_strategy == "SET" &&
+      nonsensitive(aws_secretsmanager_secret_version.auth_token[0].secret_string) == "mock-password-16"
+    )
+    error_message = "Replication groups must enable at-rest/transit encryption, use the module KMS key, require AUTH with SET, and store the generated auth token."
+  }
+
+  assert {
+    # Endpoint address is unknown at plan time; assert the URL prefix formula with the known token.
+    condition     = startswith("rediss://:${nonsensitive(aws_secretsmanager_secret_version.auth_token[0].secret_string)}@", "rediss://:mock-password-16@")
+    error_message = "Replication-group Redis URL must use the rediss://:token@ prefix."
+  }
 }
 
 run "replication_existing_group" {
@@ -98,6 +117,14 @@ run "replication_existing_group" {
   assert {
     condition     = aws_elasticache_replication_group.main[0].subnet_group_name == "shared-redis-subnets"
     error_message = "Redis must use the selected subnet group in either Redis mode."
+  }
+
+  assert {
+    condition = (
+      tostring(aws_elasticache_replication_group.main[0].at_rest_encryption_enabled) == "true" &&
+      aws_elasticache_replication_group.main[0].auth_token_update_strategy == "SET"
+    )
+    error_message = "Replication groups must enable at-rest encryption and require AUTH with SET."
   }
 }
 

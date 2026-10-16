@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 sudo hostnamectl set-hostname bastion
 
 # Help prevent immediate failure of apt commands if another background process is holding the lock
@@ -16,8 +17,8 @@ snap install aws-cli --classic
 
 TPL_REGION="${region}"
 TPL_DATABASE_SECRET_ARN="${database_secret_arn}"
-TPL_REDIS_HOST="${redis_host}"
-TPL_REDIS_PORT="${redis_port}"
+TPL_REDIS_URL_SECRET_ARN="${redis_url_secret_arn}"
+TPL_REDIS_URL_SECRET_VERSION_ID="${redis_url_secret_version_id}"
 TPL_DATABASE_HOST="${database_host}"
 
 export AWS_REGION=$TPL_REGION
@@ -26,12 +27,22 @@ export AWS_DEFAULT_REGION=$TPL_REGION
 DB_CREDS=$(aws secretsmanager get-secret-value --secret-id "$TPL_DATABASE_SECRET_ARN" --query SecretString --output text)
 DB_USERNAME=$(echo "$DB_CREDS" | jq -r .username)
 DB_PASSWORD=$(echo "$DB_CREDS" | jq -r .password)
+if [ -z "$DB_CREDS" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ] || [ "$DB_USERNAME" = "null" ] || [ "$DB_PASSWORD" = "null" ]; then
+  echo "Failed to retrieve database credentials from Secrets Manager. Exiting." >&2
+  exit 1
+fi
+
+REDIS_URL=$(aws secretsmanager get-secret-value --secret-id "$TPL_REDIS_URL_SECRET_ARN" --version-id "$TPL_REDIS_URL_SECRET_VERSION_ID" --query SecretString --output text)
+if [ -z "$REDIS_URL" ] || [ "$REDIS_URL" = "None" ]; then
+  echo "Failed to retrieve Redis URL from Secrets Manager. Exiting." >&2
+  exit 1
+fi
 
 # Do NOT use quotes here. Docker will include them as literals.
 cat <<EOF > /etc/braintrust.env
 export AWS_REGION=$TPL_REGION
 export AWS_DEFAULT_REGION=$TPL_REGION
-export REDIS_URL=${redis_scheme}://$TPL_REDIS_HOST:$TPL_REDIS_PORT
+export REDIS_URL=$REDIS_URL
 export PG_URL=postgres://$DB_USERNAME:$DB_PASSWORD@$TPL_DATABASE_HOST/postgres
 EOF
 

@@ -431,6 +431,11 @@ variable "redis_url_secret_arn" {
   description = "ARN of the secret containing the Redis URL."
 }
 
+variable "redis_url_secret_version_id" {
+  type        = string
+  description = "Secrets Manager version id for the Redis URL secret. Pinned in ECS valueFrom so secret content changes create a new task definition revision."
+}
+
 variable "response_bucket" {
   type        = string
   description = "S3 bucket for function responses."

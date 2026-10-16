@@ -13,9 +13,8 @@ module "remote_support" {
 
   database_host               = local.postgres_host
   database_secret_arn         = local.postgres_credentials_secret_arn
-  redis_host                  = module.redis.redis_endpoint
-  redis_port                  = module.redis.redis_port
-  use_redis_replication_group = var.use_redis_replication_group
+  redis_url_secret_arn        = module.redis.redis_url_secret_arn
+  redis_url_secret_version_id = module.redis.redis_url_secret_version_id
   kms_key_arn                 = local.kms_key_arn
   lambda_function_arns = compact([
     !var.use_deployment_mode_external_eks ? module.services[0].api_handler_arn : null,
