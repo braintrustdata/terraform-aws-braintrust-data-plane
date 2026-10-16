@@ -137,6 +137,11 @@ locals {
   }
 
   merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  pulse_signals   = [for signal in split(",", lookup(local.merged_env_vars, "CONTROL_PLANE_TELEMETRY", "")) : trimspace(signal)]
+  pulse_logs_enabled = var.brainstore_license_key != null && var.brainstore_license_key != "" && anytrue([
+    for signal in ["logs", "all"] : contains(local.pulse_signals, signal)
+  ])
+  datadog_firelens_logs = local.observability_enabled && !local.pulse_logs_enabled
 
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
@@ -165,7 +170,7 @@ locals {
         containerName = "datadog-agent"
         condition     = "START"
       }
-    ] : dep if local.observability_enabled
+    ] : dep if local.observability_enabled && (dep.containerName != "log-router" || local.datadog_firelens_logs)
   ]
 
   api_container_base = {
@@ -226,7 +231,7 @@ locals {
 
   api_log_configurations = {
     for service_name in local.api_service_names :
-    service_name => jsondecode(local.observability_enabled ? jsonencode({
+    service_name => jsondecode(local.datadog_firelens_logs ? jsonencode({
       logDriver = "awsfirelens"
       options = {
         Name           = "datadog"
@@ -349,7 +354,7 @@ locals {
             timeout     = 5
           }
         }
-      ] : sidecar if local.observability_enabled
+      ] : sidecar if local.observability_enabled && (sidecar.name != "log-router" || local.datadog_firelens_logs)
     ]
   }
 
