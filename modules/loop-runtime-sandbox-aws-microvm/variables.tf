@@ -125,6 +125,22 @@ variable "custom_tags" {
   default     = {}
 }
 
+variable "vpc_cidr" {
+  type        = string
+  description = "IPv4 CIDR block for the managed sandbox VPC. Ignored when existing_vpc_id is set. Changing this after deployment replaces the sandbox VPC and subnets."
+  default     = "10.255.0.0/16"
+  nullable    = false
+
+  validation {
+    condition = can(cidrnetmask(var.vpc_cidr)) && try(
+      tonumber(split("/", var.vpc_cidr)[1]) >= 16 &&
+      tonumber(split("/", var.vpc_cidr)[1]) <= 21,
+      false,
+    )
+    error_message = "vpc_cidr must be a valid IPv4 CIDR with a prefix length from /16 through /21 to accommodate six /24 subnets."
+  }
+}
+
 variable "existing_vpc_id" {
   type        = string
   description = "Optional dedicated VPC for restricted sandbox egress. Prefer the module-managed isolated VPC. This network is not for internal connectivity. The caller owns routes and, unless manage_existing_vpc_dns_firewall is true, DNS restrictions."

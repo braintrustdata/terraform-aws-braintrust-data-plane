@@ -563,6 +563,7 @@ module "loop_runtime_sandbox_aws_microvm" {
   microvm_maximum_duration_seconds      = var.loop_runtime_microvm_maximum_duration_seconds
   microvm_auth_token_expiration_minutes = var.loop_runtime_microvm_auth_token_expiration_minutes
   enable_microvm_runtime_logs           = var.enable_loop_runtime_microvm_runtime_logs
+  vpc_cidr                              = var.loop_runtime_sandbox_vpc_cidr
   existing_vpc_id                       = var.loop_runtime_sandbox_existing_vpc_id
   existing_private_subnet_1_id          = var.loop_runtime_sandbox_existing_private_subnet_1_id
   existing_private_subnet_2_id          = var.loop_runtime_sandbox_existing_private_subnet_2_id

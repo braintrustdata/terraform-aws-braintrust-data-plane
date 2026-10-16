@@ -891,6 +891,22 @@ variable "loop_runtime_sandbox_egress_mode" {
   }
 }
 
+variable "loop_runtime_sandbox_vpc_cidr" {
+  type        = string
+  description = "IPv4 CIDR block for the module-managed Loop sandbox VPC. Ignored when loop_runtime_sandbox_existing_vpc_id is set. Changing this after deployment replaces the sandbox VPC and subnets."
+  default     = "10.255.0.0/16"
+  nullable    = false
+
+  validation {
+    condition = can(cidrnetmask(var.loop_runtime_sandbox_vpc_cidr)) && try(
+      tonumber(split("/", var.loop_runtime_sandbox_vpc_cidr)[1]) >= 16 &&
+      tonumber(split("/", var.loop_runtime_sandbox_vpc_cidr)[1]) <= 21,
+      false,
+    )
+    error_message = "loop_runtime_sandbox_vpc_cidr must be a valid IPv4 CIDR with a prefix length from /16 through /21 to accommodate six /24 subnets."
+  }
+}
+
 variable "loop_runtime_sandbox_existing_vpc_id" {
   type        = string
   description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and, unless loop_runtime_sandbox_manage_existing_vpc_dns_firewall is true, DNS restrictions."
