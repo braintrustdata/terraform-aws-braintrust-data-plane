@@ -44,6 +44,11 @@ output "migrate_database_arn" {
   value       = aws_lambda_function.migrate_database.arn
 }
 
+output "database_migration_id" {
+  description = "Completion token for the database migration invocation. The API ECS services depend on this so new API ECS tasks do not start before migrate finishes."
+  value       = aws_lambda_invocation.invoke_database_migration.id
+}
+
 output "catchup_etl_arn" {
   description = "The ARN of the catchup etl lambda function"
   value       = aws_lambda_function.catchup_etl.arn
