@@ -306,6 +306,32 @@ docker run -d \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
 
+# Add an 8 GiB swap file on the root volume to absorb short memory spikes
+# before earlyoom or the kernel OOM killer stops Brainstore. swappiness=1
+# keeps swap for memory pressure only. A swap failure does not fail the boot.
+configure_swap() {
+  local swapfile=/swapfile
+  local swappiness=1
+  if swapon --show=NAME --noheadings | grep -qx "$swapfile"; then
+    return 0
+  fi
+  if [[ ! -e "$swapfile" ]]; then
+    fallocate -l 8G "$swapfile" || dd if=/dev/zero of="$swapfile" bs=1M count=8192 status=progress
+  fi
+  chmod 600 "$swapfile"
+  mkswap "$swapfile"
+  swapon "$swapfile" || {
+    dd if=/dev/zero of="$swapfile" bs=1M count=8192 conv=notrunc status=progress
+    mkswap "$swapfile"
+    swapon "$swapfile"
+  }
+  grep -q "^$swapfile " /etc/fstab || echo "$swapfile none swap sw 0 0" >> /etc/fstab
+
+  echo "vm.swappiness=$swappiness" | tee /etc/sysctl.d/99-swappiness.conf
+  sysctl -w vm.swappiness=$swappiness
+}
+configure_swap || echo "swap setup failed" >&2
+
 %{ if custom_post_install_script != "" ~}
 echo "Running custom post-install script..."
 ${custom_post_install_script}
