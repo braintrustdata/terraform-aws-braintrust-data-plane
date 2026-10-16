@@ -74,7 +74,7 @@ locals {
 
   create_ecs_api                             = !var.use_deployment_mode_external_eks
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  create_ai_gateway                          = var.create_ai_gateway
+  create_ai_gateway                          = var.create_ai_gateway && !var.use_deployment_mode_external_eks
   enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
@@ -540,7 +540,7 @@ module "gateway_ecs" {
   brainstore_license_key       = var.brainstore_license_key
   enable_execute_command       = var.ai_gateway_enable_execute_command
   braintrust_app_url           = var.ai_gateway_braintrust_app_url
-  braintrust_api_url           = var.use_deployment_mode_external_eks ? var.braintrust_api_url : module.api_ecs[0].http_url
+  braintrust_api_url           = module.api_ecs[0].http_url
   unsafe_url_request_mode      = var.unsafe_url_request_mode
   url_security_dns_servers     = var.url_security_dns_servers
   url_security_allow_cidrs     = var.url_security_allow_cidrs

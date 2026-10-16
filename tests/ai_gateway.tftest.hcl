@@ -92,12 +92,17 @@ run "create_and_enable_with_https_api" {
   }
 }
 
-run "external_eks_retains_explicit_api_url" {
+run "external_eks_leaves_gateway_to_helm" {
   command = plan
   variables {
     enable_ai_gateway                = true
     use_deployment_mode_external_eks = true
     braintrust_api_url               = "https://api.example.com"
+  }
+
+  assert {
+    condition     = length(module.gateway_ecs) == 0 && !local.enable_ai_gateway
+    error_message = "External EKS must leave the gateway to Helm even with an explicit API URL."
   }
 }
 
