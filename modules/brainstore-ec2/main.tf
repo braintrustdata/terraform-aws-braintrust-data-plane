@@ -37,6 +37,18 @@ locals {
   }) : var.extra_env_vars
 }
 
+module "datadog_agent_telemetry" {
+  source = "../datadog-agent-telemetry"
+  for_each = {
+    reader            = local.brainstore_reader_writer_extra_env_vars
+    writer            = local.brainstore_writer_extra_env_vars
+    fast_reader       = var.extra_env_vars_fast_reader
+    automation_writer = local.brainstore_automation_writer_extra_env_vars
+  }
+
+  env_vars = var.internal_observability_api_key == "" ? {} : merge({ BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry }, each.value)
+}
+
 resource "aws_launch_template" "brainstore" {
   name                   = "${var.deployment_name}-brainstore"
   image_id               = data.aws_ami.ubuntu_24_04.id
@@ -97,6 +109,8 @@ resource "aws_launch_template" "brainstore" {
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
+    datadog_agent_container_logs    = module.datadog_agent_telemetry["reader"].container_logs
+    datadog_agent_otlp_env_vars     = module.datadog_agent_telemetry["reader"].otlp_env_vars
     service_token_secret_arn        = var.service_token_secret_arn
     custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script      = var.custom_post_install_script

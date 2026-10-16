@@ -38,6 +38,8 @@ locals {
     } : {},
   )
 
+  datadog_firelens_logs = local.observability_enabled && module.datadog_agent_telemetry.container_logs
+
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes
   # from var.sandbox_env_vars so this module stays sandbox-agnostic.
@@ -89,7 +91,12 @@ locals {
     } : {},
   )
 
-  merged_env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
+  merged_env_vars = merge(
+    local.core_env,
+    var.sandbox_env_vars,
+    var.extra_env_vars,
+    local.observability_enabled ? module.datadog_agent_telemetry.otlp_env_vars : {},
+  )
 
   container_secrets = concat(
     [
@@ -105,7 +112,7 @@ locals {
     ],
   )
 
-  app_log_configuration = jsondecode(local.observability_enabled ? jsonencode({
+  app_log_configuration = jsondecode(local.datadog_firelens_logs ? jsonencode({
     logDriver = "awsfirelens"
     options = {
       Name           = "datadog"
@@ -170,7 +177,7 @@ locals {
       for dep in [
         { containerName = "log-router", condition = "START" },
         { containerName = "datadog-agent", condition = "START" },
-      ] : dep if local.observability_enabled
+      ] : dep if local.observability_enabled && (dep.containerName != "log-router" || local.datadog_firelens_logs)
     ]
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:${local.container_port}/health/liveness || exit 1"]
@@ -251,7 +258,7 @@ locals {
           timeout     = 5
         }
       }
-    ] : sidecar if local.observability_enabled
+    ] : sidecar if local.observability_enabled && (sidecar.name != "log-router" || local.datadog_firelens_logs)
   ]
 
   valid_fargate_memory_by_cpu = {
@@ -263,6 +270,12 @@ locals {
     "8192"  = [for value in range(16384, 61441, 4096) : value]
     "16384" = [for value in range(32768, 122881, 8192) : value]
   }
+}
+
+module "datadog_agent_telemetry" {
+  source = "../datadog-agent-telemetry"
+
+  env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
 }
 
 data "aws_region" "current" {}
