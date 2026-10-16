@@ -53,15 +53,22 @@ allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000
 
 This module supports both `aws_elasticache_cluster` (legacy) and `aws_elasticache_replication_group` resource for deploying Elasticache for Redis with enhanced security features. The default deploys `aws_elasticache_cluster` to prevent accidental resource replacement on existing deployments. Stronger security defaults are available with `aws_elasticache_replication_group`.
 
-> [!IMPORTANT] Data plane v2.1.0 introduced support `aws_elasticache_replication_group`, but it did not enable encryption at rest and used the default KMS key for encryption. If you deployed v2.1.0 **and** enabled `aws_elasticache_replication_group`, the `aws_elasticache_replication_group` will be destroyed and replaced with a new one.
+> [!IMPORTANT] Data plane v2.1.0 introduced support for `aws_elasticache_replication_group`, but it did not enable encryption at rest and used the default KMS key for encryption. If you deployed v2.1.0 **and** enabled `aws_elasticache_replication_group`, the `aws_elasticache_replication_group` will be destroyed and replaced with a new one.
 
 Encryption in transit and at rest, as well as auth token support, are available by setting `use_redis_replication_group` to `true` in the module invocation. **This is safe for new deployments.** Setting `use_redis_replication_group` to `true` on an existing deployment will replace the `aws_elasticache_cluster` with an `aws_elasticache_replication_group`. This should be considered a downtime event.
 
 #### Redis auth token management
 
-When the `use_redis_replication_group` is initially deployed, a random auth token is generated and stored in AWS Secrets Manager. The initial auth token strategy is `ROTATE`. Once the `aws_elasticache_replication_group` is deployed, set the token strategy to `SET` to require authentication.
+When `use_redis_replication_group` is initially deployed, a random auth token is generated and stored in AWS Secrets Manager. The initial auth token strategy is `ROTATE`. Once the replication group is deployed and clients use the authenticated Redis URL from Secrets Manager, set `redis_rg_auth_token_update_strategy` to `SET` and apply again to require authentication (closing the passwordless grace window).
 
-If the auth token needs to be rotated, set `redis_rg_auth_token_update_strategy` to `ROTATE` in the module invocation, deploy, and rotate the token. Once the token is rotated, set `redis_rg_auth_token_update_strategy` back to `SET` to enforce the new token and remove support for the prior token.
+Token rotation is **not automated by this module** (`ignore_changes` on the auth-token secret, same pattern as RDS). Rotate manually:
+
+1. Put the new token in Secrets Manager (new version of the Redis auth-token secret).
+2. Set `redis_rg_auth_token_update_strategy = "ROTATE"` in Terraform so config matches intent, then run `ModifyReplicationGroup` with the new token and `ROTATE` (AWS CLI/console is fine; Terraform will not push a new `secret_string` while `ignore_changes` is set).
+3. Update the Redis URL secret to `rediss://:<new-token>@host:port` and roll clients (ECS redeploy, Brainstore instance refresh, Lambdas if they still use inline `REDIS_URL`).
+4. Confirm all clients are on the new token.
+5. Run `ModifyReplicationGroup` again with the same new token and `SET` to drop the old token / passwordless grace.
+6. Set `redis_rg_auth_token_update_strategy = "SET"` in Terraform so config matches AWS.
 
 ### BTQL audit logging
 

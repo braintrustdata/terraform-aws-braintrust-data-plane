@@ -1,5 +1,7 @@
 # Cover managed and customer-managed subnet groups for both Redis resource types.
-mock_provider "aws" {}
+mock_provider "aws" {
+  source = "./tests/mocks/aws"
+}
 
 variables {
   deployment_name             = "bt-test"
