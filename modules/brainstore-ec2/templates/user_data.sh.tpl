@@ -194,9 +194,6 @@ BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 BRAINSTORE_ASYNC_SCORING_OBJECTS=${skip_pg_for_brainstore_objects}
 BRAINSTORE_LOG_AUTOMATIONS_OBJECTS=${skip_pg_for_brainstore_objects}
 %{ endif ~}
-%{ if internal_observability_api_key != "" ~}
-BRAINSTORE_OTLP_TELEMETRY=metrics
-%{ endif ~}
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}
 %{ endfor ~}
