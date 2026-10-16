@@ -54,7 +54,7 @@ variable "use_redis_replication_group" {
 
 variable "redis_rg_auth_token_update_strategy" {
   type        = string
-  description = "Auth token update strategy for ModifyReplicationGroup. Default SET requires the token immediately on create and after in-place token changes. Use ROTATE only when deliberately running a dual-token cutover."
+  description = "Auth token update strategy for ModifyReplicationGroup. Default SET requires the token immediately. Token rotation is not supported by this module yet; leave the default unless Braintrust directs otherwise."
   default     = "SET"
   validation {
     condition     = contains(["ROTATE", "SET"], var.redis_rg_auth_token_update_strategy)

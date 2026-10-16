@@ -64,9 +64,7 @@ Encryption in transit and at rest, as well as auth token support, are available 
 
 When `use_redis_replication_group` is enabled, Terraform generates a random auth token, configures the replication group with `auth_token_update_strategy = SET` (default), and stores a fully-rendered `rediss://` URL (including the token) in Secrets Manager. Clients (API ECS, gateway, Loop, Brainstore, and the support bastion) load that URL from Secrets Manager. Lambdas that cannot use Secrets Manager still receive an inline authenticated URL.
 
-`SET` requires the token immediately on create and after in-place token changes. Use `ROTATE` only when deliberately running a dual-token cutover with Braintrust guidance.
-
-Token rotation is **not automated by this module**. The auth-token secret uses `ignore_changes` on `secret_string` (same churn-prevention pattern as RDS). Do not treat a manual Secrets Manager edit plus apply as a supported rotation runbook; coordinated ElastiCache `ModifyReplicationGroup` and client rollout support is forthcoming.
+**Token rotation is not supported yet.** Leave the generated token in place. The auth-token secret uses `ignore_changes` on `secret_string` (same anti-churn pattern as RDS password secrets), so Terraform will not push a new token on apply. Do not hand-edit the auth-token or Redis URL secrets and expect apply to rotate ElastiCache safely — that path can rewrite clients back to a stale token. Coordinated rotation (ElastiCache `ModifyReplicationGroup` + secret updates + client rollouts) will come in a later module change.
 
 ### BTQL audit logging
 

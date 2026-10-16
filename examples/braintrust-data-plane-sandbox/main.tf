@@ -116,11 +116,6 @@ module "braintrust-data-plane" {
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
-  # Default SET requires the Redis auth token immediately when using a
-  # replication group. Leave unset unless Braintrust asks you to use ROTATE
-  # for a deliberate dual-token cutover.
-  # redis_rg_auth_token_update_strategy = "SET"
-
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
