@@ -24,6 +24,17 @@ variable "instance_count" {
   default     = 2
 }
 
+variable "reader_launch_template_version" {
+  type        = number
+  description = "Optional existing launch-template version for regular readers; null selects the latest version."
+  default     = null
+
+  validation {
+    condition     = var.reader_launch_template_version == null ? true : var.reader_launch_template_version >= 1 && var.reader_launch_template_version == floor(var.reader_launch_template_version)
+    error_message = "reader_launch_template_version must be null or a positive integer launch-template version."
+  }
+}
+
 variable "port" {
   type        = number
   description = "The port to use for the Brainstore"

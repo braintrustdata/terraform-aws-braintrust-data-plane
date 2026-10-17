@@ -1631,6 +1631,17 @@ variable "brainstore_instance_count" {
   default     = 2
 }
 
+variable "brainstore_reader_launch_template_version" {
+  type        = number
+  description = "Optional existing launch-template version for regular readers; null selects the latest version."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_reader_launch_template_version == null ? true : var.brainstore_reader_launch_template_version >= 1 && var.brainstore_reader_launch_template_version == floor(var.brainstore_reader_launch_template_version)
+    error_message = "brainstore_reader_launch_template_version must be null or a positive integer launch-template version."
+  }
+}
+
 variable "brainstore_writer_instance_count" {
   type        = number
   description = "The number of dedicated writer nodes to create"

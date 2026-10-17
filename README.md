@@ -27,6 +27,13 @@ The module installs the deployment Lambda from a regional Braintrust artifact us
 
 This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
+### Pin a regular-reader launch template
+
+`brainstore_reader_launch_template_version` can select an existing numbered version of the regular-reader launch template while changing capacity.
+The ASG and deployment controller use the same selected version; the managed launch template and other fleets remain unchanged.
+When unset, regular readers continue to use the latest version.
+Before advancing application versions, ensure the pinned template is compatible with those releases or remove the pin.
+
 ## How to use this module
 
 Dedicated automation writers get an internal NLB and an API endpoint when `brainstore_automation_writer_instance_count > 0`. The application decides which queries use this endpoint. Deployments without an automation writer pool continue using the normal writer URL.

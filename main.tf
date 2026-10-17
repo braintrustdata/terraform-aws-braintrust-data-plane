@@ -866,6 +866,7 @@ module "brainstore" {
 
   deployment_name                       = var.deployment_name
   instance_count                        = var.brainstore_instance_count
+  reader_launch_template_version        = var.brainstore_reader_launch_template_version
   instance_type                         = var.brainstore_instance_type
   instance_key_pair_name                = var.brainstore_instance_key_pair_name
   port                                  = var.brainstore_port

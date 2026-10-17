@@ -70,7 +70,7 @@ output "deployment_fleets" {
       role                    = "reader"
       asg_name                = aws_autoscaling_group.brainstore.name
       launch_template_id      = aws_launch_template.brainstore.id
-      launch_template_version = tostring(aws_launch_template.brainstore.latest_version)
+      launch_template_version = tostring(local.reader_launch_template_version)
       desired_capacity        = var.instance_count
       target_group_arn        = aws_lb_target_group.brainstore.arn
     }],
