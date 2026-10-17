@@ -156,6 +156,32 @@ resource "aws_iam_role_policy_attachment" "billing_cron_vpc_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role" "migrate_database" {
+  name = "${var.deployment_name}-MigrateDatabaseFunctionRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "migrate_database_vpc_access" {
+  role       = aws_iam_role.migrate_database.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_iam_role_policy" "default_role_policy" {
   name = "${var.deployment_name}-DefaultRolePolicy"
   role = aws_iam_role.default_role.id
