@@ -311,7 +311,16 @@ docker run -d \
 # keeps swap for memory pressure only. A swap failure does not fail the boot.
 configure_swap() {
   local swapfile=/swapfile
+  local swap_size_kib=$((8 * 1024 * 1024))
+  local total_memory_kib
   local swappiness=1
+
+  total_memory_kib=$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo)
+  if [[ -z "$total_memory_kib" || "$swap_size_kib" -gt "$total_memory_kib" ]]; then
+    echo "Skipping 8 GiB swap because it exceeds total memory ($${total_memory_kib:-unknown} KiB)"
+    return 0
+  fi
+
   if swapon --show=NAME --noheadings | grep -qx "$swapfile"; then
     return 0
   fi
