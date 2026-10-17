@@ -461,6 +461,33 @@ variable "postgres_multi_az" {
   default     = false
 }
 
+variable "postgres_replicate_source_db" {
+  description = "Advanced: ARN of an existing RDS instance to create the main database as a read replica of, for migrating a database into this module. Requires postgres_replicate_source_credentials_secret_arn. Remove after promoting the replica. The replica needs the source's exact postgres_version, and postgres_max_storage_size must be 0 or at least postgres_storage_size. kms_key_arn may differ from the source's key; the replica is encrypted with it."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.postgres_replicate_source_db == null || can(regex("^arn:aws[a-z-]*:rds:[a-z0-9-]+:[0-9]{12}:db:.+$", var.postgres_replicate_source_db))
+    error_message = "postgres_replicate_source_db must be the source DB instance's full ARN (arn:aws:rds:<region>:<account>:db:<identifier>), not its identifier."
+  }
+}
+
+variable "postgres_replicate_source_credentials_secret_arn" {
+  description = "Advanced: ARN of a secret with JSON \"username\" and \"password\" fields holding the source database's master credentials. Seeds the module's database secret, and with it the instance credentials, when migrating with postgres_replicate_source_db. Only read when the database secret is first created."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.postgres_replicate_source_credentials_secret_arn == null || can(regex("^arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$", var.postgres_replicate_source_credentials_secret_arn))
+    error_message = "postgres_replicate_source_credentials_secret_arn must be a Secrets Manager secret ARN."
+  }
+
+  validation {
+    condition     = (var.postgres_replicate_source_credentials_secret_arn == null) == (var.postgres_replicate_source_db == null)
+    error_message = "postgres_replicate_source_credentials_secret_arn and postgres_replicate_source_db must be set together, so the database secret matches the source's credentials."
+  }
+}
+
 variable "postgres_auto_minor_version_upgrade" {
   description = "Indicates that minor engine upgrades will be applied automatically to the DB instance during the maintenance window. When true you will have to set your postgres_version to only the major number or you will see drift. e.g. '15' instead of '15.7'"
   type        = bool

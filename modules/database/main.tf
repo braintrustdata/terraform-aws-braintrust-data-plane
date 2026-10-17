@@ -1,9 +1,11 @@
 locals {
+  seed_credentials  = var.replicate_source_credentials_secret_arn == null ? null : jsondecode(data.aws_secretsmanager_secret_version.seed_credentials[0].secret_string)
   postgres_username = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["username"]
   postgres_password = jsondecode(aws_secretsmanager_secret_version.database_secret.secret_string)["password"]
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  is_replica                 = var.replicate_source_db != null
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
   rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
 }
@@ -23,9 +25,12 @@ resource "aws_db_instance" "main" {
   iops                  = var.postgres_storage_iops
   multi_az              = var.multi_az
 
-  db_name  = "postgres"
-  username = local.postgres_username
-  password = local.postgres_password
+  # A read replica inherits these from its source and the API rejects them.
+  db_name  = local.is_replica ? null : "postgres"
+  username = local.is_replica ? null : local.postgres_username
+  password = local.is_replica ? null : local.postgres_password
+
+  replicate_source_db = var.replicate_source_db
 
   db_subnet_group_name   = local.database_subnet_group_name
   parameter_group_name   = aws_db_parameter_group.main.name
@@ -155,11 +160,17 @@ data "aws_secretsmanager_random_password" "database_secret" {
   exclude_punctuation = true
 }
 
+data "aws_secretsmanager_secret_version" "seed_credentials" {
+  count = var.replicate_source_credentials_secret_arn == null ? 0 : 1
+
+  secret_id = var.replicate_source_credentials_secret_arn
+}
+
 resource "aws_secretsmanager_secret_version" "database_secret" {
   secret_id = aws_secretsmanager_secret.database_secret.id
   secret_string = jsonencode({
-    username = "postgres"
-    password = data.aws_secretsmanager_random_password.database_secret.random_password
+    username = local.seed_credentials == null ? "postgres" : local.seed_credentials["username"]
+    password = local.seed_credentials == null ? data.aws_secretsmanager_random_password.database_secret.random_password : local.seed_credentials["password"]
   })
 
   lifecycle {
@@ -188,8 +199,9 @@ resource "aws_secretsmanager_secret" "database_url" {
 }
 
 resource "aws_secretsmanager_secret_version" "database_url" {
-  secret_id     = aws_secretsmanager_secret.database_url.id
-  secret_string = "postgres://${local.postgres_username}:${local.postgres_password}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/postgres?sslmode=require"
+  secret_id = aws_secretsmanager_secret.database_url.id
+  # urlencode uses query-string encoding for spaces; PostgreSQL URIs require %20.
+  secret_string = "postgres://${replace(urlencode(local.postgres_username), "+", "%20")}:${replace(urlencode(local.postgres_password), "+", "%20")}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/postgres?sslmode=require"
 }
 
 #------------------------------------------------------------------------------
