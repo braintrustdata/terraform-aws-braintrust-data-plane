@@ -1,0 +1,25 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowExactDeploymentPrincipal",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
+      },
+      "Action": [
+        "sts:AssumeRole",
+        "sts:SetSourceIdentity",
+        "sts:TagSession"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "<UNIQUE_EXTERNAL_ID>"
+        },
+        "StringLike": {
+          "sts:SourceIdentity": "byoc-operation-*"
+        }
+      }
+    }
+  ]
+}
