@@ -1320,6 +1320,7 @@ variable "api_ecs_enable_execute_command" {
   default     = false
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "braintrust_api_url" {
   description = "Legacy API URL input for external EKS deployments. Configure the gateway API URL through Helm."
   type        = string
