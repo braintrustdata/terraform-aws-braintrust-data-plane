@@ -34,8 +34,9 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "restricted"
+  enable_loop_runtime = false
+  # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
+  # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
   ### Postgres configuration
   # Optional connection override. Omit either field to keep using the
@@ -265,6 +266,12 @@ module "braintrust-data-plane" {
   #   "arn:aws:iam::123456789012:role/customer-export-role",
   #   "arn:aws:iam::*:role/braintrust-export-*",
   # ]
+
+  # Opt-in: let the API role read caller-owned buckets that traces link to as external
+  # attachments (s3:GetObject only, plus kms:Decrypt through S3 for SSE-KMS buckets).
+  # Buckets and keys in another account must also grant the API role in their policies.
+  # external_attachment_s3_bucket_arns           = ["arn:aws:s3:::your-attachment-bucket"]
+  # external_attachment_s3_bucket_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]

@@ -23,6 +23,8 @@ variables {
   brainstore_reader_url          = "http://brainstore.internal:4000"
   ai_proxy_url                   = "https://api.example.com/v1/proxy"
   braintrust_api_url             = "https://api.example.com"
+
+  sandbox_egress_gateway_target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/bt-test-loop-egress/2222222222222222"
 }
 
 run "scales_and_drains_runtime_by_default" {
