@@ -168,6 +168,12 @@ variable "brainstore_fast_reader_hostname" {
   default     = null
 }
 
+variable "brainstore_automation_writer_hostname" {
+  type        = string
+  description = "Hostname for the dedicated Brainstore automation writer nodes, if query routing is enabled"
+  default     = null
+}
+
 variable "brainstore_port" {
   type        = number
   description = "Port for Brainstore"
@@ -315,6 +321,12 @@ variable "url_security_allow_cidrs" {
   description = "Optional comma-separated CIDR ranges that Braintrust backend URL-security validation may allow even if private or reserved. Hard-blocked metadata, link-local, multicast, unspecified, and future-use ranges remain blocked."
   type        = string
   default     = ""
+}
+
+variable "enable_ecs_api" {
+  type        = bool
+  description = "When true, do not create APIHandler or AIProxy. CloudFront is already routing that traffic to ECS. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Setting this back to false creates APIHandler and AIProxy again."
+  default     = false
 }
 
 variable "lambda_version_tag_override" {

@@ -230,8 +230,6 @@ if [ -n "${internal_observability_api_key}" ]; then
   # Install Datadog Agent
   export DD_API_KEY="${internal_observability_api_key}"
   export DD_SITE="${internal_observability_region}.datadoghq.com"
-  export DD_APM_INSTRUMENTATION_ENABLED=host
-  export DD_APM_INSTRUMENTATION_LIBRARIES=java:1,python:3,js:5,php:1,dotnet:3
   bash -c "$(curl -L https://install.datadoghq.com/scripts/install_script_agent7.sh)"
   usermod -a -G docker dd-agent
 
@@ -239,7 +237,10 @@ if [ -n "${internal_observability_api_key}" ]; then
 DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
 DD_COLLECT_EC2_TAGS=true
 DD_COLLECT_EC2_TAGS_USE_IMDS=true
+DD_APM_ENABLED=false
+DD_OTLP_CONFIG_TRACES_ENABLED=false
 EOF
+%{ if datadog_agent_container_logs ~}
   # Configure Datadog Agent to collect Docker logs
   cat <<EOF >> /etc/datadog-agent/datadog.yaml
 logs_enabled: true
@@ -251,6 +252,7 @@ config_providers:
 logs_config:
     container_collect_all: true
 EOF
+%{ endif ~}
 
   # Configure Datadog agent to collect network metrics
   cat <<EOF > /etc/datadog-agent/conf.d/network.d/conf.yaml
@@ -278,9 +280,11 @@ EOF
   systemctl daemon-reload
   systemctl enable datadog-agent
 
-  # Configure Brainstore to send traces to Datadog
+  # Configure Brainstore OTLP export to Datadog
   cat <<EOF >> /etc/brainstore.env
-BRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318
+%{ for env_key, env_value in datadog_agent_otlp_env_vars ~}
+${env_key}=${env_value}
+%{ endfor ~}
 EOF
 fi
 
@@ -301,6 +305,41 @@ docker run -d \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
+
+# Add an 8 GiB swap file on the root volume to absorb short memory spikes
+# before earlyoom or the kernel OOM killer stops Brainstore. swappiness=1
+# keeps swap for memory pressure only. A swap failure does not fail the boot.
+configure_swap() {
+  local swapfile=/swapfile
+  local swap_size_kib=$((8 * 1024 * 1024))
+  local total_memory_kib
+  local swappiness=1
+
+  total_memory_kib=$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo)
+  if [[ -z "$total_memory_kib" || "$swap_size_kib" -gt "$total_memory_kib" ]]; then
+    echo "Skipping 8 GiB swap because it exceeds total memory ($${total_memory_kib:-unknown} KiB)"
+    return 0
+  fi
+
+  if swapon --show=NAME --noheadings | grep -qx "$swapfile"; then
+    return 0
+  fi
+  if [[ ! -e "$swapfile" ]]; then
+    fallocate -l 8G "$swapfile" || dd if=/dev/zero of="$swapfile" bs=1M count=8192 status=progress
+  fi
+  chmod 600 "$swapfile"
+  mkswap "$swapfile"
+  swapon "$swapfile" || {
+    dd if=/dev/zero of="$swapfile" bs=1M count=8192 conv=notrunc status=progress
+    mkswap "$swapfile"
+    swapon "$swapfile"
+  }
+  grep -q "^$swapfile " /etc/fstab || echo "$swapfile none swap sw 0 0" >> /etc/fstab
+
+  echo "vm.swappiness=$swappiness" | tee /etc/sysctl.d/99-swappiness.conf
+  sysctl -w vm.swappiness=$swappiness
+}
+configure_swap || echo "swap setup failed" >&2
 
 %{ if custom_post_install_script != "" ~}
 echo "Running custom post-install script..."

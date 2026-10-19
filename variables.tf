@@ -559,7 +559,7 @@ variable "create_ai_gateway" {
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  description = "Wire GATEWAY_URL on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
   type        = bool
   default     = false
 
@@ -759,7 +759,7 @@ variable "enable_loop_runtime" {
 
 variable "loop_runtime_version_override" {
   type        = string
-  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  description = "Override the Loop runtime and MicroVM guest version. Restricted sandbox egress requires Loop runtime 2.16.0 or later. Null uses the module's default version."
   default     = null
 }
 
@@ -879,26 +879,49 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   default     = false
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
-  description = "Outbound network mode for Loop runtime sandbox MicroVMs. The value internet permits public access. Every other value blocks outbound access."
+  description = "Deprecated. Loop runtime sandboxes always use restricted egress; the only accepted value is restricted."
   default     = "restricted"
+
+  validation {
+    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
+    error_message = "loop_runtime_sandbox_egress_mode only supports \"restricted\"; internet egress was removed."
+  }
+}
+
+variable "loop_runtime_sandbox_vpc_cidr" {
+  type        = string
+  description = "IPv4 CIDR block for the module-managed Loop sandbox VPC. Ignored when loop_runtime_sandbox_existing_vpc_id is set. Changing this after deployment replaces the sandbox VPC and subnets."
+  default     = "10.255.0.0/16"
+  nullable    = false
+
+  validation {
+    condition = can(cidrnetmask(var.loop_runtime_sandbox_vpc_cidr)) && try(
+      tonumber(split("/", var.loop_runtime_sandbox_vpc_cidr)[1]) >= 16 &&
+      tonumber(split("/", var.loop_runtime_sandbox_vpc_cidr)[1]) <= 21,
+      false,
+    )
+    error_message = "loop_runtime_sandbox_vpc_cidr must be a valid IPv4 CIDR with a prefix length from /16 through /21 to accommodate six /24 subnets."
+  }
 }
 
 variable "loop_runtime_sandbox_existing_vpc_id" {
   type        = string
-  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and DNS restrictions."
+  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and, unless loop_runtime_sandbox_manage_existing_vpc_dns_firewall is true, DNS restrictions."
   default     = null
 
   validation {
     condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
     error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
   }
+}
 
-  validation {
-    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || var.loop_runtime_sandbox_egress_mode != "internet"
-    error_message = "loop_runtime_sandbox_existing_vpc_id requires restricted sandbox egress."
-  }
+variable "loop_runtime_sandbox_manage_existing_vpc_dns_firewall" {
+  type        = bool
+  description = "Manage DNS Firewall in the supplied dedicated sandbox VPC, allowing only the egress gateway endpoint hostname. False leaves DNS policy to the caller. DNS Firewall is always managed in the module-created sandbox VPC."
+  default     = false
 }
 
 variable "loop_runtime_sandbox_existing_private_subnet_1_id" {
@@ -971,7 +994,7 @@ variable "braintrust_api_version_override" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "Route traffic to the API ECS ALB instead of API Gateway and Lambdas. API ECS infra is always created for standard (non-external-EKS) deployments; this flag only controls traffic. Default false keeps Lambda as the active path while ECS stays warm for cutover."
+  description = "Route traffic to the API ECS ALB instead of API Gateway and the APIHandler and AIProxy Lambdas. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via the quarantine VPC NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. Default false keeps Lambda as the active path while ECS stays warm for cutover."
   default     = false
 
   validation {
@@ -1440,6 +1463,33 @@ variable "existing_attachment_s3_bucket_kms_key_arn" {
   }
 }
 
+variable "external_attachment_s3_bucket_arns" {
+  description = "Opt-in. ARNs of caller-owned S3 buckets that traces link to as external attachments (`s3://` URLs). The API role is granted s3:GetObject on their objects, with no list access, so it can sign downloads for keys a trace names. This module does not create, own, or modify the buckets; a bucket in another account must also grant the API role in its bucket policy. Empty disables the feature (default)."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", arn))])
+    error_message = "external_attachment_s3_bucket_arns must contain S3 bucket ARNs of the form arn:aws:s3:::<bucket-name>."
+  }
+}
+
+variable "external_attachment_s3_bucket_kms_key_arns" {
+  description = "Opt-in. ARNs of the KMS keys that encrypt the external_attachment_s3_bucket_arns buckets. The API role is granted kms:Decrypt on these keys through S3 only. A key in another account must also grant the API role in its key policy. Leave empty when the buckets use SSE-S3 (AES256)."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_kms_key_arns : can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-zA-Z-]+$", arn))])
+    error_message = "external_attachment_s3_bucket_kms_key_arns must contain complete KMS key ARNs of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
+  }
+
+  validation {
+    condition     = length(var.external_attachment_s3_bucket_kms_key_arns) == 0 || length(var.external_attachment_s3_bucket_arns) > 0
+    error_message = "external_attachment_s3_bucket_arns is required when external_attachment_s3_bucket_kms_key_arns is set."
+  }
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number
@@ -1470,18 +1520,19 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, see use_private_gateway_quarantine_proxy for how the URL is chosen."
+  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, precedence is PrivateLink, then the AI Proxy Function URL while that Lambda exists, then the CloudFront /v1/proxy URL once enable_ecs_api has removed it. That CloudFront path follows the configured /v1/proxy origin, including a hosted gateway. A caller-supplied quarantine VPC needs its own egress or a private URL here. See use_private_gateway_quarantine_proxy."
   type        = string
   default     = null
 
   validation {
-    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
-    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+    # Ternary so trimspace is not called when the value is null.
+    condition     = var.quarantine_proxy_url == null ? true : trimspace(var.quarantine_proxy_url) != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL. Whitespace-only values are rejected."
   }
 }
 
 variable "use_private_gateway_quarantine_proxy" {
-  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; does not fail). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
+  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL while that Lambda exists, else the CloudFront /v1/proxy URL when enable_ecs_api has removed that Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; that flag does not set QUARANTINE_PROXY_URL). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
   type        = bool
   default     = false
 

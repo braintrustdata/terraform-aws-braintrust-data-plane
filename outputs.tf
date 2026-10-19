@@ -195,7 +195,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, otherwise AI Proxy Function URL)"
+  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, the AI Proxy Function URL while that Lambda exists, otherwise the CloudFront /v1/proxy URL. Null when omitted."
 }
 
 output "api_ecs_task_security_group_id" {
@@ -211,6 +211,11 @@ output "loop_runtime_url" {
 output "loop_runtime_ai_proxy_url" {
   value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
   description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy when enable_ai_gateway, otherwise hosted gateway or CloudFront API /v1/proxy)"
+}
+
+output "loop_runtime_sandbox_egress_gateway_dns_name" {
+  value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_dns_name : null
+  description = "Loop sandbox egress gateway endpoint DNS name. A supplied sandbox VPC must let sandboxes resolve it."
 }
 
 output "loop_runtime_microvm_image_arn" {
@@ -278,7 +283,7 @@ output "monitoring_contract" {
     }
 
     api_gateway = {
-      enabled = !var.use_deployment_mode_external_eks
+      enabled = !var.use_deployment_mode_external_eks && !var.enable_ecs_api
       name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
       stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
     }

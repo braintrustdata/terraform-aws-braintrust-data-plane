@@ -55,10 +55,12 @@ resource "aws_launch_template" "brainstore_writer" {
     monitoring_telemetry            = var.monitoring_telemetry
     is_dedicated_reader_node        = "false"
     is_dedicated_writer_node        = "true"
-    extra_env_vars                  = local.brainstore_writer_extra_env_vars
+    extra_env_vars                  = merge(local.brainstore_default_env_vars, local.brainstore_writer_extra_env_vars)
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
+    datadog_agent_container_logs    = module.datadog_agent_telemetry["writer"].container_logs
+    datadog_agent_otlp_env_vars     = module.datadog_agent_telemetry["writer"].otlp_env_vars
     service_token_secret_arn        = var.service_token_secret_arn
     custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script      = var.custom_post_install_script
@@ -97,12 +99,13 @@ resource "aws_launch_template" "brainstore_writer" {
 }
 
 resource "aws_lb" "brainstore_writer" {
-  count              = local.has_writer_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-w"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
+  count                            = local.has_writer_nodes ? 1 : 0
+  name                             = "${var.deployment_name}-bstr-w"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
 
   lifecycle {
     create_before_destroy = true

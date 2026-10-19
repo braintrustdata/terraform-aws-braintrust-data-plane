@@ -57,7 +57,9 @@ locals {
 
     SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
     CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
-  }, local.url_security_env_vars, local.redis_extra_env_vars)
+    }, var.brainstore_enabled && var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != "" ? {
+    BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"
+  } : {}, local.url_security_env_vars, local.redis_extra_env_vars)
   api_fast_reader_env_vars = local.using_brainstore_fast_reader ? {
     BRAINSTORE_FAST_READER_URL           = local.brainstore_fast_reader_url
     BRAINSTORE_FAST_READER_QUERY_SOURCES = join(",", local.default_fast_reader_query_sources)
@@ -73,9 +75,9 @@ locals {
   # There env vars are specific to the API Handler. Don't add env vars here if you need them for the AI Proxy as well.
   api_handler_specific_env_vars = merge(
     {
-      AI_PROXY_FN_ARN      = aws_lambda_function.ai_proxy.arn
-      AI_PROXY_FN_URL      = aws_lambda_function_url.ai_proxy.function_url
-      AI_PROXY_INVOKE_ROLE = aws_iam_role.ai_proxy_invoke_role.arn
+      AI_PROXY_FN_ARN      = one(aws_lambda_function.ai_proxy[*].arn)
+      AI_PROXY_FN_URL      = one(aws_lambda_function_url.ai_proxy[*].function_url)
+      AI_PROXY_INVOKE_ROLE = one(aws_iam_role.ai_proxy_invoke_role[*].arn)
       CATCHUP_ETL_ARN      = aws_lambda_function.catchup_etl.arn
       INSERT_LOGS2         = "true"
     },
@@ -98,6 +100,8 @@ locals {
 }
 
 resource "aws_lambda_function" "api_handler" {
+  count = var.enable_ecs_api ? 0 : 1
+
   # Require the DB migrations to be run before the API handler is deployed
   depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
 
@@ -154,19 +158,23 @@ resource "aws_lambda_function" "api_handler" {
 }
 
 resource "aws_lambda_provisioned_concurrency_config" "api_handler_live" {
-  count                             = var.api_handler_provisioned_concurrency > 0 ? 1 : 0
-  function_name                     = aws_lambda_function.api_handler.function_name
+  count                             = !var.enable_ecs_api && var.api_handler_provisioned_concurrency > 0 ? 1 : 0
+  function_name                     = aws_lambda_function.api_handler[0].function_name
   provisioned_concurrent_executions = var.api_handler_provisioned_concurrency
-  qualifier                         = aws_lambda_alias.api_handler_live.name
+  qualifier                         = aws_lambda_alias.api_handler_live[0].name
 }
 
 resource "aws_lambda_alias" "api_handler_live" {
+  count = var.enable_ecs_api ? 0 : 1
+
   name             = "live"
-  function_name    = aws_lambda_function.api_handler.function_name
-  function_version = aws_lambda_function.api_handler.version
+  function_name    = aws_lambda_function.api_handler[0].function_name
+  function_version = aws_lambda_function.api_handler[0].version
 }
 
 resource "aws_iam_role" "ai_proxy_invoke_role" {
+  count = var.enable_ecs_api ? 0 : 1
+
   name = "${var.deployment_name}-AIProxyInvokeRole"
   assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
@@ -187,14 +195,16 @@ resource "aws_iam_role" "ai_proxy_invoke_role" {
 }
 
 resource "aws_iam_role_policy" "ai_proxy_invoke_policy" {
+  count = var.enable_ecs_api ? 0 : 1
+
   name = "AIProxyInvokeRolePolicy"
-  role = aws_iam_role.ai_proxy_invoke_role.id
+  role = aws_iam_role.ai_proxy_invoke_role[0].id
   policy = jsonencode({ # nosemgrep
     Statement = [
       {
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
-        Resource = [aws_lambda_function.ai_proxy.arn]
+        Resource = [aws_lambda_function.ai_proxy[0].arn]
       }
     ]
     Version = "2012-10-17"
@@ -202,6 +212,8 @@ resource "aws_iam_role_policy" "ai_proxy_invoke_policy" {
 }
 
 resource "aws_iam_role_policies_exclusive" "ai_proxy_invoke_role" {
-  role_name    = aws_iam_role.ai_proxy_invoke_role.name
-  policy_names = [aws_iam_role_policy.ai_proxy_invoke_policy.name]
+  count = var.enable_ecs_api ? 0 : 1
+
+  role_name    = aws_iam_role.ai_proxy_invoke_role[0].name
+  policy_names = [aws_iam_role_policy.ai_proxy_invoke_policy[0].name]
 }

@@ -21,12 +21,15 @@ locals {
   alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
   alb_listener_port = local.alb_https_enabled ? 443 : 80
   api_ecs_url       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
-  # Root module resolves override / AI Proxy / hosted / PrivateLink VPCE URL.
-  # Null/blank → omit QUARANTINE_PROXY_URL so api-ts getRuntimeEnv falls back.
+  # Root module resolves override / PrivateLink / Function URL / CloudFront /v1/proxy.
+  # Null or blank omits the variable; api-ts uses the caller proxy URL, which is
+  # http://localhost:8000/v1/proxy in this ECS configuration. A quarantine Lambda
+  # cannot call that address.
+  # Ternary, not &&: trimspace(null) errors even when the null check is false.
   quarantine_proxy_url = (
-    var.quarantine_proxy_url != null && trimspace(var.quarantine_proxy_url) != ""
-    ? trimspace(var.quarantine_proxy_url)
-    : null
+    var.quarantine_proxy_url == null ? null : (
+      trimspace(var.quarantine_proxy_url) != "" ? trimspace(var.quarantine_proxy_url) : null
+    )
   )
   unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
   url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
@@ -100,6 +103,9 @@ locals {
     local.quarantine_proxy_env_vars,
     local.url_security_env_vars,
     local.btql_audit_log_env_vars,
+    var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != "" ? {
+      BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"
+    } : {},
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
       BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"
