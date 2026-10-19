@@ -54,7 +54,7 @@ resource "aws_launch_template" "brainstore_automation_writer" {
     monitoring_telemetry            = var.monitoring_telemetry
     is_dedicated_reader_node        = "false"
     is_dedicated_writer_node        = "true"
-    extra_env_vars                  = local.brainstore_automation_writer_extra_env_vars
+    extra_env_vars                  = merge(local.brainstore_default_env_vars, local.brainstore_automation_writer_extra_env_vars)
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
