@@ -69,12 +69,12 @@ When `use_redis_replication_group` is enabled, Terraform generates a random auth
 
 #### Upgrading to this release
 
-This change ships as a **minor** module bump (next tag after v6.10.0). Expect apply impact on **every** stack, not only replication-group users:
+Expect apply impact on **every** stack, not only replication-group users. Ship this as a **minor** module bump and put rollback notes in the GitHub release notes:
 
 - New ECS task definitions for API, ingest, background, gateway, and Loop (pinned Redis URL secret version) → rolling service deployments
 - Brainstore launch-template user-data change → autoscaling instance refresh
 - Support bastion replacement when `enable_braintrust_support_shell_access` is enabled (`user_data_replace_on_change = true`)
-- Existing replication-group stacks: Redis **replace** (auth token / at-rest encryption ForceNew). Plan for Redis downtime. A downgrade can replace Redis again.
+- Existing replication-group stacks that predate at-rest encryption / customer-managed KMS: Redis **replace** (`at_rest_encryption_enabled` and `kms_key_id` are ForceNew). Plan for Redis downtime. A downgrade can replace Redis again. Adding `auth_token` alone can be an in-place update.
 
 ### BTQL audit logging
 

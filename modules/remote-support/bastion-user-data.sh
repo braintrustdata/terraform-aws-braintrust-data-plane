@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 sudo hostnamectl set-hostname bastion
 
 # Help prevent immediate failure of apt commands if another background process is holding the lock
@@ -24,7 +23,10 @@ TPL_DATABASE_HOST="${database_host}"
 export AWS_REGION=$TPL_REGION
 export AWS_DEFAULT_REGION=$TPL_REGION
 
-DB_CREDS=$(aws secretsmanager get-secret-value --secret-id "$TPL_DATABASE_SECRET_ARN" --query SecretString --output text)
+if ! DB_CREDS=$(aws secretsmanager get-secret-value --secret-id "$TPL_DATABASE_SECRET_ARN" --query SecretString --output text); then
+  echo "Failed to retrieve database credentials from Secrets Manager. Exiting." >&2
+  exit 1
+fi
 DB_USERNAME=$(echo "$DB_CREDS" | jq -r .username)
 DB_PASSWORD=$(echo "$DB_CREDS" | jq -r .password)
 if [ -z "$DB_CREDS" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ] || [ "$DB_USERNAME" = "null" ] || [ "$DB_PASSWORD" = "null" ]; then
@@ -32,7 +34,10 @@ if [ -z "$DB_CREDS" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ] || [ "$D
   exit 1
 fi
 
-REDIS_URL=$(aws secretsmanager get-secret-value --secret-id "$TPL_REDIS_URL_SECRET_ARN" --version-id "$TPL_REDIS_URL_SECRET_VERSION_ID" --query SecretString --output text)
+if ! REDIS_URL=$(aws secretsmanager get-secret-value --secret-id "$TPL_REDIS_URL_SECRET_ARN" --version-id "$TPL_REDIS_URL_SECRET_VERSION_ID" --query SecretString --output text); then
+  echo "Failed to retrieve Redis URL from Secrets Manager. Exiting." >&2
+  exit 1
+fi
 if [ -z "$REDIS_URL" ] || [ "$REDIS_URL" = "None" ]; then
   echo "Failed to retrieve Redis URL from Secrets Manager. Exiting." >&2
   exit 1

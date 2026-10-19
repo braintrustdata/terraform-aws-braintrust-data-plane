@@ -69,6 +69,16 @@ run "replication_managed_group" {
     existing_elasticache_subnet_group_name = null
   }
 
+  # primary_endpoint_address is otherwise unknown at plan time; pin it so the
+  # Redis URL secret string is fully known and can be asserted.
+  override_resource {
+    target          = aws_elasticache_replication_group.main[0]
+    override_during = plan
+    values = {
+      primary_endpoint_address = "redis.example.internal"
+    }
+  }
+
   assert {
     condition     = length(aws_elasticache_subnet_group.main) == 1
     error_message = "Only create a subnet group when no existing group is supplied."
@@ -91,9 +101,10 @@ run "replication_managed_group" {
   }
 
   assert {
-    # Endpoint address is unknown at plan time; assert the URL prefix formula with the known token.
-    condition     = startswith("rediss://:${nonsensitive(aws_secretsmanager_secret_version.auth_token[0].secret_string)}@", "rediss://:mock-password-16@")
-    error_message = "Replication-group Redis URL must use the rediss://:token@ prefix."
+    condition = (
+      nonsensitive(aws_secretsmanager_secret_version.redis_url.secret_string) == "rediss://:mock-password-16@redis.example.internal:6379"
+    )
+    error_message = "Redis URL secret must be the authenticated rediss:// URL for the replication group endpoint."
   }
 }
 
