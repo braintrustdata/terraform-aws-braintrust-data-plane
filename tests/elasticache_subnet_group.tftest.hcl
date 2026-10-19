@@ -58,7 +58,9 @@ run "legacy_existing_group" {
 }
 
 run "replication_managed_group" {
-  command = plan
+  # apply (not plan): Terraform 1.10 has no override_during, so endpoint
+  # overrides only take effect after apply under the mock provider.
+  command = apply
 
   module {
     source = "./modules/elasticache"
@@ -69,11 +71,8 @@ run "replication_managed_group" {
     existing_elasticache_subnet_group_name = null
   }
 
-  # primary_endpoint_address is otherwise unknown at plan time; pin it so the
-  # Redis URL secret string is fully known and can be asserted.
   override_resource {
-    target          = aws_elasticache_replication_group.main[0]
-    override_during = plan
+    target = aws_elasticache_replication_group.main[0]
     values = {
       primary_endpoint_address = "redis.example.internal"
     }
