@@ -120,7 +120,7 @@ run "managed_isolation_by_default" {
     error_message = "Only the runtime security group must receive HTTPS access to the endpoint."
   }
   assert {
-    condition     = length(aws_vpc.restricted_egress) == 1 && length(aws_subnet.restricted_egress) == 3 && length(aws_subnet.egress_gateway) == 3
+    condition     = length(aws_vpc.restricted_egress) == 1 && aws_vpc.restricted_egress[0].cidr_block == "10.255.0.0/16" && length(aws_subnet.restricted_egress) == 3 && length(aws_subnet.egress_gateway) == 3
     error_message = "The managed VPC must have three connector subnets and three endpoint subnets."
   }
   assert {
@@ -433,6 +433,7 @@ run "egress_gateway_in_existing_vpc" {
     source = "./modules/loop-runtime-sandbox-aws-microvm"
   }
   variables {
+    vpc_cidr                     = "10.254.8.0/21"
     existing_vpc_id              = "vpc-0123456789abcdef0"
     existing_private_subnet_1_id = "subnet-0123456789abcdef0"
     existing_private_subnet_2_id = "subnet-0123456789abcdef1"
@@ -513,4 +514,41 @@ run "rejects_unsupported_endpoint_zones" {
   }
 
   expect_failures = [aws_vpc_endpoint.egress_gateway]
+}
+
+run "custom_managed_vpc_cidr" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    vpc_cidr = "10.254.8.0/21"
+  }
+
+  assert {
+    condition = (
+      aws_vpc.restricted_egress[0].cidr_block == "10.254.8.0/21" &&
+      aws_subnet.restricted_egress[*].cidr_block == ["10.254.9.0/24", "10.254.10.0/24", "10.254.11.0/24"] &&
+      aws_subnet.egress_gateway[*].cidr_block == ["10.254.12.0/24", "10.254.13.0/24", "10.254.14.0/24"]
+    )
+    error_message = "A custom /21 must contain all six distinct /24 connector and endpoint subnets."
+  }
+
+  assert {
+    condition = alltrue([
+      for rule in aws_vpc_security_group_egress_rule.sandbox_to_dns_vpc : rule.cidr_ipv4 == "10.254.8.2/32"
+    ])
+    error_message = "The sandbox DNS rules must use the custom VPC's resolver address."
+  }
+}
+
+run "rejects_too_small_managed_vpc_cidr" {
+  command = plan
+  module {
+    source = "./modules/loop-runtime-sandbox-aws-microvm"
+  }
+  variables {
+    vpc_cidr = "10.254.0.0/22"
+  }
+  expect_failures = [var.vpc_cidr]
 }

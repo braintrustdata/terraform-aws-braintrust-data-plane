@@ -55,10 +55,12 @@ resource "aws_launch_template" "brainstore_fast_reader" {
     monitoring_telemetry            = var.monitoring_telemetry
     is_dedicated_reader_node        = "true"
     is_dedicated_writer_node        = "false"
-    extra_env_vars                  = var.extra_env_vars_fast_reader
+    extra_env_vars                  = merge(local.brainstore_default_env_vars, { BRAINSTORE_QUERY_LOG_THRESHOLD_SECONDS = "3" }, var.extra_env_vars_fast_reader)
     internal_observability_api_key  = var.internal_observability_api_key
     internal_observability_env_name = var.internal_observability_env_name
     internal_observability_region   = var.internal_observability_region
+    datadog_agent_container_logs    = module.datadog_agent_telemetry["fast_reader"].container_logs
+    datadog_agent_otlp_env_vars     = module.datadog_agent_telemetry["fast_reader"].otlp_env_vars
     service_token_secret_arn        = var.service_token_secret_arn
     custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script      = var.custom_post_install_script
