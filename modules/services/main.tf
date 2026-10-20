@@ -23,7 +23,6 @@ locals {
   lambda_s3_bucket = "braintrust-assets-${data.aws_region.current.region}"
   lambda_names = concat(
     ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"],
-    # Only look up the pruner artifact when enabled, so version tags published without it still plan.
     var.enable_quarantine_pruner ? ["QuarantinePrunerFunction"] : []
   )
 

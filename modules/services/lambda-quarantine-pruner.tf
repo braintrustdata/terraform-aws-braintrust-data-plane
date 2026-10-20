@@ -61,8 +61,8 @@ resource "aws_lambda_function" "quarantine_pruner" {
   tags = local.common_tags
 }
 
-# The schedule stays enabled in every mode; in off mode the handler exits
-# before calling AWS or Redis.
+# The schedule stays enabled in every mode; the handler returns early when mode
+# is off.
 resource "aws_cloudwatch_event_rule" "quarantine_pruner_schedule" {
   count = var.enable_quarantine_pruner ? 1 : 0
 

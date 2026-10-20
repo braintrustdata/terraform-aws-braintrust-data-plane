@@ -1,6 +1,6 @@
 # The quarantine pruner is opt-in. When enabled it deletes unreferenced
 # versions of quarantine functions, so its role must be limited to resources
-# tagged BraintrustQuarantine=true.
+# tagged BraintrustQuarantine=true, and deletion to qualified (versioned) ARNs.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
