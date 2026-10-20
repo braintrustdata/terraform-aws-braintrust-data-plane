@@ -1485,8 +1485,8 @@ variable "external_attachment_s3_bucket_kms_key_arns" {
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.external_attachment_s3_bucket_kms_key_arns : can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-zA-Z-]+$", arn))])
-    error_message = "external_attachment_s3_bucket_kms_key_arns must contain complete KMS key ARNs of the form arn:aws:kms:<region>:<account-id>:key/<key-id>."
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_kms_key_arns : can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/([0-9a-zA-Z-]+|\\*)$", arn))])
+    error_message = "external_attachment_s3_bucket_kms_key_arns must contain KMS key ARNs of the form arn:aws:kms:<region>:<account-id>:key/<key-id>, or arn:aws:kms:<region>:<account-id>:key/* to allow all keys in an account and region."
   }
 
   validation {
