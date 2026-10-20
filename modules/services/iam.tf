@@ -104,6 +104,66 @@ resource "aws_iam_role_policy" "automation_cron_topic_map_report_read" {
   })
 }
 
+resource "aws_iam_role" "quarantine_pruner_role" {
+  count = var.enable_quarantine_pruner ? 1 : 0
+
+  name = "${var.deployment_name}-QuarantinePrunerRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "quarantine_pruner_vpc_access" {
+  count = var.enable_quarantine_pruner ? 1 : 0
+
+  role       = aws_iam_role.quarantine_pruner_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+# Quarantine functions are created at runtime, so their names are not known
+# here. The tag condition limits the pruner to them.
+resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
+  count = var.enable_quarantine_pruner ? 1 : 0
+
+  name = "${var.deployment_name}-QuarantinePrunerDeleteVersions"
+  role = aws_iam_role.quarantine_pruner_role[0].id
+
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid = "PruneQuarantineFunctionVersions"
+        Action = [
+          "lambda:ListVersionsByFunction",
+          "lambda:ListAliases",
+          "lambda:DeleteFunction",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/BraintrustQuarantine" = "true"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "default_role" {
   name = "${var.deployment_name}-DefaultRole"
 

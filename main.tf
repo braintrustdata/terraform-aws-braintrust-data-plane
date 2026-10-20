@@ -426,6 +426,8 @@ module "services" {
     local.quarantine_vpc_private_subnet_2_id,
     local.quarantine_vpc_private_subnet_3_id
   ] : []
+  enable_quarantine_pruner = var.enable_quarantine_pruner
+  quarantine_pruner_mode   = var.quarantine_pruner_mode
 
   kms_key_arn                         = local.kms_key_arn
   permissions_boundary_arn            = var.permissions_boundary_arn

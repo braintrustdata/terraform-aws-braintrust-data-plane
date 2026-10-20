@@ -277,6 +277,26 @@ variable "quarantine_public_subnet_1_az" {
   description = "Availability zone for the public subnet. Leave blank to choose the first available zone"
 }
 
+variable "enable_quarantine_pruner" {
+  type        = bool
+  description = "Deploy an hourly Lambda that deletes unreferenced versions of quarantine functions. Requires enable_quarantine_vpc. Not created in external EKS mode."
+  default     = false
+  validation {
+    condition     = var.enable_quarantine_pruner ? var.enable_quarantine_vpc : true
+    error_message = "enable_quarantine_pruner requires enable_quarantine_vpc = true."
+  }
+}
+
+variable "quarantine_pruner_mode" {
+  type        = string
+  description = "Quarantine pruner mode: off (runs and exits early), dry-run (logs what it would delete), or on (deletes). Ignored unless enable_quarantine_pruner is true."
+  default     = "off"
+  validation {
+    condition     = contains(["off", "dry-run", "on"], var.quarantine_pruner_mode)
+    error_message = "quarantine_pruner_mode must be one of: off, dry-run, on."
+  }
+}
+
 # VPC Flow Logs (only applied to VPCs this module creates)
 variable "main_vpc_flow_log" {
   description = <<-EOT
@@ -1929,6 +1949,7 @@ variable "service_extra_env_vars" {
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
     AutomationCron           = map(string)
+    QuarantinePrunerFunction = optional(map(string), {})
   })
   description = "Extra environment variables to set for services"
   default = {
@@ -1939,6 +1960,7 @@ variable "service_extra_env_vars" {
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
     AutomationCron           = {}
+    QuarantinePrunerFunction = {}
   }
 }
 

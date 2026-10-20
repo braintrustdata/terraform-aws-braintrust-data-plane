@@ -140,6 +140,26 @@ variable "quarantine_vpc_private_subnets" {
   }
 }
 
+variable "enable_quarantine_pruner" {
+  type        = bool
+  description = "Deploy the hourly Lambda that deletes unreferenced versions of quarantine functions. Requires the quarantine VPC."
+  default     = false
+  validation {
+    condition     = var.enable_quarantine_pruner ? var.use_quarantine_vpc : true
+    error_message = "The quarantine pruner requires the quarantine VPC."
+  }
+}
+
+variable "quarantine_pruner_mode" {
+  type        = string
+  description = "Quarantine pruner mode: off (runs and exits early), dry-run (logs what it would delete), or on (deletes). Ignored unless enable_quarantine_pruner is true."
+  default     = "off"
+  validation {
+    condition     = contains(["off", "dry-run", "on"], var.quarantine_pruner_mode)
+    error_message = "quarantine_pruner_mode must be one of: off, dry-run, on."
+  }
+}
+
 variable "brainstore_enabled" {
   type        = bool
   description = "Whether Brainstore is enabled"
@@ -338,6 +358,7 @@ variable "extra_env_vars" {
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
     AutomationCron           = map(string)
+    QuarantinePrunerFunction = optional(map(string), {})
   })
   description = "Extra environment variables to set for services"
   default = {
@@ -348,6 +369,7 @@ variable "extra_env_vars" {
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
     AutomationCron           = {}
+    QuarantinePrunerFunction = {}
   }
 }
 
