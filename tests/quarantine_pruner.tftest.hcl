@@ -171,16 +171,32 @@ run "role_is_tag_conditioned" {
 
   assert {
     condition = (
-      length(jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement) == 1 &&
-      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[0].Effect == "Allow" &&
+      length(jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement) == 2 &&
+      alltrue([
+        for statement in jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement :
+        statement.Effect == "Allow" && statement.Condition.StringEquals["aws:ResourceTag/BraintrustQuarantine"] == "true"
+      ])
+    )
+    error_message = "every pruner statement must be conditioned on BraintrustQuarantine=true"
+  }
+
+  assert {
+    condition = (
       toset(jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[0].Action) == toset([
         "lambda:ListVersionsByFunction",
         "lambda:ListAliases",
-        "lambda:DeleteFunction",
       ]) &&
-      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[0].Condition.StringEquals["aws:ResourceTag/BraintrustQuarantine"] == "true"
+      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[0].Resource == "*"
     )
-    error_message = "the pruner may only list and delete versions of functions tagged BraintrustQuarantine=true"
+    error_message = "listing may use any resource, so unqualified ARNs work"
+  }
+
+  assert {
+    condition = (
+      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[1].Action == ["lambda:DeleteFunction"] &&
+      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[1].Resource == "arn:aws:lambda:*:*:function:*:*"
+    )
+    error_message = "deletion must require a qualified ARN so a whole function cannot be deleted"
   }
 }
 

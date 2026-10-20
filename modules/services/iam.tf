@@ -146,14 +146,26 @@ resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "PruneQuarantineFunctionVersions"
+        Sid = "ListQuarantineFunctionVersions"
         Action = [
           "lambda:ListVersionsByFunction",
           "lambda:ListAliases",
-          "lambda:DeleteFunction",
         ]
         Effect   = "Allow"
         Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/BraintrustQuarantine" = "true"
+          }
+        }
+      },
+      {
+        # A qualified ARN (function:name:version) only, so an unqualified
+        # DeleteFunction cannot remove a whole function.
+        Sid      = "DeleteQuarantineFunctionVersions"
+        Action   = ["lambda:DeleteFunction"]
+        Effect   = "Allow"
+        Resource = "arn:aws:lambda:*:*:function:*:*"
         Condition = {
           StringEquals = {
             "aws:ResourceTag/BraintrustQuarantine" = "true"
