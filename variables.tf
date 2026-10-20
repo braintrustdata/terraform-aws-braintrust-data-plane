@@ -1469,8 +1469,13 @@ variable "external_attachment_s3_bucket_arns" {
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", arn))])
-    error_message = "external_attachment_s3_bucket_arns must contain S3 bucket ARNs of the form arn:aws:s3:::<bucket-name>."
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9*?][a-z0-9.*?-]{1,61}[a-z0-9*?]$", arn))])
+    error_message = "external_attachment_s3_bucket_arns must contain S3 bucket ARNs of the form arn:aws:s3:::<bucket-name>. The bucket name may use IAM wildcards (* and ?)."
+  }
+
+  validation {
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex(":::.*[a-z0-9]", arn))])
+    error_message = "external_attachment_s3_bucket_arns bucket names must not consist only of wildcards."
   }
 }
 
