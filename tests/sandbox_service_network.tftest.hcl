@@ -27,7 +27,7 @@ run "lambda_only_by_default" {
       length(module.sandbox_service) == 0 &&
       length(module.loop_runtime_sandbox_aws_microvm) == 1 &&
       length(module.loop_runtime_ecs) == 1 &&
-      local.loop_runtime_version == "v2.17.0" &&
+      local.loop_runtime_version == jsondecode(file("${path.module}/modules/loop-runtime-ecs/VERSIONS.json"))["loop-runtime"] &&
       output.sandbox_service_client_tls_secret_arn == null
     )
     error_message = "Existing Loop deployments must retain their Lambda backend and runtime release by default."
