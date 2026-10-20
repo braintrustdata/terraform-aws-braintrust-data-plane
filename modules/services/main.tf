@@ -28,7 +28,7 @@ locals {
   )
 
   observability_enabled           = nonsensitive(var.internal_observability_api_key != null && var.internal_observability_api_key != "")
-  datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:131"
+  datadog_node_layer_arn          = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Node22-x:142"
   datadog_extension_arm_layer_arn = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension-ARM:90"
   datadog_python_layer_arn        = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Python313:118"
   datadog_extension_layer_arn     = "arn:aws:lambda:${data.aws_region.current.region}:464622532012:layer:Datadog-Extension:70"

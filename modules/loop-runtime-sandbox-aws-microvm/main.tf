@@ -21,6 +21,9 @@ locals {
   managed_ingress_connector_arn = "arn:${local.partition}:lambda:${local.region}:aws:network-connector:aws-network-connector:ALL_INGRESS"
   ingress_connector_arns        = length(var.ingress_network_connector_arns) > 0 ? var.ingress_network_connector_arns : [local.managed_ingress_connector_arn]
 
+  # Keep /24 subnets and the released offsets (1-3 for connectors, 4-6 for endpoints).
+  subnet_newbits = 24 - tonumber(split("/", var.vpc_cidr)[1])
+
   create_restricted_egress_vpc = var.existing_vpc_id == null
   create_dns_firewall          = local.create_restricted_egress_vpc || var.manage_existing_vpc_dns_firewall
   restricted_egress_vpc_id     = var.existing_vpc_id != null ? var.existing_vpc_id : one(aws_vpc.restricted_egress[*].id)
@@ -182,7 +185,7 @@ data "aws_availability_zones" "available" {
 resource "aws_vpc" "restricted_egress" {
   count = local.create_restricted_egress_vpc ? 1 : 0
 
-  cidr_block           = "10.255.0.0/16"
+  cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -206,7 +209,7 @@ resource "aws_subnet" "restricted_egress" {
 
   # Preserve the released connector subnets; replacing them is blocked by its ENIs.
   availability_zone       = data.aws_availability_zones.available[0].names[count.index]
-  cidr_block              = "10.255.${count.index + 1}.0/24"
+  cidr_block              = cidrsubnet(var.vpc_cidr, local.subnet_newbits, count.index + 1)
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
 
@@ -226,7 +229,7 @@ resource "aws_subnet" "egress_gateway" {
   count = local.create_restricted_egress_vpc ? 3 : 0
 
   availability_zone       = element(local.egress_gateway_nlb_azs, count.index)
-  cidr_block              = "10.255.${count.index + 4}.0/24"
+  cidr_block              = cidrsubnet(var.vpc_cidr, local.subnet_newbits, count.index + 4)
   map_public_ip_on_launch = false
   vpc_id                  = aws_vpc.restricted_egress[0].id
 
