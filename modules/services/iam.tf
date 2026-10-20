@@ -220,3 +220,83 @@ resource "aws_iam_role_policy" "default_role_policy" {
 }
 
 
+
+resource "aws_iam_role" "quarantine_warmup" {
+  count = var.use_quarantine_vpc ? 1 : 0
+  name  = "${var.deployment_name}-QuarantineWarmupRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+  tags                 = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "quarantine_warmup_vpc_access" {
+  count      = var.use_quarantine_vpc ? 1 : 0
+  role       = aws_iam_role.quarantine_warmup[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy" "quarantine_warmup" {
+  count = var.use_quarantine_vpc ? 1 : 0
+  name  = "${var.deployment_name}-QuarantineWarmupPolicy"
+  role  = aws_iam_role.quarantine_warmup[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "CreateQuarantine"
+        Effect   = "Allow"
+        Action   = "lambda:CreateFunction"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestTag/BraintrustQuarantine" = "true"
+            "lambda:VpcIds"                       = var.quarantine_vpc_id
+          }
+        }
+      },
+      {
+        Sid      = "TagQuarantine"
+        Effect   = "Allow"
+        Action   = "lambda:TagResource"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
+        Condition = {
+          StringEquals = { "aws:RequestTag/BraintrustQuarantine" = "true" }
+        }
+      },
+      {
+        Sid      = "ReadQuarantine"
+        Effect   = "Allow"
+        Action   = "lambda:GetFunction"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
+        Condition = {
+          StringEquals = { "aws:ResourceTag/BraintrustQuarantine" = "true" }
+        }
+      },
+      {
+        Sid      = "PassQuarantineRole"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = var.quarantine_function_role_arn
+        Condition = {
+          StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" }
+        }
+      },
+      {
+        Sid      = "DescribeQuarantineNetwork"
+        Effect   = "Allow"
+        Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
+        Resource = "*"
+      }
+    ]
+  })
+}
