@@ -597,6 +597,26 @@ module "loop_runtime_sandbox_aws_microvm" {
   custom_tags = local.all_custom_tags
 }
 
+module "sandbox_service" {
+  source = "./modules/sandbox-service"
+  count  = var.create_sandbox_service ? 1 : 0
+
+  deployment_name           = var.deployment_name
+  vpc_id                    = local.main_vpc_id
+  private_subnet_ids        = local.main_vpc_private_subnet_ids
+  ecs_cluster_name          = module.ecs[0].cluster_name
+  loop_runtime_service_name = "${var.deployment_name}-loop-runtime"
+  authorized_security_groups = {
+    "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
+  }
+  instance_types           = var.sandbox_service_instance_types
+  sandbox_vcpu_count       = var.sandbox_service_vcpu_count
+  sandbox_memory_mib       = var.sandbox_service_memory_mib
+  permissions_boundary_arn = var.permissions_boundary_arn
+  log_retention_days       = var.loop_runtime_log_retention_days
+  custom_tags              = local.all_custom_tags
+}
+
 module "loop_runtime_ecs" {
   source = "./modules/loop-runtime-ecs"
   count  = local.create_loop_runtime ? 1 : 0

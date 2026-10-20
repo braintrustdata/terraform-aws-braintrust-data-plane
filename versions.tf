@@ -12,7 +12,7 @@ terraform {
       # AWS provider 6.69.0's default trace logger scans HTTP bodies with a 64KB
       # bufio.Scanner and breaks API Gateway PutRestApi on the one-line OpenAPI body.
       # Lift this ceiling once that scanner fix is in a released provider.
-      version = ">= 6.23.0, < 6.69.0"
+      version = ">= 6.37.0, < 6.69.0"
     }
   }
 }
