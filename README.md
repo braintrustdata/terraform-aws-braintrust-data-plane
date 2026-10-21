@@ -42,6 +42,11 @@ If you're using a brand new AWS account for your Braintrust data plane you will 
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
 
+### Private data plane
+
+Private mode serves the data plane through an internal API ALB instead of CloudFront.
+See the [private data plane example](examples/braintrust-data-plane-private/) for requirements, configuration, and deployment steps.
+
 ### Organization access configuration
 
 Prefer ID-based organization access for new deployments:
@@ -464,6 +469,9 @@ Logs are written with a date-partitioned key format:
 For example, `braintrust/brainstore/<account>/<region>/<bucket>/2026/08/12/...`. First log delivery can take a few hours after you enable logging.
 
 ### Using an Existing VPC
+
+This configuration currently applies to public mode.
+A future release will support customer-supplied main and quarantine VPCs in private mode.
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
 

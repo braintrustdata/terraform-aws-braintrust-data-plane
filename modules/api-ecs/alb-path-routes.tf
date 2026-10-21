@@ -91,3 +91,33 @@ resource "aws_lb_listener_rule" "alb_path_routes" {
     }
   }
 }
+
+resource "aws_lb_listener_rule" "alb_internal_path_routes" {
+  for_each = var.enable_private_dataplane ? local.alb_path_listener_rules : {}
+
+  listener_arn = aws_lb_listener.api_ecs_internal[0].arn
+  priority     = each.value.priority
+
+  action {
+    type             = "forward"
+    target_group_arn = each.value.target_group
+  }
+
+  dynamic "condition" {
+    for_each = each.value.method != null ? [each.value.method] : []
+
+    content {
+      http_request_method {
+        values = [condition.value]
+      }
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = [each.value.path]
+    }
+  }
+
+  tags = local.common_tags
+}

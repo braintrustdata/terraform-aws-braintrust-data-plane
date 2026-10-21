@@ -193,9 +193,14 @@ output "api_ecs_http_url" {
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
 }
 
+output "api_ecs_internal_url" {
+  value       = local.create_ecs_api ? module.api_ecs[0].internal_url : null
+  description = "Internal API URL for service callbacks. Null when private mode is disabled."
+}
+
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, the AI Proxy Function URL while that Lambda exists, otherwise the CloudFront /v1/proxy URL in ECS mode. Null when API ECS is not created."
+  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, the AI Proxy Function URL while that Lambda exists, otherwise the CloudFront /v1/proxy URL in ECS mode. Private mode automatically selects PrivateLink when quarantine is enabled. Null when API ECS is not created."
 }
 
 output "api_ecs_task_security_group_id" {
@@ -244,22 +249,22 @@ output "redis_arn" {
 }
 
 output "api_url" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : null
+  value       = var.use_deployment_mode_external_eks ? null : local.api_url
   description = "The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL."
 }
 
 output "cloudfront_distribution_domain_name" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : null
+  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_domain_name : null
   description = "The domain name of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_arn" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : null
+  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_arn : null
   description = "The ARN of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_hosted_zone_id" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
+  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
   description = "The hosted zone ID of the cloudfront distribution"
 }
 
@@ -284,8 +289,8 @@ output "monitoring_contract" {
 
     api_gateway = {
       enabled = !var.use_deployment_mode_external_eks && !var.enable_ecs_api
-      name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
-      stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
+      name    = local.create_ingress ? module.ingress[0].api_gateway_name : null
+      stage   = local.create_ingress ? module.ingress[0].api_gateway_stage_name : null
     }
 
     brainstore = {
@@ -295,8 +300,8 @@ output "monitoring_contract" {
     }
 
     cloudfront = {
-      enabled         = !var.use_deployment_mode_external_eks
-      distribution_id = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_id : null
+      enabled         = local.create_ingress
+      distribution_id = local.create_ingress ? module.ingress[0].cloudfront_distribution_id : null
     }
 
     ecs = {

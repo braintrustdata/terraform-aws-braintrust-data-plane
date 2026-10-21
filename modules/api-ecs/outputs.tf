@@ -96,6 +96,17 @@ output "http_url" {
   ]
 }
 
+output "internal_url" {
+  description = "Internal HTTP URL for service callbacks in private mode. Null in public mode."
+  value       = local.internal_api_url
+  depends_on = [
+    aws_lb_listener.api_ecs_internal,
+    aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway,
+    aws_lb_listener_rule.alb_internal_path_routes,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups,
+  ]
+}
+
 output "quarantine_proxy_url" {
   description = "Effective QUARANTINE_PROXY_URL on API ECS when set; null when the env var is omitted."
   value       = local.quarantine_proxy_url

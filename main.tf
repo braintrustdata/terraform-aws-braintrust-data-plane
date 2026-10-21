@@ -79,6 +79,9 @@ locals {
 
   create_ecs_api                             = !var.use_deployment_mode_external_eks
   enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
+  create_ingress                             = !var.use_deployment_mode_external_eks && !var.enable_private_dataplane
+  api_url                                    = var.enable_private_dataplane ? (var.braintrust_api_alb_custom_domain == null ? null : "https://${var.braintrust_api_alb_custom_domain}") : (local.create_ingress ? module.ingress[0].api_url : null)
+  internal_api_url                           = local.create_ecs_api ? (var.enable_private_dataplane ? module.api_ecs[0].internal_url : module.api_ecs[0].http_url) : null
   create_ai_gateway                          = var.create_ai_gateway && !var.use_deployment_mode_external_eks
   enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
@@ -108,7 +111,8 @@ locals {
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
   # use_global) with managed or existing VPCs → else AI Proxy Function URL →
-  # else the CloudFront API URL /v1/proxy once that Function URL is gone.
+  # else the CloudFront API URL /v1/proxy in public ECS mode.
+  # Private mode selects PrivateLink when quarantine is enabled.
   # The CloudFront fallback requires quarantine HTTPS egress (NAT in managed VPCs).
   # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
   # main VPC, and quarantine is not peered to it. Do not build this URL from
@@ -116,7 +120,7 @@ locals {
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
   # Off when use_global_ai_gateway_origin (no PrivateLink).
   wire_quarantine_to_private_gateway = (
-    var.use_private_gateway_quarantine_proxy &&
+    (var.use_private_gateway_quarantine_proxy || (var.enable_private_dataplane && var.enable_quarantine_vpc)) &&
     local.create_ai_gateway &&
     !var.use_global_ai_gateway_origin
   )
@@ -137,7 +141,7 @@ locals {
   # so the API task definition waits on the CloudFront domain in Lambda mode
   # too. The domain does not depend on that task definition.
   cloudfront_quarantine_proxy_url = (
-    local.enable_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
+    local.enable_ecs_api && local.create_ingress ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
   )
   api_ecs_quarantine_proxy_url = (
     local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
@@ -154,8 +158,8 @@ locals {
     GATEWAY_URL = module.gateway_ecs[0].gateway_url
   } : {}
 
-  # Loop runtime requires the ECS API data plane and Brainstore. It is fronted
-  # by the shared CloudFront distribution at /loop/runtime*.
+  # Loop requires API ECS and Brainstore. Public mode routes CloudFront traffic
+  # directly to Loop. Private mode uses the API HTTP and WebSocket proxies.
   create_loop_runtime = local.create_ecs_api && var.enable_loop_runtime
   loop_runtime_authorized_security_groups = local.create_loop_runtime ? {
     "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
@@ -185,7 +189,7 @@ locals {
     : (
       var.use_global_ai_gateway_origin
       ? local.hosted_ai_gateway_proxy_url
-      : one(module.ingress[*].api_url)
+      : local.api_url
     )
   )
 
@@ -211,7 +215,7 @@ locals {
   attachment_s3_bucket_arn         = var.existing_attachment_s3_bucket_arn
   attachment_s3_bucket_kms_key_arn = var.existing_attachment_s3_bucket_kms_key_arn
   attachment_s3_bucket_name        = var.existing_attachment_s3_bucket_arn != null ? split(":::", var.existing_attachment_s3_bucket_arn)[1] : null
-  enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
+  enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin && !var.enable_private_dataplane
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
     { for svc in local.lambda_env_services : svc => merge(
@@ -523,31 +527,33 @@ module "gateway_ecs" {
     "public.ecr.aws/braintrust/gateway:%s",
     var.ai_gateway_version_override != null ? var.ai_gateway_version_override : jsondecode(file("${path.module}/modules/gateway-ecs/VERSIONS.json"))["gateway"]
   )
-  cpu                          = var.ai_gateway_cpu
-  memory                       = var.ai_gateway_memory
-  cpu_architecture             = var.ai_gateway_cpu_architecture
-  min_capacity                 = var.ai_gateway_min_capacity
-  max_capacity                 = var.ai_gateway_max_capacity
-  target_cpu_utilization       = var.ai_gateway_target_cpu_utilization
-  target_memory_utilization    = var.ai_gateway_target_memory_utilization
-  log_retention_days           = var.ai_gateway_log_retention_days
-  permissions_boundary_arn     = var.permissions_boundary_arn
-  use_redis_replication_group  = var.use_redis_replication_group
-  redis_host                   = module.redis.redis_endpoint
-  redis_port                   = module.redis.redis_port
-  redis_security_group_id      = module.redis.redis_security_group_id
-  target_group_arn             = module.gateway_alb[0].gateway_target_group_arn
-  alb_security_group_id        = module.gateway_alb[0].gateway_alb_security_group_id
-  gateway_http_listener_arn    = module.gateway_alb[0].gateway_http_listener_arn
-  gateway_url                  = module.gateway_alb[0].gateway_url
-  extra_env_vars               = var.ai_gateway_extra_env_vars
+  cpu                         = var.ai_gateway_cpu
+  memory                      = var.ai_gateway_memory
+  cpu_architecture            = var.ai_gateway_cpu_architecture
+  min_capacity                = var.ai_gateway_min_capacity
+  max_capacity                = var.ai_gateway_max_capacity
+  target_cpu_utilization      = var.ai_gateway_target_cpu_utilization
+  target_memory_utilization   = var.ai_gateway_target_memory_utilization
+  log_retention_days          = var.ai_gateway_log_retention_days
+  permissions_boundary_arn    = var.permissions_boundary_arn
+  use_redis_replication_group = var.use_redis_replication_group
+  redis_host                  = module.redis.redis_endpoint
+  redis_port                  = module.redis.redis_port
+  redis_security_group_id     = module.redis.redis_security_group_id
+  target_group_arn            = module.gateway_alb[0].gateway_target_group_arn
+  alb_security_group_id       = module.gateway_alb[0].gateway_alb_security_group_id
+  gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
+  gateway_url                 = module.gateway_alb[0].gateway_url
+  extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
+    BRAINTRUST_API_URL = local.internal_api_url
+  } : {})
   custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
   custom_tags                  = local.all_custom_tags
   brainstore_license_key       = var.brainstore_license_key
   enable_execute_command       = var.ai_gateway_enable_execute_command
   braintrust_app_url           = var.ai_gateway_braintrust_app_url
-  braintrust_api_url           = module.api_ecs[0].http_url
+  braintrust_api_url           = local.internal_api_url
   unsafe_url_request_mode      = var.unsafe_url_request_mode
   url_security_dns_servers     = var.url_security_dns_servers
   url_security_allow_cidrs     = var.url_security_allow_cidrs
@@ -568,7 +574,7 @@ module "loop_runtime_alb" {
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
-  enable_cloudfront_vpc_origin_ingress = true
+  enable_cloudfront_vpc_origin_ingress = !var.enable_private_dataplane
   authorized_security_groups = {
     "API" = module.services_common.api_security_group_id
   }
@@ -656,7 +662,7 @@ module "loop_runtime_ecs" {
 
   brainstore_reader_url = local.loop_runtime_brainstore_reader_url
   ai_proxy_url          = local.loop_runtime_ai_proxy_url
-  braintrust_api_url    = module.ingress[0].api_url
+  braintrust_api_url    = var.enable_private_dataplane ? local.internal_api_url : local.api_url
 
   brainstore_locks_s3_path       = var.brainstore_locks_s3_path
   brainstore_wal_footer_version  = var.brainstore_wal_footer_version
@@ -667,7 +673,10 @@ module "loop_runtime_ecs" {
 
   org_name        = var.braintrust_org_name
   allowed_org_ids = var.allowed_org_ids
-  extra_env_vars  = var.loop_runtime_extra_env_vars
+  extra_env_vars = merge(var.loop_runtime_extra_env_vars, var.enable_private_dataplane ? {
+    BRAINTRUST_API_URL        = local.internal_api_url
+    LOOP_RUNTIME_AI_PROXY_URL = local.loop_runtime_ai_proxy_url
+  } : {})
 
   internal_observability_enabled            = local.create_internal_observability_secret
   internal_observability_api_key_secret_arn = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -755,7 +764,9 @@ module "api_ecs" {
   unsafe_url_request_mode                                      = var.unsafe_url_request_mode
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
-  extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars)
+  extra_env_vars = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars, var.enable_private_dataplane && var.enable_quarantine_vpc ? {
+    QUARANTINE_PROXY_URL = local.api_ecs_quarantine_proxy_url
+  } : {})
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -774,7 +785,7 @@ module "api_ecs" {
   vpc_id             = local.main_vpc_id
   private_subnet_ids = local.main_vpc_private_subnet_ids
   authorized_security_groups = merge(
-    {
+    var.enable_private_dataplane ? {} : {
       "API"        = module.services_common.api_security_group_id
       "Brainstore" = module.services_common.brainstore_instance_security_group_id
     },
@@ -784,6 +795,13 @@ module "api_ecs" {
   gateway_security_groups = local.create_ai_gateway ? {
     "AI Gateway" = module.gateway_ecs[0].task_security_group_id
   } : {}
+
+  enable_private_dataplane = var.enable_private_dataplane
+  internal_authorized_security_groups = {
+    "API"        = module.services_common.api_security_group_id
+    "Brainstore" = module.services_common.brainstore_instance_security_group_id
+  }
+  loop_runtime_security_groups = local.loop_runtime_authorized_security_groups
 
   alb_certificate_arn            = var.braintrust_api_alb_certificate_arn
   alb_custom_domain              = var.braintrust_api_alb_custom_domain
@@ -800,7 +818,7 @@ module "api_ecs" {
 
 module "ingress" {
   source = "./modules/ingress"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = local.create_ingress ? 1 : 0
 
   deployment_name                     = var.deployment_name
   custom_domain                       = var.custom_domain
