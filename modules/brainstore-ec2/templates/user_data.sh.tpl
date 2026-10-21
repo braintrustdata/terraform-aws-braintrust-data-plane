@@ -100,10 +100,16 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
   },
   "metrics": {
     "append_dimensions": {
+%{ if cloudwatch_asg_metrics ~}
+      "AutoScalingGroupName": "\$${aws:AutoScalingGroupName}",
+%{ endif ~}
       "InstanceId": "\$${aws:InstanceId}"
     },
     "aggregation_dimensions": [
       ["InstanceId"],
+%{ if cloudwatch_asg_metrics ~}
+      ["AutoScalingGroupName"],
+%{ endif ~}
       []
     ],
     "metrics_collected": {

@@ -1,0 +1,101 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
+"""Check rendered Brainstore memory metrics against the autoscaling consumer.
+
+Run after terraform init. Runs only mocked Terraform tests, never live AWS calls.
+Terraform cannot decompress base64gzip user data in a test assertion, so inspect
+its verbose JSON plans here instead. --test-output reuses saved JSON test output.
+"""
+
+import argparse
+import base64
+import gzip
+import json
+from pathlib import Path
+import subprocess
+
+
+def check_plan(plan, run_name):
+    resources = {
+        resource["address"]: resource["change"]["after"]
+        for resource in plan["resource_changes"]
+        if resource["mode"] == "managed" and resource["change"]["after"] is not None
+    }
+    checked = 0
+    for address, values in resources.items():
+        # Root plans defer user data until shared secrets and endpoints exist.
+        # Child-module plans supply known values so their templates are rendered.
+        if "aws_launch_template.brainstore" not in address or "user_data" not in values:
+            continue
+        script = gzip.decompress(base64.b64decode(values["user_data"])).decode()
+        config = json.loads(
+            script.split("cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json\n", 1)[1]
+            .split("\nEOF", 1)[0]
+            .replace("\\${aws:", "${aws:")
+        )["metrics"]
+        memory = config["metrics_collected"]["mem"]
+        assert memory["metrics_collection_interval"] == 60, address
+        assert {"name": "mem_used_percent", "rename": "MemoryUtilization", "unit": "Percent"} in memory["measurement"], address
+        assert config["append_dimensions"]["InstanceId"] == "${aws:InstanceId}", address
+        assert ["InstanceId"] in config["aggregation_dimensions"], address
+        assert [] in config["aggregation_dimensions"], address
+
+        if "aws_launch_template.brainstore_automation_writer" in address:
+            assert config["append_dimensions"]["AutoScalingGroupName"] == "${aws:AutoScalingGroupName}", address
+            policy_address = address.replace(
+                "aws_launch_template.brainstore_automation_writer",
+                "aws_autoscaling_policy.brainstore_automation_writer_memory_target",
+            )
+            tracking = resources[policy_address]["target_tracking_configuration"][0]
+            metric = tracking["customized_metric_specification"][0]
+            # CWAgent is the agent's default namespace; preserve existing metrics.
+            assert metric["namespace"] == config.get("namespace", "CWAgent"), address
+            assert metric["statistic"] == "Average", address
+            assert metric["metric_name"] == memory["measurement"][0]["rename"], address
+            assert [dimension["name"] for dimension in metric["metric_dimension"]] in config["aggregation_dimensions"], address
+            checked += 1
+        else:
+            # Non-automation fleets retain their existing metric dimensions.
+            assert config["append_dimensions"] == {"InstanceId": "${aws:InstanceId}"}, address
+            assert config["aggregation_dimensions"] == [["InstanceId"], []], address
+
+    if run_name == "automation_writer_custom_targets_plan_in_existing_vpc":
+        for metric, target in [("cpu", 55), ("memory", 65)]:
+            policy = resources[f"module.brainstore[0].aws_autoscaling_policy.brainstore_automation_writer_{metric}_target[0]"]
+            assert policy["target_tracking_configuration"][0]["target_value"] == target, metric
+    return checked
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--test-output", type=Path, help="Read saved terraform test -json -verbose output.")
+    args = parser.parse_args()
+    if args.test_output:
+        output = args.test_output.read_text()
+    else:
+        result = subprocess.run(
+            ["terraform", "test", "-json", "-verbose",
+             "-filter=tests/brainstore_automation_writer.tftest.hcl",
+             "-filter=tests/automation_writer.tftest.hcl"],
+            cwd=Path(__file__).resolve().parent.parent, text=True, capture_output=True,
+        )
+        if result.returncode:
+            parser.exit(1, result.stdout + result.stderr)
+        output = result.stdout
+    checked = 0
+    for line in output.splitlines():
+        event = json.loads(line)
+        # Expected validation failures can leave an intentionally partial plan.
+        if event["type"] == "test_plan" and "rejects_" not in event["@testrun"]:
+            checked += check_plan(event["test_plan"], event["@testrun"])
+        if event["type"] == "test_summary":
+            assert event["test_summary"]["status"] == "pass", event["test_summary"]
+    assert checked > 0, "No enabled automation writer plans checked."
+    print(f"Brainstore autoscaling: checked {checked} rendered automation writer metric producers and their policies.")
+
+
+if __name__ == "__main__":
+    main()

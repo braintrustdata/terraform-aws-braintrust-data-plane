@@ -953,6 +953,8 @@ module "brainstore" {
   writer_instance_count                         = var.brainstore_writer_instance_count
   writer_instance_type                          = var.brainstore_writer_instance_type
   automation_writer_instance_count              = var.brainstore_automation_writer_instance_count
+  automation_writer_target_cpu_utilization      = var.brainstore_automation_writer_target_cpu_utilization
+  automation_writer_target_memory_utilization   = var.brainstore_automation_writer_target_memory_utilization
   automation_writer_instance_type               = var.brainstore_automation_writer_instance_type
   extra_env_vars_automation_writer              = var.brainstore_extra_env_vars_automation_writer
   cache_file_size_automation_writer             = var.brainstore_cache_file_size_automation_writer

@@ -50,6 +50,7 @@ resource "aws_launch_template" "brainstore_writer" {
     license_key_secret_version                    = var.license_key_secret_version
     brainstore_version_override                   = var.version_override == null ? "" : var.version_override
     brainstore_release_version                    = local.brainstore_release_version
+    cloudwatch_asg_metrics                        = false
     monitoring_telemetry                          = var.monitoring_telemetry
     is_dedicated_reader_node                      = "false"
     is_dedicated_writer_node                      = "true"
