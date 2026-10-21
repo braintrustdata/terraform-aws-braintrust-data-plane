@@ -142,6 +142,14 @@ locals {
           {
             name  = "DD_OTLP_CONFIG_LOGS_ENABLED"
             value = "true"
+          },
+          {
+            name  = "DD_APM_ENABLED"
+            value = "false"
+          },
+          {
+            name  = "DD_OTLP_CONFIG_TRACES_ENABLED"
+            value = "false"
           }
         ]
         secrets = [
