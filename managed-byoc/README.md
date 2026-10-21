@@ -1,6 +1,6 @@
-# Managed BYOC
+# Bring your own cloud (BYOC)
 
-Managed BYOC (Bring Your Own Cloud) is an optional Braintrust offering where a customer provides an AWS account and Braintrust deploys and operates the Braintrust Data Plane in that account.
+[Braintrust BYOC](https://www.braintrust.dev/docs/admin/deployment/byoc) lets customers run the Braintrust data plane inside a dedicated customer AWS account while Braintrust manages deployment and ongoing operation with the customer's approval and security controls.
 
 ## Deployment sequence
 
