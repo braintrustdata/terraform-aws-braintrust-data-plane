@@ -1,5 +1,5 @@
 # Verify disabled automation writers skip instance metadata and enabled pools
-# retain their cache sizing and distinct writer-loop configuration.
+# retain their cache sizing, distinct writer-loop configuration, and autoscaling.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -44,34 +44,6 @@ variables {
   brainstore_instance_security_group_id = "sg-12345678"
   ai_proxy_url_ssm_parameter            = "/bt-automation-writer/ai-proxy-url"
   automation_writer_instance_count      = 1
-}
-
-run "disabled_automation_writer_skips_instance_metadata" {
-  command = plan
-
-  module {
-    source = "./modules/brainstore-ec2"
-  }
-
-  variables {
-    automation_writer_instance_count = 0
-    automation_writer_instance_type  = "unused-instance-type"
-  }
-
-  assert {
-    condition = (
-      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 0 &&
-      local.brainstore_automation_writer_cache_file_size == null &&
-      length(aws_launch_template.brainstore_automation_writer) == 0 &&
-      length(aws_autoscaling_group.brainstore_automation_writer) == 0 &&
-      length(aws_lb.brainstore_automation_writer) == 0 &&
-      length(aws_lb_target_group.brainstore_automation_writer) == 0 &&
-      length(aws_lb_listener.brainstore_automation_writer) == 0 &&
-      output.automation_writer_dns_name == null &&
-      !contains(keys(output.monitoring_targets), "automation-writer")
-    )
-    error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
-  }
 }
 
 run "automation_writer_loop_config_is_rendered" {
@@ -150,6 +122,65 @@ run "automation_writer_nlb_routes_to_its_asg" {
       }
     )
     error_message = "Automation queries must reach the dedicated ASG through its private NLB and listener."
+  }
+
+  assert {
+    condition = alltrue([
+      for policy in [
+        aws_autoscaling_policy.brainstore_automation_writer_cpu_target[0],
+        aws_autoscaling_policy.brainstore_automation_writer_memory_target[0]
+      ] :
+      policy.autoscaling_group_name == aws_autoscaling_group.brainstore_automation_writer[0].name &&
+      policy.policy_type == "TargetTrackingScaling" &&
+      policy.estimated_instance_warmup == 900 &&
+      policy.target_tracking_configuration[0].target_value == 70 &&
+      !policy.target_tracking_configuration[0].disable_scale_in
+    ])
+    error_message = "Both policies must track the automation pool at 70%, allow scale-in, and use a 900-second warmup."
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_policy.brainstore_automation_writer_cpu_target[0].target_tracking_configuration[0].predefined_metric_specification[0].predefined_metric_type == "ASGAverageCPUUtilization" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].namespace == "CWAgent" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].metric_name == "MemoryUtilization" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].statistic == "Average" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].metric_dimension == tolist([{
+        name  = "AutoScalingGroupName"
+        value = aws_autoscaling_group.brainstore_automation_writer[0].name
+      }])
+    )
+    error_message = "CPU must use the ASG average; memory must match the agent's ASG-only CWAgent/MemoryUtilization series."
+  }
+}
+
+run "disabled_automation_writer_skips_instance_metadata" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_instance_type  = "unused-instance-type"
+  }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 0 &&
+      local.brainstore_automation_writer_cache_file_size == null &&
+      length(aws_launch_template.brainstore_automation_writer) == 0 &&
+      length(aws_autoscaling_group.brainstore_automation_writer) == 0 &&
+      length(aws_autoscaling_policy.brainstore_automation_writer_cpu_target) == 0 &&
+      length(aws_autoscaling_policy.brainstore_automation_writer_memory_target) == 0 &&
+      length(aws_lb.brainstore_automation_writer) == 0 &&
+      length(aws_lb_target_group.brainstore_automation_writer) == 0 &&
+      length(aws_lb_listener.brainstore_automation_writer) == 0 &&
+      output.automation_writer_dns_name == null &&
+      !contains(keys(output.monitoring_targets), "automation-writer")
+    )
+    error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
   }
 }
 

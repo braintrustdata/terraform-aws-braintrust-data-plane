@@ -51,6 +51,7 @@ resource "aws_launch_template" "brainstore_automation_writer" {
     brainstore_license_key          = var.license_key
     brainstore_version_override     = var.version_override == null ? "" : var.version_override
     brainstore_release_version      = local.brainstore_release_version
+    cloudwatch_asg_metrics          = true
     monitoring_telemetry            = var.monitoring_telemetry
     is_dedicated_reader_node        = "false"
     is_dedicated_writer_node        = "true"
@@ -169,6 +170,8 @@ resource "aws_autoscaling_group" "brainstore_automation_writer" {
 
   lifecycle {
     create_before_destroy = true
+    # Target tracking owns capacity after the initial creation.
+    ignore_changes = [desired_capacity]
   }
 
   instance_refresh {
@@ -193,5 +196,47 @@ resource "aws_autoscaling_group" "brainstore_automation_writer" {
       value               = tag.value
       propagate_at_launch = true
     }
+  }
+}
+
+resource "aws_autoscaling_policy" "brainstore_automation_writer_cpu_target" {
+  count                     = local.has_automation_writer_nodes ? 1 : 0
+  name                      = "${var.deployment_name}-brainstore-automation-writer-cpu-target"
+  autoscaling_group_name    = aws_autoscaling_group.brainstore_automation_writer[0].name
+  policy_type               = "TargetTrackingScaling"
+  estimated_instance_warmup = 900
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value     = var.automation_writer_target_cpu_utilization
+    disable_scale_in = false
+  }
+}
+
+resource "aws_autoscaling_policy" "brainstore_automation_writer_memory_target" {
+  count                     = local.has_automation_writer_nodes ? 1 : 0
+  name                      = "${var.deployment_name}-brainstore-automation-writer-memory-target"
+  autoscaling_group_name    = aws_autoscaling_group.brainstore_automation_writer[0].name
+  policy_type               = "TargetTrackingScaling"
+  estimated_instance_warmup = 900
+
+  target_tracking_configuration {
+    customized_metric_specification {
+      # Match the existing CloudWatch agent's renamed memory measurement.
+      namespace   = "CWAgent"
+      metric_name = "MemoryUtilization"
+      statistic   = "Average"
+
+      metric_dimension {
+        name  = "AutoScalingGroupName"
+        value = aws_autoscaling_group.brainstore_automation_writer[0].name
+      }
+    }
+
+    target_value     = var.automation_writer_target_memory_utilization
+    disable_scale_in = false
   }
 }

@@ -1645,8 +1645,30 @@ variable "brainstore_writer_instance_type" {
 
 variable "brainstore_automation_writer_instance_count" {
   type        = number
-  description = "The number of dedicated automation writer nodes to create"
+  description = "Minimum number of dedicated automation writer nodes (0 disables the pool). Autoscaling can grow to twice this count."
   default     = 0
+}
+
+variable "brainstore_automation_writer_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 70
+
+  validation {
+    condition     = var.brainstore_automation_writer_target_cpu_utilization >= 1 && var.brainstore_automation_writer_target_cpu_utilization <= 100
+    error_message = "brainstore_automation_writer_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "brainstore_automation_writer_target_memory_utilization" {
+  type        = number
+  description = "Target average memory utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 70
+
+  validation {
+    condition     = var.brainstore_automation_writer_target_memory_utilization >= 1 && var.brainstore_automation_writer_target_memory_utilization <= 100
+    error_message = "brainstore_automation_writer_target_memory_utilization must be between 1 and 100."
+  }
 }
 
 variable "brainstore_automation_writer_instance_type" {
