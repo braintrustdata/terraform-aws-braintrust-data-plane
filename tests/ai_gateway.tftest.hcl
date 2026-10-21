@@ -48,6 +48,7 @@ run "create_and_enable_with_lambda_api" {
   command = plan
   variables {
     enable_ai_gateway = true
+    enable_ecs_api    = false
   }
 }
 

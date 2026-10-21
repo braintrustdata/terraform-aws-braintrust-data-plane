@@ -16,6 +16,7 @@ Always upgrade **one major version at a time**. For example, go from v4 â†’ v5 â
 Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
+- [Migrating from v6 to v7](MIGRATION_V7.md)
 
 ### Brainstore and API upgrades
 
@@ -92,17 +93,20 @@ handoff for an existing deployment.
 
 ## Private AI gateway cutover
 
-Standard deployments enable the private AI gateway by default. These inputs default to `true`:
+A new stack that sets nothing gets ECS ingress and the private gateway. These inputs default to `true`:
 
 ```hcl
+enable_ecs_api                = true
 create_ai_gateway             = true
 enable_ai_gateway             = true
 use_private_ai_gateway_origin = true
 ```
 
+Set `enable_ecs_api = false` to keep customer traffic on Lambda. The three gateway flags still default to `true`, so that is Lambda ingress plus the private gateway.
+
 `create_ai_gateway` creates the internal ALB and gateway ECS service. `enable_ai_gateway` selects that gateway for API services and Loop.
 `use_private_ai_gateway_origin` routes CloudFront `/v1/proxy` traffic to the private gateway through a VPC origin.
-Existing standard deployments that omit these inputs adopt this behavior on their next apply. The gateway infrastructure adds AWS charges.
+Existing deployments must finish the v6 applies before this upgrade. See [Migrating from v6 to v7](MIGRATION_V7.md). The gateway infrastructure adds AWS charges.
 Terraform waits for the gateway ECS service to reach steady state before caller updates.
 The service uses the ALB `/health` check. A failed initial deployment blocks cutover and leaves existing callers on their previous configuration.
 
@@ -110,13 +114,14 @@ The CloudFront private origin and the module-managed quarantine PrivateLink endp
 Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
 An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
 
-External EKS deployments ignore all three inputs. Helm manages the gateway in that mode.
+External EKS deployments ignore `enable_ecs_api` and the three gateway inputs. Helm manages the gateway in that mode.
 Terraform does not create the gateway or enable its routes when `use_deployment_mode_external_eks = true`.
+Stacks that already built a gateway with Terraform must move to the Helm gateway and repoint before upgrading. The upgrade destroys that ALB, ECS service, and ECS cluster.
 
 For standard deployments, all three inputs must be `false` to disable the private gateway and its CloudFront origin.
 
-The gateway receives the private API ECS ALB as its default data-plane API address, including deployments with Lambda ingress.
-An API address from organization authentication can override this value.
+The gateway's default API address is the private API ECS load balancer, including while customer traffic stays on Lambda.
+An API address from organization authentication replaces that default.
 The API ECS service already exists in standard deployments. Its listener accepts traffic from the gateway task security group.
 The listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
 This private address removes the dependency cycle between gateway startup and CloudFront cutover.

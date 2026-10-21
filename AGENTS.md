@@ -199,7 +199,7 @@ Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are m
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
 - Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
 - `create_*` flags own resource lifetime; `enable_*` flags own routing.
-  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false creates that surface again, including a new Function URL hostname. It does not resume a warm standby. A Lambda-mode upgrade only moves state to `[0]`; Terraform moves surviving `[0]` resources back on downgrade. Resources deleted by an ECS-mode apply are created again on downgrade. The default stays false.
+  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false creates that surface again, including a new Function URL hostname. It does not resume a warm standby. A Lambda-mode upgrade only moves state to `[0]`; Terraform moves surviving `[0]` resources back on downgrade. Resources deleted by an ECS-mode apply are created again on downgrade. On v7 the default is true. Set `enable_ecs_api = false` to keep customer traffic on Lambda. On v6 the default was false.
 
 ### Private gateway ALB relocation
 
@@ -209,11 +209,14 @@ Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assu
 
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
-Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
-- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists, so the path is ready before cutover.
+Upgrade an existing deployment with [MIGRATION_V7.md](MIGRATION_V7.md). Finish the v6 applies first.
+
+`enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin` default to `true`. A new stack that sets nothing gets ECS ingress and the private gateway. Set `enable_ecs_api = false` to keep customer traffic on Lambda. The gateway flags still default to `true`, so that is Lambda ingress plus the private gateway. On v6 an omitted `enable_ecs_api` means Lambda. On v7 an omitted `enable_ecs_api` means ECS. Existing deployments finish the v6 applies before this upgrade. People who already cut over can leave `enable_ecs_api = true` or drop it.
+
+- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists.
 - **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
 
-Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL` and Loop's hosted/CloudFront proxy URL). Set both true for single-apply wiring on greenfield deployments.
+External EKS ignores `enable_ecs_api` and the gateway flags. Helm owns the gateway.
 
 ### Quarantine LLM proxy URL
 

@@ -559,7 +559,7 @@ variable "create_ai_gateway" {
 }
 
 variable "enable_ai_gateway" {
-  description = "Route API services and Loop through the private gateway. Requires create_ai_gateway. Both flags can be true in one apply. Caller updates wait for the gateway ECS service to reach steady state. External EKS deployments use the Helm gateway and ignore this input."
+  description = "Route API services and Loop through the private gateway. Requires create_ai_gateway. Existing deployments finish the v6 applies first; see MIGRATION_V7.md. A greenfield stack can set create_ai_gateway and enable_ai_gateway both true in one apply. Caller updates wait for the gateway ECS service to reach steady state. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
   default     = true
 
@@ -1003,13 +1003,8 @@ variable "braintrust_api_version_override" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "Route traffic to the API ECS ALB instead of API Gateway and the APIHandler and AIProxy Lambdas. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via the quarantine VPC NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. Default false keeps Lambda as the active path while ECS stays warm for cutover."
-  default     = false
-
-  validation {
-    condition     = !var.enable_ecs_api || !var.use_deployment_mode_external_eks
-    error_message = "enable_ecs_api cannot be true when use_deployment_mode_external_eks is true."
-  }
+  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via the quarantine VPC NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
+  default     = true
 }
 
 variable "braintrust_api_log_retention_days" {
@@ -1542,8 +1537,13 @@ variable "use_private_gateway_quarantine_proxy" {
   default     = false
 
   validation {
-    condition     = !var.use_private_gateway_quarantine_proxy || local.create_ai_gateway
+    condition     = var.use_deployment_mode_external_eks || !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
     error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
+  }
+
+  validation {
+    condition     = !var.use_deployment_mode_external_eks || !var.use_private_gateway_quarantine_proxy
+    error_message = "use_private_gateway_quarantine_proxy cannot be true when use_deployment_mode_external_eks is true. External EKS mode does not create the gateway."
   }
 }
 
