@@ -4,13 +4,13 @@ Upgrade this Terraform module **one major version at a time**. See the [README](
 
 A new stack that sets nothing gets ECS ingress and the private gateway.
 
-On v6 an omitted `enable_ecs_api` means Lambda. On v7 an omitted `enable_ecs_api` means ECS. Finish the v6 applies before this upgrade so the v7 apply does not move a stack that was still on Lambda.
+On v6 an omitted `enable_ecs_api` means Lambda. On v7 an omitted `enable_ecs_api` means ECS. Finish the v6 applies before this upgrade so the v7 apply does not move a stack that was still on Lambda. Stacks that follow Stay on Lambda, Gateway off, or Hosted gateway instead skip those applies.
 
 Before a rollback to v6, set `enable_ecs_api = true` in the config. On v6 the default is false, so an omitted flag recreates the Lambda path (APIHandler, AIProxy, the Function URL, and API Gateway).
 
 ## v6 applies
 
-For people who have not done it yet, do not start this upgrade until the v6 applies have succeeded.
+For people who have not done it yet, do not start this upgrade until the v6 applies have succeeded, except stacks that follow Stay on Lambda, Gateway off, or Hosted gateway instead.
 
 1. The first v6 apply builds API ECS. On v6 there is no create flag. `enable_ecs_api` stays `false`, which was the v6 default, and customer traffic stays on Lambda.
 
