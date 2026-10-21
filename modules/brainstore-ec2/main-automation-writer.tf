@@ -162,7 +162,8 @@ resource "aws_autoscaling_group" "brainstore_automation_writer" {
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_automation_writer[0].arn]
-  wait_for_elb_capacity     = var.automation_writer_instance_count
+  # Check minimum ELB readiness only at creation; updates may retain a scaled-out pool.
+  min_elb_capacity = var.automation_writer_instance_count
   launch_template {
     id      = aws_launch_template.brainstore_automation_writer[0].id
     version = aws_launch_template.brainstore_automation_writer[0].latest_version

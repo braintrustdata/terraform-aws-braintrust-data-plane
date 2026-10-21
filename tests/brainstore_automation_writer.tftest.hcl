@@ -65,9 +65,10 @@ run "automation_writer_loop_config_is_rendered" {
       aws_autoscaling_group.brainstore_automation_writer[0].desired_capacity == 1 &&
       aws_autoscaling_group.brainstore_automation_writer[0].health_check_type == aws_autoscaling_group.brainstore_writer[0].health_check_type &&
       aws_autoscaling_group.brainstore_automation_writer[0].health_check_grace_period == aws_autoscaling_group.brainstore_writer[0].health_check_grace_period &&
-      aws_autoscaling_group.brainstore_automation_writer[0].wait_for_elb_capacity == 1
+      aws_autoscaling_group.brainstore_automation_writer[0].min_elb_capacity == 1 &&
+      coalesce(aws_autoscaling_group.brainstore_automation_writer[0].wait_for_elb_capacity, 0) == 0
     )
-    error_message = "AutomationWriter ASG should size, health-check, and wait for load balancer capacity like the regular writer."
+    error_message = "AutomationWriter ASG must check minimum ELB readiness at creation without requiring exact capacity on scaled-out updates."
   }
 
   assert {
