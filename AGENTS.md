@@ -254,22 +254,24 @@ existing stacks are unchanged until operators explicitly enable it.
   Ingress exists whenever ECS mode is on, so that URL is present.
   Omitting `QUARANTINE_PROXY_URL` entirely makes api-ts fall back to
   `http://localhost:8000/v1/proxy`, which the quarantine Lambda cannot call.
-- **`true`**: requires `create_ai_gateway`. When quarantine is enabled,
-  creates PrivateLink in managed or existing Main and Quarantine VPCs and
+- **`true`**: always requires `create_ai_gateway`. When quarantine is enabled
+  and `use_global_ai_gateway_origin` is false, it creates PrivateLink in
+  managed or existing Main and Quarantine VPCs and
   sets `QUARANTINE_PROXY_URL` on API ECS to `http://<vpce-dns>/v1/proxy`
   (unless override). An override does not suppress resource creation.
-  No-ops PrivateLink when `use_global_ai_gateway_origin` is true. If
-  quarantine is disabled and `quarantine_proxy_url` is unset, apply fails.
-  Adds an internal NLB and interface endpoint (extra cost).
+  When `use_global_ai_gateway_origin` is true, skips PrivateLink creation and
+  endpoint URL selection. Otherwise, if quarantine is disabled and
+  `quarantine_proxy_url` is unset, validation fails. Creating the path adds
+  an internal NLB and interface endpoint (extra cost).
 
-#### URL precedence
+#### URL precedence (API ECS)
 
 1. `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API
    `/v1/proxy`, or GCP-style manual URLs) — **always wins**
 2. else `http://<vpce-dns>/v1/proxy` when
    `use_private_gateway_quarantine_proxy` wires PrivateLink (managed or
    existing VPCs; not `use_global_ai_gateway_origin`)
-3. else AI Proxy Lambda Function URL when `enable_ecs_api` is false
+3. else AI Proxy Lambda Function URL while that function exists
 4. else `https://<cloudfront-domain>/v1/proxy` when `enable_ecs_api` is true.
    `use_global_ai_gateway_origin` does not select this URL; it changes which
    origin serves that CloudFront path. When that origin is the hosted
@@ -280,18 +282,17 @@ existing stacks are unchanged until operators explicitly enable it.
 
 Uses an NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
 
-1. **Provider (main VPC)**: internal multi-AZ NLB → target group
-   `target_type = "alb"` attached to the gateway ALB → TCP **80** listener →
-   `aws_vpc_endpoint_service` with `acceptance_required = false`
-   (same-account). Gateway ALB SG allows HTTP from the NLB SG only —
-   quarantine does **not** talk to the ALB directly.
+1. **Provider (main VPC)**: `aws_vpc_endpoint_service` with
+   `acceptance_required = false` and same-account access → internal multi-AZ
+   NLB TCP **80** listener → target group `target_type = "alb"` attached to
+   the Gateway ALB. The ingress rule for this path allows HTTP from the NLB
+   SG; quarantine does **not** talk to the ALB directly.
 2. **Consumer (quarantine VPC)**: interface VPC endpoint in quarantine
    private subnets; endpoint SG allows the quarantine Lambda SG on **:80**.
 3. **URL**: `http://<vpce-dns>/v1/proxy` (VPCE DNS, not gateway ALB DNS).
    Plain HTTP on this hop is intentional: traffic stays inside AWS PrivateLink
    (quarantine VPCE → NLB → gateway ALB) and never crosses the public internet.
-   TLS would require certs on the private ALB/NLB path without a customer DNS
-   name; HTTP matches the private-ALB pattern used elsewhere in this module.
+   HTTP matches the existing private Gateway ALB listener.
 
 Automated for managed/managed, existing/existing, and mixed Main/Quarantine
 VPC ownership. Both VPCs must be in the provider's account and region.
@@ -306,8 +307,10 @@ Gateway ALB ingress rule, to avoid a gratuitous state migration. This is an
 existing exception to destination-module ownership, not a pattern for new rules.
 The endpoint waits for Gateway ECS and its network path before exposing its URL.
 
-The default stays false. Existing-VPC callers already using true with an explicit
-URL will now create resources while retaining that override. False creates none.
+The default stays false. With quarantine enabled and the global origin disabled,
+existing-VPC callers already using true with an explicit URL will now create
+PrivateLink resources while retaining that override. False creates no
+PrivateLink resources.
 Global Gateway remains a no-op for PrivateLink. APIHandler Lambda and external
 Helm applications do not receive automatic URL injection from this input.
 
@@ -315,8 +318,9 @@ Helm applications do not receive automatic URL injection from this input.
 endpoint hourly/GB charges. This only covers Quarantine LLM connectivity; SDK
 login, logging, trace reads, and arbitrary user-code calls have separate network
 requirements. A public fallback still needs egress and WAF admission. Before
-disabling or downgrading, ensure the fallback is reachable. Downgrading to a
-module without existing-VPC support requires disabling this feature first.
+disabling or downgrading, ensure the fallback is reachable. Deployments using
+PrivateLink with existing VPCs should disable this feature on the newer version
+before downgrading to a module without that support.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

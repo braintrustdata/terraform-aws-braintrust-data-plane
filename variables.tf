@@ -1540,7 +1540,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, precedence is PrivateLink, then the AI Proxy Function URL while that Lambda exists, then the CloudFront /v1/proxy URL once enable_ecs_api has removed it. That CloudFront path follows the configured /v1/proxy origin, including a hosted gateway. A caller-supplied quarantine VPC needs its own egress or a private URL here. See use_private_gateway_quarantine_proxy."
+  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the AI Proxy Function URL while that Lambda exists, then the CloudFront /v1/proxy URL in ECS mode. That CloudFront path follows the configured /v1/proxy origin, including a hosted gateway. Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
   type        = string
   default     = null
 
@@ -1552,7 +1552,7 @@ variable "quarantine_proxy_url" {
 }
 
 variable "use_private_gateway_quarantine_proxy" {
-  description = "Create quarantine-to-gateway PrivateLink (internal NLB→gateway ALB and interface endpoint) in managed or existing main and quarantine VPCs. Requires create_ai_gateway and enable_quarantine_vpc; when quarantine is disabled, an explicit quarantine_proxy_url is required instead. Both VPCs must be in the provider's account and region, with private subnets in matching availability zones. API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it; an override does not suppress resource creation. False (default) preserves the explicit URL, AI Proxy Function URL, or ECS-mode CloudFront fallback. No-op when use_global_ai_gateway_origin is true. Adds NLB and interface endpoint costs."
+  description = "Create quarantine-to-gateway PrivateLink (internal NLB→gateway ALB and interface endpoint) in managed or existing main and quarantine VPCs. Requires create_ai_gateway. Creating PrivateLink also requires enable_quarantine_vpc; otherwise, an explicit quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. For PrivateLink, both VPCs must be in the provider's account and region, with private subnets in matching availability zones. When the endpoint is created, API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it; an override does not suppress resource creation. False (default) retains URL selection from the explicit override, AI Proxy Function URL, or ECS-mode CloudFront fallback. Skips PrivateLink creation and automatic endpoint URL selection when use_global_ai_gateway_origin is true. Adds NLB and interface endpoint costs when created."
   type        = bool
   default     = false
 

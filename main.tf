@@ -109,7 +109,7 @@ locals {
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
   # use_global) with managed or existing VPCs → else AI Proxy Function URL →
   # else the CloudFront API URL /v1/proxy once that Function URL is gone.
-  # Quarantine reaches CloudFront through the quarantine VPC NAT gateway.
+  # The CloudFront fallback requires quarantine HTTPS egress (NAT in managed VPCs).
   # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
   # main VPC, and quarantine is not peered to it. Do not build this URL from
   # a request Host header.

@@ -195,7 +195,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, the AI Proxy Function URL while that Lambda exists, otherwise the CloudFront /v1/proxy URL. Null when omitted."
+  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, the AI Proxy Function URL while that Lambda exists, otherwise the CloudFront /v1/proxy URL in ECS mode. Null when API ECS is not created."
 }
 
 output "api_ecs_task_security_group_id" {
