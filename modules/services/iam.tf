@@ -165,7 +165,7 @@ resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
         Sid      = "DeleteQuarantineFunctionVersions"
         Action   = ["lambda:DeleteFunction"]
         Effect   = "Allow"
-        Resource = "arn:aws:lambda:*:*:function:*:*"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:*:*"
         Condition = {
           StringEquals = {
             "aws:ResourceTag/BraintrustQuarantine" = "true"

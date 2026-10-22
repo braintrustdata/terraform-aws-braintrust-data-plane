@@ -152,7 +152,7 @@ variable "enable_quarantine_pruner" {
 
 variable "quarantine_pruner_mode" {
   type        = string
-  description = "Quarantine pruner mode: off (runs and exits early), dry-run (logs what it would delete), or on (deletes). Ignored unless enable_quarantine_pruner is true."
+  description = "Quarantine pruner mode: off (runs and exits early), dry-run (logs what it would delete), or on (deletes). Note: QUARANTINE_PRUNER_MODE set for QuarantinePrunerFunction in extra_env_vars takes precedence over this variable. Ignored unless enable_quarantine_pruner is true."
   default     = "off"
   validation {
     condition     = contains(["off", "dry-run", "on"], var.quarantine_pruner_mode)

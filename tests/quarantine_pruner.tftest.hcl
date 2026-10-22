@@ -60,6 +60,11 @@ run "disabled_by_default" {
     condition     = !contains(keys(data.http.lambda_versions), "QuarantinePrunerFunction")
     error_message = "a disabled pruner must not look up its artifact, so tags without it still plan"
   }
+
+  assert {
+    condition     = !contains(keys(output.monitoring_functions), "quarantine-pruner")
+    error_message = "a disabled pruner must not appear in monitoring_functions"
+  }
 }
 
 run "enabled_defaults_to_off" {
@@ -121,6 +126,14 @@ run "enabled_defaults_to_off" {
   assert {
     condition     = aws_cloudwatch_event_rule.quarantine_pruner_schedule[0].schedule_expression == "rate(1 hour)"
     error_message = "the pruner should run hourly"
+  }
+
+  assert {
+    condition = (
+      output.monitoring_functions["quarantine-pruner"].function_name == "bt-test-QuarantinePrunerFunction" &&
+      output.monitoring_functions["quarantine-pruner"].timeout_seconds == 900
+    )
+    error_message = "an enabled pruner should be visible to monitoring integrations"
   }
 
   assert {
@@ -194,9 +207,9 @@ run "role_is_tag_conditioned" {
   assert {
     condition = (
       jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[1].Action == ["lambda:DeleteFunction"] &&
-      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[1].Resource == "arn:aws:lambda:*:*:function:*:*"
+      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[1].Resource == "arn:aws:lambda:us-east-1:123456789012:function:*:*"
     )
-    error_message = "deletion must require a qualified ARN so a whole function cannot be deleted"
+    error_message = "deletion must require a qualified ARN in this region and account so a whole function cannot be deleted"
   }
 }
 
