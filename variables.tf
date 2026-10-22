@@ -1484,23 +1484,18 @@ variable "existing_attachment_s3_bucket_kms_key_arn" {
 }
 
 variable "external_attachment_s3_bucket_arns" {
-  description = "Opt-in. ARNs of caller-owned S3 buckets that traces link to as external attachments (`s3://` URLs). The API role is granted s3:GetObject on their objects, with no list access, so it can sign downloads for keys a trace names. This module does not create, own, or modify the buckets; a bucket in another account must also grant the API role in its bucket policy. Empty disables the feature (default)."
+  description = "Opt-in. ARNs of caller-owned S3 buckets that hold external attachments (`s3://` URLs). Each ARN must name an exact 3-63-character bucket, or use one trailing `*` after a literal 3-62-character prefix to identify ephemeral buckets (for example, `arn:aws:s3:::example-*`). The API role is granted s3:GetObject on their objects, with no list access, so runGetAttachmentRequest can sign a caller-supplied URL after its organization check. This module does not create, own, or modify the buckets. Same-account buckets are readable through this identity policy, subject to other denies; a bucket in another account must also grant the API role in its bucket policy. Empty disables the feature (default)."
   type        = list(string)
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex("^arn:aws[a-zA-Z-]*:s3:::[a-z0-9*?][a-z0-9.*?-]{1,61}[a-z0-9*?]$", arn))])
-    error_message = "external_attachment_s3_bucket_arns must contain S3 bucket ARNs of the form arn:aws:s3:::<bucket-name>. The bucket name may use IAM wildcards (* and ?)."
-  }
-
-  validation {
-    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex(":::.*[a-z0-9]", arn))])
-    error_message = "external_attachment_s3_bucket_arns bucket names must not consist only of wildcards."
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex("^arn:aws[a-zA-Z-]*:s3:::(?:[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]|[a-z0-9][a-z0-9.-]{2,61}\\*)$", arn))])
+    error_message = "external_attachment_s3_bucket_arns must contain S3 bucket ARNs with either an exact 3-63-character bucket name or a literal 3-62-character prefix followed by one trailing * for ephemeral buckets."
   }
 }
 
 variable "external_attachment_s3_bucket_kms_key_arns" {
-  description = "Opt-in. ARNs of the KMS keys that encrypt the external_attachment_s3_bucket_arns buckets. The API role is granted kms:Decrypt on these keys through S3 only. A key in another account must also grant the API role in its key policy. Leave empty when the buckets use SSE-S3 (AES256)."
+  description = "Opt-in. ARNs of the KMS keys that encrypt the external_attachment_s3_bucket_arns buckets. The API role is granted kms:Decrypt on these keys through S3 only. A `key/*` ARN with a concrete region and account grants every key in that region and account; alias ARNs remain rejected. A key in another account must also grant the API role in its key policy."
   type        = list(string)
   default     = []
 
