@@ -238,10 +238,31 @@ The module does not create these AWS service endpoints inside supplied existing
 VPCs. With `create_vpc = false`, it can still create an S3 endpoint in a separate,
 module-managed quarantine VPC.
 
-Separately, `use_private_gateway_quarantine_proxy` can create an interface endpoint
-in quarantine for the private gateway when both VPCs are module-managed and the
-private gateway is enabled for this path. It uses its endpoint-specific DNS name
-with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+### Quarantine LLM calls through PrivateLink
+
+`use_private_gateway_quarantine_proxy = true` connects Quarantine to the private
+Gateway through an internal NLB and interface endpoint. It supports managed,
+existing, and mixed main/quarantine VPCs using the existing VPC/subnet inputs.
+The default remains `false`; enabling it requires `create_ai_gateway` and
+`enable_quarantine_vpc`. NLB and endpoint charges apply.
+
+Both VPCs must be in the provider's account and region, with three distinct
+private subnets per VPC in matching AZs. The module validates subnet membership
+and AZ coverage. Routes, network ACLs, and DNS remain the caller's responsibility
+for existing VPCs; DNS must resolve the endpoint hostname and network ACLs must
+permit the connection and return traffic.
+
+API ECS receives `http://<vpce-dns>/v1/proxy` unless `quarantine_proxy_url` overrides
+it. Private DNS remains disabled, and `use_global_ai_gateway_origin` skips this
+PrivateLink path. Existing-VPC deployments already using the flag with a manual
+URL will now create PrivateLink resources while retaining that override; set the
+flag to `false` to use only the manual connection.
+
+Existing resource addresses are preserved. Disabling the feature requires a
+reachable fallback. Before downgrading to a version without existing-VPC support,
+disable the feature on the newer version. This covers Quarantine
+LLM calls; other outbound connectivity and external application wiring remain
+separate requirements.
 
 ### Existing ElastiCache subnet group
 

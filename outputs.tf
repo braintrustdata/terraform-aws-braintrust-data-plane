@@ -45,7 +45,7 @@ output "main_vpc_private_route_table_id" {
 
 output "quarantine_gateway_privatelink_service_name" {
   value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
-  description = "VPC endpoint service name for quarantine→private gateway PrivateLink (null unless use_private_gateway_quarantine_proxy with module-managed VPCs). Existing VPC / existing quarantine callers must set quarantine_proxy_url; use this name if you attach a manual interface endpoint."
+  description = "VPC endpoint service name for quarantine→private gateway PrivateLink, using managed or existing VPCs. Null when the module does not create PrivateLink."
 }
 
 output "quarantine_gateway_privatelink_endpoint_dns_name" {
