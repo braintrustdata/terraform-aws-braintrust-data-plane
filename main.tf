@@ -671,7 +671,9 @@ module "loop_runtime_ecs" {
   custom_tags = local.all_custom_tags
 
   # Greenfield both-flags-true: do not roll Loop before gateway ECS is up.
-  depends_on = [module.gateway_ecs]
+  # Pass the gateway service in instead of a module-level depends_on, which
+  # deferred this module's data sources to apply whenever the gateway changed.
+  gateway_service_name = one(module.gateway_ecs[*].service_name)
 }
 
 module "api_ecs" {

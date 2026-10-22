@@ -63,6 +63,17 @@ def check_graph(dot):
     if not dependency_path(graph, loop_service, gateway_service):
         errors.append("Loop must retain its Gateway-before-Loop startup ordering.")
 
+    gateway_nodes = [name for name in graph if "module.gateway_ecs." in name or "module.gateway_ecs " in name]
+    for loop_data in sorted(name for name in graph if "module.loop_runtime_ecs.data." in name):
+        for gateway_node in gateway_nodes:
+            path = dependency_path(graph, loop_data, gateway_node)
+            if path:
+                errors.append(
+                    "Loop data sources must not wait for Gateway, or every Gateway change defers them to apply:\n  "
+                    + "\n  -> ".join(path)
+                )
+                break
+
     if errors:
         raise ValueError("\n\n".join(errors))
 
@@ -79,7 +90,10 @@ def main():
         check_graph(dot)
     except ValueError as error:
         parser.exit(1, f"{error}\n")
-    print("Loop network dependencies: baseline ingress precedes migration; Gateway still precedes Loop.")
+    print(
+        "Loop network dependencies: baseline ingress precedes migration; Gateway still precedes Loop;"
+        " Loop data sources do not wait for Gateway."
+    )
 
 
 if __name__ == "__main__":

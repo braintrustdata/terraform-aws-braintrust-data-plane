@@ -178,6 +178,12 @@ variable "loop_runtime_http_listener_arn" {
   nullable    = true
 }
 
+variable "gateway_service_name" {
+  type        = string
+  description = "Name of the gateway ECS service when one is deployed; orders the Loop runtime ECS service after the gateway reaches steady state."
+  default     = null
+}
+
 variable "sandbox_egress_gateway_target_group_arn" {
   type        = string
   description = "Egress gateway target group for the runtime's port 4002."

@@ -601,6 +601,10 @@ resource "terraform_data" "loop_runtime_http_listener" {
   input = var.loop_runtime_http_listener_arn
 }
 
+resource "terraform_data" "gateway_service" {
+  input = var.gateway_service_name
+}
+
 resource "aws_ecs_service" "loop_runtime" {
   name                              = local.service_name
   cluster                           = var.ecs_cluster_arn
@@ -637,7 +641,7 @@ resource "aws_ecs_service" "loop_runtime" {
     container_port   = local.egress_gateway_port
   }
 
-  depends_on = [terraform_data.loop_runtime_http_listener]
+  depends_on = [terraform_data.loop_runtime_http_listener, terraform_data.gateway_service]
 
   lifecycle {
     ignore_changes = [desired_count]
