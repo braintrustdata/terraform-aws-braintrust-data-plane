@@ -9,7 +9,7 @@
     "name": "Fargate On-Demand vCPU resource count",
     "service_code": "fargate",
     "quota_code": "L-3032A538",
-    "desired_value": 400
+    "desired_value": 500
   },
   {
     "name": "Elastic IP addresses",
