@@ -20,7 +20,7 @@ If you do not already have a dedicated account, work with your infrastructure/pl
 
 ### 4. Add the license key to AWS Secrets Manager
 
-Under the Organization created in the previous step, open **Settings > Data plane > Brainstore configuration** and copy the license key. In the dedicated AWS account and region for this environment, create a Secrets Manager secret named `brainstore-license-key` and store the key as its raw plaintext value, without a JSON key.
+In the organization created in the previous step, open **Settings > Brainstore** and copy the license key. In the dedicated AWS account and region for this environment, create a Secrets Manager secret named `brainstore-license-key` and store the key as its raw plaintext value, without a JSON key.
 
 ### 5. Create the Braintrust management role
 
@@ -71,6 +71,6 @@ The script submits requests to AWS and prints request IDs. Some requests may ope
 
 For each environment, send your Braintrust contact the organization name, AWS account ID, region, management role ARN, External ID, confirmation that the `brainstore-license-key` secret is present, network and endpoint decisions, sizing and capacity profile, and operational contacts. Do not include the license key itself.
 
-### 8. Braintrust deploys and validates the data plane
+### 8. Braintrust deploys the data plane
 
-Braintrust prepares and applies the deployment, then validates data plane health with the customer.
+Braintrust applies the deployment and provides the data plane API URL. If your team created the organization, open **Settings > Data Plane** and enter that URL in the **API URL** field. Braintrust then validates data plane health with you.
