@@ -288,6 +288,9 @@ locals {
       "/crud/base_experiments" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
+      "/dashboard/sections/list" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/dataset-summary" = {
         for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
       }
