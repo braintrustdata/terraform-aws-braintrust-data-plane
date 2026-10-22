@@ -108,4 +108,23 @@ run "ecs_mode_defaults_quarantine_to_cloudfront" {
     condition     = output.quarantine_proxy_url == "https://d111111abcdef8.cloudfront.net/v1/proxy"
     error_message = "ECS mode should default quarantine to the CloudFront /v1/proxy URL"
   }
+
+  assert {
+    condition     = local.effective_api_handler_provisioned_concurrency == 0
+    error_message = "ECS API mode should disable unused API Handler Lambda provisioned concurrency"
+  }
+}
+
+run "lambda_api_mode_keeps_provisioned_concurrency" {
+  command = plan
+
+  variables {
+    enable_ecs_api                      = false
+    api_handler_provisioned_concurrency = 2
+  }
+
+  assert {
+    condition     = local.effective_api_handler_provisioned_concurrency == 2
+    error_message = "Lambda API mode should preserve configured API Handler provisioned concurrency"
+  }
 }
