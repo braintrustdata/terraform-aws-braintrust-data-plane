@@ -562,6 +562,50 @@ locals {
           ]
         })
       }
+      # Serves /v1/project/{project_id}/simulated_user. A literal /v1/project
+      # resource here could shadow /v1/{object_type} for project requests.
+      "/v1/{object_type}/{id}/simulated_user" = {
+        for method in ["get", "options", "post"] : method => merge(local.snippet_api_json_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
+      "/v1/{object_type}/{id}/simulated_user/{simulated_user_id}" = {
+        for method in ["delete", "get", "options", "patch"] : method => merge(local.snippet_api_json_method, {
+          parameters = [
+            {
+              name     = "object_type"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "id"
+              in       = "path"
+              required = true
+              type     = "string"
+            },
+            {
+              name     = "simulated_user_id"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/v1/{object_type}/{id}/summarize" = {
         for method in ["get", "options"] : method => merge(local.snippet_api_json_method, {
           parameters = [
