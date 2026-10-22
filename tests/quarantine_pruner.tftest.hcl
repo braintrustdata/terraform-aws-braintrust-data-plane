@@ -199,9 +199,9 @@ run "role_is_tag_conditioned" {
         "lambda:ListVersionsByFunction",
         "lambda:ListAliases",
       ]) &&
-      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[0].Resource == "*"
+      jsondecode(aws_iam_role_policy.quarantine_pruner_delete_versions[0].policy).Statement[0].Resource == "arn:aws:lambda:us-east-1:123456789012:function:*"
     )
-    error_message = "listing may use any resource, so unqualified ARNs work"
+    error_message = "listing is limited to this region and account, and the pattern also matches unqualified ARNs"
   }
 
   assert {

@@ -152,7 +152,7 @@ resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
           "lambda:ListAliases",
         ]
         Effect   = "Allow"
-        Resource = "*"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:*"
         Condition = {
           StringEquals = {
             "aws:ResourceTag/BraintrustQuarantine" = "true"
