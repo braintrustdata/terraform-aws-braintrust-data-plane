@@ -14,13 +14,13 @@ Use an AWS account dedicated to Braintrust-managed resources only. Do not use an
 
 If you do not already have a dedicated account, work with your infrastructure/platform team to provision one before continuing. You must have full administrative permissions in that account to complete the remaining customer setup steps.
 
-### 3. Create the Braintrust organization and license
+### 3. Set up the Braintrust organization and license
 
-Either Braintrust or the customer can [create the Braintrust organization](https://www.braintrust.dev/docs/admin/organizations#create-an-organization). If the customer creates it, share its name with Braintrust so we can create the corresponding license key.
+[Create a Braintrust organization](https://www.braintrust.dev/docs/admin/organizations#create-an-organization), or ask your Braintrust contact to create one. If you create it, send its name to your contact so they can issue the license key.
 
 ### 4. Add the license key to AWS Secrets Manager
 
-In the matching Braintrust organization, open **Settings > Data plane > Brainstore configuration** and copy the license key. In the dedicated AWS account and region for this environment, create a Secrets Manager secret named `brainstore-license-key` and store the key as its raw plaintext value, without a JSON key.
+Under the Organization created in the previous step, open **Settings > Data plane > Brainstore configuration** and copy the license key. In the dedicated AWS account and region for this environment, create a Secrets Manager secret named `brainstore-license-key` and store the key as its raw plaintext value, without a JSON key.
 
 ### 5. Create the Braintrust management role
 
@@ -69,7 +69,7 @@ The script submits requests to AWS and prints request IDs. Some requests may ope
 
 ### 7. Send Braintrust the deployment handoff
 
-For each environment, provide Braintrust with the organization name, AWS account ID, region, management role ARN, External ID, confirmation that the `brainstore-license-key` secret is present, network and endpoint decisions, sizing and capacity profile, and operational contacts. Do not include the license key itself.
+For each environment, send your Braintrust contact the organization name, AWS account ID, region, management role ARN, External ID, confirmation that the `brainstore-license-key` secret is present, network and endpoint decisions, sizing and capacity profile, and operational contacts. Do not include the license key itself.
 
 ### 8. Braintrust deploys and validates the data plane
 
