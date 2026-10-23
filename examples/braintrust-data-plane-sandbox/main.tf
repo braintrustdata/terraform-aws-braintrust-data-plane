@@ -84,8 +84,8 @@ module "braintrust-data-plane" {
 
   # Single reader and writer, downsized for sandbox.
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
-  # Graviton5 NVMe families include: m9gd, c9gd, r9gd.
-  # Other Graviton NVMe families include: m8gd, c8gd, r8gd, m7gd, c7gd, r7gd.
+  # Compatibility for Graviton5 instances is being validated.
+  # Graviton NVMe families include: m8gd, c8gd, r8gd, m7gd, c7gd, r7gd.
   # Other compatible families include: c5d, m5d, i3, i4i.
   # Families without local storage (e.g., m8g, c8g, r8g, t3, m5, c5) will fail.
   brainstore_instance_count = 1
