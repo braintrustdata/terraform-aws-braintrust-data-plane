@@ -149,6 +149,10 @@ cannot be tagged.
 
 When adding, removing, or renaming variables in the root module's `variables.tf`, update the example `main.tf` files to reflect the change. All examples under `examples/` should remain valid and representative.
 
+### Keep Managed BYOC quota targets above default capacity
+
+`managed-byoc/quota-config.json` sets the quotas requested during onboarding. When you change a Fargate service's default task CPU or max count, or add a Fargate service, recompute the default-scale total. That's each service's max count × task vCPU, with optional services such as Loop runtime turned on. Keep the Fargate On-Demand vCPU target (`L-3032A538`) above that total, with headroom for rolling deployments, which briefly double a service's tasks. Do the same for the EC2 vCPU target (`L-1216C47A`) when Brainstore instance defaults change.
+
 ### `DANGER_`-prefixed variables are production safety toggles
 
 Variables prefixed with `DANGER_` (e.g., `DANGER_disable_database_deletion_protection`) disable production guardrails. Never change their defaults to `true`. They should only appear set to `true` in the sandbox example, with a comment explaining the risk.
