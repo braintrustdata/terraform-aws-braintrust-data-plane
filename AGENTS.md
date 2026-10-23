@@ -34,7 +34,9 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 ### Key architecture concepts
 
-- **Brainstore** has a reader/writer split — separate ASGs, instance types, and scaling. Both require EC2 instances with **local NVMe storage** (e.g., `c8gd`, `c5d`, `m5d`, `i3`, `i4i`). This is a hard requirement enforced by `postcondition` blocks on the `aws_ec2_instance_type` data sources. Generic families (`t3`, `m5`, `c5`) will fail at plan time.
+- **Brainstore** has a reader/writer split — separate ASGs, instance types, and scaling. Both require EC2 instances with **local NVMe storage** (e.g., Graviton4 `m8gd`, `c8gd`, `r8gd`; Graviton3 `m7gd`, `c7gd`, `r7gd`; or `c5d`, `m5d`, `i3`, `i4i`). This is a hard requirement enforced by `postcondition` blocks on the `aws_ec2_instance_type` data sources. Families without local storage (`m8g`, `c8g`, `r8g`, `m7g`, `c7g`, `r7g`, `t3`, `m5`, `c5`) will fail at plan time.
+Compatibility for Graviton5 instances is being validated.
+
 **Quarantine VPC** is a separate VPC for running user-defined functions (scorers, tools) in network isolation. When enabled, a warmup Lambda creates ~30 functions across 9 runtimes **outside Terraform state**.
 - **`deployment_name`** prefixes all resource names. Must be unique per deployment in the same AWS account (max 18 characters).
 

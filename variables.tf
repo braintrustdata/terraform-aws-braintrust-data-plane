@@ -1642,7 +1642,7 @@ variable "brainstore_default" {
 variable "brainstore_instance_type" {
   type        = string
   description = "The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
 variable "brainstore_instance_count" {
@@ -1660,7 +1660,7 @@ variable "brainstore_writer_instance_count" {
 variable "brainstore_writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore writer nodes"
-  default     = "c8gd.8xlarge"
+  default     = "m8gd.8xlarge"
 }
 
 variable "brainstore_automation_writer_instance_count" {
@@ -1672,7 +1672,7 @@ variable "brainstore_automation_writer_instance_count" {
 variable "brainstore_automation_writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore automation writer nodes"
-  default     = "c8gd.8xlarge"
+  default     = "m8gd.8xlarge"
 }
 
 variable "brainstore_extra_env_vars_automation_writer" {
@@ -1942,7 +1942,7 @@ variable "brainstore_fast_reader_instance_count" {
 variable "brainstore_fast_reader_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore fast reader nodes"
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
 variable "brainstore_extra_env_vars_fast_reader" {
