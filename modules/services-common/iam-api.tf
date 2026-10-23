@@ -116,9 +116,9 @@ resource "aws_iam_role_policy" "api_handler_cloudwatch_metrics" {
   })
 }
 
-# Read-only access to caller-owned buckets that traces link to as external
-# attachments, so the attachment endpoint can sign downloads. Object reads only:
-# without list access the role can open just the keys a trace names.
+# Read-only access to caller-owned buckets that hold external attachments. The
+# attachment endpoint signs a download for any s3:// URL an authenticated org
+# member supplies. Object reads only; the role has no list access.
 resource "aws_iam_role_policy" "api_handler_external_attachment_read" {
   count = length(var.external_attachment_s3_bucket_arns) > 0 ? 1 : 0
   name  = "ExternalAttachmentRead"
