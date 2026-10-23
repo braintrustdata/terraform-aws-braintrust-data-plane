@@ -41,6 +41,11 @@ locals {
   quarantine_vpc_private_subnet_1_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_1_id : module.quarantine_vpc[0].private_subnet_1_id) : null
   quarantine_vpc_private_subnet_2_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_2_id : module.quarantine_vpc[0].private_subnet_2_id) : null
   quarantine_vpc_private_subnet_3_id = var.enable_quarantine_vpc ? (var.existing_quarantine_vpc_id != null ? var.existing_quarantine_private_subnet_3_id : module.quarantine_vpc[0].private_subnet_3_id) : null
+  quarantine_vpc_private_subnet_ids = var.enable_quarantine_vpc ? [
+    local.quarantine_vpc_private_subnet_1_id,
+    local.quarantine_vpc_private_subnet_2_id,
+    local.quarantine_vpc_private_subnet_3_id,
+  ] : []
 
   # Database subnet configuration - use custom subnets if provided, otherwise use main VPC private subnets
   database_subnet_ids = var.database_subnet_ids != null ? var.database_subnet_ids : [
@@ -102,9 +107,9 @@ locals {
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
-  # use_global) with module-managed VPCs → else AI Proxy Function URL →
+  # use_global) with managed or existing VPCs → else AI Proxy Function URL →
   # else the CloudFront API URL /v1/proxy once that Function URL is gone.
-  # Quarantine reaches CloudFront through the quarantine VPC NAT gateway.
+  # The CloudFront fallback requires quarantine HTTPS egress (NAT in managed VPCs).
   # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
   # main VPC, and quarantine is not peered to it. Do not build this URL from
   # a request Host header.
