@@ -130,12 +130,19 @@ systemctl enable amazon-cloudwatch-agent
 
 get_secret_value_with_retry() {
   local secret_id="$1"
+  local version_id="$${2:-}"
   local attempt
   local retry_delay
 
   for attempt in 1 2 3 4 5; do
-    if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
-      return 0
+    if [ -n "$version_id" ]; then
+      if aws secretsmanager get-secret-value --secret-id "$secret_id" --version-id "$version_id" --query SecretString --output text; then
+        return 0
+      fi
+    else
+      if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
+        return 0
+      fi
     fi
 
     if [ "$attempt" -eq 5 ]; then
@@ -168,6 +175,11 @@ fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
 %{ endif ~}
 
+# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so user-data changes force refresh)
+if ! REDIS_URL=$(get_secret_value_with_retry "${redis_url_secret_arn}" "${redis_url_secret_version_id}"); then
+  exit 1
+fi
+
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
 BRAINSTORE_VERBOSE=1
@@ -187,8 +199,8 @@ SERVICE_TOKEN_SECRET_KEY=$SERVICE_TOKEN_SECRET_KEY
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
-BRAINSTORE_REDIS_URI=${redis_scheme}://${redis_host}:${redis_port}
-BRAINSTORE_XACT_MANAGER_URI=${redis_scheme}://${redis_host}:${redis_port}
+BRAINSTORE_REDIS_URI=$REDIS_URL
+BRAINSTORE_XACT_MANAGER_URI=$REDIS_URL
 BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 %{ if skip_pg_for_brainstore_objects != "" ~}
 BRAINSTORE_ASYNC_SCORING_OBJECTS=${skip_pg_for_brainstore_objects}

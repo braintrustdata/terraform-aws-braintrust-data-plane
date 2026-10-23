@@ -17,6 +17,9 @@ locals {
   loop_runtime_version_tag = element(reverse(split(":", var.container_image)), 0)
   brainstore_s3_bucket     = var.brainstore_s3_bucket_name
   use_object_store_locks   = var.brainstore_object_store_locks
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
 
   capacity_metric_namespace = "Braintrust/LoopRuntime"
 
@@ -102,13 +105,13 @@ locals {
     [
       { name = "BRAINSTORE_METADATA_URI", valueFrom = var.database_url_secret_arn },
       { name = "BRAINSTORE_WAL_URI", valueFrom = var.database_url_secret_arn },
-      { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = var.redis_url_secret_arn },
-      { name = "BRAINSTORE_REDIS_URI", valueFrom = var.redis_url_secret_arn },
+      { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = local.redis_url_secret_value_from },
+      { name = "BRAINSTORE_REDIS_URI", valueFrom = local.redis_url_secret_value_from },
       { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
       { name = "FUNCTION_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
     ],
     local.use_object_store_locks ? [] : [
-      { name = "BRAINSTORE_LOCKS_URI", valueFrom = var.redis_url_secret_arn },
+      { name = "BRAINSTORE_LOCKS_URI", valueFrom = local.redis_url_secret_value_from },
     ],
   )
 
