@@ -38,7 +38,7 @@ locals {
     } : {},
   )
 
-  datadog_firelens_logs = local.observability_enabled && module.datadog_agent_telemetry.container_logs
+  datadog_firelens_logs = local.observability_enabled
 
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes

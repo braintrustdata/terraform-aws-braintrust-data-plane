@@ -31,7 +31,7 @@ variables {
   monitoring_telemetry                      = "status,metrics,usage,memprof,traces,logs"
 }
 
-run "full_pulse_skips_datadog_agent_telemetry" {
+run "pulse_keeps_independent_container_logs" {
   command = plan
 
   module {
@@ -45,9 +45,9 @@ run "full_pulse_skips_datadog_agent_telemetry" {
   assert {
     condition = (
       [for env in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].environment : env if startswith(env.name, "BRAINSTORE_OTLP_")] == [{ name = "BRAINSTORE_OTLP_HTTP_ENDPOINT", value = "" }, { name = "BRAINSTORE_OTLP_TELEMETRY", value = "metrics,traces" }] &&
-      jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].logConfiguration.logDriver == "awslogs" &&
-      [for container in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions) : container.name] == ["loop-runtime", "datadog-agent"]
+      jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions)[0].logConfiguration.logDriver == "awsfirelens" &&
+      [for container in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions) : container.name] == ["loop-runtime", "log-router", "datadog-agent"]
     )
-    error_message = "With full Pulse, Loop must disable OTLP and FireLens but keep the Datadog agent."
+    error_message = "Loop must suppress overlapping OTLP exports while retaining its independent container logs and Datadog agent."
   }
 }
