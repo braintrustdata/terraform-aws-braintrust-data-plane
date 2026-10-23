@@ -90,6 +90,10 @@ output "task_security_group_id" {
 output "http_url" {
   description = "URL for the API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)."
   value       = local.api_ecs_url
+  depends_on = [
+    aws_lb_listener.api_ecs_http,
+    aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway,
+  ]
 }
 
 output "quarantine_proxy_url" {

@@ -144,6 +144,11 @@ variable "gateway_http_listener_arn" {
   nullable    = true
 }
 
+variable "gateway_url" {
+  type        = string
+  description = "Private gateway URL that callers use after the ECS service reaches steady state."
+}
+
 variable "internal_observability_api_key_secret_arn" {
   type        = string
   description = "Secrets Manager secret ARN containing the internal observability API key."
