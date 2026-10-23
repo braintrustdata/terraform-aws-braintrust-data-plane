@@ -35,6 +35,12 @@ output "monitoring_functions" {
         timeout_seconds = aws_lambda_function.catchup_etl.timeout
       }
     },
+    var.enable_quarantine_pruner ? {
+      quarantine-pruner = {
+        function_name   = aws_lambda_function.quarantine_pruner[0].function_name
+        timeout_seconds = aws_lambda_function.quarantine_pruner[0].timeout
+      }
+    } : {},
   )
 }
 

@@ -264,7 +264,7 @@ locals {
         {
           name           = "log-router"
           essential      = true
-          image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
+          image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:3.5.3"
           user           = "0"
           environment    = []
           mountPoints    = []
