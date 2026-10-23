@@ -106,6 +106,9 @@ module "braintrust-data-plane" {
 
   # Automation writers are optional. Enable only when instructed by Braintrust.
   brainstore_automation_writer_instance_count = 0
+  # Targets apply only when the automation writer pool is enabled.
+  brainstore_automation_writer_target_cpu_utilization    = 70
+  brainstore_automation_writer_target_memory_utilization = 70
 
   ### Redis configuration
   # Reuse a subnet group in the data plane VPC; null creates one (default).
