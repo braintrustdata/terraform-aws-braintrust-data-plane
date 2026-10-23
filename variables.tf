@@ -1484,7 +1484,7 @@ variable "existing_attachment_s3_bucket_kms_key_arn" {
 }
 
 variable "external_attachment_s3_bucket_arns" {
-  description = "Opt-in. ARNs of caller-owned S3 buckets that hold external attachments (`s3://` URLs). Each ARN must name an exact 3-63-character bucket, or use one trailing `*` after a literal 3-62-character prefix to identify ephemeral buckets (for example, `arn:aws:s3:::example-*`). The API role is granted s3:GetObject on their objects, with no list access, so runGetAttachmentRequest can sign a caller-supplied URL after its organization check. This module does not create, own, or modify the buckets. Same-account buckets are readable through this identity policy, subject to other denies; a bucket in another account must also grant the API role in its bucket policy. Empty disables the feature (default)."
+  description = "Opt-in. ARNs of caller-owned S3 buckets that hold external attachments (`s3://` URLs). Each ARN must name an exact 3-63-character bucket, or use one trailing `*` after a literal 3-62-character prefix to identify ephemeral buckets (for example, `arn:aws:s3:::example-*`). The API role is granted s3:GetObject on their objects, with no list access. The attachment endpoint signs a download for any s3:// URL an authenticated org member supplies. This module does not create, own, or modify the buckets. Same-account buckets are readable through this identity policy, subject to other denies; a bucket in another account must also grant the API role in its bucket policy. Empty disables the feature (default)."
   type        = list(string)
   default     = []
 

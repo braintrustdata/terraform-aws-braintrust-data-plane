@@ -27,18 +27,71 @@ run "accepts_ephemeral_bucket_prefix_and_all_keys_in_region_account" {
   }
 }
 
-# The first pattern could span bucket boundaries after the module appends /*;
-# the remaining patterns are not a literal trailing bucket-prefix wildcard.
-run "rejects_unsafe_bucket_wildcard_patterns" {
+run "rejects_embedded_bucket_wildcard" {
   command = plan
 
   variables {
-    external_attachment_s3_bucket_arns = [
-      "arn:aws:s3:::app-*-attachments",
-      "arn:aws:s3:::*-attachments",
-      "arn:aws:s3:::key/prefix-*",
-      "arn:aws:s3:::example-?",
-    ]
+    external_attachment_s3_bucket_arns = ["arn:aws:s3:::app-*-attachments"]
+  }
+
+  expect_failures = [
+    var.external_attachment_s3_bucket_arns,
+  ]
+}
+
+run "rejects_leading_bucket_wildcard" {
+  command = plan
+
+  variables {
+    external_attachment_s3_bucket_arns = ["arn:aws:s3:::*-attachments"]
+  }
+
+  expect_failures = [
+    var.external_attachment_s3_bucket_arns,
+  ]
+}
+
+run "rejects_question_mark_bucket_wildcard" {
+  command = plan
+
+  variables {
+    external_attachment_s3_bucket_arns = ["arn:aws:s3:::example-?"]
+  }
+
+  expect_failures = [
+    var.external_attachment_s3_bucket_arns,
+  ]
+}
+
+run "rejects_one_character_bucket_prefix" {
+  command = plan
+
+  variables {
+    external_attachment_s3_bucket_arns = ["arn:aws:s3:::a*"]
+  }
+
+  expect_failures = [
+    var.external_attachment_s3_bucket_arns,
+  ]
+}
+
+run "rejects_two_character_bucket_prefix" {
+  command = plan
+
+  variables {
+    external_attachment_s3_bucket_arns = ["arn:aws:s3:::ab*"]
+  }
+
+  expect_failures = [
+    var.external_attachment_s3_bucket_arns,
+  ]
+}
+
+run "rejects_all_wildcard_bucket_name" {
+  command = plan
+
+  variables {
+    external_attachment_s3_bucket_arns = ["arn:aws:s3:::***"]
   }
 
   expect_failures = [
