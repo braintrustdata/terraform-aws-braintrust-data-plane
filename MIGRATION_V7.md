@@ -2,7 +2,7 @@
 
 Upgrade this Terraform module **one major version at a time**. See the [README](README.md#major-versions) for the general upgrade policy, and the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the standard process of bumping the module version and applying Terraform.
 
-A new stack that sets nothing gets ECS ingress and the private gateway.
+Starting with version v7, the module will default to running the API and a braintrust ai gateway instance in ECS.
 
 On v6 an omitted `enable_ecs_api` means Lambda. On v7 an omitted `enable_ecs_api` means ECS. Finish the v6 applies before this upgrade so the v7 apply does not move a stack that was still on Lambda. Stacks that follow Stay on Lambda, Gateway off, or Hosted gateway instead skip those applies.
 
