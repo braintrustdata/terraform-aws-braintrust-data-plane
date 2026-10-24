@@ -1,0 +1,185 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DiscoverEksVersions",
+      "Effect": "Allow",
+      "Action": [
+        "eks:ListClusters",
+        "eks:DescribeClusterVersions",
+        "eks:DescribeAddonVersions",
+        "eks:DescribeAddonConfiguration"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTaggedEksCluster",
+      "Effect": "Allow",
+      "Action": "eks:CreateCluster",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "<AWS_REGION>",
+          "eks:authenticationMode": "API"
+        },
+        "StringLike": {
+          "aws:RequestTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
+        },
+        "Bool": {
+          "eks:bootstrapClusterCreatorAdminPermissions": "false"
+        }
+      }
+    },
+    {
+      "Sid": "ManageNamedEksInfrastructure",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeCluster",
+        "eks:DescribeNodegroup",
+        "eks:DescribeAddon",
+        "eks:DescribeUpdate",
+        "eks:ListNodegroups",
+        "eks:ListAddons",
+        "eks:ListUpdates",
+        "eks:ListTagsForResource",
+        "eks:CreateNodegroup",
+        "eks:CreateAddon",
+        "eks:DeleteCluster",
+        "eks:DeleteNodegroup",
+        "eks:DeleteAddon",
+        "eks:UpdateClusterConfig",
+        "eks:UpdateClusterVersion",
+        "eks:UpdateNodegroupConfig",
+        "eks:UpdateNodegroupVersion",
+        "eks:UpdateAddon",
+        "eks:TagResource",
+        "eks:UntagResource"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:nodegroup/<MANAGED_RESOURCE_PREFIX>*/*/*",
+        "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:addon/<MANAGED_RESOURCE_PREFIX>*/*/*"
+      ]
+    },
+    {
+      "Sid": "CreateDeploymentClusterEntry",
+      "Effect": "Allow",
+      "Action": "eks:CreateAccessEntry",
+      "Resource": "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "StringEquals": {
+          "eks:principalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>",
+          "eks:accessEntryType": "STANDARD"
+        },
+        "ForAllValues:StringEquals": {
+          "eks:kubernetesGroups": [
+            "braintrust:deployment"
+          ]
+        },
+        "Null": {
+          "eks:kubernetesGroups": "false",
+          "eks:username": "true"
+        }
+      }
+    },
+    {
+      "Sid": "CreateSupportClusterEntry",
+      "Effect": "Allow",
+      "Action": "eks:CreateAccessEntry",
+      "Resource": "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "StringEquals": {
+          "eks:principalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
+          "eks:accessEntryType": "STANDARD"
+        },
+        "ForAllValues:StringEquals": {
+          "eks:kubernetesGroups": [
+            "braintrust:support"
+          ]
+        },
+        "Null": {
+          "eks:kubernetesGroups": "false",
+          "eks:username": "true"
+        }
+      }
+    },
+    {
+      "Sid": "CreateObserverClusterEntry",
+      "Effect": "Allow",
+      "Action": "eks:CreateAccessEntry",
+      "Resource": "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "StringEquals": {
+          "eks:principalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustObserverRole-<BOOTSTRAP_NAME>",
+          "eks:accessEntryType": "STANDARD"
+        },
+        "ForAllValues:StringEquals": {
+          "eks:kubernetesGroups": [
+            "braintrust:observer"
+          ]
+        },
+        "Null": {
+          "eks:kubernetesGroups": "false",
+          "eks:username": "true"
+        }
+      }
+    },
+    {
+      "Sid": "ManageFixedEntryMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeAccessEntry",
+        "eks:DeleteAccessEntry",
+        "eks:ListAssociatedAccessPolicies",
+        "eks:TagResource",
+        "eks:UntagResource"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:access-entry/<MANAGED_RESOURCE_PREFIX>*/*/*/*/*",
+      "Condition": {
+        "StringEquals": {
+          "eks:principalArn": [
+            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>",
+            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
+            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustObserverRole-<BOOTSTRAP_NAME>"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ListManagedClusterEntries",
+      "Effect": "Allow",
+      "Action": "eks:ListAccessEntries",
+      "Resource": "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "PassEksClusterRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "eks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "CreateEksServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "eks.amazonaws.com",
+            "eks-nodegroup.amazonaws.com"
+          ]
+        }
+      }
+    }
+  ]
+}

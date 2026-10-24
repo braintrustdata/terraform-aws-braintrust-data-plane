@@ -1,0 +1,246 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadAndWriteTerraformState",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*"
+    },
+    {
+      "Sid": "DeleteOnlyTerraformLockFiles",
+      "Effect": "Allow",
+      "Action": "s3:DeleteObject",
+      "Resource": "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*.tflock"
+    },
+    {
+      "Sid": "ReadBootstrapBucketMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
+        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>"
+      ]
+    },
+    {
+      "Sid": "ListTerraformStatePrefix",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "braintrust-byoc/<BOOTSTRAP_NAME>/*"
+        }
+      }
+    },
+    {
+      "Sid": "WriteOperationLogs",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>/braintrust-byoc/operations/<BOOTSTRAP_NAME>/*"
+    },
+    {
+      "Sid": "ListOperationLogPrefix",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "braintrust-byoc/operations/<BOOTSTRAP_NAME>/*"
+        }
+      }
+    },
+    {
+      "Sid": "ReadDeploymentArtifacts",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::<BRAINTRUST_ARTIFACT_BUCKET_NAME>",
+        "arn:aws:s3:::<BRAINTRUST_ARTIFACT_BUCKET_NAME>/*"
+      ]
+    },
+    {
+      "Sid": "ManagePrefixedBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:DeleteBucketPolicy",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketAcl",
+        "s3:GetBucketCORS",
+        "s3:GetBucketLocation",
+        "s3:GetBucketLogging",
+        "s3:GetBucketNotification",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketPolicyStatus",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketWebsite",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:ListBucket",
+        "s3:ListBucketVersions",
+        "s3:PutBucketCORS",
+        "s3:PutBucketLogging",
+        "s3:PutBucketNotification",
+        "s3:PutBucketObjectLockConfiguration",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketRequestPayment",
+        "s3:PutBucketTagging",
+        "s3:PutBucketVersioning",
+        "s3:PutBucketWebsite",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutLifecycleConfiguration",
+        "s3:PutReplicationConfiguration",
+        "s3:GetBucketAbac",
+        "s3:PutBucketAbac",
+        "s3:TagResource",
+        "s3:UntagResource",
+        "s3:ListTagsForResource"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:s3:::<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "ManagePrefixedSecrets",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CancelRotateSecret",
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DeleteResourcePolicy",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetResourcePolicy",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:ListSecretVersionIds",
+        "secretsmanager:PutResourcePolicy",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:RestoreSecret",
+        "secretsmanager:RotateSecret",
+        "secretsmanager:TagResource",
+        "secretsmanager:UntagResource",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:UpdateSecretVersionStage"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:secretsmanager:<AWS_REGION>:<AWS_ACCOUNT_ID>:secret:<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "ReadLicenseSecret",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "<LICENSE_SECRET_ARN>"
+    },
+    {
+      "Sid": "ReadSecretContext",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetRandomPassword",
+        "secretsmanager:ListSecrets"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "UseLambdaConfigKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
+      "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
+        },
+        "StringEquals": {
+          "kms:ViaService": "lambda.<AWS_REGION>.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "UseManagedSecretsKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:kms:<AWS_REGION>:<AWS_ACCOUNT_ID>:key/*",
+      "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*",
+          "kms:EncryptionContext:SecretARN": "arn:<AWS_PARTITION>:secretsmanager:<AWS_REGION>:<AWS_ACCOUNT_ID>:secret:<MANAGED_RESOURCE_PREFIX>*"
+        },
+        "StringEquals": {
+          "kms:ViaService": "secretsmanager.<AWS_REGION>.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "DecryptLicenseSecret",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "<LICENSE_SECRET_KMS_KEY_ARN>",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "secretsmanager.<AWS_REGION>.amazonaws.com",
+          "kms:EncryptionContext:SecretARN": "<LICENSE_SECRET_ARN>"
+        }
+      }
+    },
+    {
+      "Sid": "UseTerraformStateKeyThroughS3",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "<STATE_KMS_KEY_ARN>",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "s3.<AWS_REGION>.amazonaws.com"
+        },
+        "StringLike": {
+          "kms:EncryptionContext:aws:s3:arn": "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*"
+        }
+      }
+    },
+    {
+      "Sid": "UseOperationLogKeyThroughS3",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "<OPERATION_LOG_KMS_KEY_ARN>",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "s3.<AWS_REGION>.amazonaws.com"
+        },
+        "StringLike": {
+          "kms:EncryptionContext:aws:s3:arn": "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>/braintrust-byoc/operations/<BOOTSTRAP_NAME>/*"
+        }
+      }
+    }
+  ]
+}
