@@ -85,7 +85,7 @@ data "aws_iam_policy_document" "s3_vpc_endpoint" {
   # Amazon-owned buckets needed when restricted:
   # - ECR starport: private ECR layer pulls (defaults use public.ecr.aws over NAT/CloudFront;
   #   this covers private ECR / custom container_image overrides).
-  # - CloudWatch agent: Brainstore user-data .deb from s3.amazonaws.com/amazoncloudwatch-agent/...
+  # - CloudWatch agent: regional Brainstore download; keep the global bucket for older launch templates.
   dynamic "statement" {
     for_each = local.s3_vpc_endpoint_restricted ? [1] : []
     content {
@@ -104,10 +104,13 @@ data "aws_iam_policy_document" "s3_vpc_endpoint" {
   dynamic "statement" {
     for_each = local.s3_vpc_endpoint_restricted ? [1] : []
     content {
-      sid       = "AllowCloudWatchAgentBucket"
-      effect    = "Allow"
-      actions   = ["s3:GetObject"]
-      resources = ["arn:aws:s3:::amazoncloudwatch-agent/*"]
+      sid     = "AllowCloudWatchAgentBucket"
+      effect  = "Allow"
+      actions = ["s3:GetObject"]
+      resources = [
+        "arn:aws:s3:::amazoncloudwatch-agent/*",
+        "arn:aws:s3:::amazoncloudwatch-agent-${data.aws_region.current.region}/*",
+      ]
 
       principals {
         type        = "*"
