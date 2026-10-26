@@ -36,6 +36,10 @@ output "gateway_http_listener_arn" {
 output "gateway_url" {
   description = "Private in-VPC gateway URL for GATEWAY_URL on api-ts services"
   value       = "http://${aws_lb.gateway.dns_name}"
+  depends_on = [
+    aws_security_group_rule.gateway_alb_ingress_from_authorized_security_groups,
+    aws_vpc_security_group_ingress_rule.gateway_alb_ingress_from_loop_runtime_security_groups,
+  ]
 }
 
 output "gateway_cloudfront_vpc_origin_ingress_rule_id" {

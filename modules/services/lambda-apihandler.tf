@@ -138,6 +138,7 @@ resource "aws_lambda_function" "api_handler" {
       local.api_fast_reader_env_vars,
       local.api_handler_specific_env_vars,
       var.extra_env_vars.APIHandler,
+      var.gateway_url != null ? { GATEWAY_URL = var.gateway_url } : {},
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.api_handler_base_function_name
         DD_LAMBDA_HANDLER = local.api_handler_original_handler
