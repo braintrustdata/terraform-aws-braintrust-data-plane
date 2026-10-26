@@ -545,7 +545,7 @@ module "gateway_ecs" {
   gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
   gateway_url                 = module.gateway_alb[0].gateway_url
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
-    BRAINTRUST_API_URL = local.internal_api_url
+    OVERRIDE_BRAINTRUST_API_URL = local.internal_api_url
   } : {})
   custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn

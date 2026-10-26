@@ -29,10 +29,10 @@ locals {
   )
   redis_scheme = var.use_redis_replication_group ? "rediss" : "redis"
   base_env_vars = merge({
-    GATEWAY_ENV        = "production"
-    GATEWAY_REGION     = data.aws_region.current.region
-    BRAINTRUST_APP_URL = var.braintrust_app_url
-    BRAINTRUST_API_URL = var.braintrust_api_url
+    GATEWAY_ENV                 = "production"
+    GATEWAY_REGION              = data.aws_region.current.region
+    BRAINTRUST_APP_URL          = var.braintrust_app_url
+    OVERRIDE_BRAINTRUST_API_URL = var.braintrust_api_url
 
     COMPLETIONS_CACHE_REDIS_URL = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
     AUTH_CACHE_REDIS_URL        = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
