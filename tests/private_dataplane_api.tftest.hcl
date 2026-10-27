@@ -166,13 +166,23 @@ run "public_api_has_no_private_callback_listener" {
   }
 
   assert {
-    condition     = length(aws_lb_listener.api_ecs_internal) == 0 && length(aws_lb_listener_rule.alb_internal_path_routes) == 0 && length(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups) == 0 && length(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_loop_runtime) == 0
+    condition     = length(aws_lb_target_group.private_gateway) == 0 && length(aws_lb_target_group.private_loop_runtime) == 0 && length(aws_lb_listener_rule.private_gateway) == 0 && length(aws_lb_listener_rule.private_loop_runtime) == 0 && length(aws_lb_listener.api_ecs_internal) == 0 && length(aws_lb_listener_rule.alb_internal_path_routes) == 0 && length(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups) == 0 && length(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_loop_runtime) == 0
     error_message = "The default mode must omit private callback resources."
   }
 
   assert {
     condition     = length(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront) == 1 && output.internal_url == null
     error_message = "The default mode must retain CloudFront admission and omit the private callback URL."
+  }
+
+  assert {
+    condition = (
+      contains(keys(aws_lb_listener_rule.alb_path_routes), "ANY:/v1/proxy/chat/completions")
+      && contains(keys(aws_lb_listener_rule.alb_path_routes), "ANY:/v1/proxy/responses")
+      && length(aws_lb_listener_rule.private_internal_gateway) == 0
+      && length(aws_lb_listener_rule.private_internal_loop_runtime) == 0
+    )
+    error_message = "Public mode must retain the background API proxy routes and omit internal service routes."
   }
 }
 
@@ -212,5 +222,115 @@ run "private_ssm_url_uses_aws_dns_without_customer_dns" {
   assert {
     condition     = output.http_url == "https://api.example.internal"
     error_message = "The customer URL must remain HTTPS when callbacks use the internal HTTP listener."
+  }
+}
+
+run "private_listeners_bypass_api_proxies" {
+  command = apply
+
+  plan_options {
+    target = [aws_lb_listener_rule.private_gateway, aws_lb_listener_rule.private_loop_runtime, aws_lb_listener_rule.private_internal_gateway, aws_lb_listener_rule.private_internal_loop_runtime, aws_lb_listener_rule.alb_path_routes, aws_lb_listener_rule.alb_internal_path_routes]
+  }
+
+  module {
+    source = "./modules/api-ecs"
+  }
+
+  variables {
+    enable_private_dataplane = true
+    enable_loop_runtime      = true
+  }
+
+  override_resource {
+    target = aws_lb_target_group.private_gateway[0]
+    values = {
+      arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/gateway/2222222222222222"
+    }
+  }
+
+  override_resource {
+    target = aws_lb_target_group.private_loop_runtime[0]
+    values = {
+      arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/loop/3333333333333333"
+    }
+  }
+
+  assert {
+    condition = (
+      one(aws_lb_listener_rule.private_gateway[0].condition).path_pattern[0].values == toset(["/v1/proxy", "/v1/proxy/*"])
+      && aws_lb_listener_rule.private_gateway[0].action[0].target_group_arn == aws_lb_target_group.private_gateway[0].arn
+      && alltrue([for rule in aws_lb_listener_rule.alb_path_routes : aws_lb_listener_rule.private_gateway[0].priority < rule.priority])
+    )
+    error_message = "All gateway paths must bypass API targets."
+  }
+
+  assert {
+    condition = (
+      one(aws_lb_listener_rule.private_loop_runtime[0].condition).path_pattern[0].values == toset(["/loop/runtime", "/loop/runtime/*"])
+      && aws_lb_listener_rule.private_loop_runtime[0].action[0].target_group_arn == aws_lb_target_group.private_loop_runtime[0].arn
+      && alltrue([for rule in aws_lb_listener_rule.alb_path_routes : aws_lb_listener_rule.private_loop_runtime[0].priority < rule.priority])
+    )
+    error_message = "All Loop paths must bypass API targets without a method condition."
+  }
+
+  assert {
+    condition = (
+      aws_lb_target_group.private_gateway[0].port == 8080
+      && aws_lb_target_group.private_gateway[0].target_type == "ip"
+      && aws_lb_target_group.private_gateway[0].health_check[0].path == "/health"
+      && aws_lb_target_group.private_loop_runtime[0].port == 4001
+      && aws_lb_target_group.private_loop_runtime[0].target_type == "ip"
+      && aws_lb_target_group.private_loop_runtime[0].health_check[0].path == "/health/liveness"
+      && length(aws_lb_listener_rule.private_gateway[0].condition) == 1
+      && length(aws_lb_listener_rule.private_loop_runtime[0].condition) == 1
+    )
+    error_message = "Direct routes must use task ports, service health paths, and path conditions only."
+  }
+
+  assert {
+    condition = (
+      aws_lb_listener_rule.private_internal_gateway[0].condition == aws_lb_listener_rule.private_gateway[0].condition
+      && aws_lb_listener_rule.private_internal_gateway[0].action == aws_lb_listener_rule.private_gateway[0].action
+      && aws_lb_listener_rule.private_internal_gateway[0].priority == aws_lb_listener_rule.private_gateway[0].priority
+      && aws_lb_listener_rule.private_internal_loop_runtime[0].condition == aws_lb_listener_rule.private_loop_runtime[0].condition
+      && aws_lb_listener_rule.private_internal_loop_runtime[0].action == aws_lb_listener_rule.private_loop_runtime[0].action
+      && aws_lb_listener_rule.private_internal_loop_runtime[0].priority == aws_lb_listener_rule.private_loop_runtime[0].priority
+      && aws_lb_listener_rule.private_internal_gateway[0].listener_arn == aws_lb_listener.api_ecs_internal[0].arn
+      && aws_lb_listener_rule.private_internal_loop_runtime[0].listener_arn == aws_lb_listener.api_ecs_internal[0].arn
+    )
+    error_message = "Both private listeners must route gateway and Loop requests directly to the same service targets."
+  }
+
+  assert {
+    condition = alltrue([
+      for rules in [aws_lb_listener_rule.alb_path_routes, aws_lb_listener_rule.alb_internal_path_routes] :
+      !contains(keys(rules), "ANY:/v1/proxy/chat/completions") && !contains(keys(rules), "ANY:/v1/proxy/responses")
+    ])
+    error_message = "Private listeners must omit redundant proxy routes to the background API."
+  }
+}
+
+run "private_mode_without_loop_omits_loop_targets" {
+  command = plan
+
+  module {
+    source = "./modules/api-ecs"
+  }
+
+  variables {
+    enable_private_dataplane = true
+    enable_loop_runtime      = false
+  }
+
+  assert {
+    condition = (
+      length(aws_lb_target_group.private_gateway) == 1
+      && length(aws_lb_listener_rule.private_gateway) == 1
+      && length(aws_lb_target_group.private_loop_runtime) == 0
+      && length(aws_lb_listener_rule.private_loop_runtime) == 0
+      && length(aws_lb_listener_rule.private_internal_loop_runtime) == 0
+      && length(aws_lb_listener_rule.private_internal_gateway) == 1
+    )
+    error_message = "Private mode must retain gateway routes and omit disabled Loop resources."
   }
 }

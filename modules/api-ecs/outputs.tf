@@ -130,3 +130,15 @@ output "cloudwatch_log_groups" {
     braintrust_api_background = aws_cloudwatch_log_group.braintrust_api_background.name
   }
 }
+
+output "private_gateway_target_group_arn" {
+  description = "Target group for direct gateway access through the customer listener."
+  value       = one(aws_lb_target_group.private_gateway[*].arn)
+  depends_on  = [aws_lb_listener_rule.private_gateway]
+}
+
+output "private_loop_runtime_target_group_arn" {
+  description = "Target group for direct Loop access through the customer listener."
+  value       = one(aws_lb_target_group.private_loop_runtime[*].arn)
+  depends_on  = [aws_lb_listener_rule.private_loop_runtime]
+}

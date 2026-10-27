@@ -56,7 +56,7 @@ locals {
     "${try(route.method, "ANY")}:${route.path}" => merge(
       { method = null },
       route,
-    )
+    ) if !var.enable_private_dataplane || !contains(["/v1/proxy/chat/completions", "/v1/proxy/responses"], route.path)
   }
 }
 
@@ -116,6 +116,86 @@ resource "aws_lb_listener_rule" "alb_internal_path_routes" {
   condition {
     path_pattern {
       values = [each.value.path]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_gateway" {
+  count = var.enable_private_dataplane ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_http.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_gateway[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/v1/proxy", "/v1/proxy/*"]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_loop_runtime" {
+  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_http.arn
+  priority     = 20
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_loop_runtime[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/loop/runtime", "/loop/runtime/*"]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_internal_gateway" {
+  count = var.enable_private_dataplane ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_internal[0].arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_gateway[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/v1/proxy", "/v1/proxy/*"]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_internal_loop_runtime" {
+  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_internal[0].arn
+  priority     = 20
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_loop_runtime[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/loop/runtime", "/loop/runtime/*"]
     }
   }
 

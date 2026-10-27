@@ -159,7 +159,7 @@ locals {
   } : {}
 
   # Loop requires API ECS and Brainstore. Public mode routes CloudFront traffic
-  # directly to Loop. Private mode uses the API HTTP and WebSocket proxies.
+  # directly to Loop. Private mode routes the API ALB directly to Loop tasks.
   create_loop_runtime = local.create_ecs_api && var.enable_loop_runtime
   loop_runtime_authorized_security_groups = local.create_loop_runtime ? {
     "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
@@ -544,6 +544,12 @@ module "gateway_ecs" {
   alb_security_group_id       = module.gateway_alb[0].gateway_alb_security_group_id
   gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
   gateway_url                 = module.gateway_alb[0].gateway_url
+  additional_target_group_arns = var.enable_private_dataplane ? {
+    "API" = module.api_ecs[0].private_gateway_target_group_arn
+  } : {}
+  authorized_security_groups = var.enable_private_dataplane ? {
+    "API" = module.api_ecs[0].alb_security_group_id
+  } : {}
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
     OVERRIDE_BRAINTRUST_API_URL = local.internal_api_url
   } : {})
@@ -641,6 +647,12 @@ module "loop_runtime_ecs" {
   target_group_arn               = module.loop_runtime_alb[0].loop_runtime_target_group_arn
   alb_security_group_id          = module.loop_runtime_alb[0].loop_runtime_alb_security_group_id
   loop_runtime_http_listener_arn = module.loop_runtime_alb[0].loop_runtime_http_listener_arn
+  additional_target_group_arns = var.enable_private_dataplane ? {
+    "API" = module.api_ecs[0].private_loop_runtime_target_group_arn
+  } : {}
+  authorized_security_groups = var.enable_private_dataplane ? {
+    "API" = module.api_ecs[0].alb_security_group_id
+  } : {}
 
   sandbox_egress_gateway_target_group_arn = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_target_group_arn
   sandbox_egress_gateway_authorized_security_groups = {
@@ -797,6 +809,7 @@ module "api_ecs" {
   } : {}
 
   enable_private_dataplane = var.enable_private_dataplane
+  enable_loop_runtime      = local.create_loop_runtime
   internal_authorized_security_groups = {
     "API"        = module.services_common.api_security_group_id
     "Brainstore" = module.services_common.brainstore_instance_security_group_id

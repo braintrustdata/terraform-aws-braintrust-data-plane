@@ -118,8 +118,8 @@ https://braintrust-api.example.com
 | Traffic | Private path |
 | --- | --- |
 | Customer API requests | Customer HTTPS hostname → API ALB → API, ingest, or background service |
-| Customer LLM requests | Customer HTTPS hostname → API → private AI gateway |
-| Loop HTTP, SSE, and terminal WebSockets | Customer HTTPS hostname → API proxy → Loop ALB |
+| Customer LLM requests | Customer HTTPS hostname → API ALB → private AI gateway tasks |
+| Loop HTTP, SSE, and terminal WebSockets | Customer HTTPS hostname → API ALB → Loop tasks |
 | Brainstore, gateway, and Loop API callbacks | ALB AWS hostname on HTTP port 8000 → API services |
 | Quarantine LLM requests | Quarantine interface endpoint → internal NLB → private gateway ALB |
 
@@ -127,7 +127,10 @@ Service callbacks use the ALB AWS hostname on HTTP port 8000 through explicit se
 They do not depend on the customer certificate or endpoint DNS record.
 Application authentication still applies.
 
-Loop requests pass through the API proxy and consume API service capacity.
+Both listeners route `/v1/proxy` and `/v1/proxy/*` directly to gateway tasks.
+Both listeners route `/loop/runtime` and `/loop/runtime/*` directly to Loop tasks when Loop is enabled.
+These routes accept all HTTP methods and support WebSocket upgrades and SSE.
+They take priority over the API service routes and preserve each request path.
 Loop model requests use the private AI gateway directly.
 
 Private mode automatically creates the quarantine PrivateLink path when quarantine is enabled.

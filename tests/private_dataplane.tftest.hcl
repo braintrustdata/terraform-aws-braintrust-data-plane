@@ -97,11 +97,14 @@ run "private_callbacks_use_internal_api_and_gateway_urls" {
   override_module {
     target = module.api_ecs[0]
     outputs = {
-      internal_url              = "http://internal-api.us-east-1.elb.amazonaws.com:8000"
-      http_url                  = "https://api.example.internal"
-      url_ssm_parameter_version = 1
-      monitoring_targets        = {}
-      cloudwatch_log_groups     = {}
+      alb_security_group_id                 = "sg-44444444444444444"
+      private_gateway_target_group_arn      = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/customer-gateway/4444444444444444"
+      private_loop_runtime_target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/customer-loop/5555555555555555"
+      internal_url                          = "http://internal-api.us-east-1.elb.amazonaws.com:8000"
+      http_url                              = "https://api.example.internal"
+      url_ssm_parameter_version             = 1
+      monitoring_targets                    = {}
+      cloudwatch_log_groups                 = {}
     }
   }
 

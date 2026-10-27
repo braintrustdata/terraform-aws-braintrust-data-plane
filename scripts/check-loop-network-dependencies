@@ -139,6 +139,15 @@ def check_graph(dot):
     if dependency_path(graph, api_parameter, gateway_service):
         errors.append("Brainstore API parameter must not wait for the gateway service.")
 
+    for service, route in [("gateway", "private_gateway"), ("loop_runtime", "private_loop_runtime")]:
+        ecs_service = node(f"module.{service}_ecs.aws_ecs_service.{service}")
+        target_group = node(f"module.api_ecs.output.{route}_target_group_arn")
+        listener_rule = node(f"module.api_ecs.aws_lb_listener_rule.{route}")
+        task_ingress = node(f"module.{service}_ecs.aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups")
+        for caller, dependency in [(ecs_service, target_group), (target_group, listener_rule), (ecs_service, task_ingress)]:
+            if not dependency_path(graph, caller, dependency):
+                errors.append(f"Direct ingress must precede ECS registration: {caller} -> {dependency}")
+
     if errors:
         raise ValueError("\n\n".join(errors))
 

@@ -4,6 +4,12 @@ variable "enable_private_dataplane" {
   default     = false
 }
 
+variable "enable_loop_runtime" {
+  type        = bool
+  description = "Create direct Loop routes on the customer listener in private mode."
+  default     = false
+}
+
 variable "internal_authorized_security_groups" {
   type        = map(string)
   description = "Service security groups that can access the internal HTTP listener."

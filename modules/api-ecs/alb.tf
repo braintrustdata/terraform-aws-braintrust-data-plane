@@ -247,3 +247,53 @@ resource "aws_ssm_parameter" "api_url" {
     aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups,
   ]
 }
+
+resource "aws_lb_target_group" "private_gateway" {
+  count = var.enable_private_dataplane ? 1 : 0
+
+  name        = "${var.deployment_name}-api-gateway"
+  port        = 8080
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  deregistration_delay = var.target_group_deregistration_delay_seconds
+
+  health_check {
+    path                = "/health"
+    matcher             = "200"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 10
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-api-gateway"
+  }, local.common_tags)
+}
+
+resource "aws_lb_target_group" "private_loop_runtime" {
+  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+
+  name        = "${var.deployment_name}-api-loop"
+  port        = 4001
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  deregistration_delay = var.target_group_deregistration_delay_seconds
+
+  health_check {
+    path                = "/health/liveness"
+    matcher             = "200-399"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 10
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-api-loop"
+  }, local.common_tags)
+}

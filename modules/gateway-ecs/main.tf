@@ -223,6 +223,18 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   security_group_id        = aws_security_group.task.id
 }
 
+resource "aws_vpc_security_group_ingress_rule" "task_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.container_port
+  to_port                      = local.container_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow inbound traffic from ${each.key}."
+  tags                         = local.common_tags
+}
+
 resource "aws_security_group_rule" "task_egress_all" {
   type              = "egress"
   from_port         = 0
@@ -417,13 +429,26 @@ resource "aws_ecs_service" "gateway" {
     assign_public_ip = false
   }
 
+  dynamic "load_balancer" {
+    for_each = var.additional_target_group_arns
+
+    content {
+      target_group_arn = load_balancer.value
+      container_name   = local.container_name
+      container_port   = local.container_port
+    }
+  }
+
   load_balancer {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
     container_port   = local.container_port
   }
 
-  depends_on = [terraform_data.gateway_http_listener]
+  depends_on = [
+    terraform_data.gateway_http_listener,
+    aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups,
+  ]
 
   lifecycle {
     ignore_changes = [desired_count]

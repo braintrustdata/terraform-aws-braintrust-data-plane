@@ -382,3 +382,15 @@ variable "diagnostics_transcript_log_group_name" {
     error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
   }
 }
+
+variable "additional_target_group_arns" {
+  type        = map(string)
+  description = "Additional target groups for the application port, keyed by load balancer name."
+  default     = {}
+}
+
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Additional load balancer security groups that can access the application port."
+  default     = {}
+}
