@@ -280,10 +280,36 @@ The module does not create these AWS service endpoints inside supplied existing
 VPCs. With `create_vpc = false`, it can still create an S3 endpoint in a separate,
 module-managed quarantine VPC.
 
-Separately, `use_private_gateway_quarantine_proxy` can create an interface endpoint
-in quarantine for the private gateway when both VPCs are module-managed and the
-private gateway is enabled for this path. It uses its endpoint-specific DNS name
-with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+### Quarantine LLM calls through PrivateLink
+
+`use_private_gateway_quarantine_proxy = true` connects Quarantine to the private
+Gateway through an internal NLB and interface endpoint. It supports managed,
+existing, and mixed main/quarantine VPCs using the existing VPC/subnet inputs.
+The default remains `false`. Setting it to `true` requires `create_ai_gateway`;
+creating the path also requires `enable_quarantine_vpc`. With quarantine disabled,
+an explicit `quarantine_proxy_url` is required unless the global origin is enabled.
+External EKS deployments must leave this flag `false`; Helm owns their Gateway.
+NLB and endpoint charges apply when the path is created.
+
+For PrivateLink, both VPCs must be in the provider's account and region, with
+three distinct private subnets per VPC in matching AZs. The module validates
+subnet membership and AZ coverage. Routes, network ACLs, and DNS remain the caller's responsibility
+for existing VPCs; DNS must resolve the endpoint hostname and network ACLs must
+permit the connection and return traffic.
+
+When PrivateLink is created, API ECS receives `http://<vpce-dns>/v1/proxy` unless
+`quarantine_proxy_url` overrides it. Private DNS remains disabled, and
+`use_global_ai_gateway_origin` skips this path. With quarantine enabled and the
+global origin disabled, existing-VPC deployments already using the flag with a
+manual URL will now create PrivateLink resources while retaining that override;
+set the flag to `false` to use only the manual connection.
+
+Existing resource addresses are preserved. Disabling the feature requires a
+reachable fallback for continued LLM connectivity. Deployments using PrivateLink
+with existing VPCs should disable the feature on the newer version before
+downgrading to a version without that support. This covers Quarantine
+LLM calls; other outbound connectivity and external application wiring remain
+separate requirements.
 
 ### Existing ElastiCache subnet group
 

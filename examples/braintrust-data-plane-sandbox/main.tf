@@ -122,10 +122,12 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # Opt in to wire quarantine → private gateway via PrivateLink
-  # (http://<vpce-dns>/v1/proxy). Default false. Requires create_ai_gateway
-  # and module-managed VPCs (or quarantine_proxy_url). Existing VPC without
-  # an override fails apply, except the global-origin no-op.
+  # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
+  # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
+  # may each be managed or existing, with private subnets in matching AZs.
+  # API ECS receives the URL. External EKS requires this flag to remain false.
+  # An explicit quarantine_proxy_url wins without suppressing resource creation.
+  # The global gateway origin skips this path; see the variable for exceptions.
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 
