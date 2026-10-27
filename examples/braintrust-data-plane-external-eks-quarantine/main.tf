@@ -129,14 +129,9 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
-  # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
-  # may each be managed or existing, with private subnets in matching AZs.
-  # API ECS receives the URL; external EKS applications need separate wiring.
-  # An explicit quarantine_proxy_url wins without suppressing resource creation.
-  # The global gateway origin skips this path; see the variable for exceptions.
+  # External EKS requires this flag to remain false. Helm owns the Gateway
+  # and proxy URL wiring; Terraform does not create this PrivateLink path.
   # use_private_gateway_quarantine_proxy = false
-  # quarantine_proxy_url                 = null
 
   # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
   # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".

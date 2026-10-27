@@ -153,8 +153,11 @@ run "rejects_duplicate_main_subnets" {
     }
   }
   override_module {
-    target  = module.gateway_ecs[0]
-    outputs = { task_security_group_id = "sg-11111111111111111" }
+    target = module.gateway_ecs[0]
+    outputs = {
+      task_security_group_id = "sg-11111111111111111"
+      gateway_url            = "http://gateway.internal"
+    }
   }
   expect_failures = [data.aws_subnet.quarantine_privatelink_main]
 }
@@ -532,20 +535,13 @@ run "disabled_existing_vpcs_leave_no_privatelink_resources" {
   }
 }
 
-run "external_eks_keeps_application_wiring_external" {
+run "external_eks_rejects_terraform_privatelink" {
   command = plan
   variables {
     use_deployment_mode_external_eks = true
     enable_ecs_api                   = false
-    braintrust_api_url               = "https://api.example.com"
   }
-  assert {
-    condition = (
-      length(aws_vpc_endpoint.quarantine_gateway) == 1 &&
-      length(module.api_ecs) == 0 && output.quarantine_proxy_url == null
-    )
-    error_message = "Preserve the existing explicitly created ECS Gateway path in EKS mode without claiming automatic Helm URL wiring."
-  }
+  expect_failures = [var.use_private_gateway_quarantine_proxy]
 }
 
 run "disable_after_enable" {

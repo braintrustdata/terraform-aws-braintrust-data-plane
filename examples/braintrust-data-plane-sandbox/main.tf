@@ -84,13 +84,15 @@ module "braintrust-data-plane" {
 
   # Single reader and writer, downsized for sandbox.
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
-  # Compatible families include: c8gd, c5d, m5d, i3, i4i.
-  # Generic families (t3, m5, c5) will fail — the instance has no local disk.
+  # Compatibility for Graviton5 instances is being validated.
+  # Graviton NVMe families include: m8gd, c8gd, r8gd, m7gd, c7gd, r7gd.
+  # Other compatible families include: c5d, m5d, i3, i4i.
+  # Families without local storage (e.g., m8g, c8g, r8g, t3, m5, c5) will fail.
   brainstore_instance_count = 1
-  brainstore_instance_type  = "c8gd.xlarge"
+  brainstore_instance_type  = "m8gd.xlarge"
 
   brainstore_writer_instance_count = 1
-  brainstore_writer_instance_type  = "c8gd.xlarge"
+  brainstore_writer_instance_type  = "m8gd.xlarge"
 
   # Disable fast reader and automation writer pools to reduce costs in sandbox.
   brainstore_fast_reader_instance_count       = 0
@@ -123,7 +125,7 @@ module "braintrust-data-plane" {
   # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
   # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
   # may each be managed or existing, with private subnets in matching AZs.
-  # API ECS receives the URL; external EKS applications need separate wiring.
+  # API ECS receives the URL. External EKS requires this flag to remain false.
   # An explicit quarantine_proxy_url wins without suppressing resource creation.
   # The global gateway origin skips this path; see the variable for exceptions.
   # use_private_gateway_quarantine_proxy = false

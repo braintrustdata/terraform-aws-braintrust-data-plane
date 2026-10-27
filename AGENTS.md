@@ -34,7 +34,9 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 ### Key architecture concepts
 
-- **Brainstore** has a reader/writer split — separate ASGs, instance types, and scaling. Both require EC2 instances with **local NVMe storage** (e.g., `c8gd`, `c5d`, `m5d`, `i3`, `i4i`). This is a hard requirement enforced by `postcondition` blocks on the `aws_ec2_instance_type` data sources. Generic families (`t3`, `m5`, `c5`) will fail at plan time.
+- **Brainstore** has a reader/writer split — separate ASGs, instance types, and scaling. Both require EC2 instances with **local NVMe storage** (e.g., Graviton4 `m8gd`, `c8gd`, `r8gd`; Graviton3 `m7gd`, `c7gd`, `r7gd`; or `c5d`, `m5d`, `i3`, `i4i`). This is a hard requirement enforced by `postcondition` blocks on the `aws_ec2_instance_type` data sources. Families without local storage (`m8g`, `c8g`, `r8g`, `m7g`, `c7g`, `r7g`, `t3`, `m5`, `c5`) will fail at plan time.
+Compatibility for Graviton5 instances is being validated.
+
 **Quarantine VPC** is a separate VPC for running user-defined functions (scorers, tools) in network isolation. When enabled, a warmup Lambda creates ~30 functions across 9 runtimes **outside Terraform state**.
 - **`deployment_name`** prefixes all resource names. Must be unique per deployment in the same AWS account (max 18 characters).
 
@@ -149,6 +151,10 @@ cannot be tagged.
 
 When adding, removing, or renaming variables in the root module's `variables.tf`, update the example `main.tf` files to reflect the change. All examples under `examples/` should remain valid and representative.
 
+### Keep Managed BYOC quota targets above default capacity
+
+`managed-byoc/quota-config.json` sets the quotas requested during onboarding. When you change a Fargate service's default task CPU or max count, or add a Fargate service, recompute the default-scale total. That's each service's max count × task vCPU, with optional services such as Loop runtime turned on. Keep the Fargate On-Demand vCPU target (`L-3032A538`) above that total, with headroom for rolling deployments, which briefly double a service's tasks. Do the same for the EC2 vCPU target (`L-1216C47A`) when Brainstore instance defaults change.
+
 ### `DANGER_`-prefixed variables are production safety toggles
 
 Variables prefixed with `DANGER_` (e.g., `DANGER_disable_database_deletion_protection`) disable production guardrails. Never change their defaults to `true`. They should only appear set to `true` in the sandbox example, with a comment explaining the risk.
@@ -199,7 +205,7 @@ Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are m
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
 - Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
 - `create_*` flags own resource lifetime; `enable_*` flags own routing.
-  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false creates that surface again, including a new Function URL hostname. It does not resume a warm standby. A Lambda-mode upgrade only moves state to `[0]`; Terraform moves surviving `[0]` resources back on downgrade. Resources deleted by an ECS-mode apply are created again on downgrade. The default stays false.
+  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false creates that surface again, including a new Function URL hostname. It does not resume a warm standby. A Lambda-mode upgrade only moves state to `[0]`; Terraform moves surviving `[0]` resources back on downgrade. Resources deleted by an ECS-mode apply are created again on downgrade. On v7 the default is true. Set `enable_ecs_api = false` to keep customer traffic on Lambda. On v6 the default was false.
 
 ### Private gateway ALB relocation
 
@@ -209,11 +215,14 @@ Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assu
 
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
-Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
-- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists, so the path is ready before cutover.
+Upgrade an existing deployment with [MIGRATION_V7.md](MIGRATION_V7.md). Finish the v6 applies first.
+
+`enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin` default to `true`. A new stack that sets nothing gets ECS ingress and the private gateway. Set `enable_ecs_api = false` to keep customer traffic on Lambda. The gateway flags still default to `true`, so that is Lambda ingress plus the private gateway. A gateway already built but not enabled must keep `create_ai_gateway = true` and set `enable_ai_gateway` and `use_private_ai_gateway_origin` to `false`. See [MIGRATION_V7.md](MIGRATION_V7.md). On v6 an omitted `enable_ecs_api` means Lambda. On v7 an omitted `enable_ecs_api` means ECS. Existing deployments finish the v6 applies before this upgrade. People who already cut over can leave `enable_ecs_api = true` or drop it.
+
+- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists.
 - **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
 
-Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL` and Loop's hosted/CloudFront proxy URL). Set both true for single-apply wiring on greenfield deployments.
+External EKS ignores `enable_ecs_api` and the gateway flags. Helm owns the gateway.
 
 ### Quarantine LLM proxy URL
 
@@ -311,8 +320,9 @@ The default stays false. With quarantine enabled and the global origin disabled,
 existing-VPC callers already using true with an explicit URL will now create
 PrivateLink resources while retaining that override. False creates no
 PrivateLink resources.
-Global Gateway remains a no-op for PrivateLink. APIHandler Lambda and external
-Helm applications do not receive automatic URL injection from this input.
+Global Gateway remains a no-op for PrivateLink. APIHandler Lambda does not
+receive automatic URL injection from this input. External EKS rejects this
+flag when true; Helm owns the Gateway and its application wiring.
 
 **Cost / scope**: PrivateLink adds an internal NLB (hourly + LCU) and interface
 endpoint hourly/GB charges. This only covers Quarantine LLM connectivity; SDK

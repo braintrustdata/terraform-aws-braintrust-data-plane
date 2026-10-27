@@ -513,3 +513,9 @@ variable "brainstore_deployment_id" {
   type        = string
   default     = null
 }
+
+variable "gateway_url" {
+  description = "Private gateway URL for APIHandler and AIProxy after the gateway reaches steady state. Null preserves caller environment values."
+  type        = string
+  default     = null
+}

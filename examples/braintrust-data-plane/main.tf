@@ -92,17 +92,17 @@ module "braintrust-data-plane" {
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_instance_count = 2
-  brainstore_instance_type  = "c8gd.4xlarge"
+  brainstore_instance_type  = "m8gd.4xlarge"
 
   # The number of Brainstore fast reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_fast_reader_instance_count = 2
-  brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
+  brainstore_fast_reader_instance_type  = "m8gd.4xlarge"
 
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
-  brainstore_writer_instance_type  = "c8gd.8xlarge"
+  brainstore_writer_instance_type  = "m8gd.8xlarge"
 
   # Automation writers are optional. Enable only when instructed by Braintrust.
   brainstore_automation_writer_instance_count = 0
@@ -200,7 +200,7 @@ module "braintrust-data-plane" {
   # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
   # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
   # may each be managed or existing, with private subnets in matching AZs.
-  # API ECS receives the URL; external EKS applications need separate wiring.
+  # API ECS receives the URL. External EKS requires this flag to remain false.
   # An explicit quarantine_proxy_url wins without suppressing resource creation.
   # The global gateway origin skips this path; see the variable for exceptions.
   # use_private_gateway_quarantine_proxy = false
