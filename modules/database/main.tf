@@ -82,6 +82,11 @@ resource "aws_db_parameter_group" "main" {
   }
 
   parameter {
+    name  = "idle_in_transaction_session_timeout"
+    value = "900000"
+  }
+
+  parameter {
     name  = "random_page_cost"
     value = "1"
   }
