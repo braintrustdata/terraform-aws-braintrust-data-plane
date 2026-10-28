@@ -40,14 +40,28 @@ module "braintrust-data-plane" {
   create_ai_gateway        = true
   enable_ai_gateway        = true
 
-  # A future release will support customer-supplied VPCs in private mode.
   create_vpc            = true
   enable_quarantine_vpc = true
 
-  # The customer supplies a certificate in ACM, DNS, and client network connectivity.
+  # Existing VPCs are optional. See this example README for network requirements.
+  # For an existing main VPC, set create_vpc = false and supply these inputs.
+  # existing_vpc_id              = "vpc-11111111111111111"
+  # existing_private_subnet_1_id = "subnet-11111111111111111"
+  # existing_private_subnet_2_id = "subnet-22222222222222222"
+  # existing_private_subnet_3_id = "subnet-33333333333333333"
+  # existing_public_subnet_1_id  = "subnet-77777777777777777"
+
+  # The quarantine VPC choice is independent of the main VPC choice.
+  # existing_quarantine_vpc_id              = "vpc-22222222222222222"
+  # existing_quarantine_private_subnet_1_id = "subnet-44444444444444444"
+  # existing_quarantine_private_subnet_2_id = "subnet-55555555555555555"
+  # existing_quarantine_private_subnet_3_id = "subnet-66666666666666666"
+
+  # The customer must supply a certificate in ACM, DNS, and client network connectivity.
   # The certificate must cover the hostname and exist in the deployment region.
-  braintrust_api_alb_custom_domain      = "braintrust-api.example.com"
-  braintrust_api_alb_certificate_arn    = "arn:aws:acm:us-west-2:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+  braintrust_api_alb_custom_domain   = "braintrust-api.example.com"
+  braintrust_api_alb_certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+  # Access to the ALB is secured by a Security Group and access is controlled with a list of CIDRs or a list of Security Groups
   braintrust_api_authorized_cidr_blocks = ["10.20.0.0/16"]
   # braintrust_api_authorized_security_groups = {
   #   "Client" = "sg-0123456789abcdef0"

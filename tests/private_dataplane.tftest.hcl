@@ -206,30 +206,6 @@ run "rejects_private_mode_with_quarantine_proxy_override" {
   expect_failures = [var.enable_private_dataplane]
 }
 
-run "rejects_private_mode_with_existing_main_vpc" {
-  command = plan
-  variables {
-    create_vpc                   = false
-    existing_vpc_id              = "vpc-12345678"
-    existing_private_subnet_1_id = "subnet-11111111"
-    existing_private_subnet_2_id = "subnet-22222222"
-    existing_private_subnet_3_id = "subnet-33333333"
-    existing_public_subnet_1_id  = "subnet-44444444"
-  }
-  expect_failures = [var.enable_private_dataplane]
-}
-
-run "rejects_private_mode_with_existing_quarantine_vpc" {
-  command = plan
-  variables {
-    existing_quarantine_vpc_id              = "vpc-12345678"
-    existing_quarantine_private_subnet_1_id = "subnet-11111111"
-    existing_quarantine_private_subnet_2_id = "subnet-22222222"
-    existing_quarantine_private_subnet_3_id = "subnet-33333333"
-  }
-  expect_failures = [var.enable_private_dataplane]
-}
-
 run "rejects_private_mode_with_external_eks" {
   command = plan
   variables {

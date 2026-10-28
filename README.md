@@ -45,6 +45,7 @@ All module input variables and outputs are documented inline in the module's Ter
 ### Private data plane
 
 Private mode serves the data plane through an internal API ALB instead of CloudFront.
+It supports module-managed or customer-supplied main and quarantine VPCs, including mixed configurations.
 See the [private data plane example](examples/braintrust-data-plane-private/) for requirements, configuration, and deployment steps.
 
 ### Organization access configuration
@@ -470,8 +471,8 @@ For example, `braintrust/brainstore/<account>/<region>/<bucket>/2026/08/12/...`.
 
 ### Using an Existing VPC
 
-This configuration currently applies to public mode.
-A future release will support customer-supplied main and quarantine VPCs in private mode.
+This configuration applies to public and private modes.
+The [private data plane example](examples/braintrust-data-plane-private/README.md#existing-vpcs) describes quarantine inputs and network requirements.
 
 The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
 

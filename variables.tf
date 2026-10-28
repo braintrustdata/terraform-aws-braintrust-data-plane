@@ -1023,17 +1023,12 @@ variable "braintrust_api_version_override" {
 
 variable "enable_private_dataplane" {
   type        = bool
-  description = "Serve the data plane through the internal API ALB without CloudFront. Requires ECS, the private AI gateway, module-managed VPCs, and a customer hostname and certificate. A future release will support customer-supplied main and quarantine VPCs in private mode. Changes to this setting cause an outage."
+  description = "Private mode serves the data plane through the internal API ALB without CloudFront. It requires ECS, the private AI gateway, and a customer hostname and certificate. It supports module-managed or customer-supplied main and quarantine VPCs. A change to this setting causes an outage."
   default     = false
 
   validation {
     condition     = !var.enable_private_dataplane || (var.enable_ecs_api && var.create_ai_gateway && var.enable_ai_gateway && !var.use_deployment_mode_external_eks)
     error_message = "Private mode requires enable_ecs_api, create_ai_gateway, and enable_ai_gateway. External EKS is not supported."
-  }
-
-  validation {
-    condition     = !var.enable_private_dataplane || (var.create_vpc && (!var.enable_quarantine_vpc || var.existing_quarantine_vpc_id == null))
-    error_message = "Private mode currently requires module-managed main and quarantine VPCs. A future release will support customer-supplied main and quarantine VPCs in private mode."
   }
 
   validation {

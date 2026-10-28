@@ -12,10 +12,35 @@ Private mode requires these settings:
 - `enable_ecs_api = true`.
 - `create_ai_gateway = true`.
 - `enable_ai_gateway = true`.
-- `create_vpc = true`.
 
-Private mode currently requires module-managed main and quarantine VPCs.
-A future release will support customer-supplied VPCs in private mode.
+Private mode supports module-managed VPCs, customer-supplied VPCs, and a mixture of both.
+
+### Existing VPCs
+
+For an existing main VPC, set `create_vpc = false` and supply these inputs:
+
+- `existing_vpc_id`.
+- `existing_private_subnet_1_id`, `existing_private_subnet_2_id`, and `existing_private_subnet_3_id`.
+- `existing_public_subnet_1_id`.
+
+For an existing quarantine VPC, supply these inputs:
+
+- `existing_quarantine_vpc_id`.
+- `existing_quarantine_private_subnet_1_id`, `existing_quarantine_private_subnet_2_id`, and `existing_quarantine_private_subnet_3_id`.
+
+The main and quarantine VPC choices are independent.
+With quarantine enabled, PrivateLink requires three distinct private subnets per VPC in matching availability zones.
+Both VPCs must reside in the deployment account and region.
+The module validates subnet membership and availability zone coverage.
+
+The module creates service security groups and the quarantine PrivateLink resources in the supplied VPCs.
+The caller controls routes, network ACLs, DNS, and access to AWS services and model providers.
+The module does not change routes or DNS controls in supplied VPCs.
+Quarantine DNS must resolve the endpoint hostname, and network ACLs must permit the connection and return traffic.
+
+Private mode controls client ingress.
+It does not remove service egress requirements.
+The [existing VPC configuration](../../README.md#using-an-existing-vpc) describes the standard network requirements.
 
 ### Certificate
 
@@ -41,7 +66,7 @@ It does not provide public network access to the ALB.
 Private DNS also works if every client network can resolve the hostname.
 
 The customer supplies DNS and network connectivity to the API ALB.
-The module does not create a customer VPN, PrivateLink endpoint, VPC peering connection, or transit gateway.
+The module does not create a customer VPN, PrivateLink endpoint, VPC peering connection, or transit gateway attachment.
 The API authorization inputs admit client traffic on HTTPS port 443.
 Security group admission alone does not establish network connectivity.
 
@@ -51,7 +76,7 @@ Security group admission alone does not establish network connectivity.
 2. Request or import its certificate in ACM in the deployment account and region.
 3. Complete any certificate validation before the data plane deployment.
 4. Select nonoverlapping VPC CIDR for the primary VPC and the client networks, if utilizing VPC connections like VPC Peering, Transit Gateway, etc.
-5. Plan client connectivity to the module-managed VPC.
+5. Plan client connectivity to the main VPC.
 
 The default Loop sandbox CIDR is `10.255.0.0/16` when Loop is enabled.
 All VPC CIDRs must fit the customer network design.

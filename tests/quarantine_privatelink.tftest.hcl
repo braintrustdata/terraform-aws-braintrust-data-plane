@@ -559,3 +559,136 @@ run "disable_after_enable" {
     error_message = "Disabling must remove the path and restore the ECS-mode CloudFront fallback."
   }
 }
+
+# Mock applies resolve endpoint URLs after private mode changes resource dependencies.
+run "private_existing_main_existing_quarantine" {
+  command = apply
+  variables {
+    enable_private_dataplane             = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    create_vpc                           = false
+    existing_quarantine_vpc_id           = "vpc-22222222222222222"
+  }
+  assert {
+    condition = (
+      length(module.main_vpc) == 0 && length(module.quarantine_vpc) == 0 &&
+      aws_lb_target_group.gateway_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
+      aws_vpc_endpoint.quarantine_gateway[0].vpc_id == "vpc-22222222222222222" &&
+      toset(aws_lb.gateway_quarantine_privatelink[0].subnets) == toset(["subnet-11111111111111111", "subnet-22222222222222222", "subnet-33333333333333333"]) &&
+      toset(aws_vpc_endpoint.quarantine_gateway[0].subnet_ids) == toset(["subnet-44444444444444444", "subnet-55555555555555555", "subnet-66666666666666666"])
+    )
+    error_message = "VPC ownership must not change PrivateLink placement or take ownership of existing VPCs."
+  }
+  assert {
+    condition = (
+      output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy" &&
+      module.api_ecs[0].quarantine_proxy_url == output.quarantine_proxy_url
+    )
+    error_message = "Every VPC ownership combination must wire API ECS to the same PrivateLink path."
+  }
+
+  assert {
+    condition = (
+      length(module.ingress) == 0 && local.enable_ai_gateway &&
+      output.api_url == "https://api.example.internal" &&
+      module.api_ecs[0].internal_url != null
+    )
+    error_message = "Private mode must retain internal API callbacks and the gateway without CloudFront."
+  }
+}
+
+run "private_existing_main_managed_quarantine" {
+  command = apply
+  variables {
+    enable_private_dataplane             = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    create_vpc                           = false
+  }
+  assert {
+    condition = (
+      length(module.main_vpc) == 0 && length(module.quarantine_vpc) == 1 &&
+      aws_lb_target_group.gateway_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
+      aws_vpc_endpoint.quarantine_gateway[0].vpc_id == "vpc-22222222222222222" &&
+      toset(aws_lb.gateway_quarantine_privatelink[0].subnets) == toset(["subnet-11111111111111111", "subnet-22222222222222222", "subnet-33333333333333333"]) &&
+      toset(aws_vpc_endpoint.quarantine_gateway[0].subnet_ids) == toset(["subnet-44444444444444444", "subnet-55555555555555555", "subnet-66666666666666666"])
+    )
+    error_message = "VPC ownership must not change PrivateLink placement or take ownership of existing VPCs."
+  }
+  assert {
+    condition = (
+      output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy" &&
+      module.api_ecs[0].quarantine_proxy_url == output.quarantine_proxy_url
+    )
+    error_message = "Every VPC ownership combination must wire API ECS to the same PrivateLink path."
+  }
+
+  assert {
+    condition = (
+      length(module.ingress) == 0 && local.enable_ai_gateway &&
+      output.api_url == "https://api.example.internal" &&
+      module.api_ecs[0].internal_url != null
+    )
+    error_message = "Private mode must retain internal API callbacks and the gateway without CloudFront."
+  }
+}
+
+run "private_managed_main_existing_quarantine" {
+  command = apply
+  variables {
+    enable_private_dataplane             = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    existing_quarantine_vpc_id           = "vpc-22222222222222222"
+  }
+  assert {
+    condition = (
+      length(module.main_vpc) == 1 && length(module.quarantine_vpc) == 0 &&
+      aws_lb_target_group.gateway_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
+      aws_vpc_endpoint.quarantine_gateway[0].vpc_id == "vpc-22222222222222222" &&
+      toset(aws_lb.gateway_quarantine_privatelink[0].subnets) == toset(["subnet-11111111111111111", "subnet-22222222222222222", "subnet-33333333333333333"]) &&
+      toset(aws_vpc_endpoint.quarantine_gateway[0].subnet_ids) == toset(["subnet-44444444444444444", "subnet-55555555555555555", "subnet-66666666666666666"])
+    )
+    error_message = "VPC ownership must not change PrivateLink placement or take ownership of existing VPCs."
+  }
+  assert {
+    condition = (
+      output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy" &&
+      module.api_ecs[0].quarantine_proxy_url == output.quarantine_proxy_url
+    )
+    error_message = "Every VPC ownership combination must wire API ECS to the same PrivateLink path."
+  }
+
+  assert {
+    condition = (
+      length(module.ingress) == 0 && local.enable_ai_gateway &&
+      output.api_url == "https://api.example.internal" &&
+      module.api_ecs[0].internal_url != null
+    )
+    error_message = "Private mode must retain internal API callbacks and the gateway without CloudFront."
+  }
+}
+
+run "private_existing_main_without_quarantine" {
+  command = apply
+  variables {
+    enable_private_dataplane             = true
+    create_vpc                           = false
+    enable_quarantine_vpc                = false
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+  }
+  assert {
+    condition = (
+      length(module.main_vpc) == 0 && length(module.quarantine_vpc) == 0 &&
+      length(aws_vpc_endpoint.quarantine_gateway) == 0 &&
+      length(module.ingress) == 0 && length(module.gateway_ecs) == 1
+    )
+    error_message = "An existing main VPC must support private mode without quarantine or CloudFront."
+  }
+}
