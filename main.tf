@@ -555,6 +555,7 @@ module "gateway_ecs" {
   gateway_http_listener_arn             = module.gateway_alb[0].gateway_http_listener_arn
   gateway_url                           = module.gateway_alb[0].gateway_url
   extra_env_vars                        = var.ai_gateway_extra_env_vars
+  extra_secrets                         = var.ai_gateway_extra_secrets
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
   custom_tags                           = local.all_custom_tags
@@ -775,6 +776,7 @@ module "api_ecs" {
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
   extra_env_vars                                               = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars)
+  extra_secrets                                                = var.braintrust_api_extra_secrets
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc

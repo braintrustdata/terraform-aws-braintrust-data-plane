@@ -43,6 +43,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           ],
           var.custom_ca_bundle_secret_arn == null ? [] : [var.custom_ca_bundle_secret_arn],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
+          local.extra_secret_arns,
         )
       },
       {
