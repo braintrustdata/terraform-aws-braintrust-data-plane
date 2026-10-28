@@ -116,20 +116,25 @@ Existing deployments must finish the v6 applies before this upgrade. See [Migrat
 Terraform waits for the gateway ECS service to reach steady state before caller updates.
 The service uses the ALB `/health` check. A failed initial deployment blocks cutover and leaves existing callers on their previous configuration.
 
-The CloudFront private origin and the module-managed quarantine PrivateLink endpoint also wait for gateway ECS steady state.
-Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
+The CloudFront private origin and the module-created quarantine PrivateLink endpoint also wait for gateway ECS steady state.
+In public mode, `use_private_gateway_quarantine_proxy` selects quarantine PrivateLink.
+Private mode automatically selects it when quarantine is enabled.
 An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
 
 External EKS deployments ignore `enable_ecs_api` and the three gateway inputs. Helm manages the gateway in that mode.
 Terraform does not create the gateway or enable its routes when `use_deployment_mode_external_eks = true`.
 Stacks that already built a gateway with Terraform must move to the Helm gateway and repoint before upgrading. The upgrade destroys that ALB, ECS service, and ECS cluster.
 
-For standard deployments, all three inputs must be `false` to disable the private gateway and its CloudFront origin.
+For public deployments, all three gateway inputs must be `false` to disable the private gateway and its CloudFront origin.
+Private mode requires the gateway and cannot disable it.
 
 The gateway's default API address is the private API ECS load balancer, including while customer traffic stays on Lambda.
-An API address from organization authentication replaces that default.
+In public mode, an API address from organization authentication replaces that default.
+Private mode forces the internal callback URL through `OVERRIDE_BRAINTRUST_API_URL`.
+
 The API ECS service already exists in standard deployments. Its listener accepts traffic from the gateway task security group.
-The listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
+In public mode, the listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
+Private callbacks use the ALB AWS hostname on HTTP port 8000, independent of the customer certificate and DNS.
 This private address removes the dependency cycle between gateway startup and CloudFront cutover.
 External EKS deployments configure the gateway API URL through Helm.
 
@@ -288,34 +293,42 @@ module-managed quarantine VPC.
 
 ### Quarantine LLM calls through PrivateLink
 
-`use_private_gateway_quarantine_proxy = true` connects Quarantine to the private
-Gateway through an internal NLB and interface endpoint. It supports managed,
-existing, and mixed main/quarantine VPCs using the existing VPC/subnet inputs.
-The default remains `false`. Setting it to `true` requires `create_ai_gateway`;
-creating the path also requires `enable_quarantine_vpc`. With quarantine disabled,
-an explicit `quarantine_proxy_url` is required unless the global origin is enabled.
-External EKS deployments must leave this flag `false`; Helm owns their Gateway.
-NLB and endpoint charges apply when the path is created.
+In public mode, `use_private_gateway_quarantine_proxy = true` connects quarantine to the private gateway through an internal NLB and interface endpoint.
+The flag defaults to `false`.
+Private mode automatically creates the path when quarantine is enabled, even when the flag is `false`.
+The path supports managed, existing, and mixed main/quarantine VPCs through the existing VPC and subnet inputs.
+NLB and interface endpoint charges apply.
 
-For PrivateLink, both VPCs must be in the provider's account and region, with
-three distinct private subnets per VPC in matching AZs. The module validates
-subnet membership and AZ coverage. Routes, network ACLs, and DNS remain the caller's responsibility
-for existing VPCs; DNS must resolve the endpoint hostname and network ACLs must
-permit the connection and return traffic.
+An enabled flag requires `create_ai_gateway`.
+PrivateLink also requires `enable_quarantine_vpc`.
+In public mode, an enabled flag with quarantine disabled requires an explicit `quarantine_proxy_url` unless the global origin is enabled.
+In private mode, an enabled flag with quarantine disabled fails validation because private mode rejects that override.
+External EKS deployments must leave this flag `false` because Helm owns their gateway.
 
-When PrivateLink is created, API ECS receives `http://<vpce-dns>/v1/proxy` unless
-`quarantine_proxy_url` overrides it. Private DNS remains disabled, and
-`use_global_ai_gateway_origin` skips this path. With quarantine enabled and the
-global origin disabled, existing-VPC deployments already using the flag with a
-manual URL will now create PrivateLink resources while retaining that override;
-set the flag to `false` to use only the manual connection.
+Both VPCs must reside in the provider account and region.
+PrivateLink requires three distinct private subnets per VPC in matching availability zones.
+The module validates subnet membership and availability zone coverage.
+The caller controls routes, network ACLs, and DNS in existing VPCs.
+DNS must resolve the endpoint hostname, and network ACLs must permit the connection and return traffic.
 
-Existing resource addresses are preserved. Disabling the feature requires a
-reachable fallback for continued LLM connectivity. Deployments using PrivateLink
-with existing VPCs should disable the feature on the newer version before
-downgrading to a version without that support. This covers Quarantine
-LLM calls; other outbound connectivity and external application wiring remain
-separate requirements.
+When PrivateLink is created, API ECS receives `http://<vpce-dns>/v1/proxy`.
+Public mode permits a `quarantine_proxy_url` override. Private mode rejects that override.
+An override does not suppress resource creation.
+Endpoint private DNS remains disabled, and `use_global_ai_gateway_origin` skips this path in public mode.
+
+Existing public-mode deployments with the flag enabled and an explicit URL now create PrivateLink resources in supplied VPCs.
+The explicit URL still takes precedence.
+In public mode, the flag can be `false` to retain only the manual connection.
+Existing resource addresses stay the same.
+
+In public mode, a reachable fallback is necessary before PrivateLink can be disabled without loss of LLM connectivity.
+Private mode retains quarantine PrivateLink when the flag is `false`.
+A private deployment requires a coordinated transition to public mode before it can use a public fallback.
+
+For public deployments, disable PrivateLink on a compatible version before a downgrade without existing VPC support.
+
+PrivateLink covers quarantine LLM requests.
+Other outbound connectivity and external application configuration remain separate requirements.
 
 ### Existing ElastiCache subnet group
 

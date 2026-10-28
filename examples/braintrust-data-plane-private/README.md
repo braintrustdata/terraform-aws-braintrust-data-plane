@@ -66,7 +66,8 @@ It does not provide public network access to the ALB.
 Private DNS also works if every client network can resolve the hostname.
 
 The customer supplies DNS and network connectivity to the API ALB.
-The module does not create a customer VPN, PrivateLink endpoint, VPC peering connection, or transit gateway attachment.
+The module does not create client connectivity through a VPN, PrivateLink, VPC peering, or a transit gateway.
+It creates the separate quarantine PrivateLink path when quarantine is enabled.
 The API authorization inputs admit client traffic on HTTPS port 443.
 Security group admission alone does not establish network connectivity.
 
@@ -75,7 +76,7 @@ Security group admission alone does not establish network connectivity.
 1. Select an API hostname under a domain that you control, such as `braintrust-api.example.com`.
 2. Request or import its certificate in ACM in the deployment account and region.
 3. Complete any certificate validation before the data plane deployment.
-4. Select nonoverlapping VPC CIDR for the primary VPC and the client networks, if utilizing VPC connections like VPC Peering, Transit Gateway, etc.
+4. If client connectivity requires distinct address ranges, select a main VPC CIDR that does not overlap client networks.
 5. Plan client connectivity to the main VPC.
 
 The default Loop sandbox CIDR is `10.255.0.0/16` when Loop is enabled.
@@ -125,7 +126,7 @@ The example uses `braintrust-api-ecs` unless you change `deployment_name`.
 2. In the Braintrust UI, open Settings > Data Plane for your organization.
 3. Click Edit beside API URL.
 4. Set API URL to the Terraform output value.
-5. Check Data plane is on a private network
+5. Select **Data plane is on a private network**.
 6. Click Save.
 7. Verify that the endpoint checks succeed from a browser with network access to the ALB.
 8. Configure your SDKs with the same API URL.
@@ -159,13 +160,16 @@ They take priority over the API service routes and preserve each request path.
 Loop model requests use the private AI gateway directly.
 
 Private mode automatically creates the quarantine PrivateLink path when quarantine is enabled.
-`use_private_gateway_quarantine_proxy` can retain its default value.
+`use_private_gateway_quarantine_proxy` can retain its default value of `false`.
+That value does not disable PrivateLink in private mode.
+With quarantine disabled, an explicit `true` value fails validation.
 This path uses HTTP port 80 and incurs interface endpoint and NLB charges.
 
 ## Other behavior
 
 Private mode rejects the hosted gateway settings `use_global_ai_proxy = true` and `use_global_ai_gateway_origin = true`.
 It also rejects an explicit `quarantine_proxy_url` override.
+The CloudFront inputs `custom_domain`, `custom_certificate_arn`, and `waf_acl_id` must remain null.
 `use_private_ai_gateway_origin` has no effect because CloudFront is absent.
 
 `api_url` supplies the customer HTTPS URL.
@@ -173,8 +177,8 @@ CloudFront outputs are null in private mode.
 `whitelisted_origins` controls API CORS admission for additional web application origins.
 CORS admission does not establish network connectivity.
 
-Private mode changes ingress only.
-Outbound connectivity remains necessary for configured model providers and other external dependencies.
+Private mode also selects private service callback URLs and quarantine PrivateLink.
+Outbound connectivity remains necessary for configured model providers, AWS services, and other external dependencies.
 
 ## Mode transitions
 
