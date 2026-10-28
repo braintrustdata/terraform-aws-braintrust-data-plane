@@ -52,7 +52,6 @@ variable "internal_observability_api_key_secret_arn" {
   description = "ARN of the Secrets Manager secret containing the Datadog API key. Empty when unused."
   default     = ""
 }
-}
 
 variable "permissions_boundary_arn" {
   type        = string

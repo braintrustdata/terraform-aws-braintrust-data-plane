@@ -130,7 +130,7 @@ systemctl enable amazon-cloudwatch-agent
 
 get_secret_value_with_retry() {
   local secret_id="$1"
-  local version_id="${2:-}"
+  local version_id="$${2:-}"
   local attempt
   local retry_delay
   local version_args=()
@@ -139,7 +139,7 @@ get_secret_value_with_retry() {
   fi
 
   for attempt in 1 2 3 4 5; do
-    if aws secretsmanager get-secret-value --secret-id "$secret_id" "${version_args[@]}" --query SecretString --output text; then
+    if aws secretsmanager get-secret-value --secret-id "$secret_id" "$${version_args[@]}" --query SecretString --output text; then
       return 0
     fi
 

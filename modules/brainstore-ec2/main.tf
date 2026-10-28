@@ -100,11 +100,11 @@ resource "aws_launch_template" "brainstore" {
     lambda_responses_bucket_id  = local.lambda_responses_bucket_id
     code_bundle_bucket_id       = local.code_bundle_bucket_id
     brainstore_locks_s3_path    = trimprefix(var.locks_s3_path, "/")
-    license_key_secret_arn                        = var.license_key_secret_arn
-    license_key_secret_version                    = var.license_key_secret_version
-    brainstore_version_override                   = var.version_override == null ? "" : var.version_override
-    brainstore_release_version                    = local.brainstore_release_version
-    monitoring_telemetry                          = var.monitoring_telemetry
+    license_key_secret_arn      = var.license_key_secret_arn
+    license_key_secret_version  = var.license_key_secret_version
+    brainstore_version_override = var.version_override == null ? "" : var.version_override
+    brainstore_release_version  = local.brainstore_release_version
+    monitoring_telemetry        = var.monitoring_telemetry
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
     is_dedicated_reader_node                      = local.has_writer_nodes ? "true" : "false"
     is_dedicated_writer_node                      = "false"

@@ -77,12 +77,12 @@ locals {
     : module.database.postgres_database_url_secret_arn
   )
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  create_ai_gateway                          = var.create_ai_gateway && !var.use_deployment_mode_external_eks
-  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
-  create_brainstore_ec2                      = var.enable_brainstore && !var.use_deployment_mode_external_eks
-  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  create_ecs_api                = !var.use_deployment_mode_external_eks
+  enable_ecs_api                = local.create_ecs_api && var.enable_ecs_api
+  create_ai_gateway             = var.create_ai_gateway && !var.use_deployment_mode_external_eks
+  enable_ai_gateway             = local.create_ai_gateway && var.enable_ai_gateway
+  create_brainstore_ec2         = !var.use_deployment_mode_external_eks
+  enable_internal_observability = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   # Secret is shared by API ECS, gateway ECS, and Brainstore EC2 (Datadog agent).
   create_internal_observability_secret = local.enable_internal_observability && (
     local.create_ecs_api || local.create_ai_gateway || local.create_brainstore_ec2
