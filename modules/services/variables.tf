@@ -411,7 +411,7 @@ variable "monitoring_telemetry" {
 
 variable "monitoring_telemetry_url" {
   type        = string
-  description = "Value for BRAINSTORE_PULSE_URL on the API handler and billing cron. If null, they use their built-in default."
+  description = "Base URL for monitoring telemetry from the API handler and billing cron. If null, they use their built-in default."
   default     = null
 }
 

@@ -292,7 +292,7 @@ variable "monitoring_telemetry" {
 
 variable "monitoring_telemetry_url" {
   type        = string
-  description = "Value for BRAINSTORE_PULSE_URL. If null, the loop runtime uses its built-in default."
+  description = "Base URL for monitoring telemetry. If null, the loop runtime uses its built-in default."
   default     = null
 }
 
