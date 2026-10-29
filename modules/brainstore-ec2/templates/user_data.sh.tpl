@@ -130,11 +130,16 @@ systemctl enable amazon-cloudwatch-agent
 
 get_secret_value_with_retry() {
   local secret_id="$1"
+  local version_id="$${2:-}"
   local attempt
   local retry_delay
+  local version_args=()
+  if [ -n "$version_id" ]; then
+    version_args=(--version-id "$version_id")
+  fi
 
   for attempt in 1 2 3 4 5; do
-    if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
+    if aws secretsmanager get-secret-value --secret-id "$secret_id" "$${version_args[@]}" --query SecretString --output text; then
       return 0
     fi
 
@@ -167,6 +172,12 @@ if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bund
 fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
 %{ endif ~}
+# license_key_secret_version is baked into user_data so rotating the secret
+# changes the launch template and triggers a rolling instance refresh.
+if ! BRAINSTORE_LICENSE_KEY=$(get_secret_value_with_retry "${license_key_secret_arn}" "${license_key_secret_version}"); then
+  echo "Failed to retrieve BRAINSTORE_LICENSE_KEY from Secrets Manager. Exiting with failure."
+  exit 1
+fi
 
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
@@ -180,7 +191,7 @@ BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${datab
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
 BRAINSTORE_RESPONSE_CACHE_URI=s3://${lambda_responses_bucket_id}/brainstore-cache
 BRAINSTORE_CODE_BUNDLE_URI=s3://${code_bundle_bucket_id}
-BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
+BRAINSTORE_LICENSE_KEY=$BRAINSTORE_LICENSE_KEY
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
 SERVICE_TOKEN_SECRET_KEY=$SERVICE_TOKEN_SECRET_KEY
@@ -223,12 +234,19 @@ else
   exit 1
 fi
 
-if [ -n "${internal_observability_api_key}" ]; then
+if [ -n "${internal_observability_api_key_secret_arn}" ]; then
+  # internal_observability_api_key_secret_version is baked into user_data so
+  # rotating the secret changes the launch template and triggers a rolling
+  # instance refresh.
+  if ! DD_API_KEY=$(get_secret_value_with_retry "${internal_observability_api_key_secret_arn}" "${internal_observability_api_key_secret_version}"); then
+    echo "Failed to retrieve DD_API_KEY from Secrets Manager. Exiting with failure."
+    exit 1
+  fi
   if [ -n "${internal_observability_env_name}" ]; then
     export DD_ENV="${internal_observability_env_name}"
   fi
   # Install Datadog Agent
-  export DD_API_KEY="${internal_observability_api_key}"
+  export DD_API_KEY
   export DD_SITE="${internal_observability_region}.datadoghq.com"
   bash -c "$(curl -L https://install.datadoghq.com/scripts/install_script_agent7.sh)"
   usermod -a -G docker dd-agent

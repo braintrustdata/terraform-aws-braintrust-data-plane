@@ -370,3 +370,10 @@ moved {
   from = module.loop_runtime_ecs[0].aws_vpc_security_group_ingress_rule.gateway_from_task[0]
   to   = module.gateway_alb[0].aws_vpc_security_group_ingress_rule.gateway_alb_ingress_from_loop_runtime_security_groups["Loop Runtime"]
 }
+
+# Gateway task-exec secrets policy generalized beyond observability-only.
+# No-op when observability was never enabled (resource absent from state).
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.task_execution_observability_secrets[0]
+  to   = module.gateway_ecs[0].aws_iam_role_policy.task_execution_secrets[0]
+}
