@@ -10,11 +10,11 @@ This example deploys a production-sized data plane through an internal HTTPS API
 
 - An API hostname under a domain that you control.
 - A certificate in ACM in the deployment account and region that covers the hostname. All clients must trust its issuer.
-- Client network connectivity to the main VPC, plus DNS that resolves the hostname to the internal ALB.
-- Outbound access for AWS services, model providers, and other dependencies.
-- VPC CIDRs that fit your network design. The optional Loop sandbox defaults to `10.255.0.0/16`.
+- Client network connectivity to the main VPC, plus DNS that resolves the hostname to the internal ALB once it has been provisioned by this module.
+- Outbound access for Braintrust Control Plane, AWS services, model providers, and other dependencies.
+- VPC CIDRs that fit your network design.
 
-The module does not create the certificate, client DNS records, or client network connectivity.
+The module does not create the certificate, client DNS records, or client network connectivity like VPN, VPC Peering, Transit Gateway or PrivateLink.
 The optional sections below cover [certificate validation](#certificates-and-dns) and [existing VPCs](#existing-vpcs).
 
 ## Configure Terraform
