@@ -37,7 +37,7 @@ locals {
     BRAINTRUST_API_URL = var.braintrust_api_url
 
     GATEWAY_JSON_LOGS  = "true"
-    OTLP_HTTP_ENDPOINT = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
+    OTLP_HTTP_ENDPOINT = local.observability_enabled ? "http://localhost:4318" : "https://pulse.braintrust.dev/otel"
     },
     local.url_security_env_vars,
     local.observability_enabled ? {

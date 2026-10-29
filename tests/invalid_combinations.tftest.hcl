@@ -29,25 +29,13 @@ run "rejects_whitespace_quarantine_proxy_url" {
   ]
 }
 
-run "rejects_ecs_api_with_external_eks" {
-  command = plan
-
-  variables {
-    use_deployment_mode_external_eks = true
-    enable_ecs_api                   = true
-  }
-
-  expect_failures = [
-    var.enable_ecs_api,
-  ]
-}
-
 run "rejects_enable_ai_gateway_without_create" {
   command = plan
 
   variables {
-    create_ai_gateway = false
-    enable_ai_gateway = true
+    create_ai_gateway             = false
+    enable_ai_gateway             = true
+    use_private_ai_gateway_origin = false
   }
 
   expect_failures = [

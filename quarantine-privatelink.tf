@@ -7,19 +7,62 @@
 # endpoint → QUARANTINE_PROXY_URL uses http://<vpce-dns>/v1/proxy.
 #
 # Only when use_private_gateway_quarantine_proxy wires to the private gateway
-# and both VPCs are module-managed (create_vpc + module quarantine). Existing
-# VPC / existing quarantine require a manual endpoint (use the endpoint service
-# name output) and an explicit quarantine_proxy_url.
+# and quarantine is enabled. Both VPCs may be managed or supplied by the caller;
+# only the source of the VPC/subnet IDs differs. Routes and DNS are not modified.
 
 locals {
   create_quarantine_gateway_privatelink = (
     local.wire_quarantine_to_private_gateway &&
-    var.create_vpc &&
-    local.create_quarantine_vpc
+    var.enable_quarantine_vpc
   )
   privatelink_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, local.all_custom_tags)
+}
+
+# Use fixed list lengths, not subnet IDs as for_each keys: callers may pass
+# subnets created in the same apply. Managed subnets are read after creation.
+# Validate the same network requirements regardless of who owns the VPCs.
+data "aws_subnet" "quarantine_privatelink_main" {
+  count = local.create_quarantine_gateway_privatelink ? length(local.main_vpc_private_subnet_ids) : 0
+
+  id = local.main_vpc_private_subnet_ids[count.index]
+
+  lifecycle {
+    precondition {
+      condition = (
+        try(trimspace(local.main_vpc_id) != "", false) &&
+        alltrue([for id in local.main_vpc_private_subnet_ids : try(trimspace(id) != "", false)]) &&
+        length(distinct(local.main_vpc_private_subnet_ids)) == length(local.main_vpc_private_subnet_ids)
+      )
+      error_message = "Quarantine PrivateLink requires a nonempty main VPC ID and distinct, nonempty main private subnet IDs."
+    }
+    postcondition {
+      condition     = self.vpc_id == local.main_vpc_id
+      error_message = "Each main PrivateLink subnet must belong to the main VPC."
+    }
+  }
+}
+
+data "aws_subnet" "quarantine_privatelink_quarantine" {
+  count = local.create_quarantine_gateway_privatelink ? length(local.quarantine_vpc_private_subnet_ids) : 0
+
+  id = local.quarantine_vpc_private_subnet_ids[count.index]
+
+  lifecycle {
+    precondition {
+      condition = (
+        try(trimspace(local.quarantine_vpc_id) != "", false) &&
+        alltrue([for id in local.quarantine_vpc_private_subnet_ids : try(trimspace(id) != "", false)]) &&
+        length(distinct(local.quarantine_vpc_private_subnet_ids)) == length(local.quarantine_vpc_private_subnet_ids)
+      )
+      error_message = "Quarantine PrivateLink requires a nonempty quarantine VPC ID and distinct, nonempty quarantine private subnet IDs."
+    }
+    postcondition {
+      condition     = self.vpc_id == local.quarantine_vpc_id
+      error_message = "Each quarantine PrivateLink subnet must belong to the quarantine VPC."
+    }
+  }
 }
 
 # Fail when the flag is on but this module cannot create PrivateLink and there
@@ -34,7 +77,21 @@ resource "terraform_data" "quarantine_privatelink_requirements" {
         local.quarantine_proxy_url_override != null ||
         local.create_quarantine_gateway_privatelink
       )
-      error_message = "use_private_gateway_quarantine_proxy is true, but this module cannot create PrivateLink. Set quarantine_proxy_url to your endpoint URL, or use module-managed main and quarantine VPCs."
+      error_message = "use_private_gateway_quarantine_proxy requires enable_quarantine_vpc to create PrivateLink, or an explicit quarantine_proxy_url."
+    }
+    precondition {
+      condition = (
+        length(distinct(data.aws_subnet.quarantine_privatelink_main[*].availability_zone)) == length(data.aws_subnet.quarantine_privatelink_main) &&
+        length(distinct(data.aws_subnet.quarantine_privatelink_quarantine[*].availability_zone)) == length(data.aws_subnet.quarantine_privatelink_quarantine)
+      )
+      error_message = "Quarantine PrivateLink requires the private subnets in each VPC to be in distinct availability zones."
+    }
+    precondition {
+      condition = alltrue([
+        for subnet in data.aws_subnet.quarantine_privatelink_quarantine :
+        contains(data.aws_subnet.quarantine_privatelink_main[*].availability_zone, subnet.availability_zone)
+      ])
+      error_message = "Each quarantine PrivateLink subnet must be in an availability zone enabled on the main VPC NLB. Supply main and quarantine subnets in matching availability zones."
     }
   }
 }
@@ -97,6 +154,9 @@ resource "aws_lb" "gateway_quarantine_privatelink" {
   # PrivateLink traffic bypasses NLB SG evaluation; see comment above the NLB SG.
   enforce_security_group_inbound_rules_on_private_link_traffic = "off"
   subnets                                                      = local.main_vpc_private_subnet_ids
+
+  # Validate VPC membership and AZ coverage before provisioning the path.
+  depends_on = [terraform_data.quarantine_privatelink_requirements]
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl"
@@ -174,7 +234,7 @@ resource "aws_security_group" "quarantine_gateway_privatelink_endpoint" {
 
   name        = "${var.deployment_name}-q-gw-pl-vpce"
   description = "Security group for quarantine VPC endpoint to private gateway"
-  vpc_id      = module.quarantine_vpc[0].vpc_id
+  vpc_id      = local.quarantine_vpc_id
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl-vpce"
@@ -212,19 +272,25 @@ resource "aws_vpc_security_group_egress_rule" "quarantine_gateway_privatelink_en
 resource "aws_vpc_endpoint" "quarantine_gateway" {
   count = local.create_quarantine_gateway_privatelink ? 1 : 0
 
-  vpc_id              = module.quarantine_vpc[0].vpc_id
+  vpc_id              = local.quarantine_vpc_id
   service_name        = aws_vpc_endpoint_service.gateway_quarantine[0].service_name
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = false
-  subnet_ids = [
-    module.quarantine_vpc[0].private_subnet_1_id,
-    module.quarantine_vpc[0].private_subnet_2_id,
-    module.quarantine_vpc[0].private_subnet_3_id,
-  ]
-  security_group_ids = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
+  subnet_ids          = local.quarantine_vpc_private_subnet_ids
+  security_group_ids  = [aws_security_group.quarantine_gateway_privatelink_endpoint[0].id]
 
-  # Ensure the account root is allow-listed before the consumer VPCE is created.
-  depends_on = [aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account]
+  # These rules and the forwarding path are not otherwise dependencies of the
+  # endpoint. Finish them before exposing its URL to callers.
+  depends_on = [
+    aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account,
+    aws_lb_listener.gateway_quarantine_privatelink_http,
+    aws_lb_target_group_attachment.gateway_quarantine_privatelink_alb,
+    aws_vpc_security_group_egress_rule.gateway_quarantine_privatelink_nlb_to_alb,
+    aws_vpc_security_group_ingress_rule.gateway_alb_from_quarantine_privatelink_nlb,
+    aws_vpc_security_group_ingress_rule.quarantine_gateway_privatelink_endpoint_http,
+    aws_vpc_security_group_egress_rule.quarantine_gateway_privatelink_endpoint_all,
+    module.gateway_ecs,
+  ]
 
   tags = merge({
     Name = "${var.deployment_name}-q-gw-pl"

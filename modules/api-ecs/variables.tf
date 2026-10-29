@@ -743,3 +743,9 @@ variable "brainstore_deployment_id" {
   type        = string
   default     = null
 }
+
+variable "gateway_security_groups" {
+  description = "Gateway task security groups authorized to reach the private API listener."
+  type        = map(string)
+  default     = {}
+}

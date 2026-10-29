@@ -16,6 +16,7 @@ Always upgrade **one major version at a time**. For example, go from v4 â†’ v5 â
 Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
+- [Migrating from v6 to v7](MIGRATION_V7.md)
 
 ### Brainstore and API upgrades
 
@@ -113,6 +114,47 @@ Leave the default enabled for existing deployments. Changing it from `true` to
 `false` plans deletion of the existing bucket-level configurations and requires
 the same permission the SCP may prohibit; it is not a supported ownership
 handoff for an existing deployment.
+
+## Private AI gateway cutover
+
+A new stack that sets nothing gets ECS ingress and the private gateway. These inputs default to `true`:
+
+```hcl
+enable_ecs_api                = true
+create_ai_gateway             = true
+enable_ai_gateway             = true
+use_private_ai_gateway_origin = true
+```
+
+Set `enable_ecs_api = false` to keep customer traffic on Lambda. The three gateway flags still default to `true`, so that is Lambda ingress plus the private gateway.
+
+`create_ai_gateway` creates the internal ALB and gateway ECS service. `enable_ai_gateway` selects that gateway for API services and Loop.
+`use_private_ai_gateway_origin` routes CloudFront `/v1/proxy` traffic to the private gateway through a VPC origin.
+Existing deployments must finish the v6 applies before this upgrade. See [Migrating from v6 to v7](MIGRATION_V7.md). The gateway infrastructure adds AWS charges.
+Terraform waits for the gateway ECS service to reach steady state before caller updates.
+The service uses the ALB `/health` check. A failed initial deployment blocks cutover and leaves existing callers on their previous configuration.
+
+The CloudFront private origin and the module-managed quarantine PrivateLink endpoint also wait for gateway ECS steady state.
+Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
+An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
+
+External EKS deployments ignore `enable_ecs_api` and the three gateway inputs. Helm manages the gateway in that mode.
+Terraform does not create the gateway or enable its routes when `use_deployment_mode_external_eks = true`.
+Stacks that already built a gateway with Terraform must move to the Helm gateway and repoint before upgrading. The upgrade destroys that ALB, ECS service, and ECS cluster.
+
+For standard deployments, all three inputs must be `false` to disable the private gateway and its CloudFront origin.
+
+The gateway's default API address is the private API ECS load balancer, including while customer traffic stays on Lambda.
+An API address from organization authentication replaces that default.
+The API ECS service already exists in standard deployments. Its listener accepts traffic from the gateway task security group.
+The listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
+This private address removes the dependency cycle between gateway startup and CloudFront cutover.
+External EKS deployments configure the gateway API URL through Helm.
+
+The gate checks service startup. It does not test authenticated inference or health across the complete PrivateLink path.
+Caller-supplied network paths retain their own readiness requirements.
+Existing deployments retain their resource addresses. The change adds one ingress rule for the gateway on the API ALB.
+The separate gateway authorization map preserves the existing legacy rules and follows the separate Loop authorization maps in adjacent modules.
 
 ## Loop runtime
 
@@ -262,10 +304,36 @@ The module does not create these AWS service endpoints inside supplied existing
 VPCs. With `create_vpc = false`, it can still create an S3 endpoint in a separate,
 module-managed quarantine VPC.
 
-Separately, `use_private_gateway_quarantine_proxy` can create an interface endpoint
-in quarantine for the private gateway when both VPCs are module-managed and the
-private gateway is enabled for this path. It uses its endpoint-specific DNS name
-with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+### Quarantine LLM calls through PrivateLink
+
+`use_private_gateway_quarantine_proxy = true` connects Quarantine to the private
+Gateway through an internal NLB and interface endpoint. It supports managed,
+existing, and mixed main/quarantine VPCs using the existing VPC/subnet inputs.
+The default remains `false`. Setting it to `true` requires `create_ai_gateway`;
+creating the path also requires `enable_quarantine_vpc`. With quarantine disabled,
+an explicit `quarantine_proxy_url` is required unless the global origin is enabled.
+External EKS deployments must leave this flag `false`; Helm owns their Gateway.
+NLB and endpoint charges apply when the path is created.
+
+For PrivateLink, both VPCs must be in the provider's account and region, with
+three distinct private subnets per VPC in matching AZs. The module validates
+subnet membership and AZ coverage. Routes, network ACLs, and DNS remain the caller's responsibility
+for existing VPCs; DNS must resolve the endpoint hostname and network ACLs must
+permit the connection and return traffic.
+
+When PrivateLink is created, API ECS receives `http://<vpce-dns>/v1/proxy` unless
+`quarantine_proxy_url` overrides it. Private DNS remains disabled, and
+`use_global_ai_gateway_origin` skips this path. With quarantine enabled and the
+global origin disabled, existing-VPC deployments already using the flag with a
+manual URL will now create PrivateLink resources while retaining that override;
+set the flag to `false` to use only the manual connection.
+
+Existing resource addresses are preserved. Disabling the feature requires a
+reachable fallback for continued LLM connectivity. Deployments using PrivateLink
+with existing VPCs should disable the feature on the newer version before
+downgrading to a version without that support. This covers Quarantine
+LLM calls; other outbound connectivity and external application wiring remain
+separate requirements.
 
 ### Existing ElastiCache subnet group
 

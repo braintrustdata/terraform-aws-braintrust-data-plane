@@ -92,17 +92,17 @@ module "braintrust-data-plane" {
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_instance_count = 2
-  brainstore_instance_type  = "c8gd.4xlarge"
+  brainstore_instance_type  = "m8gd.4xlarge"
 
   # The number of Brainstore fast reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_fast_reader_instance_count = 2
-  brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
+  brainstore_fast_reader_instance_type  = "m8gd.4xlarge"
 
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
-  brainstore_writer_instance_type  = "c8gd.8xlarge"
+  brainstore_writer_instance_type  = "m8gd.8xlarge"
 
   # Automation writers are optional. Enable only when instructed by Braintrust.
   brainstore_automation_writer_instance_count = 0
@@ -197,11 +197,12 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # Opt in to wire quarantine UDF LLM calls to the private gateway via
-  # PrivateLink (NLB→ALB + VPC endpoint) at http://<vpce-dns>/v1/proxy.
-  # Default false keeps the AI Proxy Function URL / manual quarantine_proxy_url.
-  # Requires create_ai_gateway and module-managed VPCs (or quarantine_proxy_url).
-  # Existing VPC without an override fails apply, except the global-origin no-op.
+  # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
+  # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
+  # may each be managed or existing, with private subnets in matching AZs.
+  # API ECS receives the URL. External EKS requires this flag to remain false.
+  # An explicit quarantine_proxy_url wins without suppressing resource creation.
+  # The global gateway origin skips this path; see the variable for exceptions.
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 

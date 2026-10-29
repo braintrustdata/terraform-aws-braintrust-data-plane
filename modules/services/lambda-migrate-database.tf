@@ -5,10 +5,12 @@ locals {
 }
 
 resource "aws_lambda_function" "migrate_database" {
+  depends_on = [aws_iam_role_policy_attachment.migrate_database_vpc_access]
+
   function_name = local.migrate_database_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions[local.migrate_database_base_function_name]
-  role          = aws_iam_role.default_role.arn
+  role          = aws_iam_role.migrate_database.arn
   handler       = local.observability_enabled ? local.python_datadog_handler : local.migrate_database_original_handler
   runtime       = "python3.13"
   memory_size   = 1024

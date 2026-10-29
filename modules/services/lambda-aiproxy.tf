@@ -39,6 +39,7 @@ resource "aws_lambda_function" "ai_proxy" {
       local.api_common_env_vars,
       local.api_fast_reader_env_vars,
       var.extra_env_vars.AIProxy,
+      var.gateway_url != null ? { GATEWAY_URL = var.gateway_url } : {},
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.ai_proxy_base_function_name
         DD_LAMBDA_HANDLER = local.ai_proxy_original_handler
@@ -71,6 +72,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
     allow_headers = [
       "authorization",
       "content-type",
+      "traceparent",
+      "tracestate",
       "x-bt-org-name",
       "x-bt-project-id",
       "x-bt-auth-token",
