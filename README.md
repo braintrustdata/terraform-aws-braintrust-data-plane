@@ -30,8 +30,6 @@ This ordering applies only to the module-managed reader and fast-reader Brainsto
 
 ## How to use this module
 
-Dedicated automation writers get an internal NLB and an API endpoint when `brainstore_automation_writer_instance_count > 0`. The application decides which queries use this endpoint. Deployments without an automation writer pool continue using the normal writer URL.
-
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
@@ -44,9 +42,9 @@ All module input variables and outputs are documented inline in the module's Ter
 
 ### Private data plane
 
-Private mode serves the data plane through an internal API ALB instead of CloudFront.
-It supports module-managed or customer-supplied main and quarantine VPCs, including mixed configurations.
+Private mode serves the data plane through an internal API ALB instead of CloudFront which is public.
 See the [private data plane example](examples/braintrust-data-plane-private/) for requirements, configuration, and deployment steps.
+We still recommend a public dataplane for ease of deployment however a private one is fully supported as long as all prerequisites are met. 
 
 ### Organization access configuration
 
@@ -111,7 +109,7 @@ Existing deployments require the [v7 migration procedure](MIGRATION_V7.md).
 
 In public mode, `enable_ecs_api = false` retains Lambda ingress with the private gateway.
 All three gateway inputs must be `false` to disable the gateway and its CloudFront origin.
-Private data planes require ECS and the gateway. The CloudFront origin input has no effect in private mode.
+Private data planes require ECS and the gateway.
 
 An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
 Terraform waits for gateway ECS steady state before caller updates.
@@ -211,7 +209,7 @@ Required for new AWS accounts to ensure IAM service-linked roles are created.
 
 ### VPCs
 
-This module creates two VPCs by default:
+This module creates two VPCs by default, three if Loop is enabled:
 
 - `main` VPC: This is the main VPC that contains the Braintrust services.
 - `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
