@@ -12,6 +12,7 @@ locals {
   container_name           = "gateway"
   container_port           = 8080
   observability_enabled    = var.internal_observability_enabled
+  monitoring_telemetry_url = var.monitoring_telemetry_url == null ? "https://pulse.braintrust.dev" : var.monitoring_telemetry_url
   gateway_version_tag      = element(reverse(split(":", var.container_image)), 0)
   unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
   url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
@@ -37,8 +38,12 @@ locals {
     COMPLETIONS_CACHE_REDIS_URL = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
     AUTH_CACHE_REDIS_URL        = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
     GATEWAY_JSON_LOGS           = "true"
-    OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
+    PULSE_URL                   = local.monitoring_telemetry_url
     },
+    # OTLP_HTTP_ENDPOINT takes precedence over PULSE_URL for OTLP export.
+    local.observability_enabled ? {
+      OTLP_HTTP_ENDPOINT = "http://localhost:4318"
+    } : {},
     local.url_security_env_vars,
     local.observability_enabled ? {
       DD_ENV     = var.internal_observability_env_name

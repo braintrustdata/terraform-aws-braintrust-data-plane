@@ -130,6 +130,9 @@ locals {
     local.observability_enabled && trimspace(var.internal_observability_trace_disabled_plugins) != "" ? {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
     } : {},
+    var.monitoring_telemetry_url != null ? {
+      BRAINSTORE_PULSE_URL = var.monitoring_telemetry_url
+    } : {},
   )
 
   plain_license_env_var = var.brainstore_license_key == null ? {} : {

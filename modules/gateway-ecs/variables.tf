@@ -219,6 +219,12 @@ variable "braintrust_app_url" {
   default     = "https://www.braintrust.dev"
 }
 
+variable "monitoring_telemetry_url" {
+  type        = string
+  description = "Value for PULSE_URL. If null, the default Braintrust monitoring endpoint is used."
+  default     = null
+}
+
 variable "braintrust_api_url" {
   type        = string
   description = "Braintrust API URL used by the gateway."

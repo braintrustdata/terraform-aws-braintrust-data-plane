@@ -554,6 +554,12 @@ variable "monitoring_telemetry" {
   description = "Telemetry to send to Braintrust's control plane."
 }
 
+variable "monitoring_telemetry_url" {
+  type        = string
+  description = "Value for BRAINSTORE_PULSE_URL. If null, the API uses its built-in default."
+  default     = null
+}
+
 variable "internal_observability_api_key_secret_arn" {
   type        = string
   description = "Secrets Manager secret ARN containing the internal observability API key."

@@ -1926,6 +1926,15 @@ variable "monitoring_telemetry" {
   }
 }
 
+variable "monitoring_telemetry_url" {
+  description = <<-EOT
+    Base URL of Braintrust's Pulse endpoint, which receives the monitoring telemetry from every service.
+    If null, each service uses its built-in default.
+  EOT
+  type        = string
+  default     = null
+}
+
 variable "brainstore_extra_env_vars" {
   type        = map(string)
   description = "Extra environment variables to set for Brainstore reader or dual use nodes"

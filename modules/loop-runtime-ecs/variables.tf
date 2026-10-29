@@ -290,6 +290,12 @@ variable "monitoring_telemetry" {
   default     = "status,metrics,usage,traces,logs"
 }
 
+variable "monitoring_telemetry_url" {
+  type        = string
+  description = "Value for BRAINSTORE_PULSE_URL. If null, the loop runtime uses its built-in default."
+  default     = null
+}
+
 # --- Runtime config ---
 variable "org_name" {
   type        = string

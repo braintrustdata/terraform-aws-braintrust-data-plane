@@ -137,6 +137,7 @@ resource "aws_lambda_function" "api_handler" {
       local.api_common_env_vars,
       local.api_fast_reader_env_vars,
       local.api_handler_specific_env_vars,
+      var.monitoring_telemetry_url != null ? { BRAINSTORE_PULSE_URL = var.monitoring_telemetry_url } : {},
       var.extra_env_vars.APIHandler,
       var.gateway_url != null ? { GATEWAY_URL = var.gateway_url } : {},
       local.observability_enabled ? merge(local.datadog_env_vars, {

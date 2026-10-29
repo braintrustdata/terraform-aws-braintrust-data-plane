@@ -154,6 +154,12 @@ variable "monitoring_telemetry" {
   }
 }
 
+variable "monitoring_telemetry_url" {
+  type        = string
+  description = "Value for BRAINSTORE_PULSE_URL. If null, Brainstore uses its built-in default."
+  default     = null
+}
+
 variable "internal_observability_api_key" {
   type        = string
   description = "Support for internal observability agent. Do not set this unless instructed by support."

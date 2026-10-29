@@ -82,6 +82,9 @@ locals {
     var.brainstore_license_key == null ? {} : {
       BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
     },
+    var.monitoring_telemetry_url == null ? {} : {
+      BRAINSTORE_PULSE_URL = var.monitoring_telemetry_url
+    },
     local.observability_enabled ? {
       BRAINSTORE_STATSD_ENDPOINT                   = "127.0.0.1:8125"
       BRAINSTORE_OTLP_HTTP_ENDPOINT                = "http://localhost:4318"

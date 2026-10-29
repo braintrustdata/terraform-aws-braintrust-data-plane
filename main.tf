@@ -380,7 +380,8 @@ module "services" {
   enable_ecs_api              = local.enable_ecs_api
 
   # Telemetry
-  monitoring_telemetry = var.monitoring_telemetry
+  monitoring_telemetry     = var.monitoring_telemetry
+  monitoring_telemetry_url = var.monitoring_telemetry_url
 
   # Data stores
   postgres_username = local.postgres_username
@@ -547,6 +548,7 @@ module "gateway_ecs" {
   url_security_dns_servers     = var.url_security_dns_servers
   url_security_allow_cidrs     = var.url_security_allow_cidrs
   bedrock_assume_role_arns     = var.ai_gateway_bedrock_assume_role_arns
+  monitoring_telemetry_url     = var.monitoring_telemetry_url
 
   # Observability
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
@@ -657,8 +659,9 @@ module "loop_runtime_ecs" {
   brainstore_wal_footer_version  = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects = var.skip_pg_for_brainstore_objects
 
-  brainstore_license_key = var.brainstore_license_key
-  monitoring_telemetry   = var.monitoring_telemetry
+  brainstore_license_key   = var.brainstore_license_key
+  monitoring_telemetry     = var.monitoring_telemetry
+  monitoring_telemetry_url = var.monitoring_telemetry_url
 
   org_name        = var.braintrust_org_name
   allowed_org_ids = var.allowed_org_ids
@@ -683,6 +686,7 @@ module "api_ecs" {
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
+  monitoring_telemetry_url                      = var.monitoring_telemetry_url
   internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region
@@ -889,6 +893,7 @@ module "brainstore" {
   cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
   ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                  = var.monitoring_telemetry
+  monitoring_telemetry_url              = var.monitoring_telemetry_url
   database_host                         = local.postgres_host
   database_port                         = module.database.postgres_database_port
   database_secret_arn                   = local.postgres_credentials_secret_arn
