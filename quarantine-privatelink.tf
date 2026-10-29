@@ -65,10 +65,12 @@ data "aws_subnet" "quarantine_privatelink_quarantine" {
   }
 }
 
-# Fail when the flag is on but this module cannot create PrivateLink and there
-# is no URL override. use_global_ai_gateway_origin stays a documented no-op.
+# Validate explicit opt-in and automatic PrivateLink creation.
 resource "terraform_data" "quarantine_privatelink_requirements" {
-  count = var.use_private_gateway_quarantine_proxy ? 1 : 0
+  count = (
+    var.use_private_gateway_quarantine_proxy ||
+    local.create_quarantine_gateway_privatelink
+  ) ? 1 : 0
 
   lifecycle {
     precondition {

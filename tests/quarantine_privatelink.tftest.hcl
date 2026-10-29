@@ -513,6 +513,57 @@ run "rejects_endpoint_az_not_served_by_nlb" {
   expect_failures = [terraform_data.quarantine_privatelink_requirements]
 }
 
+run "private_automatic_rejects_duplicate_main_az" {
+  command = plan
+  variables {
+    enable_private_dataplane             = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    create_vpc                           = false
+    existing_quarantine_vpc_id           = "vpc-22222222222222222"
+  }
+  override_data {
+    target = data.aws_subnet.quarantine_privatelink_main[2]
+    values = { vpc_id = "vpc-11111111111111111", availability_zone = "us-east-1a" }
+  }
+  expect_failures = [terraform_data.quarantine_privatelink_requirements]
+}
+
+run "private_automatic_rejects_duplicate_quarantine_az" {
+  command = plan
+  variables {
+    enable_private_dataplane             = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    create_vpc                           = false
+    existing_quarantine_vpc_id           = "vpc-22222222222222222"
+  }
+  override_data {
+    target = data.aws_subnet.quarantine_privatelink_quarantine[2]
+    values = { vpc_id = "vpc-22222222222222222", availability_zone = "us-east-1a" }
+  }
+  expect_failures = [terraform_data.quarantine_privatelink_requirements]
+}
+
+run "private_automatic_rejects_endpoint_az_not_served_by_nlb" {
+  command = plan
+  variables {
+    enable_private_dataplane             = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    create_vpc                           = false
+    existing_quarantine_vpc_id           = "vpc-22222222222222222"
+  }
+  override_data {
+    target = data.aws_subnet.quarantine_privatelink_quarantine[2]
+    values = { vpc_id = "vpc-22222222222222222", availability_zone = "us-east-1d" }
+  }
+  expect_failures = [terraform_data.quarantine_privatelink_requirements]
+}
+
 run "disabled_existing_vpcs_leave_no_privatelink_resources" {
   command = plan
   variables {
