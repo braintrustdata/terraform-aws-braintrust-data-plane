@@ -1671,7 +1671,7 @@ variable "brainstore_writer_instance_type" {
 variable "brainstore_automation_writer_instance_count" {
   type        = number
   description = "The number of dedicated automation writer nodes to create"
-  default     = 0
+  default     = 2
 }
 
 variable "brainstore_automation_writer_instance_type" {
