@@ -70,7 +70,7 @@ systemctl enable docker
 
 # Install CloudWatch agent
 arch=$(dpkg --print-architecture)
-wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/$arch/latest/amazon-cloudwatch-agent.deb
+wget https://amazoncloudwatch-agent-${aws_region}.s3.${aws_region}.amazonaws.com/ubuntu/$arch/latest/amazon-cloudwatch-agent.deb
 dpkg -i amazon-cloudwatch-agent.deb
 
 # Configure CloudWatch agent
