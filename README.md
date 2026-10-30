@@ -144,8 +144,7 @@ Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serve
 The module selects the runtime image and matching MicroVM guest artifact by default.
 Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
 
-When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
-Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
+Loop requires a Gateway. Set `enable_ai_gateway = true` to send model requests to the private gateway, or `use_global_ai_gateway_origin = true` to use the hosted gateway. `use_private_ai_gateway_origin` alone is not enough. A plan fails when Loop is enabled with both of those flags false.
 
 Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
 The endpoint policy allows connections only to MicroVMs in the deployment account.
