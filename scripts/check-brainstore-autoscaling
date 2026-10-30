@@ -62,7 +62,15 @@ def check_plan(plan, run_name):
             assert config["append_dimensions"] == {"InstanceId": "${aws:InstanceId}"}, address
             assert config["aggregation_dimensions"] == [["InstanceId"], []], address
 
+    if run_name == "automation_writer_legacy_bounds_upgrade_in_place":
+        for resource in plan["resource_changes"]:
+            if resource["mode"] == "managed":
+                assert resource["change"]["actions"] == ["no-op"], resource["address"]
+
     if run_name == "automation_writer_custom_targets_plan_in_existing_vpc":
+        asg = resources["module.brainstore[0].aws_autoscaling_group.brainstore_automation_writer[0]"]
+        assert asg["min_size"] == 2 and asg["max_size"] == 7, asg
+        assert asg["desired_capacity"] == 2 and asg["min_elb_capacity"] == 2, asg
         for metric, target in [("cpu", 55), ("memory", 65)]:
             policy = resources[f"module.brainstore[0].aws_autoscaling_policy.brainstore_automation_writer_{metric}_target[0]"]
             assert policy["target_tracking_configuration"][0]["target_value"] == target, metric
