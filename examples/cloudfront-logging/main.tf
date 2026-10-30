@@ -7,11 +7,6 @@ module "braintrust-data-plane" {
   # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
   # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
-
-  # ECS API memory scaling targets (API, ingest, and background); cooldowns use defaults.
-  braintrust_api_memory_autoscaling            = { target_value = 75 }
-  braintrust_api_ingest_memory_autoscaling     = { target_value = 75 }
-  braintrust_api_background_memory_autoscaling = { target_value = 75 }
   # ... your eixsting configuration ...
 
   # Only use this when instructed to by the Braintrust team.
