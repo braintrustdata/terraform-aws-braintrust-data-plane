@@ -31,11 +31,10 @@ resource "aws_lambda_function" "quarantine_pruner" {
   environment {
     variables = merge({
       PG_URL                        = local.postgres_url
-      REDIS_URL                     = "redis://${var.redis_host}:${var.redis_port}"
+      REDIS_URL                     = local.redis_url
       QUARANTINE_PUB_PRIVATE_VPC_ID = var.quarantine_vpc_id
       QUARANTINE_PRUNER_MODE        = var.quarantine_pruner_mode
       },
-      local.redis_extra_env_vars,
       var.extra_env_vars.QuarantinePrunerFunction,
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.quarantine_pruner_base_function_name

@@ -16,6 +16,7 @@ variables {
   sandbox_egress_gateway_target_group_arn   = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/bt-test-loop-egress/2222222222222222"
   database_url_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
   redis_url_secret_arn                      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+  redis_url_secret_version_id               = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   function_tools_secret_arn                 = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
   brainstore_s3_bucket_name                 = "bt-test-brainstore"
   brainstore_s3_bucket_arn                  = "arn:aws:s3:::bt-test-brainstore"
