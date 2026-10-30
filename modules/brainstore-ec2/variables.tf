@@ -239,8 +239,67 @@ variable "cache_file_size_writer" {
 
 variable "automation_writer_instance_count" {
   type        = number
-  description = "The number of dedicated automation writer nodes to create"
+  description = "Legacy automation writer minimum. Used when automation_writer_min_capacity is unset."
   default     = 0
+
+  validation {
+    condition     = var.automation_writer_instance_count >= 0 && floor(var.automation_writer_instance_count) == var.automation_writer_instance_count
+    error_message = "automation_writer_instance_count must be a non-negative integer."
+  }
+}
+
+variable "automation_writer_min_capacity" {
+  type        = number
+  description = "Minimum automation writer count (at least 1). Set with automation_writer_max_capacity, or omit both to use automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = var.automation_writer_min_capacity == null ? true : (var.automation_writer_min_capacity >= 1 && floor(var.automation_writer_min_capacity) == var.automation_writer_min_capacity)
+    error_message = "automation_writer_min_capacity must be a positive integer."
+  }
+}
+
+variable "automation_writer_max_capacity" {
+  type        = number
+  description = "Maximum automation writer count (at least 1). Set with automation_writer_min_capacity, or omit both to use twice automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = (var.automation_writer_min_capacity == null) == (var.automation_writer_max_capacity == null)
+    error_message = "automation_writer_min_capacity and automation_writer_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.automation_writer_max_capacity == null ? true : (var.automation_writer_max_capacity >= 1 && floor(var.automation_writer_max_capacity) == var.automation_writer_max_capacity)
+    error_message = "automation_writer_max_capacity must be a positive integer."
+  }
+
+  validation {
+    condition     = var.automation_writer_max_capacity == null ? true : var.automation_writer_max_capacity >= coalesce(var.automation_writer_min_capacity, var.automation_writer_instance_count)
+    error_message = "automation_writer_max_capacity must be greater than or equal to the effective automation writer minimum capacity."
+  }
+}
+
+variable "automation_writer_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 70
+
+  validation {
+    condition     = var.automation_writer_target_cpu_utilization >= 1 && var.automation_writer_target_cpu_utilization <= 100
+    error_message = "automation_writer_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "automation_writer_target_memory_utilization" {
+  type        = number
+  description = "Target average memory utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 70
+
+  validation {
+    condition     = var.automation_writer_target_memory_utilization >= 1 && var.automation_writer_target_memory_utilization <= 100
+    error_message = "automation_writer_target_memory_utilization must be between 1 and 100."
+  }
 }
 
 variable "automation_writer_instance_type" {

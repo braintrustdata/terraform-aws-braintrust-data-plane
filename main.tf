@@ -408,7 +408,7 @@ module "services" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
 
-  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_automation_writer_hostname = module.brainstore[0].automation_writer_dns_name
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -711,7 +711,7 @@ module "api_ecs" {
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
   brainstore_license_key          = var.brainstore_license_key
 
-  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_automation_writer_hostname = module.brainstore[0].automation_writer_dns_name
 
   # Storage
   code_bundle_bucket     = module.storage.code_bundle_bucket_id
@@ -872,44 +872,48 @@ module "brainstore" {
   source = "./modules/brainstore-ec2"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name                       = var.deployment_name
-  instance_count                        = var.brainstore_instance_count
-  instance_type                         = var.brainstore_instance_type
-  instance_key_pair_name                = var.brainstore_instance_key_pair_name
-  port                                  = var.brainstore_port
-  license_key                           = var.brainstore_license_key
-  version_override                      = var.brainstore_version_override
-  skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
-  extra_env_vars                        = var.brainstore_extra_env_vars
-  extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
-  writer_instance_count                 = var.brainstore_writer_instance_count
-  writer_instance_type                  = var.brainstore_writer_instance_type
-  automation_writer_instance_count      = var.brainstore_automation_writer_instance_count
-  automation_writer_instance_type       = var.brainstore_automation_writer_instance_type
-  extra_env_vars_automation_writer      = var.brainstore_extra_env_vars_automation_writer
-  cache_file_size_automation_writer     = var.brainstore_cache_file_size_automation_writer
-  fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
-  fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
-  extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
-  cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
-  ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
-  monitoring_telemetry                  = var.monitoring_telemetry
-  database_host                         = local.postgres_host
-  database_port                         = module.database.postgres_database_port
-  database_secret_arn                   = local.postgres_credentials_secret_arn
-  use_redis_replication_group           = var.use_redis_replication_group
-  redis_host                            = module.redis.redis_endpoint
-  redis_port                            = module.redis.redis_port
-  service_token_secret_arn              = module.services_common.function_tools_secret_arn
-  custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
-  brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
-  lambda_responses_s3_bucket_arn        = module.storage.lambda_responses_bucket_arn
-  code_bundle_s3_bucket_arn             = module.storage.code_bundle_bucket_arn
-  internal_observability_api_key        = var.internal_observability_api_key
-  internal_observability_env_name       = var.internal_observability_env_name
-  internal_observability_region         = var.internal_observability_region
-  brainstore_instance_security_group_id = module.services_common.brainstore_instance_security_group_id
-  vpc_id                                = local.main_vpc_id
+  deployment_name                             = var.deployment_name
+  instance_count                              = var.brainstore_instance_count
+  instance_type                               = var.brainstore_instance_type
+  instance_key_pair_name                      = var.brainstore_instance_key_pair_name
+  port                                        = var.brainstore_port
+  license_key                                 = var.brainstore_license_key
+  version_override                            = var.brainstore_version_override
+  skip_pg_for_brainstore_objects              = var.skip_pg_for_brainstore_objects
+  extra_env_vars                              = var.brainstore_extra_env_vars
+  extra_env_vars_writer                       = var.brainstore_extra_env_vars_writer
+  writer_instance_count                       = var.brainstore_writer_instance_count
+  writer_instance_type                        = var.brainstore_writer_instance_type
+  automation_writer_instance_count            = var.brainstore_automation_writer_instance_count
+  automation_writer_min_capacity              = var.brainstore_automation_writer_min_capacity
+  automation_writer_max_capacity              = var.brainstore_automation_writer_max_capacity
+  automation_writer_instance_type             = var.brainstore_automation_writer_instance_type
+  automation_writer_target_cpu_utilization    = var.brainstore_automation_writer_target_cpu_utilization
+  automation_writer_target_memory_utilization = var.brainstore_automation_writer_target_memory_utilization
+  extra_env_vars_automation_writer            = var.brainstore_extra_env_vars_automation_writer
+  cache_file_size_automation_writer           = var.brainstore_cache_file_size_automation_writer
+  fast_reader_instance_count                  = var.brainstore_fast_reader_instance_count
+  fast_reader_instance_type                   = var.brainstore_fast_reader_instance_type
+  extra_env_vars_fast_reader                  = var.brainstore_extra_env_vars_fast_reader
+  cache_file_size_fast_reader                 = var.brainstore_cache_file_size_fast_reader
+  ai_proxy_url_ssm_parameter                  = local.brainstore_ai_proxy_url_ssm_parameter
+  monitoring_telemetry                        = var.monitoring_telemetry
+  database_host                               = local.postgres_host
+  database_port                               = module.database.postgres_database_port
+  database_secret_arn                         = local.postgres_credentials_secret_arn
+  use_redis_replication_group                 = var.use_redis_replication_group
+  redis_host                                  = module.redis.redis_endpoint
+  redis_port                                  = module.redis.redis_port
+  service_token_secret_arn                    = module.services_common.function_tools_secret_arn
+  custom_ca_bundle_secret_arn                 = var.custom_ca_bundle_secret_arn
+  brainstore_s3_bucket_arn                    = module.storage.brainstore_bucket_arn
+  lambda_responses_s3_bucket_arn              = module.storage.lambda_responses_bucket_arn
+  code_bundle_s3_bucket_arn                   = module.storage.code_bundle_bucket_arn
+  internal_observability_api_key              = var.internal_observability_api_key
+  internal_observability_env_name             = var.internal_observability_env_name
+  internal_observability_region               = var.internal_observability_region
+  brainstore_instance_security_group_id       = module.services_common.brainstore_instance_security_group_id
+  vpc_id                                      = local.main_vpc_id
   authorized_security_groups = merge(
     merge(
       {

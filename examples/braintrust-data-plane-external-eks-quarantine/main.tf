@@ -42,6 +42,9 @@ module "braintrust-data-plane" {
   # When true, disables lambdas, ec2, and ingress submodules.
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
+  # brainstore_automation_writer_min_capacity, brainstore_automation_writer_max_capacity,
+  # brainstore_automation_writer_target_cpu_utilization, and
+  # brainstore_automation_writer_target_memory_utilization apply only to module-managed EC2, not EKS.
 
   # Loop runtime is not supported with external EKS deployments.
   enable_loop_runtime = false

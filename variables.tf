@@ -1670,8 +1670,67 @@ variable "brainstore_writer_instance_type" {
 
 variable "brainstore_automation_writer_instance_count" {
   type        = number
-  description = "The number of dedicated automation writer nodes to create"
+  description = "Legacy automation writer minimum. Used when brainstore_automation_writer_min_capacity is unset."
   default     = 0
+
+  validation {
+    condition     = var.brainstore_automation_writer_instance_count >= 0 && floor(var.brainstore_automation_writer_instance_count) == var.brainstore_automation_writer_instance_count
+    error_message = "brainstore_automation_writer_instance_count must be a non-negative integer."
+  }
+}
+
+variable "brainstore_automation_writer_min_capacity" {
+  type        = number
+  description = "Minimum automation writer count (at least 1). Set with brainstore_automation_writer_max_capacity, or omit both to use brainstore_automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_automation_writer_min_capacity == null ? true : (var.brainstore_automation_writer_min_capacity >= 1 && floor(var.brainstore_automation_writer_min_capacity) == var.brainstore_automation_writer_min_capacity)
+    error_message = "brainstore_automation_writer_min_capacity must be a positive integer."
+  }
+}
+
+variable "brainstore_automation_writer_max_capacity" {
+  type        = number
+  description = "Maximum automation writer count (at least 1). Set with brainstore_automation_writer_min_capacity, or omit both to use twice brainstore_automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = (var.brainstore_automation_writer_min_capacity == null) == (var.brainstore_automation_writer_max_capacity == null)
+    error_message = "brainstore_automation_writer_min_capacity and brainstore_automation_writer_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.brainstore_automation_writer_max_capacity == null ? true : (var.brainstore_automation_writer_max_capacity >= 1 && floor(var.brainstore_automation_writer_max_capacity) == var.brainstore_automation_writer_max_capacity)
+    error_message = "brainstore_automation_writer_max_capacity must be a positive integer."
+  }
+
+  validation {
+    condition     = var.brainstore_automation_writer_max_capacity == null ? true : var.brainstore_automation_writer_max_capacity >= coalesce(var.brainstore_automation_writer_min_capacity, var.brainstore_automation_writer_instance_count)
+    error_message = "brainstore_automation_writer_max_capacity must be greater than or equal to the effective automation writer minimum capacity."
+  }
+}
+
+variable "brainstore_automation_writer_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 70
+
+  validation {
+    condition     = var.brainstore_automation_writer_target_cpu_utilization >= 1 && var.brainstore_automation_writer_target_cpu_utilization <= 100
+    error_message = "brainstore_automation_writer_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "brainstore_automation_writer_target_memory_utilization" {
+  type        = number
+  description = "Target average memory utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 70
+
+  validation {
+    condition     = var.brainstore_automation_writer_target_memory_utilization >= 1 && var.brainstore_automation_writer_target_memory_utilization <= 100
+    error_message = "brainstore_automation_writer_target_memory_utilization must be between 1 and 100."
+  }
 }
 
 variable "brainstore_automation_writer_instance_type" {

@@ -1,5 +1,5 @@
 # Verify disabled automation writers skip instance metadata and enabled pools
-# retain their cache sizing and distinct writer-loop configuration.
+# retain their cache sizing, distinct writer-loop configuration, and autoscaling.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -46,34 +46,6 @@ variables {
   automation_writer_instance_count      = 1
 }
 
-run "disabled_automation_writer_skips_instance_metadata" {
-  command = plan
-
-  module {
-    source = "./modules/brainstore-ec2"
-  }
-
-  variables {
-    automation_writer_instance_count = 0
-    automation_writer_instance_type  = "unused-instance-type"
-  }
-
-  assert {
-    condition = (
-      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 0 &&
-      local.brainstore_automation_writer_cache_file_size == null &&
-      length(aws_launch_template.brainstore_automation_writer) == 0 &&
-      length(aws_autoscaling_group.brainstore_automation_writer) == 0 &&
-      length(aws_lb.brainstore_automation_writer) == 0 &&
-      length(aws_lb_target_group.brainstore_automation_writer) == 0 &&
-      length(aws_lb_listener.brainstore_automation_writer) == 0 &&
-      output.automation_writer_dns_name == null &&
-      !contains(keys(output.monitoring_targets), "automation-writer")
-    )
-    error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
-  }
-}
-
 run "automation_writer_loop_config_is_rendered" {
   command = plan
 
@@ -93,9 +65,10 @@ run "automation_writer_loop_config_is_rendered" {
       aws_autoscaling_group.brainstore_automation_writer[0].desired_capacity == 1 &&
       aws_autoscaling_group.brainstore_automation_writer[0].health_check_type == aws_autoscaling_group.brainstore_writer[0].health_check_type &&
       aws_autoscaling_group.brainstore_automation_writer[0].health_check_grace_period == aws_autoscaling_group.brainstore_writer[0].health_check_grace_period &&
-      aws_autoscaling_group.brainstore_automation_writer[0].wait_for_elb_capacity == 1
+      aws_autoscaling_group.brainstore_automation_writer[0].min_elb_capacity == 1 &&
+      coalesce(aws_autoscaling_group.brainstore_automation_writer[0].wait_for_elb_capacity, 0) == 0
     )
-    error_message = "AutomationWriter ASG should size, health-check, and wait for load balancer capacity like the regular writer."
+    error_message = "AutomationWriter ASG must check minimum ELB readiness at creation without requiring exact capacity on scaled-out updates."
   }
 
   assert {
@@ -150,6 +123,238 @@ run "automation_writer_nlb_routes_to_its_asg" {
       }
     )
     error_message = "Automation queries must reach the dedicated ASG through its private NLB and listener."
+  }
+
+  assert {
+    condition = alltrue([
+      for policy in [
+        aws_autoscaling_policy.brainstore_automation_writer_cpu_target[0],
+        aws_autoscaling_policy.brainstore_automation_writer_memory_target[0]
+      ] :
+      policy.autoscaling_group_name == aws_autoscaling_group.brainstore_automation_writer[0].name &&
+      policy.policy_type == "TargetTrackingScaling" &&
+      policy.estimated_instance_warmup == 900 &&
+      policy.target_tracking_configuration[0].target_value == 70 &&
+      !policy.target_tracking_configuration[0].disable_scale_in
+    ])
+    error_message = "Both policies must track the automation pool at 70%, allow scale-in, and use a 900-second warmup."
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_policy.brainstore_automation_writer_cpu_target[0].target_tracking_configuration[0].predefined_metric_specification[0].predefined_metric_type == "ASGAverageCPUUtilization" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].namespace == "CWAgent" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].metric_name == "MemoryUtilization" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].statistic == "Average" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].metric_dimension == tolist([{
+        name  = "AutoScalingGroupName"
+        value = aws_autoscaling_group.brainstore_automation_writer[0].name
+      }])
+    )
+    error_message = "CPU must use the ASG average; memory must match the agent's ASG-only CWAgent/MemoryUtilization series."
+  }
+}
+
+# Switching from the preceding count-only state to explicit bounds should be a no-op.
+run "automation_writer_legacy_bounds_upgrade_in_place" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_min_capacity   = 1
+    automation_writer_max_capacity   = 2
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].desired_capacity == 1
+    )
+    error_message = "Moving from legacy count-only state to equivalent explicit bounds must preserve capacity."
+  }
+}
+
+run "automation_writer_explicit_bounds_override_legacy_count" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_min_capacity   = 2
+    automation_writer_max_capacity   = 7
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 7 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].min_elb_capacity == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].instance_refresh[0].preferences[0].min_healthy_percentage == 100 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].instance_refresh[0].preferences[0].max_healthy_percentage == 200
+    )
+    error_message = "Explicit bounds must override the legacy count and leave refresh preferences unchanged."
+  }
+}
+
+run "automation_writer_equal_bounds_are_valid" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 1
+    automation_writer_max_capacity = 1
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 1
+    )
+    error_message = "Equal minimum and maximum must allow a fixed-size automation writer pool."
+  }
+}
+
+run "automation_writer_rejects_missing_minimum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_max_capacity = 5
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_missing_maximum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 3
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_inverted_bounds" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 3
+    automation_writer_max_capacity = 2
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_negative_minimum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = -1
+    automation_writer_max_capacity = 2
+  }
+
+  expect_failures = [var.automation_writer_min_capacity]
+}
+
+run "automation_writer_rejects_fractional_maximum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 1
+    automation_writer_max_capacity = 2.5
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_zero_minimum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 0
+    automation_writer_max_capacity = 4
+  }
+
+  expect_failures = [var.automation_writer_min_capacity]
+}
+
+run "automation_writer_rejects_zero_maximum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 1
+    automation_writer_max_capacity = 0
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "disabled_automation_writer_skips_instance_metadata" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_instance_type  = "unused-instance-type"
+  }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 0 &&
+      local.brainstore_automation_writer_cache_file_size == null &&
+      length(aws_launch_template.brainstore_automation_writer) == 0 &&
+      length(aws_autoscaling_group.brainstore_automation_writer) == 0 &&
+      length(aws_autoscaling_policy.brainstore_automation_writer_cpu_target) == 0 &&
+      length(aws_autoscaling_policy.brainstore_automation_writer_memory_target) == 0 &&
+      length(aws_lb.brainstore_automation_writer) == 0 &&
+      length(aws_lb_target_group.brainstore_automation_writer) == 0 &&
+      length(aws_lb_listener.brainstore_automation_writer) == 0 &&
+      output.automation_writer_dns_name == null &&
+      !contains(keys(output.monitoring_targets), "automation-writer")
+    )
+    error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
   }
 }
 

@@ -3,10 +3,13 @@ locals {
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
-  architecture                = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
-  has_writer_nodes            = var.writer_instance_count > 0
-  has_automation_writer_nodes = var.automation_writer_instance_count > 0
-  has_fast_reader_nodes       = var.fast_reader_instance_count > 0
+  architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
+  has_writer_nodes = var.writer_instance_count > 0
+  # Preserve legacy bounds when explicit autoscaling capacities are not supplied.
+  automation_writer_min_capacity = coalesce(var.automation_writer_min_capacity, var.automation_writer_instance_count)
+  automation_writer_max_capacity = coalesce(var.automation_writer_max_capacity, local.automation_writer_min_capacity * 2)
+  has_automation_writer_nodes    = local.automation_writer_min_capacity > 0
+  has_fast_reader_nodes          = var.fast_reader_instance_count > 0
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id    = split(":::", var.brainstore_s3_bucket_arn)[1]
   lambda_responses_bucket_id = split(":::", var.lambda_responses_s3_bucket_arn)[1]
@@ -103,6 +106,7 @@ resource "aws_launch_template" "brainstore" {
     brainstore_license_key      = var.license_key
     brainstore_version_override = var.version_override == null ? "" : var.version_override
     brainstore_release_version  = local.brainstore_release_version
+    cloudwatch_asg_metrics      = false
     monitoring_telemetry        = var.monitoring_telemetry
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
     is_dedicated_reader_node        = local.has_writer_nodes ? "true" : "false"
