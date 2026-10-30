@@ -37,24 +37,59 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_from_gateway" {
 
   security_group_id            = aws_security_group.alb.id
   referenced_security_group_id = each.value
-  from_port                    = local.alb_listener_port
-  to_port                      = local.alb_listener_port
+  from_port                    = var.enable_private_dataplane ? 8000 : local.alb_listener_port
+  to_port                      = var.enable_private_dataplane ? 8000 : local.alb_listener_port
   ip_protocol                  = "tcp"
   description                  = "Allow inbound traffic from ${each.key}."
   tags                         = local.common_tags
 }
 
 data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
+  count = var.enable_private_dataplane ? 0 : 1
+
   name = "com.amazonaws.global.cloudfront.origin-facing"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_cloudfront" {
+  count = var.enable_private_dataplane ? 0 : 1
+
   security_group_id = aws_security_group.alb.id
-  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing[0].id
   from_port         = local.alb_listener_port
   to_port           = local.alb_listener_port
   ip_protocol       = "tcp"
   description       = "Allow inbound traffic from CloudFront VPC origins."
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_internal_security_groups" {
+  for_each = var.enable_private_dataplane ? var.internal_authorized_security_groups : {}
+
+  security_group_id            = aws_security_group.alb.id
+  referenced_security_group_id = each.value
+  from_port                    = 8000
+  to_port                      = 8000
+  ip_protocol                  = "tcp"
+  description                  = "Allow internal API requests from ${each.key}."
+
+  tags = merge({
+    Name = "${var.deployment_name}-api-internal-${each.key}"
+  }, local.common_tags)
+}
+
+# Loop starts after the gateway. Baseline callback access must not wait for Loop.
+resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_loop_runtime" {
+  for_each = var.enable_private_dataplane ? var.loop_runtime_security_groups : {}
+
+  security_group_id            = aws_security_group.alb.id
+  referenced_security_group_id = each.value
+  from_port                    = 8000
+  to_port                      = 8000
+  ip_protocol                  = "tcp"
+  description                  = "Allow internal API requests from ${each.key}."
+
+  tags = merge({
+    Name = "${var.deployment_name}-api-internal-${each.key}"
+  }, local.common_tags)
 }
 
 resource "aws_security_group_rule" "alb_egress_all" {
@@ -183,11 +218,82 @@ resource "aws_lb_listener" "api_ecs_http" {
   }
 }
 
+resource "aws_lb_listener" "api_ecs_internal" {
+  count = var.enable_private_dataplane ? 1 : 0
+
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 8000
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.braintrust_api.arn
+  }
+
+  tags = local.common_tags
+}
+
 resource "aws_ssm_parameter" "api_url" {
   name        = "/braintrust/${var.deployment_name}/ecs-api-url"
   type        = "String"
-  value       = local.api_ecs_url
+  value       = var.enable_private_dataplane ? local.internal_api_url : local.api_ecs_url
   description = "API ECS URL for Brainstore"
 
   tags = local.common_tags
+
+  depends_on = [
+    aws_lb_listener.api_ecs_internal,
+    aws_lb_listener_rule.alb_internal_path_routes,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups,
+  ]
+}
+
+resource "aws_lb_target_group" "private_gateway" {
+  count = var.enable_private_dataplane ? 1 : 0
+
+  name        = "${var.deployment_name}-api-gateway"
+  port        = 8080
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  deregistration_delay = var.target_group_deregistration_delay_seconds
+
+  health_check {
+    path                = "/health"
+    matcher             = "200"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 10
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-api-gateway"
+  }, local.common_tags)
+}
+
+resource "aws_lb_target_group" "private_loop_runtime" {
+  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+
+  name        = "${var.deployment_name}-api-loop"
+  port        = 4001
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  deregistration_delay = var.target_group_deregistration_delay_seconds
+
+  health_check {
+    path                = "/health/liveness"
+    matcher             = "200-399"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 10
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-api-loop"
+  }, local.common_tags)
 }

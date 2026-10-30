@@ -1,0 +1,303 @@
+# tflint-ignore-file: terraform_module_pinned_source
+
+module "braintrust-data-plane" {
+  # Optional existing bootstrap-owned SSM/ECS transcript destination.
+  # Does not enable sessions by itself. See docs/diagnostics-transcripts.md.
+  # diagnostics_transcript_log_group_name = "/braintrust-byoc/example/diagnostics"
+  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
+  # Append '?ref=<version_tag>' to lock to a specific version of the module.
+
+  ### Examples below are shown with the module defaults. You do not have to uncomment them
+  ### unless you want to change the default value.
+  ### The default values are for production-sized deployments.
+
+  # This is primarily used for tagging and naming resources in your AWS account.
+  # Do not change this after deployment. RDS and S3 resources can not be renamed.
+  deployment_name = "braintrust"
+
+  # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
+  # and set primary_org_name for service-token management.
+  braintrust_org_name = "your-org-name"
+
+  # Required when braintrust_org_name is "*", or when it is unset/empty.
+  primary_org_name = "your-org-name"
+
+  # Optional comma-separated Braintrust Org ID allowlist (IDs, not org names).
+  # Example: "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002"
+  # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
+  allowed_org_ids = ""
+
+  # Optional BTQL query.read audit logging by Braintrust Org ID.
+  # Strict mode writes audit rows before returning query results.
+  # Best-effort mode writes audit rows asynchronously and logs failures.
+  # btql_audit_logs_strict_org_ids      = []
+  # btql_audit_logs_best_effort_org_ids = []
+
+  # Private mode requires ECS and the private AI gateway.
+  # A mode transition causes an outage. See this example README.
+  enable_private_dataplane = true
+  enable_ecs_api           = true
+  create_ai_gateway        = true
+  enable_ai_gateway        = true
+
+  create_vpc            = true
+  enable_quarantine_vpc = true
+
+  # Existing VPCs are optional. See this example README for network requirements.
+  # For an existing main VPC, set create_vpc = false and supply these inputs.
+  # existing_vpc_id              = "vpc-11111111111111111"
+  # existing_private_subnet_1_id = "subnet-11111111111111111"
+  # existing_private_subnet_2_id = "subnet-22222222222222222"
+  # existing_private_subnet_3_id = "subnet-33333333333333333"
+  # existing_public_subnet_1_id  = "subnet-77777777777777777"
+
+  # The quarantine VPC choice is independent of the main VPC choice.
+  # existing_quarantine_vpc_id              = "vpc-22222222222222222"
+  # existing_quarantine_private_subnet_1_id = "subnet-44444444444444444"
+  # existing_quarantine_private_subnet_2_id = "subnet-55555555555555555"
+  # existing_quarantine_private_subnet_3_id = "subnet-66666666666666666"
+
+  # The customer must supply a certificate in ACM, DNS, and client network connectivity.
+  # The certificate must cover the hostname and exist in the deployment region.
+  braintrust_api_alb_custom_domain   = "braintrust-api.example.com"
+  braintrust_api_alb_certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+  # Access to the ALB is secured by a Security Group and access is controlled with a list of CIDRs or a list of Security Groups
+  braintrust_api_authorized_cidr_blocks = ["10.20.0.0/16"]
+  # braintrust_api_authorized_security_groups = {
+  #   "Client" = "sg-0123456789abcdef0"
+  # }
+
+  # The optional Loop runtime is disabled by default.
+  enable_loop_runtime = false
+  # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
+  # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
+
+  # Changing this will incur a short downtime.
+  postgres_instance_type = "db.r8g.2xlarge"
+
+  # Initial storage size (in GB) for the RDS instance.
+  postgres_storage_size = 1000
+  # Maximum storage size (in GB) to allow the RDS instance to auto-scale to.
+  postgres_max_storage_size = 10000
+
+  # Storage type for the RDS instance. Recommended io2 for large production deployments.
+  postgres_storage_type = "gp3"
+
+  # Storage IOPS for the RDS instance. Only applicable if storage_type is io1, io2, or gp3.
+  # Recommended 15000 for production.
+  postgres_storage_iops = 15000
+
+  # Throughput for the RDS instance. Only applicable if storage_type is gp3.
+  # Recommended 500 for production if you are using gp3. Leave blank for io1 or io2
+  postgres_storage_throughput = 500
+
+  # PostgreSQL engine version for the RDS instance.
+  postgres_version = "15"
+
+  # Automatic upgrades of PostgreSQL minor engine version.
+  # If true, AWS will automatically upgrade the minor version of the PostgreSQL engine for you.
+  # Note: Don't include the minor version in your postgres_version if you want to use this.
+  # If false, you will need to manually upgrade the minor version of the PostgreSQL engine.
+  postgres_auto_minor_version_upgrade = true
+
+  # Multi-AZ RDS instance. Enabling increases cost but provides higher availability.
+  # Recommended for critical production environments. Doubles the cost of the RDS instance.
+  # postgres_multi_az                     = false
+
+  # Daily window (UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi.
+  # postgres_backup_window = "00:00-00:30"
+
+  # Weekly window (UTC) during which RDS system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi.
+  # Default is Mon 08:00-11:00 UTC (12am-3am PST).
+  # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
+
+  ### Brainstore configuration
+  # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
+  brainstore_license_key = var.brainstore_license_key
+
+  # The number of Brainstore reader instances to provision
+  # Recommended Graviton instance type with 16GB of memory
+  brainstore_instance_count = 2
+  brainstore_instance_type  = "c8gd.4xlarge"
+
+  # The number of Brainstore fast reader instances to provision
+  # Recommended Graviton instance type with 16GB of memory
+  brainstore_fast_reader_instance_count = 2
+  brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
+
+  # The number of dedicated Brainstore writer nodes to create
+  # Recommended Graviton instance type with 32GB of memory
+  brainstore_writer_instance_count = 1
+  brainstore_writer_instance_type  = "c8gd.8xlarge"
+
+  # Automation writers are optional. Enable only when instructed by Braintrust.
+  brainstore_automation_writer_instance_count = 0
+
+  ### Redis configuration
+  # Reuse a subnet group in the data plane VPC; null creates one (default).
+  # Changing the subnet group name on an existing deployment replaces Redis.
+  # existing_elasticache_subnet_group_name = null
+
+  # Default is acceptable for typical production deployments.
+  redis_instance_type = "cache.r7g.large"
+
+  # Redis engine version
+  redis_version = "7.0"
+
+  ### Tagging
+  # Optionally add any custom AWS tags you want to apply to all resources created by the module
+  #  custom_tags = {
+  #    CustomTagKey = "SomeValue"
+  #  }
+  #
+
+  ### S3 Block Public Access
+  # New deployments only: skip bucket Block Public Access configuration when
+  # customer controls own protection. Do not change this on an existing stack.
+  # manage_s3_public_access_block = false
+
+  ### Network configuration
+  # WARNING: You should choose these values carefully after discussing with your networking team.
+  # Changing them after the fact is not possible and will require a complete rebuild of your Braintrust deployment.
+
+  # CIDR block for the VPC. The core Braintrust services will be deployed in this VPC.
+  # You might need to adjust this so it does not conflict with any other VPC CIDR blocks you intend to peer with Braintrust.
+  # vpc_cidr                             = "10.175.0.0/21"
+
+  # CIDR block for the Quarantined VPC. This is used to run user defined functions in an isolated environment.
+  # You might need to adjust this so it does not conflict with any other VPC CIDR blocks you intend to peer with Braintrust
+  # quarantine_vpc_cidr                   = "10.175.8.0/21"
+
+  # SSM endpoints are created when enable_brainstore_ec2_ssm is true.
+  # Set false only when SSM connectivity is provided separately.
+  # create_ssm_vpc_endpoints = true
+
+  # Secrets Manager endpoint is enabled by default in a module-managed main VPC.
+  # Adds interface endpoint charges; Private DNS redirects regional API calls.
+  # create_secrets_manager_vpc_endpoint = false # Opt out.
+
+  # VPC Flow Logs (disabled by default; only applied to VPCs this module creates).
+  # Configure the main and quarantine VPCs separately.
+  #
+  # Option A - write to your own S3 bucket. Attach a destination bucket policy
+  # that grants delivery.logs.amazonaws.com s3:PutObject and s3:GetBucketAcl
+  # before enabling this, or CreateFlowLogs succeeds and no objects arrive.
+  # See the module README "VPC Flow Logs" section.
+  # main_vpc_flow_log = {
+  #   enabled         = true
+  #   traffic_type    = "ALL" # ALL | ACCEPT | REJECT
+  #   destination_arn = "arn:aws:s3:::my-flow-logs-bucket"
+  # }
+  #
+  # Option B - let the module create and manage a dedicated S3 bucket (leave destination_arn unset).
+  # Encrypted with the data-plane KMS key unless you set kms_key_arn to a different CMK.
+  # After objects exist, disable/destroy fails with BucketNotEmpty unless you empty
+  # the bucket or remove it from Terraform state first. Full stack destroy must
+  # also keep the encrypting KMS key. See the module README.
+  # main_vpc_flow_log = {
+  #   enabled = true
+  # }
+  #
+  # Option C - write to CloudWatch Logs (module creates the log group + IAM role):
+  # main_vpc_flow_log = {
+  #   enabled           = true
+  #   destination_type  = "cloud-watch-logs"
+  #   retention_in_days = 365
+  # }
+  #
+  # quarantine_vpc_flow_log = {
+  #   enabled = true
+  # }
+
+
+  ### Advanced configuration
+
+  # The maximum number of concurrent executions to reserve and constrain Braintrust lambdas to.
+  # If you run Braintrust in a dedicated account you can leave these at "-1" (unlimited).
+  # If you run Braintrust in a shared account you should set these to a reasonable limit to avoid
+  # impacting other non-Braintrust Lambdas. Recommended 100 to 1000 for production in a shared account.
+  # api_handler_reserved_concurrent_executions = -1
+  # ai_proxy_reserved_concurrent_executions    = -1
+
+  # Private mode automatically creates quarantine-to-gateway PrivateLink.
+  # No quarantine_proxy_url override is required or supported in private mode.
+
+  # Optional URL-security controls for externally supplied outbound HTTP URLs.
+  # Leave unset to use the application default mode of "warn".
+  # unsafe_url_request_mode  = "reject"
+  # url_security_dns_servers = "1.1.1.1,8.8.8.8"
+  # url_security_allow_cidrs = "10.0.0.0/8"
+
+  # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2,
+  # and Gateway ECS. The secret value must contain PEM-encoded CA certificates.
+  # Set the KMS key ARN only when the secret uses a customer-managed key instead
+  # of the default Secrets Manager key.
+  # custom_ca_bundle_secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
+  # custom_ca_bundle_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+
+  # Uncomment these to set extra environment variables for the services.
+  # Only use this when instructed to by the Braintrust team.
+  # brainstore_extra_env_vars = {}
+  #
+  # brainstore_extra_env_vars_writer = {}
+  #
+  # service_extra_env_vars = {
+  #   APIHandler               = {}
+  #   AIProxy                  = {}
+  #   BillingCron              = {}
+  #   CatchupETL               = {}
+  #   MigrateDatabaseFunction  = {}
+  #   QuarantineWarmupFunction = {}
+  #   AutomationCron           = {}
+  # }
+
+
+  ### S3 CORS configuration
+  # Additional CORS origins for the code bundle and lambda responses buckets.
+  # Use s3_additional_allowed_origins to apply the same origins to both buckets,
+  # or set per-bucket vars to scope an origin to just one bucket. Values from all
+  # three are merged. Supports wildcards in the domain name.
+  # s3_additional_allowed_origins                  = ["https://app.example.com"]
+  # s3_code_bundle_additional_allowed_origins      = []
+  # s3_lambda_responses_additional_allowed_origins = []
+
+  # Opt-in: S3 server access logging for the brainstore, code-bundle, and
+  # lambda-responses buckets. Attach the destination bucket policy (grant
+  # s3:PutObject to logging.s3.amazonaws.com) before enabling this. Destination
+  # must use SSE-S3 (AES256), not SSE-KMS. See the module README "S3 Server
+  # Access Logging" section for the required order and policy.
+  # s3_server_access_logging = {
+  #   bucket = "your-audit-logs-bucket"
+  #   prefix = "braintrust/"
+  # }
+
+  # Opt-in: bound S3 export AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # s3_export_assume_role_arns = [
+  #   "arn:aws:iam::123456789012:role/customer-export-role",
+  #   "arn:aws:iam::*:role/braintrust-export-*",
+  # ]
+
+  # Opt-in: let the API role read caller-owned buckets that traces link to as external
+  # attachments (s3:GetObject only, plus kms:Decrypt through S3 for SSE-KMS buckets).
+  # Buckets and keys in another account must also grant the API role in their policies.
+  # external_attachment_s3_bucket_arns           = ["arn:aws:s3:::your-attachment-bucket"]
+  # external_attachment_s3_bucket_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
+
+  # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
+  # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
+
+  # Opt-in: restrict S3 VPC gateway endpoint (org and account lists compose; empty = unrestricted).
+  # Current account is always allowed. When restricted, ECR starport + CloudWatch agent GetObject
+  # exceptions are added automatically. Applies to any module-managed S3 VPC endpoint
+  # (main and/or quarantine); does not modify customer-managed existing_* VPC endpoints.
+  # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
+  # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
+
+  ### Braintrust Remote Support
+
+  # Enable sharing of Cloudwatch logs with Braintrust staff
+  # enable_braintrust_support_logs_access = true
+
+  # Enable Bastion SSH access for Braintrust staff. This will create a bastion host and a security group that allows EC2 instance connect access from the Braintrust IAM Role.
+  # enable_braintrust_support_shell_access = true
+}

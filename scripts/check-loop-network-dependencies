@@ -47,6 +47,7 @@ def check_graph(dot):
         node("module.database.aws_vpc_security_group_ingress_rule.rds_allow_ingress_from_authorized_security_groups"),
         node("module.redis.aws_vpc_security_group_ingress_rule.elasticache_allow_ingress_from_authorized_security_groups"),
         node("module.brainstore.aws_vpc_security_group_ingress_rule.brainstore_elb_allow_ingress_from_authorized_security_groups"),
+        node("module.api_ecs.aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups"),
     ]
     errors = []
     for rule in baseline_rules:
@@ -127,6 +128,26 @@ def check_graph(dot):
         if path:
             errors.append("Gateway bootstrap dependency is circular or blocks migration:\n  " + "\n  -> ".join(path))
 
+    api_parameter = node("module.api_ecs.aws_ssm_parameter.api_url")
+    internal_url = node("module.api_ecs.output.internal_url")
+    internal_listener = node("module.api_ecs.aws_lb_listener.api_ecs_internal")
+    internal_routes = node("module.api_ecs.aws_lb_listener_rule.alb_internal_path_routes")
+    for caller in [api_parameter, internal_url]:
+        for dependency in [internal_listener, internal_routes, baseline_rules[-1]]:
+            if not dependency_path(graph, caller, dependency):
+                errors.append(f"Internal API URL must wait for its listener, routes, and baseline access: {caller} -> {dependency}")
+    if dependency_path(graph, api_parameter, gateway_service):
+        errors.append("Brainstore API parameter must not wait for the gateway service.")
+
+    for service, route in [("gateway", "private_gateway"), ("loop_runtime", "private_loop_runtime")]:
+        ecs_service = node(f"module.{service}_ecs.aws_ecs_service.{service}")
+        target_group = node(f"module.api_ecs.output.{route}_target_group_arn")
+        listener_rule = node(f"module.api_ecs.aws_lb_listener_rule.{route}")
+        task_ingress = node(f"module.{service}_ecs.aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups")
+        for caller, dependency in [(ecs_service, target_group), (target_group, listener_rule), (ecs_service, task_ingress)]:
+            if not dependency_path(graph, caller, dependency):
+                errors.append(f"Direct ingress must precede ECS registration: {caller} -> {dependency}")
+
     if errors:
         raise ValueError("\n\n".join(errors))
 
@@ -143,7 +164,7 @@ def main():
         check_graph(dot)
     except ValueError as error:
         parser.exit(1, f"{error}\n")
-    print("Network dependencies pass. Gateway readiness precedes cutover. Migration and the private API ALB remain independent.")
+    print("Network dependencies pass. Gateway readiness and internal API access precede cutover.")
 
 
 if __name__ == "__main__":

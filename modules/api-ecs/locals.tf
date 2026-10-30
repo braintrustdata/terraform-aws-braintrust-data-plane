@@ -21,6 +21,7 @@ locals {
   alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
   alb_listener_port = local.alb_https_enabled ? 443 : 80
   api_ecs_url       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
+  internal_api_url  = var.enable_private_dataplane ? "http://${aws_lb.api_ecs.dns_name}:8000" : null
   # Root module resolves override / PrivateLink / Function URL / CloudFront /v1/proxy.
   # Null or blank omits the variable; api-ts uses the caller proxy URL, which is
   # http://localhost:8000/v1/proxy in this ECS configuration. A quarantine Lambda

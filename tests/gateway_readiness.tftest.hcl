@@ -39,9 +39,17 @@ run "gateway_waits_for_healthy_deployment" {
   assert {
     condition = one([
       for env in jsondecode(aws_ecs_task_definition.gateway.container_definitions)[0].environment : env.value
-      if env.name == "BRAINTRUST_API_URL"
+      if env.name == "OVERRIDE_BRAINTRUST_API_URL"
     ]) == "http://api.internal"
     error_message = "Gateway API calls must use the supplied private API address."
+  }
+
+  assert {
+    condition = alltrue([
+      for env in jsondecode(aws_ecs_task_definition.gateway.container_definitions)[0].environment :
+      env.name != "BRAINTRUST_API_URL"
+    ])
+    error_message = "The gateway must use OVERRIDE_BRAINTRUST_API_URL instead of BRAINTRUST_API_URL."
   }
 
   assert {
