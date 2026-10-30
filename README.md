@@ -36,7 +36,7 @@ To use this module, **copy the [`examples/braintrust-data-plane`](examples/brain
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
 
-If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
+Before the first deployment in a new AWS account, run `./scripts/create-service-linked-roles.sh` with credentials for that account. When creating a KMS key, the module reads `AWSServiceRoleForAutoScaling` during planning and fails if it is missing; the Terraform identity needs `iam:GetRole` for that role. The role remains account-owned and is not created or deleted by this module. Supplying an existing `kms_key_arn` skips this module-managed KMS check; the key owner remains responsible for its Auto Scaling permissions.
 
 ## Module Configuration
 
