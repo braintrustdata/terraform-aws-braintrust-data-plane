@@ -1086,6 +1086,17 @@ variable "braintrust_api_cpu_autoscaling" {
   default = {}
 }
 
+variable "braintrust_api_memory_autoscaling" {
+  description = "Memory target tracking autoscaling for the braintrust-api ECS service."
+  type = object({
+    target_value       = optional(number, 75)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
+
+  default = {}
+}
+
 variable "braintrust_api_event_loop_utilization_autoscaling" {
   description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api ECS service."
   type = object({
@@ -1161,6 +1172,17 @@ variable "braintrust_api_ingest_cpu_autoscaling" {
   default = {}
 }
 
+variable "braintrust_api_ingest_memory_autoscaling" {
+  description = "Memory target tracking autoscaling for the braintrust-api-ingest ECS service."
+  type = object({
+    target_value       = optional(number, 75)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
+
+  default = {}
+}
+
 variable "braintrust_api_ingest_event_loop_utilization_autoscaling" {
   description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-ingest ECS service."
   type = object({
@@ -1229,6 +1251,17 @@ variable "braintrust_api_background_cpu_autoscaling" {
   description = "CPU target tracking autoscaling for the braintrust-api-background ECS service."
   type = object({
     target_value       = optional(number, 50)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
+
+  default = {}
+}
+
+variable "braintrust_api_background_memory_autoscaling" {
+  description = "Memory target tracking autoscaling for the braintrust-api-background ECS service."
+  type = object({
+    target_value       = optional(number, 75)
     scale_in_cooldown  = optional(number, 300)
     scale_out_cooldown = optional(number, 60)
   })

@@ -7,6 +7,11 @@ module "braintrust-data-plane" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
+  # ECS API memory scaling targets (API, ingest, and background); cooldowns use defaults.
+  braintrust_api_memory_autoscaling            = { target_value = 75 }
+  braintrust_api_ingest_memory_autoscaling     = { target_value = 75 }
+  braintrust_api_background_memory_autoscaling = { target_value = 75 }
+
   ### Examples below are shown with the module defaults. You do not have to uncomment them
   ### unless you want to change the default value.
   ### The default values are for production-sized deployments.

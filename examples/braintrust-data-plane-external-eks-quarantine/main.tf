@@ -18,6 +18,8 @@ module "braintrust-data-plane" {
   # source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # Append '?ref=<version_tag>' to lock to a specific version of the module.
 
+  # API memory autoscaling is managed by Helm for external EKS deployments.
+
   # This is primarily used for tagging and naming resources in your AWS account.
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
   deployment_name = "braintrust"
