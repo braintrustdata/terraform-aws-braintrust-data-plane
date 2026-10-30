@@ -75,7 +75,7 @@ Expect apply impact on **every** stack, not only replication-group users. Ship t
 - New ECS task definitions for API, ingest, background, gateway, and Loop (pinned Redis URL secret version) → rolling service deployments
 - Brainstore launch-template user-data change → autoscaling instance refresh
 - Support bastion replacement when `enable_braintrust_support_shell_access` is enabled (`user_data_replace_on_change = true`)
-- Existing replication-group stacks that predate at-rest encryption / customer-managed KMS: Redis **replace** (`at_rest_encryption_enabled` and `kms_key_id` are ForceNew). Plan for Redis downtime. A downgrade can replace Redis again. Adding `auth_token` alone can be an in-place update.
+- Existing replication-group stacks that predate at-rest encryption / customer-managed KMS: Redis **replace** (`at_rest_encryption_enabled` and `kms_key_id` are ForceNew). Plan for Redis downtime. A downgrade can replace Redis again.
 
 ### BTQL audit logging
 
