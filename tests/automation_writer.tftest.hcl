@@ -40,6 +40,9 @@ run "automation_writer_custom_targets_plan_in_existing_vpc" {
   command = plan
 
   variables {
+    brainstore_automation_writer_instance_count            = 0
+    brainstore_automation_writer_min_capacity              = 2
+    brainstore_automation_writer_max_capacity              = 7
     brainstore_automation_writer_target_cpu_utilization    = 55
     brainstore_automation_writer_target_memory_utilization = 65
     create_vpc                                             = false
@@ -62,6 +65,81 @@ run "disabled_automation_writer_plans" {
     condition     = module.brainstore[0].automation_writer_dns_name == null
     error_message = "A disabled automation writer pool must not expose a query endpoint."
   }
+}
+
+run "root_automation_writer_rejects_missing_minimum" {
+  command = plan
+
+  variables {
+    brainstore_automation_writer_max_capacity = 5
+  }
+
+  expect_failures = [var.brainstore_automation_writer_max_capacity]
+}
+
+run "root_automation_writer_rejects_missing_maximum" {
+  command = plan
+
+  variables {
+    brainstore_automation_writer_min_capacity = 3
+  }
+
+  expect_failures = [var.brainstore_automation_writer_max_capacity]
+}
+
+run "root_automation_writer_rejects_inverted_bounds" {
+  command = plan
+
+  variables {
+    brainstore_automation_writer_min_capacity = 3
+    brainstore_automation_writer_max_capacity = 2
+  }
+
+  expect_failures = [var.brainstore_automation_writer_max_capacity]
+}
+
+run "root_automation_writer_rejects_zero_minimum" {
+  command = plan
+
+  variables {
+    brainstore_automation_writer_min_capacity = 0
+    brainstore_automation_writer_max_capacity = 4
+  }
+
+  expect_failures = [var.brainstore_automation_writer_min_capacity]
+}
+
+run "root_automation_writer_rejects_zero_maximum" {
+  command = plan
+
+  variables {
+    brainstore_automation_writer_min_capacity = 1
+    brainstore_automation_writer_max_capacity = 0
+  }
+
+  expect_failures = [var.brainstore_automation_writer_max_capacity]
+}
+
+run "root_automation_writer_rejects_negative_minimum" {
+  command = plan
+
+  variables {
+    brainstore_automation_writer_min_capacity = -1
+    brainstore_automation_writer_max_capacity = 2
+  }
+
+  expect_failures = [var.brainstore_automation_writer_min_capacity]
+}
+
+run "root_automation_writer_rejects_fractional_maximum" {
+  command = plan
+
+  variables {
+    brainstore_automation_writer_min_capacity = 1
+    brainstore_automation_writer_max_capacity = 2.5
+  }
+
+  expect_failures = [var.brainstore_automation_writer_max_capacity]
 }
 
 run "root_automation_writer_rejects_invalid_targets" {

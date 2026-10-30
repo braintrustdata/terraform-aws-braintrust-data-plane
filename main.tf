@@ -403,7 +403,7 @@ module "services" {
   brainstore_wal_footer_version   = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
 
-  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_automation_writer_hostname = module.brainstore[0].automation_writer_dns_name
 
   # Storage
   code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
@@ -706,7 +706,7 @@ module "api_ecs" {
   skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
   brainstore_license_key          = var.brainstore_license_key
 
-  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_automation_writer_hostname = module.brainstore[0].automation_writer_dns_name
 
   # Storage
   code_bundle_bucket     = module.storage.code_bundle_bucket_id
@@ -877,6 +877,8 @@ module "brainstore" {
   writer_instance_count                       = var.brainstore_writer_instance_count
   writer_instance_type                        = var.brainstore_writer_instance_type
   automation_writer_instance_count            = var.brainstore_automation_writer_instance_count
+  automation_writer_min_capacity              = var.brainstore_automation_writer_min_capacity
+  automation_writer_max_capacity              = var.brainstore_automation_writer_max_capacity
   automation_writer_instance_type             = var.brainstore_automation_writer_instance_type
   automation_writer_target_cpu_utilization    = var.brainstore_automation_writer_target_cpu_utilization
   automation_writer_target_memory_utilization = var.brainstore_automation_writer_target_memory_utilization

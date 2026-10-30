@@ -155,15 +155,15 @@ resource "aws_lb_listener" "brainstore_automation_writer" {
 resource "aws_autoscaling_group" "brainstore_automation_writer" {
   count                     = local.has_automation_writer_nodes ? 1 : 0
   name_prefix               = "${var.deployment_name}-brainstore-automation-writer"
-  min_size                  = var.automation_writer_instance_count
-  max_size                  = var.automation_writer_instance_count * 2
-  desired_capacity          = var.automation_writer_instance_count
+  min_size                  = local.automation_writer_min_capacity
+  max_size                  = local.automation_writer_max_capacity
+  desired_capacity          = local.automation_writer_min_capacity
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_automation_writer[0].arn]
   # Check minimum ELB readiness only at creation; updates may retain a scaled-out pool.
-  min_elb_capacity = var.automation_writer_instance_count
+  min_elb_capacity = local.automation_writer_min_capacity
   launch_template {
     id      = aws_launch_template.brainstore_automation_writer[0].id
     version = aws_launch_template.brainstore_automation_writer[0].latest_version

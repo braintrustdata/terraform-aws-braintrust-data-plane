@@ -29,10 +29,6 @@ This ordering applies only to the module-managed reader and fast-reader Brainsto
 
 ## How to use this module
 
-Dedicated automation writers get an internal NLB and an API endpoint when `brainstore_automation_writer_instance_count > 0`. The application decides which queries use this endpoint. Deployments without an automation writer pool continue using the normal writer URL.
-
-The automation writer pool scales between `brainstore_automation_writer_instance_count` and twice that count using CPU and memory target tracking. Both `brainstore_automation_writer_target_cpu_utilization` and `brainstore_automation_writer_target_memory_utilization` default to 70% (valid range: 1–100), with a 900-second instance warmup. Either policy can scale out; scale-in requires both policies to agree. Memory uses the existing CloudWatch agent's `CWAgent/MemoryUtilization` metric, collected every 60 seconds and aggregated by `AutoScalingGroupName` for this pool. Terraform leaves desired capacity to autoscaling after creation; changing the instance count updates the minimum and maximum bounds. The pool remains disabled by default (`0`). Upgrading an enabled pool adds the policies and rolls its instances to publish ASG-level memory metrics; other fleets' bootstrap configuration is unchanged. Existing resource addresses are preserved and no state moves are needed.
-
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
@@ -42,6 +38,14 @@ If you're using a brand new AWS account for your Braintrust data plane you will 
 ## Module Configuration
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
+
+### Automation writers
+
+Set `brainstore_automation_writer_min_capacity` and `brainstore_automation_writer_max_capacity` to size the dedicated automation writer pool. Both must be positive integers. Enabled pools use a private NLB; otherwise, automation queries use the normal writer endpoint.
+
+Set both capacity inputs or neither. When both are unset, the minimum uses `brainstore_automation_writer_instance_count` (default 0), and the maximum uses twice that count. A legacy count of 0 disables the pool.
+
+`brainstore_automation_writer_target_cpu_utilization` and `brainstore_automation_writer_target_memory_utilization` both default to 70%, with a 900-second warmup. Either policy can scale out; both must agree to scale in. Autoscaling owns desired capacity after creation. Upgrading an enabled pool rolls its instances to publish ASG-level memory metrics.
 
 ### Organization access configuration
 

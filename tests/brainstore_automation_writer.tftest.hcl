@@ -155,6 +155,179 @@ run "automation_writer_nlb_routes_to_its_asg" {
   }
 }
 
+# Switching from the preceding count-only state to explicit bounds should be a no-op.
+run "automation_writer_legacy_bounds_upgrade_in_place" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_min_capacity   = 1
+    automation_writer_max_capacity   = 2
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].desired_capacity == 1
+    )
+    error_message = "Moving from legacy count-only state to equivalent explicit bounds must preserve capacity."
+  }
+}
+
+run "automation_writer_explicit_bounds_override_legacy_count" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_min_capacity   = 2
+    automation_writer_max_capacity   = 7
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 7 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].min_elb_capacity == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].instance_refresh[0].preferences[0].min_healthy_percentage == 100 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].instance_refresh[0].preferences[0].max_healthy_percentage == 200
+    )
+    error_message = "Explicit bounds must override the legacy count and leave refresh preferences unchanged."
+  }
+}
+
+run "automation_writer_equal_bounds_are_valid" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 1
+    automation_writer_max_capacity = 1
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 1
+    )
+    error_message = "Equal minimum and maximum must allow a fixed-size automation writer pool."
+  }
+}
+
+run "automation_writer_rejects_missing_minimum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_max_capacity = 5
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_missing_maximum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 3
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_inverted_bounds" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 3
+    automation_writer_max_capacity = 2
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_negative_minimum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = -1
+    automation_writer_max_capacity = 2
+  }
+
+  expect_failures = [var.automation_writer_min_capacity]
+}
+
+run "automation_writer_rejects_fractional_maximum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 1
+    automation_writer_max_capacity = 2.5
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
+run "automation_writer_rejects_zero_minimum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 0
+    automation_writer_max_capacity = 4
+  }
+
+  expect_failures = [var.automation_writer_min_capacity]
+}
+
+run "automation_writer_rejects_zero_maximum" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_min_capacity = 1
+    automation_writer_max_capacity = 0
+  }
+
+  expect_failures = [var.automation_writer_max_capacity]
+}
+
 run "disabled_automation_writer_skips_instance_metadata" {
   command = plan
 
