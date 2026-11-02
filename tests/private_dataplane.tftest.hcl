@@ -46,8 +46,8 @@ run "private_dataplane_preserves_services_without_cloudfront" {
   }
 
   assert {
-    condition     = local.wire_quarantine_to_private_gateway && local.create_quarantine_gateway_privatelink && length(aws_vpc_endpoint.quarantine_gateway) == 1
-    error_message = "Private mode must create quarantine PrivateLink without a separate opt-in flag."
+    condition     = !local.wire_quarantine_to_private_gateway && !local.create_quarantine_gateway_privatelink && length(aws_vpc_endpoint.quarantine_gateway) == 0 && output.quarantine_api_url == null && output.quarantine_proxy_url == null
+    error_message = "Private mode must omit quarantine access by default."
   }
 
   assert {
@@ -247,4 +247,13 @@ run "rejects_private_mode_without_customer_tls" {
     braintrust_api_alb_certificate_arn = null
   }
   expect_failures = [var.enable_private_dataplane]
+}
+
+run "private_api_access_requires_quarantine" {
+  command = plan
+  variables {
+    create_quarantine_api_access = true
+    enable_quarantine_vpc        = false
+  }
+  expect_failures = [var.create_quarantine_api_access]
 }

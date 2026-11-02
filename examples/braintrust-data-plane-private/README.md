@@ -79,7 +79,7 @@ Security group admission alone does not establish network connectivity.
 | Customer LLM requests | HTTPS hostname → API ALB → gateway tasks |
 | Loop HTTP, SSE, and terminal WebSockets | HTTPS hostname → API ALB → Loop tasks |
 | Service API callbacks | ALB AWS hostname on HTTP port 8000 → API services |
-| Quarantine LLM requests | Interface endpoint → internal NLB → gateway ALB |
+| Quarantine API and LLM requests, when enabled | Interface endpoint → internal NLB → API ALB → API services or Gateway tasks |
 
 ## Network and architecture details
 
@@ -138,3 +138,17 @@ existing_quarantine_private_subnet_1_id = "subnet-44444444444444444"
 existing_quarantine_private_subnet_2_id = "subnet-55555555555555555"
 existing_quarantine_private_subnet_3_id = "subnet-66666666666666666"
 ```
+
+## Optional quarantine API access
+
+`create_quarantine_api_access` defaults to `false`.
+The default creates no quarantine PrivateLink connection and selects no public proxy fallback.
+This setting does not block existing internet access.
+Public deployments ignore this input.
+
+With access enabled, quarantine uses one base URL from `quarantine_api_url`.
+The backend uses that URL for API requests and appends `/v1/proxy` for Gateway requests.
+The internal API listener also includes Loop routes when Loop is enabled.
+The endpoint accepts only the quarantine Lambda security group.
+The NLB reaches only the API ALB on TCP port 8000.
+User authentication and organization permissions remain required.

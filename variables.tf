@@ -1046,7 +1046,7 @@ variable "enable_private_dataplane" {
 
   validation {
     condition     = !var.enable_private_dataplane || var.quarantine_proxy_url == null
-    error_message = "quarantine_proxy_url must be null in private mode. Private mode selects the quarantine PrivateLink endpoint."
+    error_message = "quarantine_proxy_url must be null in private mode. Private mode uses create_quarantine_api_access for the API endpoint."
   }
 
   validation {
@@ -1057,7 +1057,7 @@ variable "enable_private_dataplane" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Public ECS mode uses the CloudFront /v1/proxy URL for quarantine unless an override or PrivateLink selects another URL. Private mode selects PrivateLink automatically. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
+  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Public ECS mode uses the CloudFront /v1/proxy URL for quarantine unless an override or PrivateLink selects another URL. Private mode uses create_quarantine_api_access. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
   default     = true
 }
 
@@ -1585,8 +1585,19 @@ variable "quarantine_proxy_url" {
   }
 }
 
+variable "create_quarantine_api_access" {
+  description = "Private mode can provide quarantine access to the API and AI Gateway through one API ALB endpoint. This input defaults to false. Public mode ignores this input. Private mode requires enable_quarantine_vpc when this input is true. The API release must support QUARANTINE_API_ACCESS_ENABLED and QUARANTINE_API_URL."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_private_dataplane || !var.create_quarantine_api_access || var.enable_quarantine_vpc
+    error_message = "Private quarantine API access requires enable_quarantine_vpc."
+  }
+}
+
 variable "use_private_gateway_quarantine_proxy" {
-  description = "Create quarantine-to-gateway PrivateLink through an internal NLB, the gateway ALB, and an interface endpoint. Supports managed or existing main and quarantine VPCs. Private mode automatically selects this path when quarantine is enabled. Requires create_ai_gateway. Must be false in external EKS mode, where Helm owns the gateway. PrivateLink requires enable_quarantine_vpc. Otherwise, quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. Both VPCs must use the provider account and region, with private subnets in the same availability zones. API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it. An override does not suppress resource creation. False retains URL selection from quarantine_proxy_url, the AI Proxy Function URL, or the ECS-mode CloudFront fallback, except in private mode. When use_global_ai_gateway_origin is true, the module skips PrivateLink and automatic endpoint URL selection. The NLB and interface endpoint add costs."
+  description = "Create quarantine-to-gateway PrivateLink through an internal NLB, the gateway ALB, and an interface endpoint. Supports managed or existing main and quarantine VPCs. Private mode ignores this flag and uses create_quarantine_api_access. Requires create_ai_gateway. Must be false in external EKS mode, where Helm owns the gateway. PrivateLink requires enable_quarantine_vpc. Otherwise, quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. Both VPCs must use the provider account and region, with private subnets in the same availability zones. API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it. An override does not suppress resource creation. False retains URL selection from quarantine_proxy_url, the AI Proxy Function URL, or the ECS-mode CloudFront fallback, except in private mode. When use_global_ai_gateway_origin is true, the module skips PrivateLink and automatic endpoint URL selection. The NLB and interface endpoint add costs."
   type        = bool
   default     = false
 

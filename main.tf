@@ -107,23 +107,15 @@ locals {
   # one() keeps this index-safe when services is absent.
   self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
 
-  # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
-  # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
-  # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
-  # use_global) with managed or existing VPCs → else AI Proxy Function URL →
-  # else the CloudFront API URL /v1/proxy in public ECS mode.
-  # Private mode selects PrivateLink when quarantine is enabled.
-  # The CloudFront fallback requires quarantine HTTPS egress (NAT in managed VPCs).
-  # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
-  # main VPC, and quarantine is not peered to it. Do not build this URL from
-  # a request Host header.
-  # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
-  # Off when use_global_ai_gateway_origin (no PrivateLink).
+  # Public mode retains its existing gateway path. Private mode uses one API endpoint.
   wire_quarantine_to_private_gateway = (
-    (var.use_private_gateway_quarantine_proxy || (var.enable_private_dataplane && var.enable_quarantine_vpc)) &&
+    !var.enable_private_dataplane &&
+    var.use_private_gateway_quarantine_proxy &&
     local.create_ai_gateway &&
     !var.use_global_ai_gateway_origin
   )
+  create_private_quarantine_api_access = var.enable_private_dataplane && var.create_quarantine_api_access
+  quarantine_api_url                   = local.create_private_quarantine_api_access ? "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}" : null
   quarantine_gateway_privatelink_proxy_url = try(
     "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
     null
@@ -144,13 +136,15 @@ locals {
     local.enable_ecs_api && local.create_ingress ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
   )
   api_ecs_quarantine_proxy_url = (
-    local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
-      local.quarantine_gateway_privatelink_proxy_url != null
-      ? local.quarantine_gateway_privatelink_proxy_url
-      : (
-        local.self_hosted_ai_proxy_url != null
-        ? local.self_hosted_ai_proxy_url
-        : local.cloudfront_quarantine_proxy_url
+    var.enable_private_dataplane ? (local.create_private_quarantine_api_access ? "${local.quarantine_api_url}/v1/proxy" : null) : (
+      local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
+        local.quarantine_gateway_privatelink_proxy_url != null
+        ? local.quarantine_gateway_privatelink_proxy_url
+        : (
+          local.self_hosted_ai_proxy_url != null
+          ? local.self_hosted_ai_proxy_url
+          : local.cloudfront_quarantine_proxy_url
+        )
       )
     )
   )
@@ -776,8 +770,10 @@ module "api_ecs" {
   unsafe_url_request_mode                                      = var.unsafe_url_request_mode
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
-  extra_env_vars = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars, var.enable_private_dataplane && var.enable_quarantine_vpc ? {
-    QUARANTINE_PROXY_URL = local.api_ecs_quarantine_proxy_url
+  extra_env_vars = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars, var.enable_private_dataplane ? {
+    QUARANTINE_API_ACCESS_ENABLED = tostring(local.create_private_quarantine_api_access)
+    QUARANTINE_API_URL            = local.quarantine_api_url != null ? local.quarantine_api_url : ""
+    QUARANTINE_PROXY_URL          = ""
   } : {})
 
   # Quarantine VPC
@@ -791,7 +787,7 @@ module "api_ecs" {
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
-  quarantine_proxy_url                = local.api_ecs_quarantine_proxy_url
+  quarantine_proxy_url                = var.enable_private_dataplane ? null : local.api_ecs_quarantine_proxy_url
 
   # Networking
   vpc_id             = local.main_vpc_id
@@ -810,10 +806,12 @@ module "api_ecs" {
 
   enable_private_dataplane = var.enable_private_dataplane
   enable_loop_runtime      = local.create_loop_runtime
-  internal_authorized_security_groups = {
+  internal_authorized_security_groups = merge({
     "API"        = module.services_common.api_security_group_id
     "Brainstore" = module.services_common.brainstore_instance_security_group_id
-  }
+    }, local.create_private_quarantine_api_access ? {
+    "Quarantine PrivateLink" = aws_security_group.gateway_quarantine_privatelink_nlb[0].id
+  } : {})
   loop_runtime_security_groups = local.loop_runtime_authorized_security_groups
 
   alb_certificate_arn            = var.braintrust_api_alb_certificate_arn

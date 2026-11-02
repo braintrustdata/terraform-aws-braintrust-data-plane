@@ -248,9 +248,15 @@ With Loop enabled, both listeners route `/loop/runtime` and `/loop/runtime/*` di
 Private mode forces the gateway callback URL through `OVERRIDE_BRAINTRUST_API_URL`.
 Organization authentication does not replace that URL.
 
-Private mode automatically creates quarantine PrivateLink when quarantine is enabled, even with `use_private_gateway_quarantine_proxy = false`.
-With quarantine disabled, the default flag creates no quarantine endpoint.
-An explicit `use_private_gateway_quarantine_proxy = true` fails validation when quarantine is disabled in private mode.
+Private mode creates quarantine PrivateLink only with `create_quarantine_api_access = true`.
+This input defaults to false and requires quarantine when enabled in private mode.
+The private path targets the API ALB internal listener on port 8000.
+The API ALB routes proxy paths to Gateway tasks and API paths to API services.
+Private mode ignores `use_private_gateway_quarantine_proxy`.
+Public mode ignores `create_quarantine_api_access`.
+Private API ECS receives `QUARANTINE_API_ACCESS_ENABLED` and one `QUARANTINE_API_URL`.
+The backend derives the API and proxy URLs from that base.
+The disabled state selects no public fallback and does not block internet traffic.
 Private mode retains outbound access requirements for AWS services, model providers, and other dependencies.
 Transitions between public and private mode cause an outage and delete or recreate CloudFront.
 The [private example README](examples/braintrust-data-plane-private/README.md) describes the client setup and request paths.
@@ -266,7 +272,7 @@ API ECS selects the URL in this order:
 4. The CloudFront API URL with `/v1/proxy` in public ECS mode.
 
 Public mode uses PrivateLink when `use_private_gateway_quarantine_proxy = true`, quarantine is enabled, and `use_global_ai_gateway_origin = false`.
-Private mode automatically uses PrivateLink when quarantine is enabled.
+Private mode uses its API endpoint only with `create_quarantine_api_access = true`.
 An explicit URL override does not suppress resource creation in public mode.
 APIHandler Lambda does not receive automatic URL injection from this flag.
 External EKS rejects `use_private_gateway_quarantine_proxy = true`. Helm owns its gateway and application configuration.
@@ -291,7 +297,7 @@ The hosted gateway or CloudFront fallback applies only in public mode when that 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 
 This flag selects quarantine PrivateLink in public mode.
-It does not disable the automatic PrivateLink path in private mode.
+Private mode ignores this flag.
 The default remains `false`.
 
 - In public mode, `false` retains the explicit URL, AI Proxy Function URL, or CloudFront fallback.
@@ -301,6 +307,8 @@ The default remains `false`.
 - With quarantine disabled and the global origin disabled, `true` requires an explicit `quarantine_proxy_url`.
 
 #### PrivateLink network path
+
+The following path describes public mode. Private mode targets the API ALB internal listener on port 8000.
 
 The module creates these resources in managed, existing, and mixed main/quarantine VPCs:
 
@@ -327,20 +335,20 @@ Verify both managed and existing VPC paths.
 The root-owned ingress rule is an existing exception to destination module ownership.
 It is not a pattern for new rules.
 PrivateLink adds NLB and interface endpoint charges.
-It covers quarantine LLM requests, not other user-code calls or client access.
+Public-mode PrivateLink covers quarantine LLM requests. Private-mode PrivateLink covers API and Gateway requests, plus existing internal listener routes.
 
 #### Public-mode compatibility and downgrade
 
 Existing public-mode callers with the flag enabled and an explicit URL now create PrivateLink resources in supplied VPCs.
 The explicit URL still takes precedence.
 In public mode, `false` creates no PrivateLink resources.
-In private mode, `false` retains PrivateLink while quarantine is enabled.
+In private mode, `create_quarantine_api_access` controls PrivateLink.
 
 Before a public-mode PrivateLink cutover to a fallback, verify that the fallback is reachable.
 For public deployments, disable PrivateLink on a compatible version before a downgrade without existing VPC support.
 
 A private deployment requires a coordinated transition to public mode before it can use that public fallback.
-`use_private_gateway_quarantine_proxy = false` alone cannot disable quarantine PrivateLink in private mode.
+`create_quarantine_api_access = false` removes private quarantine access.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 

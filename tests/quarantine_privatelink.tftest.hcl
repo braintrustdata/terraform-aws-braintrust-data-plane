@@ -2,6 +2,9 @@
 # VPC outputs are fixed so subnet lookups can verify both ownership paths.
 mock_provider "aws" {
   source = "./tests/mocks/aws"
+  mock_data "aws_partition" {
+    defaults = { partition = "aws" }
+  }
   mock_resource "aws_lb" {
     defaults = { arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/mock/1111111111111111" }
   }
@@ -513,10 +516,11 @@ run "rejects_endpoint_az_not_served_by_nlb" {
   expect_failures = [terraform_data.quarantine_privatelink_requirements]
 }
 
-run "private_automatic_rejects_duplicate_main_az" {
+run "private_api_access_rejects_duplicate_main_az" {
   command = plan
   variables {
     enable_private_dataplane             = true
+    create_quarantine_api_access         = true
     use_private_gateway_quarantine_proxy = false
     braintrust_api_alb_custom_domain     = "api.example.internal"
     braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -530,10 +534,11 @@ run "private_automatic_rejects_duplicate_main_az" {
   expect_failures = [terraform_data.quarantine_privatelink_requirements]
 }
 
-run "private_automatic_rejects_duplicate_quarantine_az" {
+run "private_api_access_rejects_duplicate_quarantine_az" {
   command = plan
   variables {
     enable_private_dataplane             = true
+    create_quarantine_api_access         = true
     use_private_gateway_quarantine_proxy = false
     braintrust_api_alb_custom_domain     = "api.example.internal"
     braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -547,10 +552,11 @@ run "private_automatic_rejects_duplicate_quarantine_az" {
   expect_failures = [terraform_data.quarantine_privatelink_requirements]
 }
 
-run "private_automatic_rejects_endpoint_az_not_served_by_nlb" {
+run "private_api_access_rejects_endpoint_az_not_served_by_nlb" {
   command = plan
   variables {
     enable_private_dataplane             = true
+    create_quarantine_api_access         = true
     use_private_gateway_quarantine_proxy = false
     braintrust_api_alb_custom_domain     = "api.example.internal"
     braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -616,6 +622,7 @@ run "private_existing_main_existing_quarantine" {
   command = apply
   variables {
     enable_private_dataplane             = true
+    create_quarantine_api_access         = true
     use_private_gateway_quarantine_proxy = false
     braintrust_api_alb_custom_domain     = "api.example.internal"
     braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -625,7 +632,7 @@ run "private_existing_main_existing_quarantine" {
   assert {
     condition = (
       length(module.main_vpc) == 0 && length(module.quarantine_vpc) == 0 &&
-      aws_lb_target_group.gateway_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
+      aws_lb_target_group.api_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
       aws_vpc_endpoint.quarantine_gateway[0].vpc_id == "vpc-22222222222222222" &&
       toset(aws_lb.gateway_quarantine_privatelink[0].subnets) == toset(["subnet-11111111111111111", "subnet-22222222222222222", "subnet-33333333333333333"]) &&
       toset(aws_vpc_endpoint.quarantine_gateway[0].subnet_ids) == toset(["subnet-44444444444444444", "subnet-55555555555555555", "subnet-66666666666666666"])
@@ -635,7 +642,7 @@ run "private_existing_main_existing_quarantine" {
   assert {
     condition = (
       output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy" &&
-      module.api_ecs[0].quarantine_proxy_url == output.quarantine_proxy_url
+      module.api_ecs[0].quarantine_proxy_url == null && output.quarantine_api_url == "http://vpce-quarantine.example.com"
     )
     error_message = "Every VPC ownership combination must wire API ECS to the same PrivateLink path."
   }
@@ -654,6 +661,7 @@ run "private_existing_main_managed_quarantine" {
   command = apply
   variables {
     enable_private_dataplane             = true
+    create_quarantine_api_access         = true
     use_private_gateway_quarantine_proxy = false
     braintrust_api_alb_custom_domain     = "api.example.internal"
     braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -662,7 +670,7 @@ run "private_existing_main_managed_quarantine" {
   assert {
     condition = (
       length(module.main_vpc) == 0 && length(module.quarantine_vpc) == 1 &&
-      aws_lb_target_group.gateway_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
+      aws_lb_target_group.api_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
       aws_vpc_endpoint.quarantine_gateway[0].vpc_id == "vpc-22222222222222222" &&
       toset(aws_lb.gateway_quarantine_privatelink[0].subnets) == toset(["subnet-11111111111111111", "subnet-22222222222222222", "subnet-33333333333333333"]) &&
       toset(aws_vpc_endpoint.quarantine_gateway[0].subnet_ids) == toset(["subnet-44444444444444444", "subnet-55555555555555555", "subnet-66666666666666666"])
@@ -672,7 +680,7 @@ run "private_existing_main_managed_quarantine" {
   assert {
     condition = (
       output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy" &&
-      module.api_ecs[0].quarantine_proxy_url == output.quarantine_proxy_url
+      module.api_ecs[0].quarantine_proxy_url == null && output.quarantine_api_url == "http://vpce-quarantine.example.com"
     )
     error_message = "Every VPC ownership combination must wire API ECS to the same PrivateLink path."
   }
@@ -691,6 +699,7 @@ run "private_managed_main_existing_quarantine" {
   command = apply
   variables {
     enable_private_dataplane             = true
+    create_quarantine_api_access         = true
     use_private_gateway_quarantine_proxy = false
     braintrust_api_alb_custom_domain     = "api.example.internal"
     braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -699,7 +708,7 @@ run "private_managed_main_existing_quarantine" {
   assert {
     condition = (
       length(module.main_vpc) == 1 && length(module.quarantine_vpc) == 0 &&
-      aws_lb_target_group.gateway_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
+      aws_lb_target_group.api_quarantine_privatelink_alb[0].vpc_id == "vpc-11111111111111111" &&
       aws_vpc_endpoint.quarantine_gateway[0].vpc_id == "vpc-22222222222222222" &&
       toset(aws_lb.gateway_quarantine_privatelink[0].subnets) == toset(["subnet-11111111111111111", "subnet-22222222222222222", "subnet-33333333333333333"]) &&
       toset(aws_vpc_endpoint.quarantine_gateway[0].subnet_ids) == toset(["subnet-44444444444444444", "subnet-55555555555555555", "subnet-66666666666666666"])
@@ -709,7 +718,7 @@ run "private_managed_main_existing_quarantine" {
   assert {
     condition = (
       output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy" &&
-      module.api_ecs[0].quarantine_proxy_url == output.quarantine_proxy_url
+      module.api_ecs[0].quarantine_proxy_url == null && output.quarantine_api_url == "http://vpce-quarantine.example.com"
     )
     error_message = "Every VPC ownership combination must wire API ECS to the same PrivateLink path."
   }
@@ -741,5 +750,86 @@ run "private_existing_main_without_quarantine" {
       length(module.ingress) == 0 && length(module.gateway_ecs) == 1
     )
     error_message = "An existing main VPC must support private mode without quarantine or CloudFront."
+  }
+}
+
+run "private_api_access_managed_vpcs" {
+  command = apply
+  variables {
+    enable_private_dataplane             = true
+    create_quarantine_api_access         = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+  }
+  assert {
+    condition = (
+      length(aws_vpc_endpoint.quarantine_gateway) == 1 &&
+      length(aws_lb_target_group.gateway_quarantine_privatelink_alb) == 0 &&
+      length(aws_vpc_security_group_ingress_rule.gateway_alb_from_quarantine_privatelink_nlb) == 0 &&
+      aws_lb_target_group.api_quarantine_privatelink_alb[0].port == 8000 &&
+      aws_lb_target_group_attachment.api_quarantine_privatelink_alb[0].target_id == module.api_ecs[0].alb_arn &&
+      aws_vpc_security_group_egress_rule.gateway_quarantine_privatelink_nlb_to_alb[0].referenced_security_group_id == module.api_ecs[0].alb_security_group_id &&
+      aws_vpc_security_group_egress_rule.gateway_quarantine_privatelink_nlb_to_alb[0].to_port == 8000 &&
+      output.quarantine_api_url == "http://vpce-quarantine.example.com" &&
+      output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy"
+    )
+    error_message = "Private quarantine must reach both services through one API ALB endpoint."
+  }
+}
+
+run "private_api_access_disabled" {
+  command = apply
+  variables {
+    enable_private_dataplane             = true
+    create_quarantine_api_access         = false
+    use_private_gateway_quarantine_proxy = true
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+  }
+  assert {
+    condition = (
+      length(aws_vpc_endpoint.quarantine_gateway) == 0 &&
+      length(aws_lb.gateway_quarantine_privatelink) == 0 &&
+      length(aws_lb_target_group.api_quarantine_privatelink_alb) == 0 &&
+      output.quarantine_api_url == null && output.quarantine_proxy_url == null
+    )
+    error_message = "The private flag must remove access without a public fallback or a legacy flag override."
+  }
+}
+
+run "public_ignores_private_api_access_flag" {
+  command = apply
+  variables {
+    create_quarantine_api_access         = true
+    use_private_gateway_quarantine_proxy = false
+  }
+  assert {
+    condition = (
+      length(aws_vpc_endpoint.quarantine_gateway) == 0 &&
+      output.quarantine_api_url == null &&
+      output.quarantine_proxy_url == "https://dtest.cloudfront.net/v1/proxy"
+    )
+    error_message = "Public mode must ignore the private API flag and retain its fallback."
+  }
+}
+
+run "private_api_access_with_loop" {
+  command = plan
+  variables {
+    enable_private_dataplane             = true
+    create_quarantine_api_access         = true
+    enable_loop_runtime                  = true
+    use_private_gateway_quarantine_proxy = false
+    braintrust_api_alb_custom_domain     = "api.example.internal"
+    braintrust_api_alb_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+  }
+  assert {
+    condition = (
+      length(module.loop_runtime_ecs) == 1 &&
+      length(aws_lb_target_group.api_quarantine_privatelink_alb) == 1 &&
+      length(aws_vpc_endpoint.quarantine_gateway) == 1
+    )
+    error_message = "Private API access must coexist with Loop without a dependency cycle."
   }
 }

@@ -40,6 +40,10 @@ module "braintrust-data-plane" {
   create_ai_gateway        = true
   enable_ai_gateway        = true
 
+  # Optional private access to both the API and AI Gateway. Defaults to false. When disabled the Quarantine workloads will not be able to access the API or AI Gateway.
+  # create_quarantine_api_access = false
+
+
   create_vpc            = true
   enable_quarantine_vpc = true
 
@@ -218,9 +222,6 @@ module "braintrust-data-plane" {
   # impacting other non-Braintrust Lambdas. Recommended 100 to 1000 for production in a shared account.
   # api_handler_reserved_concurrent_executions = -1
   # ai_proxy_reserved_concurrent_executions    = -1
-
-  # Private mode automatically creates quarantine-to-gateway PrivateLink.
-  # No quarantine_proxy_url override is required or supported in private mode.
 
   # Optional URL-security controls for externally supplied outbound HTTP URLs.
   # Leave unset to use the application default mode of "warn".
