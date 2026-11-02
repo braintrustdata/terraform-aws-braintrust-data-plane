@@ -173,8 +173,9 @@ locals {
     module.brainstore[0].port,
   ) : ""
 
-  # Loop uses the private gateway after cutover. Otherwise, it uses the hosted
-  # gateway or the CloudFront API proxy. Gateway ingress exists before cutover.
+  # Loop model calls use the private gateway or the hosted gateway. Variable
+  # validation rejects Loop when both are off, which would point this URL at
+  # the CloudFront API proxy. Gateway ingress exists before cutover.
   hosted_ai_gateway_proxy_url = format(
     "https://%s/v1/proxy",
     trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),

@@ -777,12 +777,17 @@ variable "url_security_allow_cidrs" {
 
 variable "enable_loop_runtime" {
   type        = bool
-  description = "Deploy the dedicated Loop runtime ECS/Fargate service and its MicroVM sandbox. Requires the ECS API data plane and Brainstore."
+  description = "Deploy the dedicated Loop runtime ECS/Fargate service and its MicroVM sandbox. Requires the ECS API data plane, Brainstore, and a Gateway (enable_ai_gateway or use_global_ai_gateway_origin)."
   default     = false
 
   validation {
     condition     = !var.enable_loop_runtime || !var.use_deployment_mode_external_eks
     error_message = "enable_loop_runtime is not supported with use_deployment_mode_external_eks = true. The Loop runtime requires the in-VPC ECS API data plane."
+  }
+
+  validation {
+    condition     = !var.enable_loop_runtime || var.enable_ai_gateway || var.use_global_ai_gateway_origin
+    error_message = "enable_loop_runtime requires a Gateway. Set enable_ai_gateway = true or use_global_ai_gateway_origin = true."
   }
 }
 

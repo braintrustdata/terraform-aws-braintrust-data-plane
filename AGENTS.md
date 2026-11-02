@@ -244,8 +244,9 @@ gateway ALB DNS directly. Those addresses are private to the main VPC, and
 quarantine is not peered to it.
 Do **not** peer the quarantine VPC to main for this path. Prefer PrivateLink
 to the private gateway when opted in. Loop Runtime uses the
-private gateway ALB `/v1/proxy` when `enable_ai_gateway`. When enable is
-false it uses the hosted gateway origin or CloudFront API `/v1/proxy`.
+private gateway ALB `/v1/proxy` when `enable_ai_gateway` is true, or the hosted
+gateway when `use_global_ai_gateway_origin` is true. Enabling Loop with both
+false fails the plan. `use_private_ai_gateway_origin` does not satisfy that check.
 PrivateLink only affects quarantine when the flag is on.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
