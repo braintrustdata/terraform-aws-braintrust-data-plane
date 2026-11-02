@@ -140,6 +140,29 @@ run "global_override_wins" {
   }
 }
 
+run "empty_global_override_does_not_block_node_type_override" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    version_override        = ""
+    writer_version_override = "writer-tag"
+  }
+
+  assert {
+    condition = (
+      local.brainstore_reader_version_override == "" &&
+      local.brainstore_writer_version_override == "writer-tag" &&
+      local.brainstore_fast_reader_version_override == "" &&
+      local.brainstore_automation_writer_version_override == ""
+    )
+    error_message = "An empty version_override must be treated as unset so node-type overrides still apply."
+  }
+}
+
 run "rejects_empty_per_node_type_overrides" {
   command = plan
 
