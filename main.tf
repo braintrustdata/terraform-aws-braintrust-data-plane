@@ -882,6 +882,10 @@ module "brainstore" {
   port                                  = var.brainstore_port
   license_key                           = var.brainstore_license_key
   version_override                      = var.brainstore_version_override
+  reader_version_override               = var.brainstore_reader_version_override
+  writer_version_override               = var.brainstore_writer_version_override
+  fast_reader_version_override          = var.brainstore_fast_reader_version_override
+  automation_writer_version_override    = var.brainstore_automation_writer_version_override
   skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
   extra_env_vars                        = var.brainstore_extra_env_vars
   extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer

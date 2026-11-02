@@ -1,5 +1,12 @@
 locals {
   brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
+  # version_override applies to every node type and always wins. Otherwise a
+  # node-type override applies to that node type only. An empty string makes
+  # user_data fall back to brainstore_release_version.
+  brainstore_reader_version_override            = var.version_override != null ? var.version_override : (var.reader_version_override != null ? var.reader_version_override : "")
+  brainstore_writer_version_override            = var.version_override != null ? var.version_override : (var.writer_version_override != null ? var.writer_version_override : "")
+  brainstore_fast_reader_version_override       = var.version_override != null ? var.version_override : (var.fast_reader_version_override != null ? var.fast_reader_version_override : "")
+  brainstore_automation_writer_version_override = var.version_override != null ? var.version_override : (var.automation_writer_version_override != null ? var.automation_writer_version_override : "")
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
@@ -101,7 +108,7 @@ resource "aws_launch_template" "brainstore" {
     code_bundle_bucket_id       = local.code_bundle_bucket_id
     brainstore_locks_s3_path    = trimprefix(var.locks_s3_path, "/")
     brainstore_license_key      = var.license_key
-    brainstore_version_override = var.version_override == null ? "" : var.version_override
+    brainstore_version_override = local.brainstore_reader_version_override
     brainstore_release_version  = local.brainstore_release_version
     monitoring_telemetry        = var.monitoring_telemetry
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
