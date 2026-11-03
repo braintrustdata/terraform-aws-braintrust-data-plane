@@ -145,35 +145,10 @@ moved {
   to   = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket[0]
 }
 
-# CloudFront and API Gateway resources moved from services -> ingress
+# CloudFront resources moved from services -> ingress
 moved {
   from = module.services.aws_cloudfront_distribution.dataplane
   to   = module.ingress[0].aws_cloudfront_distribution.dataplane
-}
-
-moved {
-  from = module.services.aws_api_gateway_rest_api.api
-  to   = module.ingress[0].aws_api_gateway_rest_api.api
-}
-
-moved {
-  from = module.services.aws_api_gateway_deployment.api
-  to   = module.ingress[0].aws_api_gateway_deployment.api
-}
-
-moved {
-  from = module.services.aws_api_gateway_stage.api
-  to   = module.ingress[0].aws_api_gateway_stage.api
-}
-
-moved {
-  from = module.services.aws_api_gateway_method_settings.all
-  to   = module.ingress[0].aws_api_gateway_method_settings.all
-}
-
-moved {
-  from = module.services.aws_lambda_permission.api_gateway
-  to   = module.ingress[0].aws_lambda_permission.api_gateway
 }
 
 # Brainstore IAM resources moved from brainstore -> services-common

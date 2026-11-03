@@ -24,11 +24,8 @@ variables {
   redis_port                  = "6379"
   use_quarantine_vpc          = false
   brainstore_enabled          = false
-  whitelisted_origins         = ["https://example.com"]
   code_bundle_bucket_arn      = "arn:aws:s3:::bt-test-code"
-  lambda_responses_bucket_arn = "arn:aws:s3:::bt-test-responses"
   api_security_group_id       = "sg-0123456789abcdef0"
-  api_handler_role_arn        = "arn:aws:iam::123456789012:role/bt-test-api-handler"
   function_tools_secret_key   = "test-function-tools-secret"
   lambda_version_tag_override = "test-version"
 }

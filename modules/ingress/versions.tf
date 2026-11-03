@@ -1,5 +1,4 @@
 terraform {
-  # Cross-variable validation (enable_ecs_api vs the Lambda URL/ARN) needs 1.9+.
   required_version = ">= 1.10.0"
   required_providers {
     aws = {

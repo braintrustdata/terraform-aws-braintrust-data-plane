@@ -77,48 +77,46 @@ locals {
     : module.database.postgres_database_url_secret_arn
   )
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  create_ai_gateway                          = var.create_ai_gateway && !var.use_deployment_mode_external_eks
-  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
-  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
-  ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
-  api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
-  brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
+  # API ECS is always created outside external EKS mode. Every standard
+  # deployment uses a gateway: the hosted gateway when
+  # use_global_ai_gateway_origin is true, otherwise the private gateway.
+  # The gateway ALB and its CloudFront VPC origin outlive that choice so a
+  # switch in either direction only moves the /v1/proxy behavior. CloudFront
+  # rejects deleting a VPC origin while a distribution update that detaches
+  # it is still deploying.
+  create_ecs_api                       = !var.use_deployment_mode_external_eks
+  create_ai_gateway_alb                = !var.use_deployment_mode_external_eks
+  create_ai_gateway                    = local.create_ai_gateway_alb && !var.use_global_ai_gateway_origin
+  enable_internal_observability        = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  create_internal_observability_secret = local.enable_internal_observability && local.create_ecs_api
+  api_ecs_url_ssm_parameter_name       = "/braintrust/${var.deployment_name}/ecs-api-url"
 
-  # SSM parameter selector passed to Brainstore. ECS mode pins to a specific
-  # version ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
+  # SSM parameter selector passed to Brainstore. Pinned to a specific version
+  # ("<name>:<version>") so a URL change (e.g. HTTP -> HTTPS) bumps the
   # version, changes the launch template, and triggers a rolling instance
-  # refresh. Lambda mode passes just the bare name.
+  # refresh.
   # Index the instance to avoid the module-wide dependency from a splat, which
-  # cycles through API services waiting on Brainstore. ECS-enabled implies count = 1.
+  # cycles through API services waiting on Brainstore.
   brainstore_ai_proxy_url_ssm_parameter = (
-    local.enable_ecs_api
-    ? "${local.brainstore_ai_proxy_url_ssm_parameter_name}:${module.api_ecs[0].url_ssm_parameter_version}"
-    : local.brainstore_ai_proxy_url_ssm_parameter_name
+    local.create_ecs_api
+    ? "${local.api_ecs_url_ssm_parameter_name}:${module.api_ecs[0].url_ssm_parameter_version}"
+    : null
   )
-
-  # AI Proxy Lambda Function URL. Null on external EKS and when enable_ecs_api
-  # removes the function. Quarantine falls back to this only while it exists.
-  # one() keeps this index-safe when services is absent.
-  self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
 
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
-  # use_global) with managed or existing VPCs → else AI Proxy Function URL →
-  # else the CloudFront API URL /v1/proxy once that Function URL is gone.
+  # use_global) with managed or existing VPCs → else the CloudFront API URL
+  # /v1/proxy.
   # The CloudFront fallback requires quarantine HTTPS egress (NAT in managed VPCs).
   # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
   # main VPC, and quarantine is not peered to it. Do not build this URL from
   # a request Host header.
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
-  # Off when use_global_ai_gateway_origin (no PrivateLink).
+  # Off when use_global_ai_gateway_origin (no private gateway, no PrivateLink).
   wire_quarantine_to_private_gateway = (
     var.use_private_gateway_quarantine_proxy &&
-    local.create_ai_gateway &&
-    !var.use_global_ai_gateway_origin
+    local.create_ai_gateway
   )
   quarantine_gateway_privatelink_proxy_url = try(
     "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
@@ -133,25 +131,27 @@ locals {
   )
   # Distribution hostname (https://*.cloudfront.net), not a custom alias.
   # Same value Loop uses. Append /v1/proxy so getRuntimeEnv does not rewrite
-  # it to /v1. Terraform records this ingress reference in both flag states,
-  # so the API task definition waits on the CloudFront domain in Lambda mode
-  # too. The domain does not depend on that task definition.
+  # it to /v1. The domain does not depend on the API task definition.
   cloudfront_quarantine_proxy_url = (
-    local.enable_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
+    local.create_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
   )
   api_ecs_quarantine_proxy_url = (
     local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
       local.quarantine_gateway_privatelink_proxy_url != null
       ? local.quarantine_gateway_privatelink_proxy_url
-      : (
-        local.self_hosted_ai_proxy_url != null
-        ? local.self_hosted_ai_proxy_url
-        : local.cloudfront_quarantine_proxy_url
-      )
+      : local.cloudfront_quarantine_proxy_url
     )
   )
-  gateway_env_vars = local.enable_ai_gateway ? {
-    GATEWAY_URL = module.gateway_ecs[0].gateway_url
+  # GATEWAY_URL is a base URL; api-ts appends its own paths.
+  hosted_ai_gateway_url = format(
+    "https://%s",
+    trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
+  )
+  selected_ai_gateway_url = (
+    local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : local.hosted_ai_gateway_url
+  )
+  gateway_env_vars = local.create_ai_gateway_alb ? {
+    GATEWAY_URL = local.selected_ai_gateway_url
   } : {}
 
   # Loop runtime requires the ECS API data plane and Brainstore. It is fronted
@@ -173,28 +173,15 @@ locals {
     module.brainstore[0].port,
   ) : ""
 
-  # Loop uses the private gateway after cutover. Otherwise, it uses the hosted
-  # gateway or the CloudFront API proxy. Gateway ingress exists before cutover.
-  hosted_ai_gateway_proxy_url = format(
-    "https://%s/v1/proxy",
-    trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
-  )
-  loop_runtime_ai_proxy_url = (
-    local.enable_ai_gateway
-    ? "${module.gateway_ecs[0].gateway_url}/v1/proxy"
-    : (
-      var.use_global_ai_gateway_origin
-      ? local.hosted_ai_gateway_proxy_url
-      : one(module.ingress[*].api_url)
-    )
-  )
+  # Loop uses the private gateway, or the hosted gateway when
+  # use_global_ai_gateway_origin is true.
+  loop_runtime_ai_proxy_url = "${local.selected_ai_gateway_url}/v1/proxy"
 
   # Only wire per-deployment backend URLs into Lambdas that call them. Do not
   # merge GATEWAY_URL into MigrateDatabaseFunction or crons — that changes their
   # env hash and re-runs migrations or replaces unrelated functions.
   # AutomationCron gets LOOP_RUNTIME_URL only (not GATEWAY_URL): ECS disables
   # in-process automation cron, so windowed Loop automations run in that Lambda.
-  lambda_env_services              = toset(["APIHandler", "AIProxy"])
   loop_runtime_lambda_env_services = toset(["AutomationCron"])
   loop_runtime_lambda_env_vars = local.create_loop_runtime ? {
     LOOP_RUNTIME_URL = module.loop_runtime_alb[0].loop_runtime_url
@@ -211,13 +198,8 @@ locals {
   attachment_s3_bucket_arn         = var.existing_attachment_s3_bucket_arn
   attachment_s3_bucket_kms_key_arn = var.existing_attachment_s3_bucket_kms_key_arn
   attachment_s3_bucket_name        = var.existing_attachment_s3_bucket_arn != null ? split(":::", var.existing_attachment_s3_bucket_arn)[1] : null
-  enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
-    { for svc in local.lambda_env_services : svc => merge(
-      lookup(var.service_extra_env_vars, svc, {}),
-      local.loop_runtime_lambda_env_vars,
-    ) },
     { for svc in local.loop_runtime_lambda_env_services : svc => merge(
       lookup(var.service_extra_env_vars, svc, {}),
       local.loop_runtime_lambda_env_vars,
@@ -378,11 +360,9 @@ module "services" {
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   brainstore_deployment_id = module.brainstore_deployment[0].completion_id
-  gateway_url              = local.enable_ai_gateway ? module.gateway_ecs[0].gateway_url : null
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = local.lambda_version_tag
-  enable_ecs_api              = local.enable_ecs_api
 
   # Telemetry
   monitoring_telemetry = var.monitoring_telemetry
@@ -398,42 +378,20 @@ module "services" {
   redis_host                  = module.redis.redis_endpoint
   redis_port                  = module.redis.redis_port
 
-  brainstore_enabled              = true
-  brainstore_default              = var.brainstore_default
-  brainstore_hostname             = module.brainstore[0].dns_name
-  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
-  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
-  brainstore_port                 = module.brainstore[0].port
-  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
-  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
-  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-
-  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_enabled         = true
+  brainstore_default         = var.brainstore_default
+  brainstore_hostname        = module.brainstore[0].dns_name
+  brainstore_writer_hostname = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_s3_bucket_name  = module.storage.brainstore_bucket_id
+  brainstore_port            = module.brainstore[0].port
+  brainstore_etl_batch_size  = var.brainstore_etl_batch_size
 
   # Storage
-  code_bundle_bucket_arn      = module.storage.code_bundle_bucket_arn
-  lambda_responses_bucket_arn = module.storage.lambda_responses_bucket_arn
-  attachment_bucket_name      = local.attachment_s3_bucket_name
+  code_bundle_bucket_arn = module.storage.code_bundle_bucket_arn
 
   # Service configuration
-  braintrust_org_name                        = var.braintrust_org_name
-  primary_org_name                           = var.primary_org_name
-  allowed_org_ids                            = var.allowed_org_ids
-  btql_audit_logs_strict_org_ids             = var.btql_audit_logs_strict_org_ids
-  btql_audit_logs_best_effort_org_ids        = var.btql_audit_logs_best_effort_org_ids
-  api_handler_provisioned_concurrency        = var.api_handler_provisioned_concurrency
-  api_handler_reserved_concurrent_executions = var.api_handler_reserved_concurrent_executions
-  api_handler_memory_limit                   = var.api_handler_memory_limit
-  ai_proxy_reserved_concurrent_executions    = var.ai_proxy_reserved_concurrent_executions
-  ai_proxy_memory_limit                      = var.ai_proxy_memory_limit
-  whitelisted_origins                        = var.whitelisted_origins
-  outbound_rate_limit_window_minutes         = var.outbound_rate_limit_window_minutes
-  outbound_rate_limit_max_requests           = var.outbound_rate_limit_max_requests
-  unsafe_url_request_mode                    = var.unsafe_url_request_mode
-  url_security_dns_servers                   = var.url_security_dns_servers
-  url_security_allow_cidrs                   = var.url_security_allow_cidrs
-  extra_env_vars                             = local.service_extra_env_vars
+  braintrust_org_name = var.braintrust_org_name
+  extra_env_vars      = local.service_extra_env_vars
 
   # Billing usage telemetry
   disable_billing_telemetry_aggregation = var.disable_billing_telemetry_aggregation
@@ -460,7 +418,6 @@ module "services" {
 
   kms_key_arn                         = local.kms_key_arn
   permissions_boundary_arn            = var.permissions_boundary_arn
-  api_handler_role_arn                = module.services_common.api_handler_role_arn
   api_security_group_id               = module.services_common.api_security_group_id
   function_tools_secret_key           = module.services_common.function_tools_secret_key
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
@@ -477,7 +434,7 @@ module "services" {
 
 module "ecs" {
   source = "./modules/ecs"
-  count  = local.create_ai_gateway || local.create_ecs_api || local.create_loop_runtime ? 1 : 0
+  count  = local.create_ecs_api ? 1 : 0
 
   deployment_name                       = var.deployment_name
   diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
@@ -488,12 +445,12 @@ module "ecs" {
 
 module "gateway_alb" {
   source = "./modules/gateway-alb"
-  count  = local.create_ai_gateway ? 1 : 0
+  count  = local.create_ai_gateway_alb ? 1 : 0
 
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
-  enable_cloudfront_vpc_origin_ingress = local.enable_private_ai_gateway_origin
+  enable_cloudfront_vpc_origin_ingress = local.create_ai_gateway_alb
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
@@ -815,16 +772,12 @@ module "ingress" {
   cloudfront_price_class              = var.cloudfront_price_class
   cloudfront_origin_read_timeout      = var.cloudfront_origin_read_timeout
   cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
-  use_global_ai_proxy                 = var.use_global_ai_proxy
   use_global_ai_gateway_origin        = var.use_global_ai_gateway_origin
-  use_private_ai_gateway_origin       = local.enable_private_ai_gateway_origin
+  create_gateway_vpc_origin           = local.create_ai_gateway_alb
   global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
-  gateway_alb_arn                     = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name                = local.enable_private_ai_gateway_origin ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : null
-  gateway_cloudfront_ingress_rule_id  = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
-  ai_proxy_function_url               = module.services[0].ai_proxy_url
-  api_handler_function_arn            = module.services[0].api_handler_arn
-  enable_ecs_api                      = local.enable_ecs_api
+  gateway_alb_arn                     = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_arn : null
+  gateway_alb_dns_name                = local.create_ai_gateway ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : (local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_dns_name : null)
+  gateway_cloudfront_ingress_rule_id  = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled

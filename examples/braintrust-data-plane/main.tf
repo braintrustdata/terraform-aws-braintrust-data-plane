@@ -186,19 +186,12 @@ module "braintrust-data-plane" {
 
   ### Advanced configuration
 
-  # The maximum number of concurrent executions to reserve and constrain Braintrust lambdas to.
-  # If you run Braintrust in a dedicated account you can leave these at "-1" (unlimited).
-  # If you run Braintrust in a shared account you should set these to a reasonable limit to avoid
-  # impacting other non-Braintrust Lambdas. Recommended 100 to 1000 for production in a shared account.
-  # api_handler_reserved_concurrent_executions = -1
-  # ai_proxy_reserved_concurrent_executions    = -1
-
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
-  # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
+  # Creating the path requires enable_quarantine_vpc; VPCs
   # may each be managed or existing, with private subnets in matching AZs.
   # API ECS receives the URL. External EKS requires this flag to remain false.
   # An explicit quarantine_proxy_url wins without suppressing resource creation.
@@ -237,8 +230,6 @@ module "braintrust-data-plane" {
   # brainstore_extra_env_vars_writer = {}
   #
   # service_extra_env_vars = {
-  #   APIHandler               = {}
-  #   AIProxy                  = {}
   #   BillingCron              = {}
   #   CatchupETL               = {}
   #   MigrateDatabaseFunction  = {}
