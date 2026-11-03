@@ -175,7 +175,7 @@ fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
 %{ endif ~}
 
-# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so user-data changes force refresh)
+# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so the user-data is updated when the version changes to force a refresh)
 if ! REDIS_URL=$(get_secret_value_with_retry "${redis_url_secret_arn}" "${redis_url_secret_version_id}"); then
   exit 1
 fi
