@@ -40,7 +40,7 @@ v8 no longer accepts these inputs. Delete them from your module block or the pla
 
 On a stack that already cut over on v7, the upgrade plan should only show:
 
-- The `api_gateway` key disappears from the `monitoring_targets` output.
+- The `api_gateway` entry in the `monitoring_contract` output reports `enabled = false` with null `name` and `stage`. Its shape is unchanged, so version-2 consumers keep planning.
 - The `CloudflareProxy` origin is removed from the CloudFront distribution. Nothing routed to it in ECS mode.
 - The `<deployment>-APIHandler-Lambdas` IAM policy and the `AWSLambdaVPCAccessExecutionRole` attachment are removed from the `APIHandlerRole`. The role itself stays: API ECS tasks use it.
 

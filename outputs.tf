@@ -282,6 +282,13 @@ output "monitoring_contract" {
       functions = !var.use_deployment_mode_external_eks ? module.services[0].monitoring_functions : {}
     }
 
+    # Kept for the version-2 contract shape. API Gateway no longer exists.
+    api_gateway = {
+      enabled = false
+      name    = null
+      stage   = null
+    }
+
     brainstore = {
       enabled        = !var.use_deployment_mode_external_eks
       s3_bucket_name = module.storage.brainstore_bucket_id
