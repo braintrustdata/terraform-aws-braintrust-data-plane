@@ -139,22 +139,22 @@ output "gateway_service_name" {
 }
 
 output "gateway_alb_dns_name" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_dns_name : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_dns_name : null
   description = "Internal DNS name of the private gateway ALB"
 }
 
 output "gateway_alb_arn" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_arn : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_arn : null
   description = "ARN of the private gateway ALB"
 }
 
 output "gateway_alb_subnet_ids" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_subnet_ids : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_subnet_ids : null
   description = "Subnet IDs attached to the private gateway ALB."
 }
 
 output "gateway_target_group_arn" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_target_group_arn : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_target_group_arn : null
   description = "ARN of the gateway ALB target group"
 }
 
@@ -195,7 +195,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, the AI Proxy Function URL while that Lambda exists, otherwise the CloudFront /v1/proxy URL in ECS mode. Null when API ECS is not created."
+  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, otherwise the CloudFront /v1/proxy URL (served by the selected gateway). Null when API ECS is not created."
 }
 
 output "api_ecs_task_security_group_id" {

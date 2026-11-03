@@ -81,7 +81,12 @@ locals {
   enable_ecs_api = local.create_ecs_api && var.enable_ecs_api
   # Every standard deployment uses a gateway: the hosted gateway when
   # use_global_ai_gateway_origin is true, otherwise the private gateway.
-  create_ai_gateway                          = !var.use_deployment_mode_external_eks && !var.use_global_ai_gateway_origin
+  # The gateway ALB and its CloudFront VPC origin outlive that choice so a
+  # switch in either direction only moves the /v1/proxy behavior. CloudFront
+  # rejects deleting a VPC origin while a distribution update that detaches
+  # it is still deploying.
+  create_ai_gateway_alb                      = !var.use_deployment_mode_external_eks
+  create_ai_gateway                          = local.create_ai_gateway_alb && !var.use_global_ai_gateway_origin
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
@@ -140,8 +145,16 @@ locals {
       : local.cloudfront_quarantine_proxy_url
     )
   )
-  gateway_env_vars = local.create_ai_gateway ? {
-    GATEWAY_URL = module.gateway_ecs[0].gateway_url
+  # GATEWAY_URL is a base URL; api-ts appends its own paths.
+  hosted_ai_gateway_url = format(
+    "https://%s",
+    trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
+  )
+  selected_ai_gateway_url = (
+    local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : local.hosted_ai_gateway_url
+  )
+  gateway_env_vars = local.create_ai_gateway_alb ? {
+    GATEWAY_URL = local.selected_ai_gateway_url
   } : {}
 
   # Loop runtime requires the ECS API data plane and Brainstore. It is fronted
@@ -165,15 +178,7 @@ locals {
 
   # Loop uses the private gateway, or the hosted gateway when
   # use_global_ai_gateway_origin is true.
-  hosted_ai_gateway_proxy_url = format(
-    "https://%s/v1/proxy",
-    trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
-  )
-  loop_runtime_ai_proxy_url = (
-    local.create_ai_gateway
-    ? "${module.gateway_ecs[0].gateway_url}/v1/proxy"
-    : local.hosted_ai_gateway_proxy_url
-  )
+  loop_runtime_ai_proxy_url = "${local.selected_ai_gateway_url}/v1/proxy"
 
   # Only wire per-deployment backend URLs into Lambdas that call them. Do not
   # merge GATEWAY_URL into MigrateDatabaseFunction or crons — that changes their
@@ -363,7 +368,7 @@ module "services" {
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   brainstore_deployment_id = module.brainstore_deployment[0].completion_id
-  gateway_url              = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
+  gateway_url              = local.selected_ai_gateway_url
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = local.lambda_version_tag
@@ -472,12 +477,12 @@ module "ecs" {
 
 module "gateway_alb" {
   source = "./modules/gateway-alb"
-  count  = local.create_ai_gateway ? 1 : 0
+  count  = local.create_ai_gateway_alb ? 1 : 0
 
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
-  enable_cloudfront_vpc_origin_ingress = local.create_ai_gateway
+  enable_cloudfront_vpc_origin_ingress = local.create_ai_gateway_alb
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
@@ -798,11 +803,11 @@ module "ingress" {
   cloudfront_origin_read_timeout      = var.cloudfront_origin_read_timeout
   cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
   use_global_ai_gateway_origin        = var.use_global_ai_gateway_origin
-  use_private_ai_gateway_origin       = local.create_ai_gateway
+  create_gateway_vpc_origin           = local.create_ai_gateway_alb
   global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
-  gateway_alb_arn                     = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name                = local.create_ai_gateway ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : null
-  gateway_cloudfront_ingress_rule_id  = local.create_ai_gateway ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
+  gateway_alb_arn                     = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_arn : null
+  gateway_alb_dns_name                = local.create_ai_gateway ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : (local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_dns_name : null)
+  gateway_cloudfront_ingress_rule_id  = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api

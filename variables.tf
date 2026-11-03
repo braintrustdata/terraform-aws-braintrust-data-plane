@@ -1002,7 +1002,7 @@ variable "braintrust_api_version_override" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via the quarantine VPC NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
+  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. API ECS sends quarantine LLM calls to the CloudFront /v1/proxy URL (served by the selected gateway) via the quarantine VPC NAT gateway in both modes, unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
   default     = true
 }
 
@@ -1552,7 +1552,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the AI Proxy Function URL while that Lambda exists, then the CloudFront /v1/proxy URL in ECS mode. That CloudFront path follows the configured /v1/proxy origin, including a hosted gateway. Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
+  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the CloudFront /v1/proxy URL. CloudFront always serves that path from the selected gateway (private, or hosted when use_global_ai_gateway_origin is true). Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
   type        = string
   default     = null
 
@@ -2024,7 +2024,7 @@ variable "permissions_boundary_arn" {
 }
 
 variable "use_global_ai_gateway_origin" {
-  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module does not create the private gateway ALB and ECS service, CloudFront routes /v1/proxy to global_ai_gateway_origin_domain, and Loop uses the hosted gateway. When false (default), the module creates the private gateway, wires GATEWAY_URL on API services, and routes CloudFront /v1/proxy and Loop through it. Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
+  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module runs no gateway ECS service, sets GATEWAY_URL on API services to https://<global_ai_gateway_origin_domain>, routes CloudFront /v1/proxy there, and points Loop at it. When false (default), the module runs the private gateway ECS service, sets GATEWAY_URL to it, and routes CloudFront /v1/proxy and Loop through it. The gateway ALB and its CloudFront VPC origin exist in both cases so this flag can flip in either direction in one apply. Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
   default     = false
 }

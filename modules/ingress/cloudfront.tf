@@ -177,7 +177,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   dynamic "origin" {
-    for_each = local.enable_private_gateway_cloudfront_origin ? [1] : []
+    for_each = local.create_private_gateway_cloudfront_origin ? [1] : []
     content {
       domain_name = var.gateway_alb_dns_name
       origin_id   = local.cloudfront_PrivateGatewayOrigin
