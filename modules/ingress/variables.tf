@@ -27,14 +27,14 @@ variable "use_global_ai_gateway_origin" {
   default     = false
 }
 
-variable "use_private_ai_gateway_origin" {
-  description = "Whether to route /v1/proxy traffic to the private gateway ALB via a VPC origin"
+variable "create_gateway_vpc_origin" {
+  description = "Create the CloudFront VPC origin for the private gateway ALB. Owns the origin's lifetime only; use_global_ai_gateway_origin selects which gateway serves /v1/proxy."
   type        = bool
   default     = false
 
   validation {
-    condition     = var.use_global_ai_gateway_origin != var.use_private_ai_gateway_origin
-    error_message = "Exactly one of use_global_ai_gateway_origin and use_private_ai_gateway_origin must be true. /v1/proxy must route to a gateway."
+    condition     = var.use_global_ai_gateway_origin || var.create_gateway_vpc_origin
+    error_message = "/v1/proxy must route to a gateway: set use_global_ai_gateway_origin or create_gateway_vpc_origin."
   }
 }
 

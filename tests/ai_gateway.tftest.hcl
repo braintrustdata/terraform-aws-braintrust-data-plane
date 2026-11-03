@@ -95,7 +95,7 @@ run "reject_gateway_without_tasks" {
   expect_failures = [var.ai_gateway_min_capacity]
 }
 
-run "hosted_gateway_replaces_private_gateway" {
+run "hosted_gateway_keeps_alb_and_wires_hosted_url" {
   command = plan
   variables {
     ai_gateway_min_capacity              = 0
@@ -104,8 +104,18 @@ run "hosted_gateway_replaces_private_gateway" {
   }
 
   assert {
-    condition     = length(module.gateway_ecs) == 0 && length(module.gateway_alb) == 0 && length(local.gateway_env_vars) == 0 && !local.create_quarantine_gateway_privatelink
-    error_message = "The hosted gateway must replace the private gateway and leave quarantine PrivateLink disabled."
+    condition     = length(module.gateway_ecs) == 0 && !local.create_quarantine_gateway_privatelink
+    error_message = "The hosted gateway must stop the private gateway service and leave quarantine PrivateLink disabled."
+  }
+
+  assert {
+    condition     = length(module.gateway_alb) == 1 && local.create_ai_gateway_alb
+    error_message = "The gateway ALB and its CloudFront VPC origin must outlive the gateway choice so switching never deletes an attached origin."
+  }
+
+  assert {
+    condition     = local.gateway_env_vars["GATEWAY_URL"] == "https://gateway.braintrust.dev"
+    error_message = "API services must use the hosted gateway base URL."
   }
 
   assert {
