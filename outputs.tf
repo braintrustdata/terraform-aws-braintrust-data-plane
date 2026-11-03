@@ -139,28 +139,28 @@ output "gateway_service_name" {
 }
 
 output "gateway_alb_dns_name" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_dns_name : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_dns_name : null
   description = "Internal DNS name of the private gateway ALB"
 }
 
 output "gateway_alb_arn" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_arn : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_arn : null
   description = "ARN of the private gateway ALB"
 }
 
 output "gateway_alb_subnet_ids" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_subnet_ids : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_subnet_ids : null
   description = "Subnet IDs attached to the private gateway ALB."
 }
 
 output "gateway_target_group_arn" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_target_group_arn : null
+  value       = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_target_group_arn : null
   description = "ARN of the gateway ALB target group"
 }
 
 output "gateway_url" {
   value       = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
-  description = "Private in-VPC gateway URL. Set enable_ai_gateway to wire GATEWAY_URL on api-ts services."
+  description = "Private in-VPC gateway URL. Null when use_global_ai_gateway_origin is true; GATEWAY_URL on api-ts services is then the hosted gateway base URL, not this output."
 }
 
 output "gateway_task_security_group_id" {
@@ -195,7 +195,7 @@ output "api_ecs_http_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, the AI Proxy Function URL while that Lambda exists, otherwise the CloudFront /v1/proxy URL in ECS mode. Null when API ECS is not created."
+  description = "Effective QUARANTINE_PROXY_URL on API ECS. Precedence: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, otherwise the CloudFront /v1/proxy URL (served by the selected gateway). Null when API ECS is not created."
 }
 
 output "api_ecs_task_security_group_id" {
@@ -210,7 +210,7 @@ output "loop_runtime_url" {
 
 output "loop_runtime_ai_proxy_url" {
   value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
-  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy when enable_ai_gateway, otherwise hosted gateway or CloudFront API /v1/proxy)"
+  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy, or the hosted gateway when use_global_ai_gateway_origin is true)"
 }
 
 output "loop_runtime_sandbox_egress_gateway_dns_name" {

@@ -30,7 +30,7 @@ run "external_eks_plans" {
   }
 
   assert {
-    condition     = !local.enable_ai_gateway && !local.enable_private_ai_gateway_origin
+    condition     = !local.create_ai_gateway
     error_message = "External EKS must not enable Terraform gateway routes by default."
   }
 
@@ -63,11 +63,9 @@ run "external_eks_ignores_gateway_flags" {
   command = plan
 
   variables {
-    create_ai_gateway             = false
-    enable_ai_gateway             = true
-    use_private_ai_gateway_origin = true
-    enable_ecs_api                = true
-    ai_gateway_min_capacity       = 0
+    use_global_ai_gateway_origin = false
+    enable_ecs_api               = true
+    ai_gateway_min_capacity      = 0
   }
 
   assert {
@@ -89,7 +87,7 @@ run "standard_gateway_defaults" {
   }
 
   assert {
-    condition     = length(module.gateway_ecs) == 1 && local.enable_ai_gateway && local.enable_private_ai_gateway_origin && local.enable_ecs_api
+    condition     = length(module.gateway_ecs) == 1 && local.create_ai_gateway && local.enable_ecs_api
     error_message = "Standard deployments must enable API ECS ingress and the private gateway by default."
   }
 }

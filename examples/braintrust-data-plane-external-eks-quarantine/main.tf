@@ -205,7 +205,7 @@ module "braintrust-data-plane" {
   # external_attachment_s3_bucket_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
-  # Only applies when create_ai_gateway is true.
+  # Ignored in external EKS mode, where Helm owns the gateway.
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
 
   # Opt-in: restrict S3 VPC gateway endpoint (org and account lists compose; empty = unrestricted).

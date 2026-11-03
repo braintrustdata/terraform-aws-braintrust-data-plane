@@ -572,23 +572,6 @@ variable "redis_apply_immediately" {
 }
 ## Services
 
-variable "create_ai_gateway" {
-  description = "Create the private gateway infrastructure (internal ALB and ECS gateway service). External EKS deployments use the Helm gateway and ignore this input."
-  type        = bool
-  default     = true
-}
-
-variable "enable_ai_gateway" {
-  description = "Route API services and Loop through the private gateway. Requires create_ai_gateway. Existing deployments finish the v6 applies first; see MIGRATION_V7.md. A greenfield stack can set create_ai_gateway and enable_ai_gateway both true in one apply. Caller updates wait for the gateway ECS service to reach steady state. External EKS deployments use the Helm gateway and ignore this input."
-  type        = bool
-  default     = true
-
-  validation {
-    condition     = var.use_deployment_mode_external_eks || !var.enable_ai_gateway || var.create_ai_gateway
-    error_message = "enable_ai_gateway requires create_ai_gateway."
-  }
-}
-
 variable "container_insights" {
   description = "CloudWatch Container Insights setting for the ECS cluster. Valid values: enabled, disabled, enhanced."
   type        = string
@@ -629,12 +612,8 @@ variable "ai_gateway_min_capacity" {
   default     = 2
 
   validation {
-    condition = !(local.create_ai_gateway && (
-      local.enable_ai_gateway || local.enable_private_ai_gateway_origin || (
-        local.create_quarantine_gateway_privatelink && local.quarantine_proxy_url_override == null
-      )
-    )) || var.ai_gateway_min_capacity >= 1
-    error_message = "ai_gateway_min_capacity must be at least 1 when a gateway route is enabled."
+    condition     = !local.create_ai_gateway || var.ai_gateway_min_capacity >= 1
+    error_message = "ai_gateway_min_capacity must be at least 1. API services, Loop, and CloudFront /v1/proxy route through the private gateway."
   }
 }
 
@@ -1023,7 +1002,7 @@ variable "braintrust_api_version_override" {
 
 variable "enable_ecs_api" {
   type        = bool
-  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Quarantine then uses the CloudFront /v1/proxy URL via the quarantine VPC NAT gateway unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
+  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. API ECS sends quarantine LLM calls to the CloudFront /v1/proxy URL (served by the selected gateway) via the quarantine VPC NAT gateway in both modes, unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
   default     = true
 }
 
@@ -1573,7 +1552,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the AI Proxy Function URL while that Lambda exists, then the CloudFront /v1/proxy URL in ECS mode. That CloudFront path follows the configured /v1/proxy origin, including a hosted gateway. Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
+  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the CloudFront /v1/proxy URL. CloudFront always serves that path from the selected gateway (private, or hosted when use_global_ai_gateway_origin is true). Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
   type        = string
   default     = null
 
@@ -1585,14 +1564,9 @@ variable "quarantine_proxy_url" {
 }
 
 variable "use_private_gateway_quarantine_proxy" {
-  description = "Create quarantine-to-gateway PrivateLink (internal NLB→gateway ALB and interface endpoint) in managed or existing main and quarantine VPCs. Must be false in external EKS mode, where Helm owns the Gateway. Requires create_ai_gateway. Creating PrivateLink also requires enable_quarantine_vpc; otherwise, an explicit quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. For PrivateLink, both VPCs must be in the provider's account and region, with private subnets in matching availability zones. When the endpoint is created, API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it; an override does not suppress resource creation. False (default) retains URL selection from the explicit override, AI Proxy Function URL, or ECS-mode CloudFront fallback. Skips PrivateLink creation and automatic endpoint URL selection when use_global_ai_gateway_origin is true. Adds NLB and interface endpoint costs when created."
+  description = "Create quarantine-to-gateway PrivateLink (internal NLB→gateway ALB and interface endpoint) in managed or existing main and quarantine VPCs. Must be false in external EKS mode, where Helm owns the Gateway. Creating PrivateLink also requires enable_quarantine_vpc; otherwise, an explicit quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. For PrivateLink, both VPCs must be in the provider's account and region, with private subnets in matching availability zones. When the endpoint is created, API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it; an override does not suppress resource creation. False (default) retains URL selection from the explicit override or the CloudFront /v1/proxy fallback. Skips PrivateLink creation and automatic endpoint URL selection when use_global_ai_gateway_origin is true. Adds NLB and interface endpoint costs when created."
   type        = bool
   default     = false
-
-  validation {
-    condition     = var.use_deployment_mode_external_eks || !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
-    error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
-  }
 
   validation {
     condition     = !var.use_deployment_mode_external_eks || !var.use_private_gateway_quarantine_proxy
@@ -1825,7 +1799,7 @@ variable "ai_gateway_bedrock_assume_role_arns" {
     When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
     When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
       ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
-    Only applies when create_ai_gateway is true.
+    Only applies to the private gateway (use_global_ai_gateway_origin = false).
   EOT
   default     = []
 
@@ -2049,32 +2023,10 @@ variable "permissions_boundary_arn" {
   default     = null
 }
 
-variable "use_global_ai_proxy" {
-  description = "Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust."
-  type        = bool
-  default     = false
-}
-
 variable "use_global_ai_gateway_origin" {
-  description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev. Don't enable this unless instructed by Braintrust."
+  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module runs no gateway ECS service, sets GATEWAY_URL on API services to https://<global_ai_gateway_origin_domain>, routes CloudFront /v1/proxy there, and points Loop at it. When false (default), the module runs the private gateway ECS service, sets GATEWAY_URL to it, and routes CloudFront /v1/proxy and Loop through it. The gateway ALB and its CloudFront VPC origin exist in both cases, so changing this flag does not delete the VPC origin. Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
   default     = false
-}
-
-variable "use_private_ai_gateway_origin" {
-  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin. External EKS deployments use the Helm gateway and ignore this input."
-  type        = bool
-  default     = true
-
-  validation {
-    condition     = var.use_deployment_mode_external_eks || !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
-    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true. If use_global_ai_gateway_origin is true, set use_private_ai_gateway_origin to false."
-  }
-
-  validation {
-    condition     = var.use_deployment_mode_external_eks || !var.use_private_ai_gateway_origin || var.create_ai_gateway
-    error_message = "use_private_ai_gateway_origin requires create_ai_gateway."
-  }
 }
 
 variable "global_ai_gateway_origin_domain" {
