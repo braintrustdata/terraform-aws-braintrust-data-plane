@@ -1,5 +1,5 @@
-# Plan-mode smoke test for the private AI gateway, which every standard
-# deployment creates and routes API services through.
+# Plan-mode smoke test for the required AI gateway. Standard deployments use
+# the private gateway unless use_global_ai_gateway_origin selects the hosted one.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -27,17 +27,17 @@ run "ai_gateway_plans" {
 
   assert {
     condition     = length(module.gateway_ecs) == 1
-    error_message = "Standard deployments should create the gateway_ecs module"
+    error_message = "The default should create the private gateway_ecs module"
   }
 
   assert {
     condition     = length(module.ecs) == 1
-    error_message = "Standard deployments should create the shared ECS cluster"
+    error_message = "The default should create the shared ECS cluster"
   }
 
   assert {
     condition     = contains(keys(local.gateway_env_vars), "GATEWAY_URL")
-    error_message = "API services should always receive GATEWAY_URL"
+    error_message = "API services must receive GATEWAY_URL for the private gateway"
   }
 
   assert {
