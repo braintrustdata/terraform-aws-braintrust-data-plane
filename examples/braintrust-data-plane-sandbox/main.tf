@@ -138,8 +138,9 @@ module "braintrust-data-plane" {
   # cloudfront_minimum_protocol_version = "TLSv1.2_2021"
 
   # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
-  # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
-  # unsafe_url_request_mode = "warn"
+  # Allowed values: "off", "proxy", "warn", "reject". Leaving it unset uses the
+  # application default of "warn". "reject" blocks private and reserved addresses.
+  unsafe_url_request_mode = "reject"
 
   # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2, and Gateway ECS.
   # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"

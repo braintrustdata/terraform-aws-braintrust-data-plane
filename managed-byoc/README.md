@@ -1,6 +1,6 @@
 # Bring your own cloud (BYOC)
 
-[Braintrust BYOC](https://www.braintrust.dev/docs/admin/deployment/byoc) lets customers run the Braintrust data plane inside a dedicated customer AWS account while Braintrust manages deployment and ongoing operation with the customer's approval and security controls.
+[Braintrust BYOC](https://docs.braintrust.dev/admin/deployment/byoc) lets customers run the Braintrust data plane inside a dedicated customer AWS account while Braintrust manages deployment and ongoing operation with the customer's approval and security controls.
 
 ## Deployment sequence
 
@@ -16,7 +16,7 @@ If you do not already have a dedicated account, work with your infrastructure/pl
 
 ### 3. Set up the Braintrust organization and license
 
-[Create a Braintrust organization](https://www.braintrust.dev/docs/admin/organizations#create-an-organization), or ask your Braintrust contact to create one. If you create it, send its name to your contact so they can issue the license key.
+[Create a Braintrust organization](https://docs.braintrust.dev/admin/organizations#create-an-organization), or ask your Braintrust contact to create one. If you create it, send its name to your contact so they can issue the license key.
 
 ### 4. Add the license key to AWS Secrets Manager
 

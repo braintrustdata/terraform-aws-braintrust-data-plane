@@ -22,7 +22,7 @@ resource "aws_kms_key" "braintrust" {
           Effect = "Allow"
           Principal = {
             AWS = [
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+              data.aws_iam_role.autoscaling_service_linked_role.arn
             ]
           }
           Action = [
@@ -53,7 +53,7 @@ resource "aws_kms_key" "braintrust" {
           Effect = "Allow"
           Principal = {
             AWS = [
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+              data.aws_iam_role.autoscaling_service_linked_role.arn
             ]
           }
           Action = [
@@ -178,3 +178,16 @@ resource "aws_kms_alias" "braintrust" {
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 data "aws_region" "current" {}
+
+# Account-owned prerequisite. Resolve it during planning so a fresh account
+# fails before any resources are created, rather than at KMS CreateKey.
+data "aws_iam_role" "autoscaling_service_linked_role" {
+  name = "AWSServiceRoleForAutoScaling"
+
+  lifecycle {
+    postcondition {
+      condition     = self.arn == "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+      error_message = "The AWS Auto Scaling service-linked role must exist before creating the data-plane KMS key. Run scripts/create-service-linked-roles.sh with credentials for the target AWS account, then rerun terraform plan."
+    }
+  }
+}

@@ -133,9 +133,9 @@ module "braintrust-data-plane" {
   # and proxy URL wiring; Terraform does not create this PrivateLink path.
   # use_private_gateway_quarantine_proxy = false
 
-  # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
-  # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
-  # unsafe_url_request_mode = "warn"
+  # unsafe_url_request_mode has no effect in external EKS mode, because Helm
+  # runs the API and Gateway. Set api.unsafeUrlRequestMode = "reject" in your
+  # Helm values instead.
 
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.

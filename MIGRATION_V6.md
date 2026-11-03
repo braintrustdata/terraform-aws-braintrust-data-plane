@@ -1,6 +1,6 @@
 # Migrating to v6
 
-Upgrade this Terraform module **one major version at a time**. See the [README](README.md#major-versions) for the general upgrade policy, and the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the standard process of bumping the module version and applying Terraform.
+Upgrade this Terraform module **one major version at a time**. See the [README](README.md#major-versions) for the general upgrade policy, and the [routine upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine) for the standard process of bumping the module version and applying Terraform.
 
 v6 moves the primary APIHandler and AIProxy workloads from Lambda onto ECS. This is a major release and **requires a follow-up apply** to cut traffic over to ECS. Lambdas are being phased out in favor of ECS in all future releases.
 

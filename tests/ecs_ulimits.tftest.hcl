@@ -44,6 +44,11 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
       scale_in_cooldown  = 60
       scale_out_cooldown = 60
     }
+    braintrust_api_memory_autoscaling = {
+      target_value       = 75
+      scale_in_cooldown  = 60
+      scale_out_cooldown = 60
+    }
     braintrust_api_event_loop_utilization_autoscaling = {
       target_value       = 70
       scale_in_cooldown  = 60
@@ -60,6 +65,11 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
       scale_in_cooldown  = 60
       scale_out_cooldown = 60
     }
+    braintrust_api_ingest_memory_autoscaling = {
+      target_value       = 75
+      scale_in_cooldown  = 60
+      scale_out_cooldown = 60
+    }
     braintrust_api_ingest_event_loop_utilization_autoscaling = {
       target_value       = 70
       scale_in_cooldown  = 60
@@ -73,6 +83,11 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     }
     braintrust_api_background_cpu_autoscaling = {
       target_value       = 70
+      scale_in_cooldown  = 60
+      scale_out_cooldown = 60
+    }
+    braintrust_api_background_memory_autoscaling = {
+      target_value       = 75
       scale_in_cooldown  = 60
       scale_out_cooldown = 60
     }
