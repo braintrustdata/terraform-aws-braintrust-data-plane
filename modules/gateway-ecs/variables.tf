@@ -227,7 +227,7 @@ variable "braintrust_api_url" {
 
 variable "redis_url_secret_arn" {
   type        = string
-  description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Injected into COMPLETIONS_CACHE_REDIS_URL and AUTH_CACHE_REDIS_URL via the ECS task execution role."
+  description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Injected into COMPLETIONS_CACHE_REDIS_URL and AUTH_CACHE_REDIS_URL via the ECS task execution role unless the caller overrides that name in extra_env_vars."
 }
 
 variable "redis_url_secret_version_id" {

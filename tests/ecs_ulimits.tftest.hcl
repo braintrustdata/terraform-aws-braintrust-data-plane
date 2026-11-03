@@ -182,6 +182,62 @@ run "gateway_containers_have_one_million_nofile_limit" {
   }
 }
 
+run "gateway_skips_redis_secrets_when_extra_env_overrides" {
+  command = plan
+
+  module {
+    source = "./modules/gateway-ecs"
+  }
+
+  variables {
+    deployment_name                = "bt-test"
+    kms_key_arn                    = "arn:aws:kms:us-east-1:123456789012:key/test"
+    vpc_id                         = "vpc-0123456789abcdef0"
+    private_subnet_ids             = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+    ecs_cluster_arn                = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"
+    ecs_cluster_name               = "bt-test"
+    container_image                = "123456789012.dkr.ecr.us-east-1.amazonaws.com/gateway:test"
+    target_group_arn               = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/gateway/1234567890123456"
+    alb_security_group_id          = "sg-0123456789abcdef2"
+    gateway_http_listener_arn      = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
+    gateway_url                    = "http://gateway.internal"
+    redis_url_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id    = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    redis_port                     = 6379
+    redis_security_group_id        = "sg-0123456789abcdef1"
+    internal_observability_enabled = false
+    extra_env_vars = {
+      COMPLETIONS_CACHE_REDIS_URL = "redis://custom-cache:6379"
+      AUTH_CACHE_REDIS_URL        = "redis://custom-auth-cache:6379"
+    }
+  }
+
+  assert {
+    condition = (
+      length([
+        for secret in one([
+          for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+          if container.name == "gateway"
+        ]).secrets : secret
+        if contains(["COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"], secret.name)
+      ]) == 0
+      && one([
+        for env in one([
+          for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+          if container.name == "gateway"
+        ]).environment : env.value if env.name == "COMPLETIONS_CACHE_REDIS_URL"
+      ]) == "redis://custom-cache:6379"
+      && one([
+        for env in one([
+          for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+          if container.name == "gateway"
+        ]).environment : env.value if env.name == "AUTH_CACHE_REDIS_URL"
+      ]) == "redis://custom-auth-cache:6379"
+    )
+    error_message = "Gateway must omit default Redis URL secrets and use extra_env_vars when those cache URLs are overridden."
+  }
+}
+
 run "loop_runtime_containers_have_one_million_nofile_limit" {
   command = plan
 

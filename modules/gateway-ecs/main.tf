@@ -30,6 +30,14 @@ locals {
   # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
   # Empty json-key and version-stage with a version-id pins the full secret string.
   redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
+  # Skip default Redis URL secrets when the caller overrides that env via extra_env_vars;
+  # otherwise ECS secrets would clobber the override.
+  gateway_redis_cache_secret_env = [
+    for name in ["COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"] : {
+      name      = name
+      valueFrom = local.redis_url_secret_value_from
+    } if !contains(keys(var.extra_env_vars), name)
+  ]
   base_env_vars = merge({
     GATEWAY_ENV        = "production"
     GATEWAY_REGION     = data.aws_region.current.region
@@ -76,16 +84,7 @@ locals {
         name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
         valueFrom = var.custom_ca_bundle_secret_arn
       }],
-      [
-        {
-          name      = "COMPLETIONS_CACHE_REDIS_URL"
-          valueFrom = local.redis_url_secret_value_from
-        },
-        {
-          name      = "AUTH_CACHE_REDIS_URL"
-          valueFrom = local.redis_url_secret_value_from
-        },
-      ],
+      local.gateway_redis_cache_secret_env,
     )
     dependsOn = [
       for dep in [
