@@ -519,3 +519,9 @@ variable "gateway_url" {
   type        = string
   default     = null
 }
+
+variable "enable_quarantine_destroy_cleanup" {
+  description = "Enable native quarantine lifecycle cleanup with a supporting warmup bundle."
+  type        = bool
+  default     = false
+}

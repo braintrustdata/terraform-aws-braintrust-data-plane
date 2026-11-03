@@ -11,6 +11,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
     aws_lambda_invocation.invoke_database_migration,
     aws_iam_role_policy_attachment.quarantine_warmup_vpc_access,
     aws_iam_role_policy.quarantine_warmup,
+    aws_iam_role_policy.quarantine_cleanup,
   ]
 
   function_name = local.quarantine_warmup_function_name
@@ -93,5 +94,32 @@ resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
       one(aws_lambda_function.api_handler[*].version),
       aws_lambda_function.quarantine_warmup[0].s3_key,
     )
+  }
+}
+
+locals {
+  quarantine_runtime_role_arn = var.enable_quarantine_destroy_cleanup ? jsondecode(aws_lambda_invocation.quarantine_cleanup[0].result).role_arn : var.quarantine_function_role_arn
+}
+
+resource "aws_lambda_invocation" "quarantine_cleanup" {
+  count           = var.enable_quarantine_destroy_cleanup ? 1 : 0
+  function_name   = aws_lambda_function.quarantine_warmup[0].function_name
+  lifecycle_scope = "CRUD"
+  input = jsonencode({
+    kind            = "quarantine-cleanup"
+    handler_version = aws_lambda_function.quarantine_warmup[0].s3_key
+    scope = {
+      deployment_name   = var.deployment_name
+      role_arn          = var.quarantine_function_role_arn
+      vpc_id            = var.quarantine_vpc_id
+      security_group_id = var.quarantine_lambda_security_group_id
+      subnet_ids        = var.quarantine_vpc_private_subnets
+    }
+  })
+  lifecycle {
+    postcondition {
+      condition     = try(jsondecode(self.result).cleanup_version == 1 && jsondecode(self.result).role_arn == var.quarantine_function_role_arn, false)
+      error_message = "The warmup bundle does not support quarantine lifecycle cleanup. Deploy a supporting bundle before enabling cleanup."
+    }
   }
 }
