@@ -15,7 +15,7 @@ v8 no longer accepts these inputs. Delete them from your module block or the pla
 | `create_ai_gateway` | Derived: the gateway ECS service runs unless `use_global_ai_gateway_origin = true`. The gateway ALB and CloudFront VPC origin always exist. |
 | `enable_ai_gateway` | Derived: API services (`GATEWAY_URL`), Loop, and CloudFront `/v1/proxy` always use the selected gateway. |
 | `use_private_ai_gateway_origin` | Derived: CloudFront `/v1/proxy` uses the private gateway unless `use_global_ai_gateway_origin = true`. |
-| `use_global_ai_proxy` | None. The Cloudflare proxy origin is removed. |
+| `use_global_ai_proxy` | None. `/v1/proxy` no longer selects the Cloudflare proxy origin. The origin stays in the distribution, unused, so the upgrade does not modify the distribution. |
 
 `use_global_ai_gateway_origin` is now the only gateway choice.
 
@@ -25,7 +25,7 @@ Find your v7 configuration below.
 
 ### Private gateway enabled (v7 default)
 
-`create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin` were all `true` or omitted. Remove the lines. The plan removes the unused `CloudflareProxy` CloudFront origin. If `enable_ecs_api = false`, the API ECS task definition also gets a new `QUARANTINE_PROXY_URL` (CloudFront `/v1/proxy` instead of the AI Proxy Function URL). It does not serve customer traffic in Lambda mode.
+`create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin` were all `true` or omitted. Remove the lines. The plan does not change the CloudFront distribution. If `enable_ecs_api = false`, the API ECS task definition also gets a new `QUARANTINE_PROXY_URL` (CloudFront `/v1/proxy` instead of the AI Proxy Function URL). It does not serve customer traffic in Lambda mode.
 
 ### Private gateway built, not enabled
 
