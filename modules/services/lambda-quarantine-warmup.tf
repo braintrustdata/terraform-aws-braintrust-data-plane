@@ -90,4 +90,11 @@ resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
     # and would never change; the versioned bundle key does.
     function_version = aws_lambda_function.quarantine_warmup[0].s3_key
   }
+
+  # API task definitions are create_before_destroy. A destroy-first replace
+  # of this invocation in the same apply forms a dependency cycle, so match
+  # them. Replacing an invocation only re-runs the warmup.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
