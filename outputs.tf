@@ -160,7 +160,7 @@ output "gateway_target_group_arn" {
 
 output "gateway_url" {
   value       = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
-  description = "Private in-VPC gateway URL, wired as GATEWAY_URL on api-ts services. Null when use_global_ai_gateway_origin is true."
+  description = "Private in-VPC gateway URL. Null when use_global_ai_gateway_origin is true; GATEWAY_URL on api-ts services is then the hosted gateway base URL, not this output."
 }
 
 output "gateway_task_security_group_id" {
