@@ -1,5 +1,7 @@
 # Cover managed and customer-managed subnet groups for both Redis resource types.
-mock_provider "aws" {}
+mock_provider "aws" {
+  source = "./tests/mocks/aws"
+}
 
 variables {
   deployment_name             = "bt-test"
@@ -56,7 +58,9 @@ run "legacy_existing_group" {
 }
 
 run "replication_managed_group" {
-  command = plan
+  # apply (not plan): Terraform 1.10 has no override_during, so endpoint
+  # overrides only take effect after apply under the mock provider.
+  command = apply
 
   module {
     source = "./modules/elasticache"
@@ -67,6 +71,13 @@ run "replication_managed_group" {
     existing_elasticache_subnet_group_name = null
   }
 
+  override_resource {
+    target = aws_elasticache_replication_group.main[0]
+    values = {
+      primary_endpoint_address = "redis.example.internal"
+    }
+  }
+
   assert {
     condition     = length(aws_elasticache_subnet_group.main) == 1
     error_message = "Only create a subnet group when no existing group is supplied."
@@ -75,6 +86,24 @@ run "replication_managed_group" {
   assert {
     condition     = aws_elasticache_replication_group.main[0].subnet_group_name == "bt-test-elasticache-subnet-group"
     error_message = "Redis must use the selected subnet group in either Redis mode."
+  }
+
+  assert {
+    condition = (
+      tostring(aws_elasticache_replication_group.main[0].at_rest_encryption_enabled) == "true" &&
+      tostring(aws_elasticache_replication_group.main[0].transit_encryption_enabled) == "true" &&
+      aws_elasticache_replication_group.main[0].kms_key_id == var.kms_key_arn &&
+      aws_elasticache_replication_group.main[0].auth_token_update_strategy == "SET" &&
+      nonsensitive(aws_secretsmanager_secret_version.auth_token[0].secret_string) == "mock-password-16"
+    )
+    error_message = "Replication groups must enable at-rest/transit encryption, use the module KMS key, require AUTH with SET, and store the generated auth token."
+  }
+
+  assert {
+    condition = (
+      nonsensitive(aws_secretsmanager_secret_version.redis_url.secret_string) == "rediss://:mock-password-16@redis.example.internal:6379"
+    )
+    error_message = "Redis URL secret must be the authenticated rediss:// URL for the replication group endpoint."
   }
 }
 
@@ -98,6 +127,14 @@ run "replication_existing_group" {
   assert {
     condition     = aws_elasticache_replication_group.main[0].subnet_group_name == "shared-redis-subnets"
     error_message = "Redis must use the selected subnet group in either Redis mode."
+  }
+
+  assert {
+    condition = (
+      tostring(aws_elasticache_replication_group.main[0].at_rest_encryption_enabled) == "true" &&
+      aws_elasticache_replication_group.main[0].auth_token_update_strategy == "SET"
+    )
+    error_message = "Replication groups must enable at-rest encryption and require AUTH with SET."
   }
 }
 

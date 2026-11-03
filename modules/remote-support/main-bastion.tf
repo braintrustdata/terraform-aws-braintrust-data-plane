@@ -40,14 +40,13 @@ resource "aws_instance" "bastion" {
   }
 
   user_data = templatefile("${path.module}/bastion-user-data.sh", {
-    deployment_name      = var.deployment_name
-    region               = data.aws_region.current.region
-    database_host        = var.database_host
-    database_secret_arn  = var.database_secret_arn
-    redis_scheme         = var.use_redis_replication_group ? "rediss" : "redis"
-    redis_host           = var.redis_host
-    redis_port           = var.redis_port
-    lambda_function_arns = var.lambda_function_arns
+    deployment_name             = var.deployment_name
+    region                      = data.aws_region.current.region
+    database_host               = var.database_host
+    database_secret_arn         = var.database_secret_arn
+    redis_url_secret_arn        = var.redis_url_secret_arn
+    redis_url_secret_version_id = var.redis_url_secret_version_id
+    lambda_function_arns        = var.lambda_function_arns
   })
   user_data_replace_on_change = true
 
@@ -196,7 +195,8 @@ resource "aws_iam_role_policy" "bastion" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [
-          var.database_secret_arn
+          var.database_secret_arn,
+          var.redis_url_secret_arn,
         ]
       },
       {
