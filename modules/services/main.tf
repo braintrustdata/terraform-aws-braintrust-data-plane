@@ -22,7 +22,7 @@ locals {
   ]
   lambda_s3_bucket = "braintrust-assets-${data.aws_region.current.region}"
   lambda_names = concat(
-    ["AIProxy", "APIHandler", "MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"],
+    ["MigrateDatabaseFunction", "QuarantineWarmupFunction", "CatchupETL", "BillingCron", "AutomationCron"],
     var.enable_quarantine_pruner ? ["QuarantinePrunerFunction"] : []
   )
 
@@ -47,8 +47,7 @@ locals {
   )
 
   # Extract bucket IDs from ARNs (format: arn:aws:s3:::bucket-name)
-  code_bundle_bucket_id      = split(":::", var.code_bundle_bucket_arn)[1]
-  lambda_responses_bucket_id = split(":::", var.lambda_responses_bucket_arn)[1]
+  code_bundle_bucket_id = split(":::", var.code_bundle_bucket_arn)[1]
 
   # The Lambda code and its DuckDB layer are published under the same release tag.
   lambda_version_tag            = var.lambda_version_tag_override != null ? var.lambda_version_tag_override : jsondecode(file("${path.module}/VERSIONS.json"))["lambda_version_tag"]
@@ -60,26 +59,14 @@ locals {
   }
 
   # urlencode uses query-string encoding for spaces; PostgreSQL URIs require %20.
-  postgres_url                 = "postgres://${replace(urlencode(var.postgres_username), "+", "%20")}:${replace(urlencode(var.postgres_password), "+", "%20")}@${var.postgres_host}:${var.postgres_port}/postgres"
-  using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
-  using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
-  brainstore_url               = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
-  brainstore_writer_url        = var.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
-  brainstore_fast_reader_url   = var.brainstore_enabled && local.using_brainstore_fast_reader ? "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}" : ""
-  brainstore_s3_bucket         = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
+  postgres_url            = "postgres://${replace(urlencode(var.postgres_username), "+", "%20")}:${replace(urlencode(var.postgres_password), "+", "%20")}@${var.postgres_host}:${var.postgres_port}/postgres"
+  using_brainstore_writer = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
+  brainstore_url          = var.brainstore_enabled ? "http://${var.brainstore_hostname}:${var.brainstore_port}" : ""
+  brainstore_writer_url   = var.brainstore_enabled && local.using_brainstore_writer ? "http://${var.brainstore_writer_hostname}:${var.brainstore_port}" : ""
+  brainstore_s3_bucket    = var.brainstore_enabled ? var.brainstore_s3_bucket_name : ""
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
-
-  default_fast_reader_query_sources = [
-    "summaryPaginatedObjectViewer [realtime]",
-    "summaryPaginatedObjectViewer",
-    "a602c972-1843-4ee1-b6bc-d3c1075cd7e7",
-    "traceQueryFn-id",
-    "traceQueryFn-rootSpanId",
-    "fullSpanQueryFn-root_span_id",
-    "fullSpanQueryFn-id"
-  ]
 }
 
 # Data source for dynamic lambda version lookups

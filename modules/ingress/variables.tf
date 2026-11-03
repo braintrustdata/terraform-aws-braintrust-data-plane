@@ -21,12 +21,6 @@ variable "waf_acl_id" {
   default     = null
 }
 
-variable "use_global_ai_proxy" {
-  description = "Whether to use the global Cloudflare proxy"
-  type        = bool
-  default     = false
-}
-
 variable "use_global_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev"
   type        = bool
@@ -87,36 +81,8 @@ variable "global_ai_gateway_origin_domain" {
   default     = "gateway.braintrust.dev"
 }
 
-variable "ai_proxy_function_url" {
-  description = "The function URL of the AI proxy lambda function. Required when enable_ecs_api is false."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.enable_ecs_api || try(trimspace(var.ai_proxy_function_url) != "", false)
-    error_message = "ai_proxy_function_url is required when enable_ecs_api is false."
-  }
-}
-
-variable "api_handler_function_arn" {
-  description = "The ARN of the API handler lambda function. Required when enable_ecs_api is false."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.enable_ecs_api || try(trimspace(var.api_handler_function_arn) != "", false)
-    error_message = "api_handler_function_arn is required when enable_ecs_api is false."
-  }
-}
-
-variable "enable_ecs_api" {
-  description = "Route CloudFront API and function traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda. When true, API Gateway and the API Gateway and AI Proxy CloudFront origins are not created. /v1/proxy can still use a hosted or private gateway origin ahead of the ECS ALB."
-  type        = bool
-  default     = false
-}
-
 variable "api_ecs_alb_arn" {
-  description = "ARN of the API ECS ALB. The CloudFront VPC origin always points here; enable_ecs_api controls whether traffic is routed there."
+  description = "ARN of the API ECS ALB. CloudFront routes API and function traffic here through a VPC origin."
   type        = string
 }
 

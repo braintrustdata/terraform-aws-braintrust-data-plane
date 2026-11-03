@@ -30,7 +30,7 @@ run "external_eks_plans" {
   }
 
   assert {
-    condition     = !local.enable_ai_gateway && !local.enable_private_ai_gateway_origin
+    condition     = !local.create_ai_gateway && !local.enable_private_ai_gateway_origin
     error_message = "External EKS must not enable Terraform gateway routes by default."
   }
 
@@ -40,8 +40,8 @@ run "external_eks_plans" {
   }
 
   assert {
-    condition     = length(module.api_ecs) == 0 && !local.enable_ecs_api
-    error_message = "external EKS mode should skip the api_ecs module and ignore enable_ecs_api"
+    condition     = length(module.api_ecs) == 0 && !local.create_ecs_api
+    error_message = "external EKS mode should skip the api_ecs module"
   }
 
   assert {
@@ -63,10 +63,7 @@ run "external_eks_ignores_gateway_flags" {
   command = plan
 
   variables {
-    create_ai_gateway             = false
-    enable_ai_gateway             = true
     use_private_ai_gateway_origin = true
-    enable_ecs_api                = true
     ai_gateway_min_capacity       = 0
   }
 
@@ -76,8 +73,8 @@ run "external_eks_ignores_gateway_flags" {
   }
 
   assert {
-    condition     = length(module.api_ecs) == 0 && !local.enable_ecs_api
-    error_message = "External EKS must ignore enable_ecs_api and create no API ECS."
+    condition     = length(module.api_ecs) == 0 && !local.create_ecs_api
+    error_message = "External EKS must create no API ECS."
   }
 }
 
@@ -89,7 +86,7 @@ run "standard_gateway_defaults" {
   }
 
   assert {
-    condition     = length(module.gateway_ecs) == 1 && local.enable_ai_gateway && local.enable_private_ai_gateway_origin && local.enable_ecs_api
-    error_message = "Standard deployments must enable API ECS ingress and the private gateway by default."
+    condition     = length(module.gateway_ecs) == 1 && local.create_ai_gateway && local.enable_private_ai_gateway_origin && local.create_ecs_api
+    error_message = "Standard deployments must create API ECS and the private gateway."
   }
 }

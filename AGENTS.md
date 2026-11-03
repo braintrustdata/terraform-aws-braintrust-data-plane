@@ -13,12 +13,12 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 │   ├── elasticache/         # Redis (ElastiCache)
 │   ├── gateway-alb/         # Private gateway internal ALB (ALB / TG / listener)
 │   ├── gateway-ecs/         # LLM Gateway (ECS Fargate)
-│   ├── ingress/             # CloudFront + API Gateway
+│   ├── ingress/             # CloudFront
 │   ├── kms/                 # Encryption keys
 │   ├── loop-runtime-alb/    # Loop Runtime internal ALB
 │   ├── loop-runtime-ecs/    # Loop Runtime ECS service
 │   ├── loop-runtime-sandbox-aws-microvm/ # Loop sandbox MicroVM network and image
-│   ├── services/            # Lambda and ECS services
+│   ├── services/            # Migration, cron, CatchupETL, and quarantine Lambdas
 │   ├── services-common/     # Shared IAM, SGs, secrets (API/Brainstore/quarantine)
 │   ├── storage/             # S3 buckets
 │   ├── vpc/                 # VPC + subnets
@@ -199,13 +199,12 @@ Call this out in the PR. Bump **major** (preferred). If a major is truly wrong, 
 
 ### Review the inverse of every `count` / `for_each`
 
-Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
+Traffic/routing flags (`use_private_ai_gateway_origin`, `use_global_ai_gateway_origin`, and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
 
 - Mentally apply `true → false`. Terraform will destroy the resource in the same apply that stops referencing it.
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
 - Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
-- `create_*` flags own resource lifetime; `enable_*` flags own routing.
-  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false creates that surface again, including a new Function URL hostname. It does not resume a warm standby. A Lambda-mode upgrade only moves state to `[0]`; Terraform moves surviving `[0]` resources back on downgrade. Resources deleted by an ECS-mode apply are created again on downgrade. On v7 the default is true. Set `enable_ecs_api = false` to keep customer traffic on Lambda. On v6 the default was false.
+- `create_*` flags own resource lifetime; `enable_*` / `use_*` routing flags own attachment.
 
 ### Private gateway ALB relocation
 
@@ -213,16 +212,15 @@ The gateway internal ALB lives in `modules/gateway-alb` so callers can reference
 
 Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
 
-### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
+### API ECS and private gateway are mandatory
 
-Upgrade an existing deployment with [MIGRATION_V7.md](MIGRATION_V7.md). Finish the v6 applies first.
+Since v8 there is no Lambda API path and no option to disable the private gateway. Do not reintroduce `enable_ecs_api`, `create_ai_gateway`, or `enable_ai_gateway`. Upgrade an existing deployment with [MIGRATION_V8.md](MIGRATION_V8.md); stacks must finish the v7 cutover first.
 
-`enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin` default to `true`. A new stack that sets nothing gets ECS ingress and the private gateway. Set `enable_ecs_api = false` to keep customer traffic on Lambda. The gateway flags still default to `true`, so that is Lambda ingress plus the private gateway. A gateway already built but not enabled must keep `create_ai_gateway = true` and set `enable_ai_gateway` and `use_private_ai_gateway_origin` to `false`. See [MIGRATION_V7.md](MIGRATION_V7.md). On v6 an omitted `enable_ecs_api` means Lambda. On v7 an omitted `enable_ecs_api` means ECS. Existing deployments finish the v6 applies before this upgrade. People who already cut over can leave `enable_ecs_api = true` or drop it.
+- Standard deployments always create API ECS, the gateway ALB (`modules/gateway-alb`), and the gateway ECS service (`modules/gateway-ecs`). `local.create_ecs_api` and `local.create_ai_gateway` are false only in external EKS mode.
+- API ECS always gets `GATEWAY_URL`; Loop ECS always gets `LOOP_RUNTIME_AI_PROXY_URL` set to the private gateway `/v1/proxy`.
+- `use_private_ai_gateway_origin` and `use_global_ai_gateway_origin` only choose the CloudFront `/v1/proxy` origin. With both false it is the API ECS ALB.
 
-- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists.
-- **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
-
-External EKS ignores `enable_ecs_api` and the gateway flags. Helm owns the gateway.
+External EKS ignores the gateway origin flags. Helm owns the API and gateway.
 
 ### Quarantine LLM proxy URL
 
@@ -230,22 +228,20 @@ Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
 `QUARANTINE_PROXY_URL`. Do **not** build this URL from a request Host header.
 A module-managed quarantine VPC and the main VPC each use `modules/vpc`, so
 each has its own NAT gateway. Quarantine functions reach public HTTPS through
-the quarantine NAT. That is how the AI Proxy Function URL is reached. When
-`enable_ecs_api` removes that URL, the default replacement is
+the quarantine NAT. The default URL is
 `https://<cloudfront-domain>/v1/proxy` (`module.ingress.api_url`), reached
-the same way. CloudFront then serves that path from whichever origin
+that way. CloudFront then serves that path from whichever origin
 `/v1/proxy` already uses: a hosted gateway, a private gateway, or the API
 ECS ALB. With `use_global_ai_gateway_origin`, those calls leave the data
 plane for the hosted gateway. A CloudFront WAF or source-IP allow list must
 admit the quarantine NAT address, because every quarantine call arrives from
-it. In plain ECS mode the inner call returns to the same API ECS service
-that invoked the quarantine function. Do **not** use the API ECS ALB or
+it. When `/v1/proxy` uses the API ECS origin, the inner call returns to the
+same API ECS service that invoked the quarantine function. Do **not** use the API ECS ALB or
 gateway ALB DNS directly. Those addresses are private to the main VPC, and
 quarantine is not peered to it.
 Do **not** peer the quarantine VPC to main for this path. Prefer PrivateLink
 to the private gateway when opted in. Loop Runtime uses the
-private gateway ALB `/v1/proxy` when `enable_ai_gateway`. When enable is
-false it uses the hosted gateway origin or CloudFront API `/v1/proxy`.
+private gateway ALB `/v1/proxy`.
 PrivateLink only affects quarantine when the flag is on.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
@@ -257,13 +253,11 @@ existing stacks are unchanged until operators explicitly enable it.
 
 - **`false`**: do **not** auto-set from PrivateLink / private gateway; do
   **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
-  if set; otherwise the AI Proxy Lambda Function URL when `enable_ecs_api`
-  is false. When `enable_ecs_api` is true and neither an override nor
-  PrivateLink set a URL, the CloudFront API URL `/v1/proxy` is used.
-  Ingress exists whenever ECS mode is on, so that URL is present.
+  if set; otherwise the CloudFront API URL `/v1/proxy`. Ingress always
+  exists outside external EKS mode, so that URL is present.
   Omitting `QUARANTINE_PROXY_URL` entirely makes api-ts fall back to
   `http://localhost:8000/v1/proxy`, which the quarantine Lambda cannot call.
-- **`true`**: always requires `create_ai_gateway`. When quarantine is enabled
+- **`true`**: when quarantine is enabled
   and `use_global_ai_gateway_origin` is false, it creates PrivateLink in
   managed or existing Main and Quarantine VPCs and
   sets `QUARANTINE_PROXY_URL` on API ECS to `http://<vpce-dns>/v1/proxy`
@@ -280,8 +274,7 @@ existing stacks are unchanged until operators explicitly enable it.
 2. else `http://<vpce-dns>/v1/proxy` when
    `use_private_gateway_quarantine_proxy` wires PrivateLink (managed or
    existing VPCs; not `use_global_ai_gateway_origin`)
-3. else AI Proxy Lambda Function URL while that function exists
-4. else `https://<cloudfront-domain>/v1/proxy` when `enable_ecs_api` is true.
+3. else `https://<cloudfront-domain>/v1/proxy`.
    `use_global_ai_gateway_origin` does not select this URL; it changes which
    origin serves that CloudFront path. When that origin is the hosted
    gateway, quarantine LLM calls leave the data plane. The URL check is
@@ -320,8 +313,7 @@ The default stays false. With quarantine enabled and the global origin disabled,
 existing-VPC callers already using true with an explicit URL will now create
 PrivateLink resources while retaining that override. False creates no
 PrivateLink resources.
-Global Gateway remains a no-op for PrivateLink. APIHandler Lambda does not
-receive automatic URL injection from this input. External EKS rejects this
+Global Gateway remains a no-op for PrivateLink. External EKS rejects this
 flag when true; Helm owns the Gateway and its application wiring.
 
 **Cost / scope**: PrivateLink adds an internal NLB (hourly + LCU) and interface
@@ -343,10 +335,6 @@ These constraints apply to customers migrating from Data Plane 1.x to 2.0. New d
 ### WAL_USE_EFFICIENT_FORMAT Decoupling
 
 `BRAINSTORE_WAL_USE_EFFICIENT_FORMAT` is intentionally derived from EITHER `brainstore_wal_footer_version` OR `skip_pg_for_brainstore_objects` being set. This enables efficient format as early as possible in the upgrade sequence (when WAL v1 is set) rather than waiting for no-PG. Do not "simplify" this to only check one condition.
-
-### API Gateway Route Allowlist
-
-`modules/ingress/api-gateway-openapi-spec.tf` is an explicit allowlist of every permitted path and method. Any application route not in this spec returns 403 on hybrid deployments. Browsers report this as a misleading CORS error because the 403 response lacks CORS headers.
 
 ## Development
 

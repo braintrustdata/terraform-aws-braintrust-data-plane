@@ -77,7 +77,7 @@ resource "aws_lambda_function" "quarantine_warmup" {
   tags = local.common_tags
 }
 
-# Invoke the quarantine warmup lambda function every time the api handler is deployed
+# Invoke the quarantine warmup lambda function every time its bundle changes
 # Only invoke when the Lambda function is actually created (not using external EKS deployment mode)
 resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
   count      = var.use_quarantine_vpc ? 1 : 0
@@ -86,12 +86,8 @@ resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
   function_name = aws_lambda_function.quarantine_warmup[0].function_name
   input         = jsonencode({})
   triggers = {
-    # Lambda mode re-warms when APIHandler is published. ECS mode has no
-    # APIHandler. The warmup function does not set publish, so its version
-    # stays $LATEST and would never change; the versioned bundle key does.
-    function_version = coalesce(
-      one(aws_lambda_function.api_handler[*].version),
-      aws_lambda_function.quarantine_warmup[0].s3_key,
-    )
+    # The warmup function does not set publish, so its version stays $LATEST
+    # and would never change; the versioned bundle key does.
+    function_version = aws_lambda_function.quarantine_warmup[0].s3_key
   }
 }

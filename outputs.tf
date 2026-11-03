@@ -129,7 +129,7 @@ output "api_security_group_id" {
 }
 
 output "ecs_cluster_arn" {
-  value       = local.create_ai_gateway || local.create_ecs_api ? module.ecs[0].cluster_arn : null
+  value       = local.create_ecs_api ? module.ecs[0].cluster_arn : null
   description = "ARN of the ECS cluster used for ECS services"
 }
 
@@ -160,7 +160,7 @@ output "gateway_target_group_arn" {
 
 output "gateway_url" {
   value       = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
-  description = "Private in-VPC gateway URL. Set enable_ai_gateway to wire GATEWAY_URL on api-ts services."
+  description = "Private in-VPC gateway URL. Wired as GATEWAY_URL on api-ts services."
 }
 
 output "gateway_task_security_group_id" {
@@ -210,7 +210,7 @@ output "loop_runtime_url" {
 
 output "loop_runtime_ai_proxy_url" {
   value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
-  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy when enable_ai_gateway, otherwise hosted gateway or CloudFront API /v1/proxy)"
+  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy)"
 }
 
 output "loop_runtime_sandbox_egress_gateway_dns_name" {
@@ -280,12 +280,6 @@ output "monitoring_contract" {
     lambda = {
       enabled   = !var.use_deployment_mode_external_eks
       functions = !var.use_deployment_mode_external_eks ? module.services[0].monitoring_functions : {}
-    }
-
-    api_gateway = {
-      enabled = !var.use_deployment_mode_external_eks && !var.enable_ecs_api
-      name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
-      stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
     }
 
     brainstore = {
