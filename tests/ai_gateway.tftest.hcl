@@ -1,6 +1,5 @@
-# Plan-mode smoke test for private AI gateway infra (create_ai_gateway = true).
-#
-# Primary signal: plan succeeds for the infra-only first step of the gateway cutover.
+# Plan-mode smoke test for the required AI gateway. Standard deployments use
+# the private gateway unless use_global_ai_gateway_origin selects the hosted one.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -21,8 +20,6 @@ variables {
   deployment_name        = "bt-test"
   brainstore_license_key = "test-license"
   enable_quarantine_vpc  = true
-  create_ai_gateway      = true
-  enable_ai_gateway      = false
 }
 
 run "ai_gateway_plans" {
@@ -30,12 +27,17 @@ run "ai_gateway_plans" {
 
   assert {
     condition     = length(module.gateway_ecs) == 1
-    error_message = "create_ai_gateway should create the gateway_ecs module"
+    error_message = "The default should create the private gateway_ecs module"
   }
 
   assert {
     condition     = length(module.ecs) == 1
-    error_message = "create_ai_gateway should create the shared ECS cluster"
+    error_message = "The default should create the shared ECS cluster"
+  }
+
+  assert {
+    condition     = contains(keys(local.gateway_env_vars), "GATEWAY_URL")
+    error_message = "API services must receive GATEWAY_URL for the private gateway"
   }
 
   assert {
@@ -47,26 +49,22 @@ run "ai_gateway_plans" {
 run "create_and_enable_with_lambda_api" {
   command = plan
   variables {
-    enable_ai_gateway = true
-    enable_ecs_api    = false
+    enable_ecs_api = false
   }
 }
 
 run "create_and_enable_with_ecs_api" {
   command = plan
   variables {
-    enable_ai_gateway = true
-    enable_ecs_api    = true
+    enable_ecs_api = true
   }
 }
 
 run "create_and_enable_all_private_paths" {
   command = plan
   variables {
-    enable_ai_gateway                    = true
     enable_ecs_api                       = true
     enable_loop_runtime                  = true
-    use_private_ai_gateway_origin        = true
     use_private_gateway_quarantine_proxy = true
   }
 }
@@ -74,7 +72,6 @@ run "create_and_enable_all_private_paths" {
 run "create_and_enable_in_existing_vpc" {
   command = plan
   variables {
-    enable_ai_gateway            = true
     create_vpc                   = false
     existing_vpc_id              = "vpc-12345678"
     existing_private_subnet_1_id = "subnet-11111111"
@@ -87,7 +84,6 @@ run "create_and_enable_in_existing_vpc" {
 run "create_and_enable_with_https_api" {
   command = plan
   variables {
-    enable_ai_gateway                  = true
     braintrust_api_alb_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/test"
     braintrust_api_alb_custom_domain   = "api.internal.example.com"
   }
@@ -96,91 +92,53 @@ run "create_and_enable_with_https_api" {
 run "external_eks_leaves_gateway_to_helm" {
   command = plan
   variables {
-    enable_ai_gateway                = true
     use_deployment_mode_external_eks = true
     braintrust_api_url               = "https://api.example.com"
   }
 
   assert {
-    condition     = length(module.gateway_ecs) == 0 && !local.enable_ai_gateway
+    condition     = length(module.gateway_ecs) == 0 && !local.create_ai_gateway
     error_message = "External EKS must leave the gateway to Helm even with an explicit API URL."
   }
 }
 
-run "disable_gateway_cutover" {
-  command = plan
-  assert {
-    condition     = length(local.gateway_env_vars) == 0
-    error_message = "The disabled gateway must not override API environment values."
-  }
-}
-
-run "reject_gateway_cutover_without_tasks" {
+run "reject_gateway_without_tasks" {
   command = plan
   variables {
-    enable_ai_gateway       = true
     ai_gateway_min_capacity = 0
   }
   expect_failures = [var.ai_gateway_min_capacity]
 }
 
-run "reject_direct_cloudfront_without_tasks" {
-  command = plan
-  variables {
-    use_private_ai_gateway_origin = true
-    ai_gateway_min_capacity       = 0
-  }
-  expect_failures = [var.ai_gateway_min_capacity]
-}
-
-run "reject_privatelink_without_tasks" {
-  command = plan
-  variables {
-    use_private_gateway_quarantine_proxy = true
-    ai_gateway_min_capacity              = 0
-  }
-  expect_failures = [var.ai_gateway_min_capacity]
-}
-
-run "allow_zero_tasks_before_cutover" {
-  command = plan
-  variables {
-    use_private_ai_gateway_origin = false
-    ai_gateway_min_capacity       = 0
-  }
-}
-
-run "hosted_gateway_keeps_privatelink_noop" {
+run "hosted_gateway_replaces_private_gateway" {
   command = plan
   variables {
     ai_gateway_min_capacity              = 0
     use_global_ai_gateway_origin         = true
-    use_private_ai_gateway_origin        = false
     use_private_gateway_quarantine_proxy = true
   }
 
   assert {
-    condition     = !local.enable_private_ai_gateway_origin && !local.create_quarantine_gateway_privatelink
-    error_message = "The global origin must leave the private origin and quarantine PrivateLink disabled."
+    condition     = length(module.gateway_ecs) == 0 && length(module.gateway_alb) == 0 && length(local.gateway_env_vars) == 0 && !local.create_quarantine_gateway_privatelink
+    error_message = "The hosted gateway must replace the private gateway and leave quarantine PrivateLink disabled."
+  }
+
+  assert {
+    condition     = local.loop_runtime_ai_proxy_url == "https://gateway.braintrust.dev/v1/proxy"
+    error_message = "Loop must use the hosted gateway."
   }
 }
 
-run "quarantine_override_does_not_require_gateway_tasks" {
+run "quarantine_override_keeps_explicit_url" {
   command = plan
   variables {
-    ai_gateway_min_capacity              = 0
     use_private_gateway_quarantine_proxy = true
     quarantine_proxy_url                 = "https://proxy.example.com/v1/proxy"
-    use_private_ai_gateway_origin        = false
+  }
+
+  assert {
+    condition     = output.quarantine_proxy_url == "https://proxy.example.com/v1/proxy"
+    error_message = "An explicit quarantine_proxy_url must win over PrivateLink."
   }
 }
 
-run "reject_global_and_private_gateway_origins" {
-  command = plan
-  variables {
-    use_global_ai_gateway_origin  = true
-    use_private_ai_gateway_origin = true
-  }
-
-  expect_failures = [var.use_private_ai_gateway_origin]
-}

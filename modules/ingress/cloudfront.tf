@@ -5,25 +5,19 @@ locals {
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   cloudfront_AIProxyOrigin             = "AIProxyOrigin"
   cloudfront_ApiEcsOrigin              = "ApiEcsOrigin"
-  cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
   cloudfront_LoopRuntimeOrigin         = "LoopRuntimeOrigin"
-  cloudfront_ProxyOrigin               = var.use_global_ai_proxy ? local.cloudfront_CloudflareProxy : local.cloudfront_AIProxyOrigin
 
   cloudfront_api_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_APIGatewayOrigin
 
-  # /v1/proxy origin priority: hosted global → private gateway VPC origin →
-  # ECS API ALB (when enable_ecs_api) → AI Proxy Lambda / Cloudflare.
+  # /v1/proxy always routes to a gateway: hosted global or the private
+  # gateway VPC origin.
   cloudfront_proxy_origin_id = (
-    var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : (
-      local.enable_private_gateway_cloudfront_origin ? local.cloudfront_PrivateGatewayOrigin : (
-        var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
-      )
-    )
+    var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : local.cloudfront_PrivateGatewayOrigin
   )
 
-  cloudfront_function_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
+  cloudfront_function_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_AIProxyOrigin
 
   # When CloudFront reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http even
   # though the viewer connected to CloudFront over HTTPS. Add CloudFront-Forwarded-Proto so
@@ -41,7 +35,6 @@ locals {
     (local.cloudfront_ApiEcsOrigin)         = local.cloudfront_ecs_origin_request_policy_id
     (local.cloudfront_APIGatewayOrigin)     = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_AIProxyOrigin)        = local.cloudfront_AllViewerExceptHostHeader
-    (local.cloudfront_CloudflareProxy)      = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_GatewayOrigin)        = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_PrivateGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_LoopRuntimeOrigin)    = local.cloudfront_AllViewerExceptHostHeader
@@ -147,20 +140,6 @@ resource "aws_cloudfront_distribution" "dataplane" {
         http_port                = 80
         origin_ssl_protocols     = ["TLSv1.2"]
       }
-    }
-  }
-
-  origin {
-    domain_name = "braintrustproxy.com"
-    origin_id   = local.cloudfront_CloudflareProxy
-
-    custom_origin_config {
-      origin_protocol_policy   = "https-only"
-      origin_read_timeout      = var.cloudfront_origin_read_timeout
-      origin_keepalive_timeout = 60
-      https_port               = 443
-      http_port                = 80
-      origin_ssl_protocols     = ["TLSv1.2"]
     }
   }
 

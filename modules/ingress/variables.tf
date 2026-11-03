@@ -21,12 +21,6 @@ variable "waf_acl_id" {
   default     = null
 }
 
-variable "use_global_ai_proxy" {
-  description = "Whether to use the global Cloudflare proxy"
-  type        = bool
-  default     = false
-}
-
 variable "use_global_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev"
   type        = bool
@@ -37,6 +31,11 @@ variable "use_private_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to the private gateway ALB via a VPC origin"
   type        = bool
   default     = false
+
+  validation {
+    condition     = var.use_global_ai_gateway_origin != var.use_private_ai_gateway_origin
+    error_message = "Exactly one of use_global_ai_gateway_origin and use_private_ai_gateway_origin must be true. /v1/proxy must route to a gateway."
+  }
 }
 
 variable "gateway_alb_arn" {

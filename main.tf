@@ -77,10 +77,11 @@ locals {
     : module.database.postgres_database_url_secret_arn
   )
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
-  create_ai_gateway                          = var.create_ai_gateway && !var.use_deployment_mode_external_eks
-  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
+  create_ecs_api = !var.use_deployment_mode_external_eks
+  enable_ecs_api = local.create_ecs_api && var.enable_ecs_api
+  # Every standard deployment uses a gateway: the hosted gateway when
+  # use_global_ai_gateway_origin is true, otherwise the private gateway.
+  create_ai_gateway                          = !var.use_deployment_mode_external_eks && !var.use_global_ai_gateway_origin
   enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
@@ -99,16 +100,11 @@ locals {
     : local.brainstore_ai_proxy_url_ssm_parameter_name
   )
 
-  # AI Proxy Lambda Function URL. Null on external EKS and when enable_ecs_api
-  # removes the function. Quarantine falls back to this only while it exists.
-  # one() keeps this index-safe when services is absent.
-  self_hosted_ai_proxy_url = one(module.services[*].ai_proxy_url)
-
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
   # Precedence: explicit quarantine_proxy_url override → PrivateLink VPC
   # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
-  # use_global) with managed or existing VPCs → else AI Proxy Function URL →
-  # else the CloudFront API URL /v1/proxy once that Function URL is gone.
+  # use_global) with managed or existing VPCs → else the CloudFront API URL
+  # /v1/proxy, which CloudFront always serves from a gateway.
   # The CloudFront fallback requires quarantine HTTPS egress (NAT in managed VPCs).
   # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
   # main VPC, and quarantine is not peered to it. Do not build this URL from
@@ -117,8 +113,7 @@ locals {
   # Off when use_global_ai_gateway_origin (no PrivateLink).
   wire_quarantine_to_private_gateway = (
     var.use_private_gateway_quarantine_proxy &&
-    local.create_ai_gateway &&
-    !var.use_global_ai_gateway_origin
+    local.create_ai_gateway
   )
   quarantine_gateway_privatelink_proxy_url = try(
     "http://${aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name}/v1/proxy",
@@ -133,24 +128,19 @@ locals {
   )
   # Distribution hostname (https://*.cloudfront.net), not a custom alias.
   # Same value Loop uses. Append /v1/proxy so getRuntimeEnv does not rewrite
-  # it to /v1. Terraform records this ingress reference in both flag states,
-  # so the API task definition waits on the CloudFront domain in Lambda mode
-  # too. The domain does not depend on that task definition.
+  # it to /v1. The API task definition waits on the CloudFront domain in both
+  # API modes. The domain does not depend on that task definition.
   cloudfront_quarantine_proxy_url = (
-    local.enable_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
+    local.create_ecs_api ? "${trimsuffix(module.ingress[0].api_url, "/")}/v1/proxy" : null
   )
   api_ecs_quarantine_proxy_url = (
     local.quarantine_proxy_url_override != null ? local.quarantine_proxy_url_override : (
       local.quarantine_gateway_privatelink_proxy_url != null
       ? local.quarantine_gateway_privatelink_proxy_url
-      : (
-        local.self_hosted_ai_proxy_url != null
-        ? local.self_hosted_ai_proxy_url
-        : local.cloudfront_quarantine_proxy_url
-      )
+      : local.cloudfront_quarantine_proxy_url
     )
   )
-  gateway_env_vars = local.enable_ai_gateway ? {
+  gateway_env_vars = local.create_ai_gateway ? {
     GATEWAY_URL = module.gateway_ecs[0].gateway_url
   } : {}
 
@@ -173,20 +163,16 @@ locals {
     module.brainstore[0].port,
   ) : ""
 
-  # Loop uses the private gateway after cutover. Otherwise, it uses the hosted
-  # gateway or the CloudFront API proxy. Gateway ingress exists before cutover.
+  # Loop uses the private gateway, or the hosted gateway when
+  # use_global_ai_gateway_origin is true.
   hosted_ai_gateway_proxy_url = format(
     "https://%s/v1/proxy",
     trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
   )
   loop_runtime_ai_proxy_url = (
-    local.enable_ai_gateway
+    local.create_ai_gateway
     ? "${module.gateway_ecs[0].gateway_url}/v1/proxy"
-    : (
-      var.use_global_ai_gateway_origin
-      ? local.hosted_ai_gateway_proxy_url
-      : one(module.ingress[*].api_url)
-    )
+    : local.hosted_ai_gateway_proxy_url
   )
 
   # Only wire per-deployment backend URLs into Lambdas that call them. Do not
@@ -211,7 +197,6 @@ locals {
   attachment_s3_bucket_arn         = var.existing_attachment_s3_bucket_arn
   attachment_s3_bucket_kms_key_arn = var.existing_attachment_s3_bucket_kms_key_arn
   attachment_s3_bucket_name        = var.existing_attachment_s3_bucket_arn != null ? split(":::", var.existing_attachment_s3_bucket_arn)[1] : null
-  enable_private_ai_gateway_origin = local.create_ai_gateway && var.use_private_ai_gateway_origin
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
     { for svc in local.lambda_env_services : svc => merge(
@@ -378,7 +363,7 @@ module "services" {
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
   brainstore_deployment_id = module.brainstore_deployment[0].completion_id
-  gateway_url              = local.enable_ai_gateway ? module.gateway_ecs[0].gateway_url : null
+  gateway_url              = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
 
   deployment_name             = var.deployment_name
   lambda_version_tag_override = local.lambda_version_tag
@@ -492,7 +477,7 @@ module "gateway_alb" {
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
-  enable_cloudfront_vpc_origin_ingress = local.enable_private_ai_gateway_origin
+  enable_cloudfront_vpc_origin_ingress = local.create_ai_gateway
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
@@ -812,13 +797,12 @@ module "ingress" {
   cloudfront_price_class              = var.cloudfront_price_class
   cloudfront_origin_read_timeout      = var.cloudfront_origin_read_timeout
   cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
-  use_global_ai_proxy                 = var.use_global_ai_proxy
   use_global_ai_gateway_origin        = var.use_global_ai_gateway_origin
-  use_private_ai_gateway_origin       = local.enable_private_ai_gateway_origin
+  use_private_ai_gateway_origin       = local.create_ai_gateway
   global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
-  gateway_alb_arn                     = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name                = local.enable_private_ai_gateway_origin ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : null
-  gateway_cloudfront_ingress_rule_id  = local.enable_private_ai_gateway_origin ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
+  gateway_alb_arn                     = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_arn : null
+  gateway_alb_dns_name                = local.create_ai_gateway ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : null
+  gateway_cloudfront_ingress_rule_id  = local.create_ai_gateway ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api
