@@ -4,6 +4,7 @@ locals {
   # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   cloudfront_ApiEcsOrigin              = "ApiEcsOrigin"
+  cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_LoopRuntimeOrigin         = "LoopRuntimeOrigin"
 
@@ -87,6 +88,24 @@ resource "aws_cloudfront_distribution" "dataplane" {
   web_acl_id   = var.waf_acl_id
   price_class  = var.cloudfront_price_class
   aliases      = var.custom_domain != null ? [var.custom_domain] : null
+
+  # Unused since v8. Kept so the upgrade does not update the distribution.
+  # On a Lambda-mode stack, updating the distribution in the same apply that
+  # replaces the API task definitions (create_before_destroy) forms a
+  # dependency cycle through the quarantine proxy URL and the gateway.
+  origin {
+    domain_name = "braintrustproxy.com"
+    origin_id   = local.cloudfront_CloudflareProxy
+
+    custom_origin_config {
+      origin_protocol_policy   = "https-only"
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
+      origin_keepalive_timeout = 60
+      https_port               = 443
+      http_port                = 80
+      origin_ssl_protocols     = ["TLSv1.2"]
+    }
+  }
 
   origin {
     domain_name = trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")

@@ -41,7 +41,7 @@ v8 no longer accepts these inputs. Delete them from your module block or the pla
 | `create_ai_gateway` | Derived: the gateway ECS service runs unless `use_global_ai_gateway_origin = true`. The gateway ALB and CloudFront VPC origin always exist. |
 | `enable_ai_gateway` | Derived: API ECS (`GATEWAY_URL`), Loop, and CloudFront `/v1/proxy` always use the selected gateway. |
 | `use_private_ai_gateway_origin` | Derived: CloudFront `/v1/proxy` uses the private gateway unless `use_global_ai_gateway_origin = true`. |
-| `use_global_ai_proxy` | Only applied to the AIProxy Lambda origin. |
+| `use_global_ai_proxy` | Only applied to the AIProxy Lambda origin. The unused `CloudflareProxy` origin stays in the distribution so the upgrade does not modify it. |
 | `api_handler_provisioned_concurrency` | APIHandler Lambda is gone. |
 | `api_handler_reserved_concurrent_executions` | APIHandler Lambda is gone. |
 | `api_handler_memory_limit` | APIHandler Lambda is gone. |
@@ -57,7 +57,6 @@ v8 no longer accepts these inputs. Delete them from your module block or the pla
 On a stack in one of the two setups above, the upgrade plan should only show:
 
 - The `api_gateway` entry in the `monitoring_contract` output keeps its shape and `enabled = false`; `name` and `stage` become null.
-- The `CloudflareProxy` origin is removed from the CloudFront distribution. Nothing routed to it in ECS mode.
 - The `<deployment>-APIHandler-Lambdas` IAM policy and the `AWSLambdaVPCAccessExecutionRole` attachment are removed from the `APIHandlerRole`. The role itself stays: API ECS tasks use it.
 
 No API ECS, gateway, Brainstore, database, or Redis resources are replaced.
