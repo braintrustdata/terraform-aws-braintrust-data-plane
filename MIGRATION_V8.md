@@ -67,7 +67,7 @@ CloudFront `/v1/proxy` always routes to the selected gateway, never to the API E
 Hosted-gateway stacks also see:
 
 - `GATEWAY_URL = https://<global_ai_gateway_origin_domain>` on API ECS, so in-process API model calls use the hosted gateway. On v7 these had no `GATEWAY_URL`.
-- The internal gateway ALB and its CloudFront VPC origin are created and left idle, so a later switch to the private gateway is one apply. The ALB has a small hourly charge.
+- The internal gateway ALB and its CloudFront VPC origin are created and left idle, so a later switch to the private gateway does not create or delete them. The ALB has a small hourly charge.
 
 ## Quarantine proxy URL
 
@@ -81,7 +81,7 @@ This is the same selection a v7 ECS-mode stack already uses.
 
 ## Switching gateways later
 
-`use_global_ai_gateway_origin` flips in either direction in one apply. The gateway ALB and CloudFront VPC origin are never deleted by the switch; only the `/v1/proxy` behavior, `GATEWAY_URL`, Loop's URL, and the gateway ECS service change. Switching to the private gateway waits for the gateway ECS service to reach steady state before callers move.
+Changing `use_global_ai_gateway_origin` in either direction never deletes the gateway ALB or CloudFront VPC origin; only the `/v1/proxy` behavior, `GATEWAY_URL`, Loop's URL, and the gateway ECS service change. Switching to the private gateway waits for the gateway ECS service to reach steady state before callers move. This removes the known VPC-origin deletion failure, but a live switch has not been verified against AWS yet, and hosted-gateway acceptance of the credential a self-hosted data plane exchanges for is not covered by this module.
 
 ## External EKS
 
@@ -89,4 +89,13 @@ External EKS deployments never used these inputs. Remove them from the module bl
 
 ## Rollback
 
-v7 defaults keep ECS and the private gateway enabled, so a v8 private-gateway stack rolls back without extra settings. A hosted-gateway stack must add `create_ai_gateway = false`, `enable_ai_gateway = false`, and `use_private_ai_gateway_origin = false` on rollback, or v7 builds a private gateway. v7 deletes the idle CloudFront VPC origin in the same apply that detaches it, so that rollback apply can fail with `CannotDeleteEntityWhileInUse`; rerun `terraform apply` after the distribution finishes deploying. Do not set `enable_ecs_api = false` on rollback: that recreates APIHandler, AIProxy, a new Function URL hostname, and API Gateway.
+v7 defaults keep the private gateway enabled, so a v8 private-gateway stack rolls back without extra settings.
+
+Rolling a **hosted-gateway** stack straight back to v7 is not supported. v7 ties the CloudFront VPC origin's lifetime to `use_private_ai_gateway_origin`, so that rollback deletes the origin that v8 keeps attached, and a failed delete can repeat on every apply. Instead:
+
+1. On v8, set `use_global_ai_gateway_origin = false` and apply. This switches to the private gateway without deleting the VPC origin.
+2. Roll back to v7 with its defaults (private gateway enabled). Nothing gateway-related is deleted.
+
+Moving that v7 stack back to the hosted gateway hits the same VPC-origin limitation v7 already has, so stay on the private gateway until you can upgrade again.
+
+Do not set `enable_ecs_api = false` on rollback: that recreates APIHandler, AIProxy, a new Function URL hostname, and API Gateway.

@@ -97,7 +97,7 @@ handoff for an existing deployment.
 Every standard deployment runs the API on ECS and uses an AI gateway. There is no option to run without one. Choose one of two:
 
 - **Private gateway (default).** The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API ECS, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
-- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API ECS gets `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane. The internal gateway ALB and its CloudFront VPC origin stay in place, idle, so you can switch back in one apply; the ALB has a small hourly charge.
+- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API ECS gets `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane. The internal gateway ALB and its CloudFront VPC origin stay in place, idle, so switching back does not delete the VPC origin; the ALB has a small hourly charge.
 
 CloudFront `/v1/proxy` never routes to the API ECS load balancer. Existing deployments must finish the v7 ECS cutover before upgrading to v8. See [Migrating from v7 to v8](MIGRATION_V8.md).
 Terraform waits for the private gateway ECS service to reach steady state before caller updates.
