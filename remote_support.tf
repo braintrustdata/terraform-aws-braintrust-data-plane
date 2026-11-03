@@ -18,9 +18,7 @@ module "remote_support" {
   use_redis_replication_group = var.use_redis_replication_group
   kms_key_arn                 = local.kms_key_arn
   lambda_function_arns = compact([
-    !var.use_deployment_mode_external_eks ? module.services[0].api_handler_arn : null,
     !var.use_deployment_mode_external_eks ? module.services[0].migrate_database_arn : null,
-    !var.use_deployment_mode_external_eks ? module.services[0].ai_proxy_arn : null,
     !var.use_deployment_mode_external_eks ? module.services[0].catchup_etl_arn : null,
     !var.use_deployment_mode_external_eks ? module.services[0].quarantine_warmup_arn : null,
   ])

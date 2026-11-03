@@ -1,26 +1,6 @@
-output "ai_proxy_url" {
-  description = "The URL of the AI proxy lambda function. Null when enable_ecs_api is true."
-  value       = one(aws_lambda_function_url.ai_proxy[*].function_url)
-}
-
-output "api_handler_arn" {
-  description = "The ARN of the API handler lambda function. Null when enable_ecs_api is true."
-  value       = one(aws_lambda_function.api_handler[*].arn)
-}
-
 output "monitoring_functions" {
   description = "Core Lambda functions keyed by stable logical role for monitoring integrations."
   value = merge(
-    var.enable_ecs_api ? {} : {
-      api-handler = {
-        function_name   = aws_lambda_function.api_handler[0].function_name
-        timeout_seconds = aws_lambda_function.api_handler[0].timeout
-      }
-      ai-proxy = {
-        function_name   = aws_lambda_function.ai_proxy[0].function_name
-        timeout_seconds = aws_lambda_function.ai_proxy[0].timeout
-      }
-    },
     {
       billing-cron = {
         function_name   = aws_lambda_function.billing_cron.function_name
@@ -42,11 +22,6 @@ output "monitoring_functions" {
       }
     } : {},
   )
-}
-
-output "ai_proxy_arn" {
-  description = "The ARN of the AI proxy lambda function. Null when enable_ecs_api is true."
-  value       = one(aws_lambda_function.ai_proxy[*].arn)
 }
 
 output "migrate_database_arn" {
@@ -74,12 +49,3 @@ output "quarantine_lambda_security_group_id" {
   value       = var.quarantine_lambda_security_group_id
 }
 
-output "ai_proxy_url_ssm_arn" {
-  description = "The ARN of the SSM parameter containing the AI proxy URL. Null when enable_ecs_api is true."
-  value       = one(aws_ssm_parameter.ai_proxy_url[*].arn)
-}
-
-output "ai_proxy_url_ssm_parameter_name" {
-  description = "The name of the SSM parameter containing the AI proxy URL. Null when enable_ecs_api is true."
-  value       = one(aws_ssm_parameter.ai_proxy_url[*].name)
-}

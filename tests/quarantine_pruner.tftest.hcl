@@ -28,11 +28,8 @@ variables {
   use_redis_replication_group    = false
   redis_host                     = "redis.example.internal"
   redis_port                     = "6379"
-  whitelisted_origins            = []
   code_bundle_bucket_arn         = "arn:aws:s3:::bt-test-code-bundles"
-  lambda_responses_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
   api_security_group_id          = "sg-api"
-  api_handler_role_arn           = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
   function_tools_secret_key      = "function-tools-secret"
   use_quarantine_vpc             = true
   quarantine_vpc_id              = "vpc-quarantine"
@@ -235,8 +232,6 @@ run "extra_env_vars_override_defaults" {
   variables {
     enable_quarantine_pruner = true
     extra_env_vars = {
-      APIHandler               = {}
-      AIProxy                  = {}
       BillingCron              = {}
       CatchupETL               = {}
       MigrateDatabaseFunction  = {}
@@ -259,8 +254,6 @@ run "extra_env_vars_without_pruner_key" {
   variables {
     enable_quarantine_pruner = true
     extra_env_vars = {
-      APIHandler               = {}
-      AIProxy                  = {}
       BillingCron              = {}
       CatchupETL               = {}
       MigrateDatabaseFunction  = {}
@@ -308,8 +301,6 @@ run "root_service_extra_env_vars_without_pruner_key" {
   variables {
     enable_quarantine_pruner = true
     service_extra_env_vars = {
-      APIHandler               = {}
-      AIProxy                  = {}
       CatchupETL               = {}
       BillingCron              = {}
       MigrateDatabaseFunction  = {}

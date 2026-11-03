@@ -7,7 +7,7 @@ For the latest guidance, always refer to the official Braintrust documentation:
 - [Upgrade your deployment](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/v2)
 
-This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
+This module is used to create the VPC, databases, API and gateway ECS services, Brainstore, and associated resources for the self-hosted Braintrust data plane.
 
 ## Major versions
 
@@ -25,9 +25,9 @@ A normal `terraform apply` waits for the reader and, when enabled, fast-reader B
 
 For the gated reader fleets, the helper checks the exact numbered launch-template version, ASG and target health, and termination of old instances. Healthy instances from the previous version do not satisfy it. Refreshes can temporarily double capacity to preserve availability. API deployments remain blocked if a gated refresh fails, health checks fail, or the final attempt reaches its 14-minute waiting budget. Terraform automatically invokes the controller a second time during the same apply after the first waiting budget expires, resuming the active refresh with another 14-minute budget. The final invocation also rechecks readiness when the first attempt completes. Fix any reported failure and rerun `terraform apply`; the gate rechecks AWS state and resumes an active refresh. Each retry gets a fresh waiting budget and inspects live AWS state.
 
-The module installs the deployment Lambda from a regional Braintrust artifact using the active API release tag: the ECS API version when `enable_ecs_api` is true, or the API Lambda version otherwise. The corresponding `braintrust_api_version_override` or `lambda_version_tag_override` is respected. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
+The module installs the deployment Lambda from a regional Braintrust artifact using the ECS API release tag. `braintrust_api_version_override` is respected. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
 
-This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
+This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
 ## How to use this module
 
@@ -94,13 +94,12 @@ handoff for an existing deployment.
 
 ## AI gateway
 
-Every standard deployment uses an AI gateway. There is no option to run without one. Choose one of two:
+Every standard deployment runs the API on ECS and uses an AI gateway. There is no option to run without one. Choose one of two:
 
-- **Private gateway (default).** The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API services, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
-- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API services get `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane. The internal gateway ALB and its CloudFront VPC origin stay in place, idle, so switching back does not delete the VPC origin; the ALB has a small hourly charge.
+- **Private gateway (default).** The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API ECS, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
+- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API ECS gets `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane. The internal gateway ALB and its CloudFront VPC origin stay in place, idle, so switching back does not delete the VPC origin; the ALB has a small hourly charge.
 
-`enable_ecs_api` still chooses whether customer API traffic goes to API ECS or the Lambda path. Either way, CloudFront `/v1/proxy` goes to a gateway, never to the AI Proxy Lambda or the API load balancer.
-Existing deployments upgrade with [Migrating from v7 to v8](MIGRATION_V8.md).
+CloudFront `/v1/proxy` never routes to the API ECS load balancer. Existing deployments must finish the v7 ECS cutover before upgrading to v8. See [Migrating from v7 to v8](MIGRATION_V8.md).
 Terraform waits for the private gateway ECS service to reach steady state before caller updates.
 The service uses the ALB `/health` check. A failed initial deployment leaves existing callers on their previous configuration.
 
@@ -108,10 +107,9 @@ The CloudFront private origin and the module-managed quarantine PrivateLink endp
 Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
 The private gateway requires `ai_gateway_min_capacity` of at least one.
 
-External EKS deployments ignore the gateway inputs. Helm manages the gateway in that mode.
-Terraform does not create the gateway or enable its routes when `use_deployment_mode_external_eks = true`.
+External EKS deployments do not create the API ECS or gateway services. Helm manages them in that mode.
 
-The gateway's default API address is the private API ECS load balancer, including while customer traffic stays on Lambda.
+The gateway's default API address is the private API ECS load balancer.
 An API address from organization authentication replaces that default.
 The API ECS service already exists in standard deployments. Its listener accepts traffic from the gateway task security group.
 The listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
@@ -209,7 +207,6 @@ This script will dump the logs for the given deployment and services to the `log
 # ./scripts/dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
 
 ./scripts/dump-logs.sh bt-sandbox
-Fetching logs for the last 60 minutes for APIHandler...
 Fetching logs for the last 60 minutes for braintrust-api...
 Fetching logs for the last 60 minutes for braintrust-api-ingest...
 Fetching logs for the last 60 minutes for braintrust-api-background...
@@ -218,7 +215,6 @@ Fetching logs for the last 60 minutes for brainstore...
 ✅ Saved logs for braintrust-api to logs-bt-sandbox/braintrust-api.log
 ✅ Saved logs for braintrust-api-ingest to logs-bt-sandbox/braintrust-api-ingest.log
 ✅ Saved logs for braintrust-api-background to logs-bt-sandbox/braintrust-api-background.log
-✅ Saved logs for APIHandler to logs-bt-sandbox/APIHandler.log
 ```
 
 ### create-service-linked-roles.sh
