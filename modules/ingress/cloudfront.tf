@@ -5,7 +5,6 @@ locals {
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   cloudfront_AIProxyOrigin             = "AIProxyOrigin"
   cloudfront_ApiEcsOrigin              = "ApiEcsOrigin"
-  cloudfront_CloudflareProxy           = "CloudflareProxy"
   cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_APIGatewayOrigin          = "APIGatewayOrigin"
   cloudfront_LoopRuntimeOrigin         = "LoopRuntimeOrigin"
@@ -141,24 +140,6 @@ resource "aws_cloudfront_distribution" "dataplane" {
         http_port                = 80
         origin_ssl_protocols     = ["TLSv1.2"]
       }
-    }
-  }
-
-  # Unused since v8. Kept so the upgrade does not update the distribution.
-  # On a Lambda-mode stack, updating the distribution in the same apply that
-  # replaces the API task definitions (create_before_destroy) forms a
-  # dependency cycle through the quarantine proxy URL and the gateway.
-  origin {
-    domain_name = "braintrustproxy.com"
-    origin_id   = local.cloudfront_CloudflareProxy
-
-    custom_origin_config {
-      origin_protocol_policy   = "https-only"
-      origin_read_timeout      = var.cloudfront_origin_read_timeout
-      origin_keepalive_timeout = 60
-      https_port               = 443
-      http_port                = 80
-      origin_ssl_protocols     = ["TLSv1.2"]
     }
   }
 
