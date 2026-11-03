@@ -40,8 +40,8 @@ run "external_eks_plans" {
   }
 
   assert {
-    condition     = length(module.api_ecs) == 0 && !local.enable_ecs_api
-    error_message = "external EKS mode should skip the api_ecs module and ignore enable_ecs_api"
+    condition     = length(module.api_ecs) == 0 && !local.create_ecs_api
+    error_message = "external EKS mode should skip the api_ecs module"
   }
 
   assert {
@@ -64,7 +64,6 @@ run "external_eks_ignores_gateway_flags" {
 
   variables {
     use_global_ai_gateway_origin = false
-    enable_ecs_api               = true
     ai_gateway_min_capacity      = 0
   }
 
@@ -74,8 +73,8 @@ run "external_eks_ignores_gateway_flags" {
   }
 
   assert {
-    condition     = length(module.api_ecs) == 0 && !local.enable_ecs_api
-    error_message = "External EKS must ignore enable_ecs_api and create no API ECS."
+    condition     = length(module.api_ecs) == 0 && !local.create_ecs_api
+    error_message = "External EKS must create no API ECS."
   }
 }
 
@@ -87,7 +86,7 @@ run "standard_gateway_defaults" {
   }
 
   assert {
-    condition     = length(module.gateway_ecs) == 1 && local.create_ai_gateway && local.enable_ecs_api
-    error_message = "Standard deployments must enable API ECS ingress and the private gateway by default."
+    condition     = length(module.gateway_ecs) == 1 && local.create_ai_gateway && local.create_ecs_api
+    error_message = "Standard deployments must create API ECS and the private gateway."
   }
 }

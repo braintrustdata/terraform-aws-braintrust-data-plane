@@ -5,8 +5,6 @@
 
 ALL_SERVICES=(
   "brainstore"
-  "AIProxy"
-  "APIHandler"
   "braintrust-api"
   "braintrust-api-ingest"
   "braintrust-api-background"
@@ -16,7 +14,7 @@ ALL_SERVICES=(
   "BillingCron"
   "AutomationCron"
 )
-SERVICES="APIHandler,braintrust-api,braintrust-api-ingest,braintrust-api-background,brainstore"
+SERVICES="braintrust-api,braintrust-api-ingest,braintrust-api-background,brainstore"
 
 if [ -z "$1" ]; then
   echo "Usage: $0 <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]"

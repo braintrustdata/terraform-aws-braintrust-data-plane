@@ -1000,12 +1000,6 @@ variable "braintrust_api_version_override" {
   }
 }
 
-variable "enable_ecs_api" {
-  type        = bool
-  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. API ECS sends quarantine LLM calls to the CloudFront /v1/proxy URL (served by the selected gateway) via the quarantine VPC NAT gateway in both modes, unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
-  default     = true
-}
-
 variable "braintrust_api_log_retention_days" {
   description = "CloudWatch log retention period (days) for API ECS logs."
   type        = number
@@ -1352,46 +1346,6 @@ variable "braintrust_api_url" {
   description = "Legacy API URL input for external EKS deployments. Configure the gateway API URL through Helm."
   type        = string
   default     = null
-}
-
-variable "api_handler_provisioned_concurrency" {
-  description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
-  type        = number
-  default     = 1
-}
-
-variable "api_handler_reserved_concurrent_executions" {
-  description = "The number of concurrent executions to reserve for the API Handler. Setting this will prevent the API Handler from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
-  type        = number
-  default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
-}
-
-variable "api_handler_memory_limit" {
-  type        = number
-  description = "The maximum memory in MB for the API Handler."
-  default     = 10240
-
-  validation {
-    condition     = var.api_handler_memory_limit > 0 && var.api_handler_memory_limit <= 10240
-    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
-  }
-}
-
-variable "ai_proxy_reserved_concurrent_executions" {
-  description = "The number of concurrent executions to reserve for the AI Proxy. Setting this will prevent the AI Proxy from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
-  type        = number
-  default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
-}
-
-variable "ai_proxy_memory_limit" {
-  type        = number
-  description = "The maximum memory in MB for the AI Proxy."
-  default     = 10240
-
-  validation {
-    condition     = var.ai_proxy_memory_limit > 0 && var.ai_proxy_memory_limit <= 10240
-    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
-  }
 }
 
 variable "disable_billing_telemetry_aggregation" {
@@ -1971,8 +1925,6 @@ variable "brainstore_cache_file_size_fast_reader" {
 
 variable "service_extra_env_vars" {
   type = object({
-    APIHandler               = map(string)
-    AIProxy                  = map(string)
     CatchupETL               = map(string)
     BillingCron              = map(string)
     MigrateDatabaseFunction  = map(string)
@@ -1982,8 +1934,6 @@ variable "service_extra_env_vars" {
   })
   description = "Extra environment variables to set for services"
   default = {
-    APIHandler               = {}
-    AIProxy                  = {}
     CatchupETL               = {}
     BillingCron              = {}
     MigrateDatabaseFunction  = {}
@@ -2024,7 +1974,7 @@ variable "permissions_boundary_arn" {
 }
 
 variable "use_global_ai_gateway_origin" {
-  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module runs no gateway ECS service, sets GATEWAY_URL on API services to https://<global_ai_gateway_origin_domain>, routes CloudFront /v1/proxy there, and points Loop at it. When false (default), the module runs the private gateway ECS service, sets GATEWAY_URL to it, and routes CloudFront /v1/proxy and Loop through it. The gateway ALB and its CloudFront VPC origin exist in both cases, so changing this flag does not delete the VPC origin. Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
+  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module runs no gateway ECS service, sets GATEWAY_URL on API ECS to https://<global_ai_gateway_origin_domain>, routes CloudFront /v1/proxy there, and points Loop at it. When false (default), the module runs the private gateway ECS service, sets GATEWAY_URL to it, and routes CloudFront /v1/proxy and Loop through it. The gateway ALB and its CloudFront VPC origin exist in both cases, so changing this flag does not delete the VPC origin. Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
   default     = false
 }
@@ -2036,7 +1986,7 @@ variable "global_ai_gateway_origin_domain" {
 }
 
 variable "use_deployment_mode_external_eks" {
-  description = "Enable EKS deployment mode. When true, disables lambdas, ec2, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
+  description = "Enable EKS deployment mode. When true, disables the Lambda, EC2, ECS, and ingress submodules. It assumes an EKS deployment is being done outside of terraform."
   type        = bool
   default     = false
 }
