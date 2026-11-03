@@ -57,6 +57,10 @@ module "braintrust-data-plane" {
   # Enable the Quarantine VPC to run user defined functions in an isolated environment
   enable_quarantine_vpc = true
 
+  # Native destroy cleanup is unsupported with external EKS. Stop the external
+  # consumers and remove generated quarantine Lambdas before network teardown.
+  enable_quarantine_destroy_cleanup = false
+
   #database_authorized_security_groups = {
   #  "<your EKS cluster security group name>" = "<your EKS cluster security group ID>"
   #}
