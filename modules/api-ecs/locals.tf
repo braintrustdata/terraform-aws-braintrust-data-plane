@@ -37,6 +37,9 @@ locals {
   quarantine_proxy_env_vars = local.quarantine_proxy_url != null ? {
     QUARANTINE_PROXY_URL = local.quarantine_proxy_url
   } : {}
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
   url_security_env_vars = merge(
     local.unsafe_url_request_mode != "" ? {
       BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
@@ -195,7 +198,7 @@ locals {
         },
         {
           name      = "REDIS_URL"
-          valueFrom = var.redis_url_secret_arn
+          valueFrom = local.redis_url_secret_value_from
         },
         {
           name      = "SERVICE_TOKEN_SECRET_KEY"

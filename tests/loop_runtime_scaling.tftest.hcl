@@ -15,6 +15,7 @@ variables {
   loop_runtime_http_listener_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/bt-test-loop/1111111111111111/1111111111111111"
   database_url_secret_arn        = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
   redis_url_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+  redis_url_secret_version_id    = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   function_tools_secret_arn      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
   brainstore_s3_bucket_name      = "bt-test-brainstore"
   brainstore_s3_bucket_arn       = "arn:aws:s3:::bt-test-brainstore"

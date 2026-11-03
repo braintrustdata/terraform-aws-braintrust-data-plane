@@ -91,19 +91,14 @@ variable "database_port" {
   description = "The port of the database"
 }
 
-variable "use_redis_replication_group" {
-  type        = bool
-  description = "Sets BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI with the appropriate scheme (rediss:// for replication group, redis:// for legacy cluster)"
+variable "redis_url_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Fetched at boot to set BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI."
 }
 
-variable "redis_host" {
+variable "redis_url_secret_version_id" {
   type        = string
-  description = "The hostname of the Redis instance"
-}
-
-variable "redis_port" {
-  type        = string
-  description = "The port of the Redis instance"
+  description = "Secrets Manager version id for the Redis URL secret. Passed into user data so secret content changes force a launch-template update and instance refresh."
 }
 
 variable "extra_env_vars" {
