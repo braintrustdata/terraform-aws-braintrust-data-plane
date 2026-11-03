@@ -114,7 +114,6 @@ variables {
   deployment_name                      = "bt-test"
   brainstore_license_key               = "test-license"
   enable_quarantine_vpc                = true
-  use_private_ai_gateway_origin        = true
   use_private_gateway_quarantine_proxy = true
   kms_key_arn                          = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
 
@@ -317,22 +316,10 @@ run "existing_vpcs_explicit_override_wins_but_keeps_infrastructure" {
   }
 }
 
-run "privatelink_does_not_require_private_cloudfront_origin" {
-  command = plan
-  variables {
-    use_private_ai_gateway_origin = false
-  }
-  assert {
-    condition     = output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy"
-    error_message = "Quarantine routing must be independent of CloudFront gateway routing."
-  }
-}
-
 run "global_gateway_skips_privatelink" {
   command = plan
   variables {
-    use_global_ai_gateway_origin  = true
-    use_private_ai_gateway_origin = false
+    use_global_ai_gateway_origin = true
   }
   assert {
     condition = (

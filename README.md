@@ -92,17 +92,20 @@ Leave the default enabled for existing deployments. Changing it from `true` to
 the same permission the SCP may prohibit; it is not a supported ownership
 handoff for an existing deployment.
 
-## Private AI gateway
+## AI gateway
 
-Every standard deployment runs the API on ECS and routes API services and Loop through a private AI gateway (internal ALB and gateway ECS service). There is no option to disable either. Existing deployments must finish the v7 cutover before upgrading to v8. See [Migrating from v7 to v8](MIGRATION_V8.md). The gateway infrastructure adds AWS charges.
+Every standard deployment runs the API on ECS and uses an AI gateway. There is no option to run without one. Choose one of two:
 
-`use_private_ai_gateway_origin` (default `true`) routes CloudFront `/v1/proxy` traffic to the private gateway through a VPC origin. When it and `use_global_ai_gateway_origin` are both `false`, CloudFront sends `/v1/proxy` to the API ECS load balancer.
-Terraform waits for the gateway ECS service to reach steady state before caller updates.
+- **Private gateway (default).** The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API ECS, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
+- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module creates no private gateway. CloudFront routes `/v1/proxy` to `global_ai_gateway_origin_domain`, and Loop uses the hosted gateway. Those model calls leave the data plane.
+
+CloudFront `/v1/proxy` never routes to the API ECS load balancer. Existing deployments must finish the v7 ECS cutover before upgrading to v8. See [Migrating from v7 to v8](MIGRATION_V8.md).
+Terraform waits for the private gateway ECS service to reach steady state before caller updates.
 The service uses the ALB `/health` check. A failed initial deployment leaves existing callers on their previous configuration.
 
 The CloudFront private origin and the module-managed quarantine PrivateLink endpoint also wait for gateway ECS steady state.
 Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
-`ai_gateway_min_capacity` must be at least one.
+The private gateway requires `ai_gateway_min_capacity` of at least one.
 
 External EKS deployments do not create the API ECS or gateway services. Helm manages them in that mode.
 
@@ -130,7 +133,7 @@ Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serve
 The module selects the runtime image and matching MicroVM guest artifact by default.
 Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
 
-Loop sends model requests to the private AI gateway.
+Loop sends model requests to the private AI gateway, or to the hosted gateway when `use_global_ai_gateway_origin` is true.
 
 Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
 The endpoint policy allows connections only to MicroVMs in the deployment account.

@@ -199,7 +199,7 @@ Call this out in the PR. Bump **major** (preferred). If a major is truly wrong, 
 
 ### Review the inverse of every `count` / `for_each`
 
-Traffic/routing flags (`use_private_ai_gateway_origin`, `use_global_ai_gateway_origin`, and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
+Traffic/routing flags (`use_global_ai_gateway_origin` and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
 
 - Mentally apply `true → false`. Terraform will destroy the resource in the same apply that stops referencing it.
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
@@ -212,15 +212,16 @@ The gateway internal ALB lives in `modules/gateway-alb` so callers can reference
 
 Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assume it.
 
-### API ECS and private gateway are mandatory
+### API ECS and an AI gateway are mandatory
 
-Since v8 there is no Lambda API path and no option to disable the private gateway. Do not reintroduce `enable_ecs_api`, `create_ai_gateway`, or `enable_ai_gateway`. Upgrade an existing deployment with [MIGRATION_V8.md](MIGRATION_V8.md); stacks must finish the v7 cutover first.
+Since v8 there is no Lambda API path and no option to run without a gateway. Do not reintroduce `enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, or `use_private_ai_gateway_origin`. Upgrade an existing deployment with [MIGRATION_V8.md](MIGRATION_V8.md); stacks must finish the v7 cutover first.
 
-- Standard deployments always create API ECS, the gateway ALB (`modules/gateway-alb`), and the gateway ECS service (`modules/gateway-ecs`). `local.create_ecs_api` and `local.create_ai_gateway` are false only in external EKS mode.
-- API ECS always gets `GATEWAY_URL`; Loop ECS always gets `LOOP_RUNTIME_AI_PROXY_URL` set to the private gateway `/v1/proxy`.
-- `use_private_ai_gateway_origin` and `use_global_ai_gateway_origin` only choose the CloudFront `/v1/proxy` origin. With both false it is the API ECS ALB.
+- Standard deployments always create API ECS. `local.create_ecs_api` is false only in external EKS mode.
+- `use_global_ai_gateway_origin = false` (default): `local.create_ai_gateway` is true. The module creates the gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`), wires `GATEWAY_URL` on API ECS, sets Loop's `LOOP_RUNTIME_AI_PROXY_URL` to the private gateway, and routes CloudFront `/v1/proxy` to the private gateway VPC origin.
+- `use_global_ai_gateway_origin = true`: no private gateway. CloudFront `/v1/proxy` uses the hosted gateway origin and Loop uses the hosted gateway URL.
+- CloudFront `/v1/proxy` never routes to the API ECS ALB. The ingress module validates that exactly one gateway origin is selected.
 
-External EKS ignores the gateway origin flags. Helm owns the API and gateway.
+External EKS ignores `use_global_ai_gateway_origin`. Helm owns the API and gateway.
 
 ### Quarantine LLM proxy URL
 
@@ -231,17 +232,16 @@ each has its own NAT gateway. Quarantine functions reach public HTTPS through
 the quarantine NAT. The default URL is
 `https://<cloudfront-domain>/v1/proxy` (`module.ingress.api_url`), reached
 that way. CloudFront then serves that path from whichever origin
-`/v1/proxy` already uses: a hosted gateway, a private gateway, or the API
-ECS ALB. With `use_global_ai_gateway_origin`, those calls leave the data
+`/v1/proxy` uses: the hosted gateway or the private gateway. With `use_global_ai_gateway_origin`, those calls leave the data
 plane for the hosted gateway. A CloudFront WAF or source-IP allow list must
 admit the quarantine NAT address, because every quarantine call arrives from
-it. When `/v1/proxy` uses the API ECS origin, the inner call returns to the
-same API ECS service that invoked the quarantine function. Do **not** use the API ECS ALB or
+it. Do **not** use the API ECS ALB or
 gateway ALB DNS directly. Those addresses are private to the main VPC, and
 quarantine is not peered to it.
 Do **not** peer the quarantine VPC to main for this path. Prefer PrivateLink
 to the private gateway when opted in. Loop Runtime uses the
-private gateway ALB `/v1/proxy`.
+private gateway ALB `/v1/proxy`, or the hosted gateway when
+`use_global_ai_gateway_origin` is true.
 PrivateLink only affects quarantine when the flag is on.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)

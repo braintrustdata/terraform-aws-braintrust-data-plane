@@ -50,7 +50,6 @@ run "all_private_paths" {
   command = plan
   variables {
     enable_loop_runtime                  = true
-    use_private_ai_gateway_origin        = true
     use_private_gateway_quarantine_proxy = true
   }
 }
@@ -96,17 +95,22 @@ run "reject_gateway_without_tasks" {
   expect_failures = [var.ai_gateway_min_capacity]
 }
 
-run "hosted_gateway_keeps_privatelink_noop" {
+run "hosted_gateway_replaces_private_gateway" {
   command = plan
   variables {
+    ai_gateway_min_capacity              = 0
     use_global_ai_gateway_origin         = true
-    use_private_ai_gateway_origin        = false
     use_private_gateway_quarantine_proxy = true
   }
 
   assert {
-    condition     = !local.enable_private_ai_gateway_origin && !local.create_quarantine_gateway_privatelink
-    error_message = "The global origin must leave the private origin and quarantine PrivateLink disabled."
+    condition     = length(module.gateway_ecs) == 0 && length(module.gateway_alb) == 0 && length(local.gateway_env_vars) == 0 && !local.create_quarantine_gateway_privatelink
+    error_message = "The hosted gateway must replace the private gateway and leave quarantine PrivateLink disabled."
+  }
+
+  assert {
+    condition     = local.loop_runtime_ai_proxy_url == "https://gateway.braintrust.dev/v1/proxy"
+    error_message = "Loop must use the hosted gateway."
   }
 }
 
@@ -115,7 +119,6 @@ run "quarantine_override_keeps_explicit_url" {
   variables {
     use_private_gateway_quarantine_proxy = true
     quarantine_proxy_url                 = "https://proxy.example.com/v1/proxy"
-    use_private_ai_gateway_origin        = false
   }
 
   assert {
@@ -124,12 +127,3 @@ run "quarantine_override_keeps_explicit_url" {
   }
 }
 
-run "reject_global_and_private_gateway_origins" {
-  command = plan
-  variables {
-    use_global_ai_gateway_origin  = true
-    use_private_ai_gateway_origin = true
-  }
-
-  expect_failures = [var.use_private_ai_gateway_origin]
-}

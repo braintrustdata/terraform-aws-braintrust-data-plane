@@ -160,7 +160,7 @@ output "gateway_target_group_arn" {
 
 output "gateway_url" {
   value       = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
-  description = "Private in-VPC gateway URL. Wired as GATEWAY_URL on api-ts services."
+  description = "Private in-VPC gateway URL, wired as GATEWAY_URL on api-ts services. Null when use_global_ai_gateway_origin is true."
 }
 
 output "gateway_task_security_group_id" {
@@ -210,7 +210,7 @@ output "loop_runtime_url" {
 
 output "loop_runtime_ai_proxy_url" {
   value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
-  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy)"
+  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy, or the hosted gateway when use_global_ai_gateway_origin is true)"
 }
 
 output "loop_runtime_sandbox_egress_gateway_dns_name" {

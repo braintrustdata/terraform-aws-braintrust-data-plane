@@ -613,7 +613,7 @@ variable "ai_gateway_min_capacity" {
 
   validation {
     condition     = !local.create_ai_gateway || var.ai_gateway_min_capacity >= 1
-    error_message = "ai_gateway_min_capacity must be at least 1. API services always route through the private gateway."
+    error_message = "ai_gateway_min_capacity must be at least 1. API services, Loop, and CloudFront /v1/proxy route through the private gateway."
   }
 }
 
@@ -1753,7 +1753,7 @@ variable "ai_gateway_bedrock_assume_role_arns" {
     When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
     When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
       ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
-    Ignored in external EKS mode.
+    Only applies to the private gateway (use_global_ai_gateway_origin = false).
   EOT
   default     = []
 
@@ -1974,20 +1974,9 @@ variable "permissions_boundary_arn" {
 }
 
 variable "use_global_ai_gateway_origin" {
-  description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev. Don't enable this unless instructed by Braintrust."
+  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module does not create the private gateway ALB and ECS service, CloudFront routes /v1/proxy to global_ai_gateway_origin_domain, and Loop uses the hosted gateway. When false (default), the module creates the private gateway, wires GATEWAY_URL on API ECS, and routes CloudFront /v1/proxy and Loop through it. Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
   default     = false
-}
-
-variable "use_private_ai_gateway_origin" {
-  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. When false (and use_global_ai_gateway_origin is false), CloudFront sends /v1/proxy to the API ECS load balancer. Mutually exclusive with use_global_ai_gateway_origin. External EKS deployments use the Helm gateway and ignore this input."
-  type        = bool
-  default     = true
-
-  validation {
-    condition     = var.use_deployment_mode_external_eks || !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
-    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true. If use_global_ai_gateway_origin is true, set use_private_ai_gateway_origin to false."
-  }
 }
 
 variable "global_ai_gateway_origin_domain" {

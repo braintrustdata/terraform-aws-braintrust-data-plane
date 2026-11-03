@@ -1,8 +1,8 @@
 locals {
   cloudfront_PrivateGatewayOrigin = "PrivateGatewayOrigin"
   # Use the boolean flag only — do not gate on gateway_alb_arn/dns (unknown at
-  # plan on greenfield create_vpc applies). The gateway ALB module always exists
-  # outside external EKS mode, which ignores this input.
+  # plan on greenfield create_vpc applies). The root module sets this exactly
+  # when it creates the private gateway ALB.
   enable_private_gateway_cloudfront_origin = var.use_private_ai_gateway_origin
 }
 

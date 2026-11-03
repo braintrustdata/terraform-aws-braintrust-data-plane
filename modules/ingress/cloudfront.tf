@@ -7,12 +7,10 @@ locals {
   cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_LoopRuntimeOrigin         = "LoopRuntimeOrigin"
 
-  # /v1/proxy origin priority: hosted global → private gateway VPC origin →
-  # ECS API ALB.
+  # /v1/proxy always routes to a gateway: hosted global or the private
+  # gateway VPC origin.
   cloudfront_proxy_origin_id = (
-    var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : (
-      local.enable_private_gateway_cloudfront_origin ? local.cloudfront_PrivateGatewayOrigin : local.cloudfront_ApiEcsOrigin
-    )
+    var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : local.cloudfront_PrivateGatewayOrigin
   )
 
   # When CloudFront reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http even
