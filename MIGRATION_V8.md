@@ -81,7 +81,7 @@ This is the same selection a v7 ECS-mode stack already uses.
 
 ## Switching gateways later
 
-Changing `use_global_ai_gateway_origin` in either direction never deletes the gateway ALB or CloudFront VPC origin; only the `/v1/proxy` behavior, `GATEWAY_URL`, Loop's URL, and the gateway ECS service change. Switching to the private gateway waits for the gateway ECS service to reach steady state before callers move. This removes the known VPC-origin deletion failure, but a live switch has not been verified against AWS yet, and hosted-gateway acceptance of the credential a self-hosted data plane exchanges for is not covered by this module.
+Changing `use_global_ai_gateway_origin` in either direction never deletes the gateway ALB or CloudFront VPC origin; only the `/v1/proxy` behavior, `GATEWAY_URL`, Loop's URL, and the gateway ECS service change. Switching to the private gateway waits for the gateway ECS service to reach steady state before callers move. This removes the known VPC-origin deletion failure, but a live switch has not been verified against AWS yet. The hosted gateway accepts the same control-plane credential the private gateway does, so `GATEWAY_URL` needs no extra auth setup in hosted mode.
 
 ## External EKS
 
