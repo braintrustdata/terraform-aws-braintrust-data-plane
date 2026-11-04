@@ -12,6 +12,7 @@ variables {
   braintrust_org_name                   = "test-org"
   database_url_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
   redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+  redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   brainstore_hostname                   = "brainstore.example.internal"
   brainstore_port                       = 9000
   response_bucket                       = "bt-test-responses"
