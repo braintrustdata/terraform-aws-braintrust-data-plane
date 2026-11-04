@@ -34,9 +34,8 @@ variables {
   database_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-version-database"
   database_host                         = "database.example.internal"
   database_port                         = "5432"
-  use_redis_replication_group           = true
-  redis_host                            = "redis.example.internal"
-  redis_port                            = "6379"
+  redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-version-redis-url"
+  redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-version-service-token"
   brainstore_s3_bucket_arn              = "arn:aws:s3:::bt-version-brainstore"
   lambda_responses_s3_bucket_arn        = "arn:aws:s3:::bt-version-lambda-responses"
