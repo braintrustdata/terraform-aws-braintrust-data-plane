@@ -41,9 +41,6 @@ resource "aws_launch_template" "brainstore_fast_reader" {
     database_secret_arn                           = var.database_secret_arn
     database_host                                 = var.database_host
     database_port                                 = var.database_port
-    redis_scheme                                  = var.use_redis_replication_group ? "rediss" : "redis"
-    redis_host                                    = var.redis_host
-    redis_port                                    = var.redis_port
     brainstore_port                               = var.port
     brainstore_s3_bucket                          = local.brainstore_s3_bucket_id
     lambda_responses_bucket_id                    = local.lambda_responses_bucket_id
@@ -69,6 +66,8 @@ resource "aws_launch_template" "brainstore_fast_reader" {
     brainstore_cache_file_size                    = local.brainstore_fast_reader_cache_file_size
     skip_pg_for_brainstore_objects                = var.skip_pg_for_brainstore_objects
     ai_proxy_url_ssm_parameter                    = var.ai_proxy_url_ssm_parameter
+    redis_url_secret_arn            = var.redis_url_secret_arn
+    redis_url_secret_version_id     = var.redis_url_secret_version_id
   }))
 
   tags = merge({

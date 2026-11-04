@@ -15,8 +15,8 @@ variables {
   gateway_http_listener_arn   = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
   gateway_url                 = "http://gateway.internal"
   braintrust_api_url          = "http://api.internal"
-  use_redis_replication_group = false
-  redis_host                  = "redis.internal"
+  redis_url_secret_arn        = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+  redis_url_secret_version_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   redis_port                  = 6379
   redis_security_group_id     = "sg-0123456789abcdef1"
 }
@@ -39,9 +39,17 @@ run "gateway_waits_for_healthy_deployment" {
   assert {
     condition = one([
       for env in jsondecode(aws_ecs_task_definition.gateway.container_definitions)[0].environment : env.value
-      if env.name == "BRAINTRUST_API_URL"
+      if env.name == "OVERRIDE_BRAINTRUST_API_URL"
     ]) == "http://api.internal"
     error_message = "Gateway API calls must use the supplied private API address."
+  }
+
+  assert {
+    condition = alltrue([
+      for env in jsondecode(aws_ecs_task_definition.gateway.container_definitions)[0].environment :
+      env.name != "BRAINTRUST_API_URL"
+    ])
+    error_message = "The gateway must use OVERRIDE_BRAINTRUST_API_URL instead of BRAINTRUST_API_URL."
   }
 
   assert {

@@ -213,6 +213,11 @@ variable "redis_url_secret_arn" {
   description = "Secrets Manager ARN of the Redis connection URL (BRAINSTORE_XACT_MANAGER_URI / BRAINSTORE_REDIS_URI / locks)."
 }
 
+variable "redis_url_secret_version_id" {
+  type        = string
+  description = "Secrets Manager version id for the Redis URL secret. Pinned in ECS valueFrom so secret content changes create a new task definition revision."
+}
+
 variable "function_tools_secret_arn" {
   type        = string
   description = "Secrets Manager ARN of the function-tools/service-token secret (SERVICE_TOKEN_SECRET_KEY / FUNCTION_SECRET_KEY)."
@@ -381,4 +386,16 @@ variable "diagnostics_transcript_log_group_name" {
     condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
     error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
   }
+}
+
+variable "additional_target_group_arns" {
+  type        = map(string)
+  description = "Additional target groups for the application port, keyed by load balancer name."
+  default     = {}
+}
+
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Additional load balancer security groups that can access the application port."
+  default     = {}
 }

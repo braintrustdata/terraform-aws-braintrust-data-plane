@@ -70,7 +70,7 @@ variable "cpu" {
 variable "memory" {
   type        = number
   description = "Memory (MiB) for the gateway task definition."
-  default     = 4096
+  default     = 8192
 }
 
 variable "min_capacity" {
@@ -104,7 +104,7 @@ variable "target_cpu_utilization" {
 variable "target_memory_utilization" {
   type        = number
   description = "Target average memory utilization percentage for gateway ECS service autoscaling."
-  default     = 75
+  default     = 65
 
   validation {
     condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
@@ -231,14 +231,14 @@ variable "braintrust_api_url" {
   default     = "https://api.braintrust.dev"
 }
 
-variable "use_redis_replication_group" {
-  type        = bool
-  description = "Sets COMPLETIONS_CACHE_REDIS_URL and AUTH_CACHE_REDIS_URL with the appropriate scheme (rediss:// for replication group, redis:// for legacy cluster)"
+variable "redis_url_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Injected into COMPLETIONS_CACHE_REDIS_URL and AUTH_CACHE_REDIS_URL via the ECS task execution role unless the caller overrides that name in extra_env_vars."
 }
 
-variable "redis_host" {
+variable "redis_url_secret_version_id" {
   type        = string
-  description = "Redis endpoint host used by the gateway auth cache."
+  description = "Secrets Manager version id for the Redis URL secret. Pinned in ECS valueFrom so secret content changes create a new task definition revision."
 }
 
 variable "redis_port" {
@@ -323,4 +323,16 @@ variable "diagnostics_transcript_log_group_name" {
     condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
     error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
   }
+}
+
+variable "additional_target_group_arns" {
+  type        = map(string)
+  description = "Additional target groups for the application port, keyed by load balancer name."
+  default     = {}
+}
+
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Additional load balancer security groups that can access the application port."
+  default     = {}
 }

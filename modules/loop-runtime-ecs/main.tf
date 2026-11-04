@@ -17,6 +17,9 @@ locals {
   loop_runtime_version_tag = element(reverse(split(":", var.container_image)), 0)
   brainstore_s3_bucket     = var.brainstore_s3_bucket_name
   use_object_store_locks   = var.brainstore_object_store_locks
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
 
   capacity_metric_namespace = "Braintrust/LoopRuntime"
 
@@ -102,13 +105,13 @@ locals {
     [
       { name = "BRAINSTORE_METADATA_URI", valueFrom = var.database_url_secret_arn },
       { name = "BRAINSTORE_WAL_URI", valueFrom = var.database_url_secret_arn },
-      { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = var.redis_url_secret_arn },
-      { name = "BRAINSTORE_REDIS_URI", valueFrom = var.redis_url_secret_arn },
+      { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = local.redis_url_secret_value_from },
+      { name = "BRAINSTORE_REDIS_URI", valueFrom = local.redis_url_secret_value_from },
       { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
       { name = "FUNCTION_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
     ],
     local.use_object_store_locks ? [] : [
-      { name = "BRAINSTORE_LOCKS_URI", valueFrom = var.redis_url_secret_arn },
+      { name = "BRAINSTORE_LOCKS_URI", valueFrom = local.redis_url_secret_value_from },
     ],
   )
 
@@ -328,6 +331,18 @@ resource "aws_vpc_security_group_ingress_rule" "task_from_sandbox_egress_gateway
   to_port                      = local.egress_gateway_port
   ip_protocol                  = "tcp"
   description                  = "Allow sandbox egress traffic from ${each.key}."
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_ingress_rule" "task_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.container_port
+  to_port                      = local.container_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow inbound traffic from ${each.key}."
   tags                         = local.common_tags
 }
 
@@ -625,6 +640,16 @@ resource "aws_ecs_service" "loop_runtime" {
     assign_public_ip = false
   }
 
+  dynamic "load_balancer" {
+    for_each = var.additional_target_group_arns
+
+    content {
+      target_group_arn = load_balancer.value
+      container_name   = local.container_name
+      container_port   = local.container_port
+    }
+  }
+
   load_balancer {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
@@ -637,7 +662,10 @@ resource "aws_ecs_service" "loop_runtime" {
     container_port   = local.egress_gateway_port
   }
 
-  depends_on = [terraform_data.loop_runtime_http_listener]
+  depends_on = [
+    terraform_data.loop_runtime_http_listener,
+    aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups,
+  ]
 
   lifecycle {
     ignore_changes = [desired_count]

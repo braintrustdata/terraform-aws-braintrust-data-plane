@@ -1,3 +1,8 @@
+moved {
+  from = aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront
+  to   = aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront[0]
+}
+
 # Preserve existing listener-rule state across the for_each key rename so upgrades
 # update in place instead of destroy/recreate (which can briefly misroute traffic).
 # Priorities are remapped separately in alb-path-routes.tf to gapped values >= 100
