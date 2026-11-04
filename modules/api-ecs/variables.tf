@@ -1,3 +1,27 @@
+variable "enable_private_dataplane" {
+  type        = bool
+  description = "Remove CloudFront access and add an internal HTTP listener on port 8000."
+  default     = false
+}
+
+variable "enable_loop_runtime" {
+  type        = bool
+  description = "Create direct Loop routes on the customer listener in private mode."
+  default     = false
+}
+
+variable "internal_authorized_security_groups" {
+  type        = map(string)
+  description = "Service security groups that can access the internal HTTP listener."
+  default     = {}
+}
+
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop task security groups that can access the internal HTTP listener. Separate rules preserve bootstrap order."
+  default     = {}
+}
+
 variable "deployment_name" {
   type        = string
   description = "Name of this deployment. Will be included in resource names."
