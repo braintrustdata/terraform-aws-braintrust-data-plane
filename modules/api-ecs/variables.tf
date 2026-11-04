@@ -128,6 +128,20 @@ variable "braintrust_api_cpu_autoscaling" {
   }
 }
 
+variable "braintrust_api_memory_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "Memory target tracking autoscaling for the braintrust-api ECS service."
+
+  validation {
+    condition     = var.braintrust_api_memory_autoscaling.target_value > 0 && var.braintrust_api_memory_autoscaling.target_value <= 100
+    error_message = "braintrust_api_memory_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
 variable "braintrust_api_event_loop_utilization_autoscaling" {
   type = object({
     target_value       = number
@@ -224,6 +238,20 @@ variable "braintrust_api_ingest_cpu_autoscaling" {
   }
 }
 
+variable "braintrust_api_ingest_memory_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "Memory target tracking autoscaling for the braintrust-api-ingest ECS service."
+
+  validation {
+    condition     = var.braintrust_api_ingest_memory_autoscaling.target_value > 0 && var.braintrust_api_ingest_memory_autoscaling.target_value <= 100
+    error_message = "braintrust_api_ingest_memory_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
 variable "braintrust_api_ingest_event_loop_utilization_autoscaling" {
   type = object({
     target_value       = number
@@ -317,6 +345,20 @@ variable "braintrust_api_background_cpu_autoscaling" {
   validation {
     condition     = var.braintrust_api_background_cpu_autoscaling.target_value > 0 && var.braintrust_api_background_cpu_autoscaling.target_value <= 100
     error_message = "braintrust_api_background_cpu_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_background_memory_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "Memory target tracking autoscaling for the braintrust-api-background ECS service."
+
+  validation {
+    condition     = var.braintrust_api_background_memory_autoscaling.target_value > 0 && var.braintrust_api_background_memory_autoscaling.target_value <= 100
+    error_message = "braintrust_api_background_memory_autoscaling.target_value must be between 1 and 100."
   }
 }
 
@@ -453,6 +495,11 @@ variable "database_url_secret_arn" {
 variable "redis_url_secret_arn" {
   type        = string
   description = "ARN of the secret containing the Redis URL."
+}
+
+variable "redis_url_secret_version_id" {
+  type        = string
+  description = "Secrets Manager version id for the Redis URL secret. Pinned in ECS valueFrom so secret content changes create a new task definition revision."
 }
 
 variable "response_bucket" {

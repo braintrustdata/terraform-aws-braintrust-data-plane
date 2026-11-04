@@ -213,11 +213,15 @@ module "braintrust-data-plane" {
   # "TLSv1.2_2021") only if you have clients that cannot negotiate TLS 1.3.
   # cloudfront_minimum_protocol_version = "TLSv1.2_2021"
 
-  # Optional URL-security controls for externally supplied outbound HTTP URLs.
-  # Leave unset to use the application default mode of "warn".
-  # unsafe_url_request_mode  = "reject"
+  # URL-security controls for externally supplied outbound HTTP URLs.
+  # "reject" blocks user-supplied URLs that resolve to private or reserved
+  # addresses. Leaving it unset uses the application default of "warn", which
+  # logs and allows them. If users need private destinations such as
+  # self-hosted models or internal MCP servers, allow-list narrow /32 CIDRs in
+  # url_security_allow_cidrs. Never allow-list the Brainstore subnets.
+  unsafe_url_request_mode = "reject"
   # url_security_dns_servers = "1.1.1.1,8.8.8.8"
-  # url_security_allow_cidrs = "10.0.0.0/8"
+  # url_security_allow_cidrs = "10.0.0.15/32"
 
   # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2,
   # and Gateway ECS. The secret value must contain PEM-encoded CA certificates.

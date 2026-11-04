@@ -24,6 +24,7 @@ variables {
   braintrust_org_name                   = "test-org"
   database_url_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
   redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+  redis_url_secret_version_id           = "11111111-1111-1111-1111-111111111111"
   brainstore_hostname                   = "brainstore.example.internal"
   brainstore_port                       = 9000
   response_bucket                       = "bt-test-responses"
@@ -44,6 +45,11 @@ variables {
     scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }
+  braintrust_api_memory_autoscaling = {
+    target_value       = 75
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+  }
   braintrust_api_event_loop_utilization_autoscaling = {
     target_value       = 70
     scale_in_cooldown  = 60
@@ -60,6 +66,11 @@ variables {
     scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }
+  braintrust_api_ingest_memory_autoscaling = {
+    target_value       = 75
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+  }
   braintrust_api_ingest_event_loop_utilization_autoscaling = {
     target_value       = 70
     scale_in_cooldown  = 60
@@ -73,6 +84,11 @@ variables {
   }
   braintrust_api_background_cpu_autoscaling = {
     target_value       = 70
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+  }
+  braintrust_api_background_memory_autoscaling = {
+    target_value       = 75
     scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }

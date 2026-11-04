@@ -2,10 +2,10 @@
 
 For the latest guidance, always refer to the official Braintrust documentation:
 
-- [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
+- [Self-hosting overview](https://docs.braintrust.dev/admin/self-hosting)
 - [Protected Diagnostics transcripts](docs/diagnostics-transcripts.md)
-- [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
-- [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
+- [Upgrade your deployment](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine)
+- [Data Plane 2.0 upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/v2)
 
 This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
 
@@ -13,7 +13,7 @@ This module is used to create the VPC, Databases, Lambdas, and associated resour
 
 Always upgrade **one major version at a time**. For example, go from v4 → v5 → v6. Do not jump from v4 directly to v6.
 
-Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
+Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
 - [Migrating from v6 to v7](MIGRATION_V7.md)
@@ -34,7 +34,7 @@ To use this module, **copy the [`examples/braintrust-data-plane`](examples/brain
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
 
-If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
+Before the first deployment in a new AWS account, run `./scripts/create-service-linked-roles.sh` with credentials for that account. When creating a KMS key, the module reads `AWSServiceRoleForAutoScaling` during planning and fails if it is missing; the Terraform identity needs `iam:GetRole` for that role. The role remains account-owned and is not created or deleted by this module. Supplying an existing `kms_key_arn` skips this module-managed KMS check; the key owner remains responsible for its Auto Scaling permissions.
 
 ## Module Configuration
 
@@ -56,6 +56,30 @@ allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000
 ```
 
 `allowed_org_ids` is a comma-separated list of Braintrust Org IDs, not org names. Do not include spaces. You can find an org ID by hovering over the org name in the Braintrust UI. If you keep `braintrust_org_name` set to a specific org name for compatibility, that org is allowed by name today; include its Braintrust Org ID in `allowed_org_ids` for forward compatibility. `braintrust_org_name` remains supported for compatibility, but Braintrust plans to move toward ID-based configuration.
+
+### Elasticache for Redis resources
+
+This module supports both `aws_elasticache_cluster` (legacy) and `aws_elasticache_replication_group` resource for deploying Elasticache for Redis with enhanced security features. The default deploys `aws_elasticache_cluster` to prevent accidental resource replacement on existing deployments. Stronger security defaults are available with `aws_elasticache_replication_group`.
+
+> [!IMPORTANT]
+> Module v6.1.0 introduced support for `aws_elasticache_replication_group`, but it did not enable encryption at rest and used the default KMS key for encryption. If you deployed v6.1.0 **and** enabled `aws_elasticache_replication_group`, the replication group will be destroyed and replaced with a new one.
+
+Encryption in transit and at rest, as well as auth token support, are available by setting `use_redis_replication_group` to `true` in the module invocation. **This is safe for new deployments.** Setting `use_redis_replication_group` to `true` on an existing deployment will replace the `aws_elasticache_cluster` with an `aws_elasticache_replication_group`. This should be considered a downtime event.
+
+#### Redis auth token management
+
+When `use_redis_replication_group` is enabled, Terraform generates a random auth token, configures the replication group with `auth_token_update_strategy = SET`, and stores a fully-rendered `rediss://` URL (including the token) in Secrets Manager. Clients (API ECS, gateway, Loop, Brainstore, and the support bastion) load that URL from Secrets Manager. Lambdas that cannot use Secrets Manager still receive an inline authenticated URL.
+
+**Token rotation is not supported yet.** Leave the generated token in place. The auth-token secret uses `ignore_changes` on `secret_string` (same anti-churn pattern as RDS password secrets), so Terraform will not push a new token on apply. Do not hand-edit the auth-token or Redis URL secrets and expect apply to rotate ElastiCache safely — that path can rewrite clients back to a stale token. Coordinated rotation (ElastiCache `ModifyReplicationGroup` + secret updates + client rollouts) will come in a later module change.
+
+#### Upgrading to this release
+
+Expect apply impact on **every** stack, not only replication-group users. Ship this as a **minor** module bump and put rollback notes in the GitHub release notes:
+
+- New ECS task definitions for API, ingest, background, gateway, and Loop (pinned Redis URL secret version) → rolling service deployments
+- Brainstore launch-template user-data change → autoscaling instance refresh
+- Support bastion replacement when `enable_braintrust_support_shell_access` is enabled (`user_data_replace_on_change = true`)
+- Existing replication-group stacks that predate at-rest encryption / customer-managed KMS: Redis **replace** (`at_rest_encryption_enabled` and `kms_key_id` are ForceNew). Plan for Redis downtime. A downgrade can replace Redis again.
 
 ### BTQL audit logging
 
@@ -285,13 +309,10 @@ the group.
 
 Setting a different subnet-group name replaces the Redis cluster or replication
 group and causes downtime; review the plan before applying. Terraform updates the
-Redis URL secret with the replacement endpoint. The secret-value change alone
-does not redeploy API ECS or Loop services. After the replacement and secret update
-complete, force a new deployment of all enabled API ECS services (API, ingest, and
-background) and the Loop service so their tasks load the updated secret.
-Brainstore's updated user data triggers an autoscaling instance refresh, and
-Lambdas that embed `redis_host` update during the apply. The gateway embeds the
-Redis host in its task environment, so it also updates during the apply.
+Redis URL secret with the replacement endpoint. ECS (API, gateway, Loop) pins the
+secret version in task `valueFrom`, and Brainstore/bastion pin it in user data, so
+the new version forces task-definition updates and instance refresh. Lambdas that
+embed `redis_host` update during the apply.
 
 Switching to an external group also removes the old module-managed subnet group.
 Do not set this input to the module's own group name to transfer ownership: that

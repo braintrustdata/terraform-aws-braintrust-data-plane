@@ -109,6 +109,24 @@ resource "aws_appautoscaling_policy" "braintrust_api_ingest_cpu_target" {
   }
 }
 
+resource "aws_appautoscaling_policy" "braintrust_api_ingest_memory_target" {
+  name               = "${var.deployment_name}-braintrust-api-ingest-memory-target"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.braintrust_api_ingest.resource_id
+  scalable_dimension = aws_appautoscaling_target.braintrust_api_ingest.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.braintrust_api_ingest.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+
+    target_value       = var.braintrust_api_ingest_memory_autoscaling.target_value
+    scale_in_cooldown  = var.braintrust_api_ingest_memory_autoscaling.scale_in_cooldown
+    scale_out_cooldown = var.braintrust_api_ingest_memory_autoscaling.scale_out_cooldown
+  }
+}
+
 resource "aws_appautoscaling_policy" "braintrust_api_ingest_event_loop_target" {
   name               = "${var.deployment_name}-braintrust-api-ingest-event-loop-target"
   policy_type        = "TargetTrackingScaling"

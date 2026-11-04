@@ -66,3 +66,9 @@ mock_data "aws_iam_policy_document" {
     json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}]}"
   }
 }
+
+mock_data "aws_iam_role" {
+  defaults = {
+    arn = "arn:aws:iam::123456789012:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+  }
+}

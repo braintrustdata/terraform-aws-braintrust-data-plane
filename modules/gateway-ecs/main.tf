@@ -27,17 +27,25 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
-  redis_scheme = var.use_redis_replication_group ? "rediss" : "redis"
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
+  # Skip default Redis URL secrets when the caller overrides that env via extra_env_vars;
+  # otherwise ECS secrets would clobber the override.
+  gateway_redis_cache_secret_env = [
+    for name in ["COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"] : {
+      name      = name
+      valueFrom = local.redis_url_secret_value_from
+    } if !contains(keys(var.extra_env_vars), name)
+  ]
   base_env_vars = merge({
     GATEWAY_ENV                 = "production"
     GATEWAY_REGION              = data.aws_region.current.region
     BRAINTRUST_APP_URL          = var.braintrust_app_url
     OVERRIDE_BRAINTRUST_API_URL = var.braintrust_api_url
 
-    COMPLETIONS_CACHE_REDIS_URL = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
-    AUTH_CACHE_REDIS_URL        = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
-    GATEWAY_JSON_LOGS           = "true"
-    OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
+    GATEWAY_JSON_LOGS  = "true"
+    OTLP_HTTP_ENDPOINT = local.observability_enabled ? "http://localhost:4318" : "https://pulse.braintrust.dev/otel"
     },
     local.url_security_env_vars,
     local.observability_enabled ? {
@@ -71,12 +79,13 @@ locals {
         value = local.merged_env_vars[key]
       }
     ]
-    secrets = var.custom_ca_bundle_secret_arn == null ? [] : [
-      {
+    secrets = concat(
+      var.custom_ca_bundle_secret_arn == null ? [] : [{
         name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
         valueFrom = var.custom_ca_bundle_secret_arn
-      }
-    ]
+      }],
+      local.gateway_redis_cache_secret_env,
+    )
     dependsOn = [
       for dep in [
         {
@@ -321,6 +330,36 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
           "secretsmanager:GetSecretValue",
         ]
         Resource = var.internal_observability_api_key_secret_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+        ]
+        Resource = var.kms_key_arn
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "task_execution_redis_secret" {
+  name = "${var.deployment_name}-gateway-task-exec-redis-secret"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+        ]
+        Resource = var.redis_url_secret_arn
       },
       {
         Effect = "Allow"

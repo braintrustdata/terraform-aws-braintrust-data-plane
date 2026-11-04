@@ -21,8 +21,8 @@ run "gateway_registers_direct_customer_targets" {
     alb_security_group_id                     = "sg-0123456789abcdef2"
     gateway_http_listener_arn                 = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
     gateway_url                               = "http://gateway.internal"
-    use_redis_replication_group               = false
-    redis_host                                = "redis.example.internal"
+    redis_url_secret_arn                      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id               = "11111111-1111-1111-1111-111111111111"
     redis_port                                = 6379
     redis_security_group_id                   = "sg-0123456789abcdef1"
     internal_observability_enabled            = true
@@ -78,6 +78,7 @@ run "loop_runtime_registers_direct_customer_targets" {
     sandbox_egress_gateway_target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/bt-test-loop-egress/2222222222222222"
     database_url_secret_arn                 = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
     redis_url_secret_arn                    = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id             = "11111111-1111-1111-1111-111111111111"
     function_tools_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
     brainstore_s3_bucket_name               = "bt-test-brainstore"
     brainstore_s3_bucket_arn                = "arn:aws:s3:::bt-test-brainstore"

@@ -15,8 +15,8 @@ variables {
   gateway_http_listener_arn   = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
   gateway_url                 = "http://gateway.internal"
   braintrust_api_url          = "http://api.internal"
-  use_redis_replication_group = false
-  redis_host                  = "redis.internal"
+  redis_url_secret_arn        = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+  redis_url_secret_version_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   redis_port                  = 6379
   redis_security_group_id     = "sg-0123456789abcdef1"
 }

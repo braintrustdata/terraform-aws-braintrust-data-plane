@@ -19,7 +19,7 @@ resource "aws_db_instance" "main" {
   allocated_storage     = var.postgres_storage_size
   max_allocated_storage = var.postgres_max_storage_size
   storage_type          = var.postgres_storage_type
-  storage_throughput    = var.postgres_storage_throughput
+  storage_throughput    = var.postgres_storage_type == "gp3" ? var.postgres_storage_throughput : null
   iops                  = var.postgres_storage_iops
   multi_az              = var.multi_az
 
