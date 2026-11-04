@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+trap 'printf "Validation failed at %s:%s; review the preceding static check.\n" "${BASH_SOURCE[0]}" "$LINENO" >&2' ERR
 
 source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 package_dir="${1:-$source_dir}"
@@ -13,6 +14,23 @@ scp_limit=10240
 
 command -v jq >/dev/null
 command -v rg >/dev/null
+
+# Verify source policy provenance without comparing rendered customer values
+# against placeholder-template digests.
+if [[ "$package_dir" == "$source_dir" ]]; then
+  command -v shasum >/dev/null
+  jq -e '.profile == "customer" and .audience == "customer" and
+    .status == "design-preview" and .deployment_ready == false and
+    .default_deprovision_mode == "retain-data" and
+    .allowed_deprovision_modes == ["retain-data"]' "$source_dir/contract.json" >/dev/null
+  while IFS=$'\t' read -r relative expected; do
+    actual="$(shasum -a 256 "$source_dir/$relative" | awk '{print $1}')"
+    [[ "$actual" == "$expected" ]] || {
+      echo "Source policy digest mismatch: $relative" >&2
+      exit 1
+    }
+  done < <(jq -r '.policy_sha256 | to_entries[] | [.key, .value] | @tsv' "$source_dir/contract.json")
+fi
 
 policy_files=("$policy_dir"/*.json)
 trust_files=("$trust_dir"/*.json)
@@ -60,7 +78,8 @@ render_policy() {
     sample_operations="$(printf '%63s' '' | tr ' ' o)"
     sample_artifacts="$(printf '%63s' '' | tr ' ' a)"
     sample_license="arn:aws:secretsmanager:${sample_region}:111122223333:secret:$(printf '%63s' '' | tr ' ' l)-ABC123"
-    sample_principal="arn:aws:iam::444455556666:role/$(printf '%223s' '' | tr ' ' p)/role"
+    # ARN prefix plus suffix consume 36 characters, leaving 220 at the limit.
+    sample_principal="arn:aws:iam::444455556666:role/$(printf '%220s' '' | tr ' ' p)/role"
     sample_external_id="$(printf '%128s' '' | tr ' ' e)"
   fi
 
@@ -78,9 +97,6 @@ render_policy() {
     -e "s|<OPERATION_LOG_BUCKET_NAME>|${sample_operations}|g" \
     -e "s|<BRAINTRUST_ARTIFACT_BUCKET_NAME>|${sample_artifacts}|g" \
     -e "s|<LICENSE_SECRET_ARN>|${sample_license}|g" \
-    -e "s|<LICENSE_SECRET_KMS_KEY_ARN>|arn:aws:kms:${sample_region}:111122223333:key/11111111-2222-3333-4444-555555555555|g" \
-    -e "s|<STATE_KMS_KEY_ARN>|arn:aws:kms:${sample_region}:111122223333:key/22222222-2222-3333-4444-555555555555|g" \
-    -e "s|<OPERATION_LOG_KMS_KEY_ARN>|arn:aws:kms:${sample_region}:111122223333:key/33333333-2222-3333-4444-555555555555|g" \
     -e "s|<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>|${sample_principal}|g" \
     -e "s|<BRAINTRUST_HUMAN_PRINCIPAL_ARN>|${sample_principal}|g" \
     -e "s|<UNIQUE_EXTERNAL_ID>|${sample_external_id}|g" \
@@ -130,23 +146,12 @@ check_rendered_names() {
   jq -e --arg account "$account" --arg bootstrap "$bootstrap" '
     .Statement[] | select(.Sid == "ActivatePredefinedDiagnostics") |
     .Condition.ArnEquals."iam:PolicyARN" | sort ==
-      (["BraintrustInspectionPolicy", "BraintrustSupportPolicy", "BraintrustDiagnosticsPolicy"] |
+      (["BraintrustInspectionPolicy", "BraintrustDiagnosticsPolicy"] |
        map("arn:aws:iam::" + $account + ":policy/braintrust-byoc/" + . + "-" + $bootstrap) | sort)' \
     "$activation_file" >/dev/null
   jq -e --arg boundary "$runtime_boundary" '[.Statement[] |
     select(.Sid == "CreateBoundedRoles" or .Sid == "SetRuntimeBoundary") |
     .Condition.ArnEquals."iam:PermissionsBoundary" == $boundary] == [true,true]' "$infrastructure_file" >/dev/null
-  jq -e --arg boundary "$runtime_boundary" '.Statement[] | select(.Sid == "RequireRuntimeBoundary") |
-    .Condition.ArnNotEquals."iam:PermissionsBoundary" == $boundary' \
-    "$temporary_dir/${fixture}customer-service-control-policy.json" >/dev/null
-  for file in customer-service-control-policy.json; do
-    jq -e --arg role "$role" --argjson policy "$policy" '
-      ([.Statement[] | select(.Sid == "DenyOtherBootstrapAttachments") |
-        .Condition.ArnNotEquals."iam:PolicyARN" == $policy] == [true]) and
-      ([.Statement[] | select(.Sid == "DenyActivationPoliciesElsewhere") |
-        .NotResource == $role and .Condition.ArnEquals."iam:PolicyARN" == $policy] == [true])' \
-      "$temporary_dir/${fixture}${file}" >/dev/null
-  done
   prefix="$(jq -er '.Statement[] | select(.Sid == "ManagePrefixedRoles") | .Resource' "$infrastructure_file")"
   role_pattern="^arn:aws:iam::${account}:role/([a-z0-9][a-z0-9-]{0,6}-)\\*$"
   if [[ ! "$prefix" =~ $role_pattern ]]; then
@@ -160,24 +165,42 @@ check_rendered_names() {
   operation_resource="$(jq -er '.Statement[] | select(.Sid == "WriteOperationLogs") | .Resource' "$data_file")"
   operation_bucket="${operation_resource#arn:aws:s3:::}"
   operation_bucket="${operation_bucket%%/*}"
-  [[ "$state_resource" == "arn:aws:s3:::${state_bucket}/braintrust-byoc/${bootstrap}/*" ]]
-  [[ "$operation_resource" == "arn:aws:s3:::${operation_bucket}/braintrust-byoc/operations/${bootstrap}/*" ]]
+  [[ "$state_resource" == "arn:aws:s3:::${state_bucket}/braintrust-byoc/${bootstrap}/*" ]] || {
+    echo 'State resource does not match its bootstrap root.' >&2
+    exit 1
+  }
+  [[ "$operation_resource" == "arn:aws:s3:::${operation_bucket}/braintrust-byoc/operations/${bootstrap}/*" ]] || {
+    echo 'Operation log resource does not match its bootstrap root.' >&2
+    exit 1
+  }
   for bucket in "$state_bucket" "$operation_bucket"; do
     if [[ "$bucket" == "$prefix"* || ${#bucket} -gt 63 || ${#bucket} -lt 3 ]]; then
       echo 'Bootstrap buckets must be outside the runtime prefix and use valid S3 name lengths.' >&2
       exit 1
     fi
   done
-  [[ "$state_bucket" != "$operation_bucket" ]]
+  [[ "$state_bucket" != "$operation_bucket" ]] || {
+    echo 'State and operation log buckets must differ.' >&2
+    exit 1
+  }
   license="$(jq -er '.Statement[] | select(.Sid == "ReadLicenseSecret") | .Resource' "$data_file")"
-  [[ ${#license} -le 128 && "$license" != *'*'* && "$license" != *'?'* ]]
+  [[ ${#license} -le 128 && "$license" != *'*'* && "$license" != *'?'* ]] || {
+    echo 'License secret ARN must be exact and at most 128 characters.' >&2
+    exit 1
+  }
   for trust in deployment-role-trust-policy.json human-role-trust-policy.json; do
     principal="$(jq -er '.Statement[0].Principal.AWS' "$temporary_dir/${fixture}${trust}")"
     role_pattern='^arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9_+=,.@/-]+$'
-    [[ "$principal" =~ $role_pattern && ${#principal} -le 256 ]]
+    [[ "$principal" =~ $role_pattern && ${#principal} -le 256 ]] || {
+      echo 'Trusted principal must be an exact role ARN of at most 256 characters.' >&2
+      exit 1
+    }
   done
   external_id="$(jq -er '.Statement[0].Condition.StringEquals."sts:ExternalId"' "$temporary_dir/${fixture}deployment-role-trust-policy.json")"
-  [[ ${#external_id} -ge 2 && ${#external_id} -le 128 ]]
+  [[ ${#external_id} -ge 2 && ${#external_id} -le 128 ]] || {
+    echo 'External ID must be between 2 and 128 characters.' >&2
+    exit 1
+  }
   for file in "${policy_files[@]}" "${scp_files[@]}"; do
     jq -e --arg account "$account" --arg bootstrap "$bootstrap" '
       [.. | strings | select(startswith("arn:aws:iam::" + $account + ":role/braintrust-byoc/Braintrust"))] |
@@ -201,137 +224,76 @@ assert_policy() {
 }
 for file in "${policy_files[@]}"; do
   assert_policy "$(basename "$file")" \
-    '.Statement | all(.Effect == "Allow" and has("Action") and (has("NotAction") | not))'
+    '.Statement | all(has("Action") and (has("NotAction") | not) and
+      (.Effect == "Allow"))'
 done
 for file in "${scp_files[@]}"; do
-  assert_policy "$(basename "$file")" '.Statement | all(.Effect == "Deny")'
+  assert_policy "$(basename "$file")" '.Statement | all(.Effect == "Deny" and (has("Condition") | not))'
 done
 if [[ -e "$policy_dir/deployment-guardrail-policy.json" || -e "$policy_dir/observer-policy.json" ]]; then
   echo 'The replaced subtractive policies must not remain in the attachment set.' >&2
   exit 1
 fi
-echo 'Positive identity policies and runtime ceiling; explicit restrictions in SCPs.'
+echo 'Positive identity policies and runtime ceiling; one account-wide SCP.'
 
 if [[ "$package_dir" == "$source_dir" ]]; then
-  if rg -n '<(BRAINSTORE_BUCKET_NAME|DATA_PLANE_KMS_KEY_ARN|RETAINED_RDS_SNAPSHOT_PREFIX)>' \
-      "$policy_dir" "$guardrail_dir" -g '*.json'; then
-    echo 'A policy still requires a post-creation data plane identifier.' >&2
+  [[ ${#scp_files[@]} -eq 1 ]] || {
+    echo 'Exactly one account SCP is required.' >&2
     exit 1
-  fi
-
-  rendered_scps=()
-  for file in "${scp_files[@]}"; do
-    rendered_scps+=("$temporary_dir/$(basename "$file")")
-  done
-  jq -s '{Statement: [.[].Statement[]]}' "${rendered_scps[@]}" >"$temporary_dir/combined-scp.json"
-  assert_policy combined-scp.json '
-    ([.Statement[] | select(.Sid == "DenyAccountAndOrganizationAdministration") |
-      .Resource == "*" and (has("Condition") | not) and
-      (.Action | index("s3:PutAccountPublicAccessBlock") != null)] == [true]) and
-    ([.Statement[] | select(.Sid == "DenyDeploymentRoleActionsOutsidePrefix") |
-      (.Action | sort) == (["iam:CreateRole", "iam:PassRole"] | sort) and
-      .NotResource == "arn:aws:iam::111122223333:role/bt-a-*" and
-      .Condition.ArnEquals."aws:PrincipalArn" ==
-      "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDeploymentRole-review"] == [true])'
-  assert_policy combined-scp.json '
-    ([.Statement[] | select(.Sid == "ProtectBootstrapIam") |
-      (.NotAction | sort) == (["iam:AttachRolePolicy", "iam:DetachRolePolicy",
-        "iam:GetRole", "iam:ListAttachedRolePolicies", "iam:GetPolicy", "iam:GetPolicyVersion"] | sort)] == [true]) and
-    ([.Statement[] | select(.Sid == "RestrictPassRoleServices") |
-      .Condition.StringNotEquals."iam:PassedToService" | length] == [8]) and
-    ([.Statement[] | select(.Sid == "DeploymentLinkedRoleScope") |
-      .NotResource == "arn:aws:iam::111122223333:role/aws-service-role/*"] == [true]) and
-    ([.Statement[] | select(.Sid == "DeploymentLinkedRoleServices") |
-      .Condition.StringNotEquals."iam:AWSServiceName" | length] == [10])'
-  assert_policy combined-scp.json '
-    ([.Statement[] | select(.Sid == "RestrictDeploymentDecryptKeys") |
-      .Condition.StringNotLikeIfExists."aws:ResourceTag/BraintrustDeploymentName" == "bt-a-*"] == [true]) and
-    ([.Statement[] | select(.Sid == "KeepManagedKmsOwnershipTag") |
-      .Condition."ForAnyValue:StringEquals"."aws:TagKeys" == "BraintrustDeploymentName"] == [true]) and
-    ([.Statement[] | select(.Sid == "DenyBraintrustAuditTampering") |
-      .Condition.ArnLike."aws:PrincipalArn" | length] == [2])'
+  }
+  assert_policy customer-service-control-policy.json '
+    (.Statement | map(.Sid) | sort) ==
+      (["ProtectOrganizationMembership", "ProtectAccountPublicAccessBlock",
+        "ProtectSecurityServices", "ProtectRetainedData", "DenySnapshotAndImageSharing"] | sort)'
+  assert_policy customer-service-control-policy.json '
+    [.Statement[] | select(.Sid == "ProtectRetainedData") |
+      (.Action | sort) == (["kms:ScheduleKeyDeletion", "rds:DeleteDBSnapshot", "s3:DeleteBucket"] | sort) and
+      (.Resource | sort) == (["arn:aws:kms:*:*:key/*",
+        "arn:aws:rds:*:*:snapshot:*-main-final-snapshot-*", "arn:aws:s3:::*-brainstore-*"] | sort)] == [true]'
   assert_policy deployment-infrastructure-policy.json '
     (.Statement[] | select(.Sid == "ManageDataPlaneServices") | .Action) as $actions |
-    ($actions | index("ecs:*") != null) and
-    (["dynamodb:*", "eks:*", "ec2-instance-connect:*", "cloudwatch:*", "lambda:*", "logs:*"] |
+    ($actions | index("ecs:Update*") != null) and
+    (["ecs:*", "ecs:ExecuteCommand", "dynamodb:*", "eks:*", "ec2-instance-connect:*",
+      "cloudwatch:*", "lambda:*", "logs:*"] |
       all(. as $action | $actions | index($action) == null))'
-  assert_policy deployment-data-policy.json '
-    (.Statement[] | select(.Sid == "ManagePrefixedBuckets") | .Action) as $actions |
-    (["s3:PutBucketPolicy", "s3:PutBucketPublicAccessBlock", "s3:GetBucketOwnershipControls",
-      "s3:PutBucketOwnershipControls", "s3:GetBucketAbac", "s3:PutBucketAbac",
-      "s3:TagResource", "s3:UntagResource", "s3:ListTagsForResource"] |
-      all(. as $action | $actions | index($action) != null)) and
-    ($actions | index("s3:PutBucketAcl") == null)'
+  assert_policy inspection-policy.json '
+    [.Statement[].Action | if type == "array" then .[] else . end] |
+    all(. != "ec2:Describe*" and . != "ecs:Describe*" and . != "autoscaling:Describe*" and
+        . != "ec2:DescribeInstanceAttribute" and . != "ec2:DescribeLaunchTemplateVersions" and
+        . != "ecs:DescribeTaskDefinition" and . != "autoscaling:DescribeLaunchConfigurations")'
   assert_policy runtime-permissions-boundary.json '
     ([.Statement[] | select(.Sid == "AllowInternalRuntimeRoleAssumptions") |
       .Action == "sts:AssumeRole" and (.Resource | length) == 2 and
       .Condition.ArnLike."aws:PrincipalArn" == "arn:aws:iam::111122223333:role/bt-a-*-APIHandlerRole"] == [true]) and
-    ([.Statement[] | select(.Sid == "AllowRuntimePassRoleForLambda") |
-      .Resource == "arn:aws:iam::111122223333:role/bt-a-*" and
-      .Condition.StringEquals."iam:PassedToService" == "lambda.amazonaws.com"] == [true])'
-  assert_policy combined-scp.json '
-    ([.Statement[] | select(.Sid == "DenyRuntimeBucketAccessAdministration") |
-      (.Action | sort) == (["s3:DeleteBucketPolicy", "s3:PutBucketAcl",
-        "s3:PutBucketPolicy", "s3:PutBucketPublicAccessBlock"] | sort) and
-      .Condition.ArnLike."aws:PrincipalArn" == "arn:aws:iam::111122223333:role/bt-a-*"] == [true]) and
-    ([.Statement[] | select(.Sid == "DenyRuntimeWorkloadInitiatedInteractiveAccess") |
-      (.Action | sort) == (["ssm:StartSession", "ssm:SendCommand",
-        "ecs:ExecuteCommand", "ec2-instance-connect:*"] | sort)] == [true]) and
-    ([.Statement[] | select(.Sid == "DenyRuntimeOtherRuntimeRoleAssumptions") |
-      (.NotResource | length) == 2] == [true])'
+    ([.Statement[] | select(.Sid == "AllowWorkloadStorageOutsideBootstrap") |
+      (.NotResource | length) == 6] == [true])'
+  assert_policy deployment-workload-policy.json '
+    [.Statement[] | select(.Sid == "ManageLogGroupConfiguration") |
+      .NotResource == ["arn:aws:logs:us-east-1:111122223333:log-group:/braintrust-byoc/review/diagnostics",
+        "arn:aws:logs:us-east-1:111122223333:log-group:/braintrust-byoc/review/diagnostics:*"]] == [true]'
   assert_policy diagnostics-policy.json '
     ([.Statement[] | select(.Sid == "StartBrainstoreShell") |
-      .Condition.Bool."ssm:SessionDocumentAccessCheck" == "true" and
+      .Condition.BoolIfExists."ssm:SessionDocumentAccessCheck" == "true" and
       .Condition.StringLike."ssm:resourceTag/BraintrustDeploymentName" == "bt-a-*" and
       (.Condition.StringEquals."ssm:resourceTag/BrainstoreRole" | length) == 4] == [true]) and
     ([.Statement[] | select(.Sid == "UseLoggedShellDocument") |
-      .Resource == "arn:aws:ssm:us-east-1:111122223333:document/BraintrustDiagnosticsShell-review"] == [true]) and
-    ([.Statement[] | select(.Sid == "ManageOwnSessions") |
-      .Condition.StringEquals."ssm:resourceTag/aws:ssmmessages:session-id" == "${aws:userid}"] == [true])'
+      .Resource == "arn:aws:ssm:us-east-1:111122223333:document/BraintrustDiagnosticsShell-review"] == [true])'
   assert_policy deployment-diagnostics-policy.json '
-    ([.Statement[] | select(.Sid == "ActivatePredefinedDiagnostics") |
-      .Resource == "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDiagnosticsRole-review" and
-      (.Action | sort) == (["iam:AttachRolePolicy", "iam:DetachRolePolicy"] | sort) and
-      (.Condition.ArnEquals."iam:PolicyARN" | length) == 3] == [true]) and
     ([.Statement[] | select(.Sid == "CloseDiagnosticSessions") |
-      .Condition.StringLike."ssm:resourceTag/aws:ssmmessages:session-id" == "AROADIAGNOSTICSEXAMPLE:*"] == [true])'
-  assert_policy combined-scp.json '
-    ([.Statement[] | select(.Sid == "ProtectDiagnosticSessionDocument" or .Sid == "ProtectDiagnosticTranscripts") |
-      (.Condition.ArnLike."aws:PrincipalArn" | length) == 2] == [true,true]) and
-    ([.Statement[] | select(.Sid == "RestrictEcsClusterUpdates") |
-      .Resource == "arn:aws:ecs:us-east-1:111122223333:cluster/bt-a-*" and
-      (.Condition.ArnLike."aws:PrincipalArn" | sort) == ([
-        "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustSupportRole-review",
-        "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustObserverRole-review",
-        "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDiagnosticsRole-review",
-        "arn:aws:iam::111122223333:role/bt-a-*"] | sort)] == [true]) and
-    ([.Statement[] | select(.Sid == "DenyManagementTranscriptWrites") |
-      (.Action | sort) == (["logs:CreateLogStream", "logs:PutLogEvents"] | sort) and
-      .Resource == "arn:aws:logs:us-east-1:111122223333:log-group:/braintrust-byoc/review/diagnostics:*" and
-      .Condition.ArnLike."aws:PrincipalArn" ==
-        "arn:aws:iam::111122223333:role/braintrust-byoc/Braintrust*Role-review"] == [true])'
+      .Condition.StringLike."ssm:resourceTag/aws:ssmmessages:session-id" == "AROADIAGNOSTICSEXAMPLE:*"] == [true]) and
+    ([.Statement[] | select(.Sid == "CloseManagedEcsSessions") |
+      .Condition.StringLike."ssm:resourceTag/aws:ssmmessages:target-id" == "ecs:bt-a-*_*_*"] == [true]) and
+    ([.Statement[] | select(.Sid == "AttributeEcsDiagnosticSessions") |
+      .Action == "cloudtrail:LookupEvents" and
+      .Condition.StringEquals."aws:RequestedRegion" == "us-east-1"] == [true])'
   assert_policy deployment-eks-policy.json '
     ([.Statement[] | select(.Sid | startswith("Create") and endswith("ClusterEntry")) |
       .Condition.StringEquals."eks:accessEntryType" == "STANDARD" and
       .Condition.Null."eks:kubernetesGroups" == "false" and
-      .Condition.Null."eks:username" == "true" and
-      (.Condition."ForAllValues:StringEquals"."eks:kubernetesGroups" | length) == 1] == [true,true,true]) and
+      .Condition.Null."eks:username" == "true"] == [true,true]) and
     ([.Statement[].Action | if type == "array" then .[] else . end] |
       all(. != "eks:*" and . != "eks:UpdateAccessEntry" and . != "eks:AssociateAccessPolicy"))'
-  if rg -q 'BraintrustDiagnosticsRole|braintrust:diagnostics' "$policy_dir/deployment-eks-policy.json"; then
-    echo 'EKS preparation must not create standing Diagnostics authorization.' >&2
-    exit 1
-  fi
-  pattern="$(jq -r '.Statement[] | select(.Sid == "ProtectRetainedBrainstoreData") | .Resource[0]' \
-    "$temporary_dir/customer-retained-data-service-control-policy.json")"
-  [[ 'arn:aws:s3:::bt-a-one-brainstore-1234' == $pattern &&
-     'arn:aws:s3:::bt-a-two-brainstore-5678' == $pattern &&
-     'arn:aws:s3:::bt-b-one-brainstore-1234' != $pattern ]]
-  pattern="$(jq -r '.Statement[] | select(.Sid == "ReadManagedApplicationLogs") |
-    .Resource[] | select(contains("/microvms/"))' "$temporary_dir/diagnostics-policy.json")"
-  [[ 'arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/microvms/bt-loop-bt-a-one:*' == $pattern &&
-     'arn:aws:logs:us-east-1:111122223333:log-group:/aws/lambda/microvms/bt-loop-bt-b-one:*' != $pattern ]]
-  echo 'SCP coverage, IAM delegation, activation layering, transcript separation, naming, and EKS constraints passed (static checks only).'
+  echo 'Account guardrails, positive role grants, delegation, and diagnostic boundaries passed (static checks only).'
 fi
 
 if [[ "${VALIDATE_WITH_AWS:-0}" != "1" ]]; then

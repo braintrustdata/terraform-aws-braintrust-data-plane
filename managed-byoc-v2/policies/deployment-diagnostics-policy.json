@@ -2,6 +2,21 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "VerifyProtectedDiagnostics",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetDocument",
+        "ssm:DescribeDocument"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:document/BraintrustDiagnosticsShell-<BOOTSTRAP_NAME>"
+    },
+    {
+      "Sid": "VerifyDiagnosticAgents",
+      "Effect": "Allow",
+      "Action": "ssm:DescribeInstanceInformation",
+      "Resource": "*"
+    },
+    {
       "Sid": "ActivatePredefinedDiagnostics",
       "Effect": "Allow",
       "Action": [
@@ -13,7 +28,6 @@
         "ArnEquals": {
           "iam:PolicyARN": [
             "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/BraintrustInspectionPolicy-<BOOTSTRAP_NAME>",
-            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/braintrust-byoc/BraintrustSupportPolicy-<BOOTSTRAP_NAME>",
             "<DIAGNOSTICS_POLICY_ARN>"
           ]
         }
@@ -29,6 +43,28 @@
       "Condition": {
         "StringEquals": {
           "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
+    },
+    {
+      "Sid": "AttributeEcsDiagnosticSessions",
+      "Effect": "Allow",
+      "Action": "cloudtrail:LookupEvents",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "<AWS_REGION>"
+        }
+      }
+    },
+    {
+      "Sid": "CloseManagedEcsSessions",
+      "Effect": "Allow",
+      "Action": "ssm:TerminateSession",
+      "Resource": "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:session/ecs-execute-command-*",
+      "Condition": {
+        "StringLike": {
+          "ssm:resourceTag/aws:ssmmessages:target-id": "ecs:<MANAGED_RESOURCE_PREFIX>*_*_*"
         }
       }
     },

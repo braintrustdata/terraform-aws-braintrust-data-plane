@@ -88,27 +88,6 @@
       }
     },
     {
-      "Sid": "CreateSupportClusterEntry",
-      "Effect": "Allow",
-      "Action": "eks:CreateAccessEntry",
-      "Resource": "arn:<AWS_PARTITION>:eks:<AWS_REGION>:<AWS_ACCOUNT_ID>:cluster/<MANAGED_RESOURCE_PREFIX>*",
-      "Condition": {
-        "StringEquals": {
-          "eks:principalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
-          "eks:accessEntryType": "STANDARD"
-        },
-        "ForAllValues:StringEquals": {
-          "eks:kubernetesGroups": [
-            "braintrust:support"
-          ]
-        },
-        "Null": {
-          "eks:kubernetesGroups": "false",
-          "eks:username": "true"
-        }
-      }
-    },
-    {
       "Sid": "CreateObserverClusterEntry",
       "Effect": "Allow",
       "Action": "eks:CreateAccessEntry",
@@ -144,7 +123,6 @@
         "StringEquals": {
           "eks:principalArn": [
             "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustDeploymentRole-<BOOTSTRAP_NAME>",
-            "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustSupportRole-<BOOTSTRAP_NAME>",
             "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/braintrust-byoc/BraintrustObserverRole-<BOOTSTRAP_NAME>"
           ]
         }

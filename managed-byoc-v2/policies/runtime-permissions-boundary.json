@@ -55,13 +55,7 @@
         "logs:DescribeLogGroups",
         "logs:DescribeLogStreams",
         "logs:PutLogEvents",
-        "logs:PutRetentionPolicy",
         "logs:GetLogEvents",
-        "s3:AbortMultipartUpload",
-        "s3:Get*",
-        "s3:List*",
-        "s3:PutObject*",
-        "s3:DeleteObject*",
         "secretsmanager:GetSecretValue",
         "ssm:DescribeAssociation",
         "ssm:GetDeployablePatchSnapshotForInstance",
@@ -85,6 +79,26 @@
         "sts:TagSession"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "AllowWorkloadStorageOutsideBootstrap",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutRetentionPolicy",
+        "s3:AbortMultipartUpload",
+        "s3:Get*",
+        "s3:List*",
+        "s3:PutObject*",
+        "s3:DeleteObject*"
+      ],
+      "NotResource": [
+        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>",
+        "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/*",
+        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>",
+        "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>/*",
+        "arn:aws:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics",
+        "arn:aws:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics:*"
+      ]
     },
     {
       "Sid": "AllowRuntimeRoleMetadata",
@@ -132,6 +146,35 @@
       "Condition": {
         "Bool": {
           "kms:GrantIsForAWSResource": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowBrainstoreRolloutReadiness",
+      "Effect": "Allow",
+      "Action": [
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:DescribeInstanceRefreshes",
+        "elasticloadbalancing:DescribeTargetHealth"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-brainstore-deployment"
+        }
+      }
+    },
+    {
+      "Sid": "AllowBrainstoreRolloutRefresh",
+      "Effect": "Allow",
+      "Action": "autoscaling:StartInstanceRefresh",
+      "Resource": "arn:<AWS_PARTITION>:autoscaling:<AWS_REGION>:<AWS_ACCOUNT_ID>:autoScalingGroup:*:autoScalingGroupName/<MANAGED_RESOURCE_PREFIX>*-brainstore*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-brainstore-deployment"
+        },
+        "StringLike": {
+          "autoscaling:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
         }
       }
     }

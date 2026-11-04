@@ -21,6 +21,7 @@
       "Effect": "Allow",
       "Action": [
         "s3:GetBucketLocation",
+        "s3:GetEncryptionConfiguration",
         "s3:GetBucketVersioning"
       ],
       "Resource": [
@@ -192,53 +193,6 @@
         },
         "StringEquals": {
           "kms:ViaService": "secretsmanager.<AWS_REGION>.amazonaws.com"
-        }
-      }
-    },
-    {
-      "Sid": "DecryptLicenseSecret",
-      "Effect": "Allow",
-      "Action": "kms:Decrypt",
-      "Resource": "<LICENSE_SECRET_KMS_KEY_ARN>",
-      "Condition": {
-        "StringEquals": {
-          "kms:ViaService": "secretsmanager.<AWS_REGION>.amazonaws.com",
-          "kms:EncryptionContext:SecretARN": "<LICENSE_SECRET_ARN>"
-        }
-      }
-    },
-    {
-      "Sid": "UseTerraformStateKeyThroughS3",
-      "Effect": "Allow",
-      "Action": [
-        "kms:Decrypt",
-        "kms:Encrypt",
-        "kms:GenerateDataKey"
-      ],
-      "Resource": "<STATE_KMS_KEY_ARN>",
-      "Condition": {
-        "StringEquals": {
-          "kms:ViaService": "s3.<AWS_REGION>.amazonaws.com"
-        },
-        "StringLike": {
-          "kms:EncryptionContext:aws:s3:arn": "arn:<AWS_PARTITION>:s3:::<STATE_BUCKET_NAME>/braintrust-byoc/<BOOTSTRAP_NAME>/*"
-        }
-      }
-    },
-    {
-      "Sid": "UseOperationLogKeyThroughS3",
-      "Effect": "Allow",
-      "Action": [
-        "kms:Decrypt",
-        "kms:GenerateDataKey"
-      ],
-      "Resource": "<OPERATION_LOG_KMS_KEY_ARN>",
-      "Condition": {
-        "StringEquals": {
-          "kms:ViaService": "s3.<AWS_REGION>.amazonaws.com"
-        },
-        "StringLike": {
-          "kms:EncryptionContext:aws:s3:arn": "arn:<AWS_PARTITION>:s3:::<OPERATION_LOG_BUCKET_NAME>/braintrust-byoc/operations/<BOOTSTRAP_NAME>/*"
         }
       }
     }

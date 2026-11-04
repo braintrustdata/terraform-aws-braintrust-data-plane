@@ -7,15 +7,27 @@
       "Principal": {
         "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
       },
-      "Action": [
-        "sts:AssumeRole",
-        "sts:SetSourceIdentity",
-        "sts:TagSession"
-      ],
+      "Action": "sts:AssumeRole",
       "Condition": {
         "StringEquals": {
           "sts:ExternalId": "<UNIQUE_EXTERNAL_ID>"
         },
+        "StringLike": {
+          "sts:SourceIdentity": "byoc-operation-*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowExactDeploymentSessionAttributes",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
+      },
+      "Action": [
+        "sts:SetSourceIdentity",
+        "sts:TagSession"
+      ],
+      "Condition": {
         "StringLike": {
           "sts:SourceIdentity": "byoc-operation-*"
         }

@@ -46,7 +46,11 @@
       "Action": "lambda:InvokeFunction",
       "Resource": [
         "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-MigrateDatabaseFunction",
-        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-QuarantineWarmupFunction"
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-MigrateDatabaseFunction:$LATEST",
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-QuarantineWarmupFunction",
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-QuarantineWarmupFunction:$LATEST",
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-BrainstoreDeployment",
+        "arn:<AWS_PARTITION>:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:<MANAGED_RESOURCE_PREFIX>*-BrainstoreDeployment:$LATEST"
       ]
     },
     {
@@ -94,7 +98,10 @@
         "logs:UntagLogGroup",
         "logs:UntagResource"
       ],
-      "Resource": "*"
+      "NotResource": [
+        "arn:aws:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics",
+        "arn:aws:logs:<AWS_REGION>:<AWS_ACCOUNT_ID>:log-group:/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics:*"
+      ]
     }
   ]
 }

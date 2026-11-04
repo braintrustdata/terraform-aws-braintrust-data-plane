@@ -1,153 +1,132 @@
-# CloudTrail monitoring and alerts
+# AWS security monitoring
 
 [Back to overview](../README.md#start-here)
 
-These controls define the minimum detection baseline for the dedicated BYOC
-account. The customer owns and operates them. They complement the
-[IAM policies](../policies/README.md) and [guardrails](README.md); they do not
-prevent an action that is otherwise authorized.
+Use the customer's existing CloudTrail and security monitoring where available.
+Braintrust operates the data plane; the customer controls organization safeguards,
+audit collection, alerts, and recovery access outside Braintrust's trust chain.
 
-## Collection prerequisites
+## Collection
 
-- Use a multi-Region organization trail and send it to a customer log archive
-  account that Braintrust roles cannot access or modify.
-- Record read and write management events.
-- Enable S3 data events for the exact Brainstore, Terraform state, and operation
-  log buckets. S3 object reads and writes are not management
-  events and are absent without this configuration.
-- Add data event selectors for deployed Lambda functions (`AWS::Lambda::Function`),
-  DynamoDB tables (`AWS::DynamoDB::Table`), and SQS queues (`AWS::SQS::Queue`).
-  Use advanced selectors for SQS. Select the read/write categories needed for
-  invocation and record/message reads; management events alone do not cover them.
-- For an enabled integration into another account owned by the customer, collect
-  CloudTrail there as well. Include the destination role's activity and data
-  events for any bucket or other supported resource used by the integration.
-- Send alerts to an EventBridge bus, SIEM, or security operations destination
-  controlled by the customer and outside the Braintrust trust chain.
-- Retain the role ARN, session name, source identity, source IP, user agent,
-  event ID, request parameters, response elements, and error code. Correlate
-  session tags from STS events where available; they are not repeated on every
-  service event.
-- Evaluate successful calls and authorization failures. A denied sensitive
-  action can indicate a compromised or incorrectly configured session.
+- Collect read and write management events across deployed Regions.
+  An organization trail delivered to a separate audit account is recommended.
+- Enable targeted data events where a detection needs them, including object
+  access to state/operation buckets and unexpected management-role access to
+  application storage. S3 object reads, Lambda invocations, and message/record
+  access are not covered by management events alone.
+- Scope selectors before ingestion. Do not enable all workload data events
+  unless needed for a detection or compliance requirement; volume can be high.
+- For enabled external integrations, collect the destination role's activity
+  and relevant data events in that account too.
+- Preserve role ARN, session name, SourceIdentity, event ID/time, source IP,
+  request parameters, result, and error code. Evaluate successful and denied
+  requests; services use different denial codes and logging paths.
 
-## Alert matrix
+CloudTrail captures supported activity selected by that configuration, not every
+API call. Validate the required allowed and denied events before relying on alerts.
+Existing GuardDuty, Config, Security Hub, and Access Analyzer coverage can
+complement these detections; a new monitoring stack is not required.
 
-| Severity | Signal | Events or evaluation |
+## Recommended detections
+
+Scope signals to the BYOC account, bootstrap resources, and named roles.
+An API name alone is not evidence of an unsafe change; inspect request parameters.
+
+| Priority | Signal | Evaluate |
 | --- | --- | --- |
-| Critical | Bootstrap identity or guardrail change, excluding the three recorded Diagnostics activation pairs below | `UpdateAssumeRolePolicy`, `AttachRolePolicy`, `DetachRolePolicy`, `PutRolePolicy`, `DeleteRolePolicy`, `PutRolePermissionsBoundary`, `DeleteRolePermissionsBoundary`, `CreatePolicyVersion`, `SetDefaultPolicyVersion`, or relevant Organizations policy changes targeting the BYOC roles, boundaries, or SCPs |
-| Critical | Audit or security control tampering | `StopLogging`, `DeleteTrail`, `PutEventSelectors`, `UpdateTrail`, `StopConfigurationRecorder`, configuration recorder or delivery channel deletion, GuardDuty disable/delete/disassociation, Security Hub disable/disassociation, or Access Analyzer deletion |
-| Critical | Human access to protected content | A Support or Observer session calls S3 `GetObject*`, Secrets Manager `GetSecretValue`, KMS `Decrypt`, DynamoDB read APIs, SQS `ReceiveMessage`, RDS log download APIs, or Lambda invocation APIs, whether allowed or denied |
-| Critical | Retained data disposition | `DeleteBucket`, `DeleteObject*`, `PutBucketLifecycleConfiguration`, `ScheduleKeyDeletion`, `DisableKey`, `DeleteDBSnapshot`, snapshot sharing/export, or an unexpected `DeleteDBInstance` against a protected resource |
-| Critical | Application log export or routing | Deployment calls `CreateExportTask`, `PutSubscriptionFilter`, `CreateDelivery`, `PutDelivery*`, `PutDestination*`, or `PutAccountPolicy`, including denied attempts |
-| Critical | Access to content derived from logs | Deployment, Support, or Observer attempts `PutInsightRule`, `PutManagedInsightRules`, `GetInsightRuleReport`, `CreateLogAnomalyDetector`, `ListAnomalies`, or `GetLookupTable`; collect supported events for these APIs |
-| Critical | Unexpected interactive access | `StartSession` or `ExecuteCommand` outside an active Diagnostics window, from another role, or against another bootstrap; any `SendCommand`, `SendSSHPublicKey`, or `OpenTunnel` by a Braintrust management role |
-| Critical | Public exposure | Security group ingress changes, S3 public access or bucket policy changes, an ECS update requesting public IP assignment, or an RDS update requesting public accessibility |
-| High | Unexpected Support activity | A Support mutation has an unexpected source identity, target data plane, or request parameters |
-| High | Unexpected deployment session | Deployment role assumption or mutation has an unexpected source principal or a missing or malformed operation source identity |
-| High | Unexpected role assumption or external access | Any outbound `AssumeRole` by Deployment, Support, Observer, or Diagnostics; a runtime assumption outside its internal invocation paths or an enabled feature's exact destination; unexpected external resource access |
-| High | Unexpected runtime role trust | `CreateRole` or `UpdateAssumeRolePolicy` admits an unexpected human, account, or service principal into a managed runtime role |
-| High | Sensitive authorization failure | `AccessDenied`, `UnauthorizedOperation`, or equivalent from a Braintrust principal for IAM, STS, S3 object, Secrets Manager, KMS, interactive access, retained data, or audit control APIs |
-| High | KMS ownership tag change | `TagResource` or `UntagResource` affecting `BraintrustDeploymentName`, other than the expected tag on key creation |
-| Audit | Human role assumption | Every successful and failed `AssumeRole` attempt for Support, Observer, and Diagnostics; notify according to the customer's operating model |
-| Audit | Support mutation | Every successful event in the Support mutation set below; preserve it in the customer audit archive |
-| Audit | Diagnostics activation and closure | Three exact role/policy `AttachRolePolicy` / `DetachRolePolicy` pairs, actor, reason, scope, expiry, and cleanup result from operation records; escalate unmatched or overdue activity |
-| Audit | Diagnostic session | `StartSession`, `ResumeSession`, `TerminateSession`, and `ExecuteCommand`; correlate named role session, target, activation, and CloudWatch transcript |
-| Critical | Diagnostic logging changes | Protected SSM document updates/deletion, transcript group deletion or retention/configuration changes, and ECS Exec configuration changes, including denied attempts |
+| High | Bootstrap IAM or organization safeguards changed | Trust, inline policies, policy versions/defaults, boundaries, attachments, and SCP changes; distinguish the two exact recorded Diagnostics activation pairs |
+| High | Logging or security collection weakened | Trail/event selector changes; Config, GuardDuty, Security Hub, or Access Analyzer changes; logged SSM document or transcript-group configuration changes |
+| High | Unexpected interactive access | SSM `StartSession` or ECS `ExecuteCommand` without an active Diagnostics window, wrong role/target, or missing attribution; generic Run Command or Instance Connect use |
+| High | Diagnostic access not closed | Unexpected/partial attachments, overdue access, remaining sessions, missing transcripts, or failed cleanup |
+| High | Retained data affected | Brainstore lifecycle expiration, bucket/object deletion, KMS disablement/deletion, final snapshot deletion, and snapshot sharing/export |
+| High | Public or unexpected external access | Account/bucket protection changes, broadened bucket/key/runtime trust, public network changes, or runtime role assumption outside a configured feature |
+| High | Unexpected content access or log routing | Observer content reads; management-role subscription filters, export tasks, deliveries, or content-derived reports outside its permissions |
+| Audit | Deployment and Diagnostics activity | Role assumptions, operation attribution, activation/extension/closure evidence, session targets, and operational mutations |
 
-## Support mutation set
+The SCP blocks only its listed actions. A successful sensitive API does not
+necessarily mean the SCP was detached: lifecycle expiration and some security
+configuration updates are outside its coverage.
 
-The standing Support policy currently authorizes this event set:
+For Diagnostics, correlate the exact role and policy ARNs, initiating engineer,
+bootstrap, approval, expiry, and operation record. Do not suppress all IAM policy
+attachments as expected activity. Successful operations within an active window
+normally need audit recording, not a page; unexpected scope or parameters
+require investigation.
 
-- ECS: `UpdateService`, `StopTask`, `StopServiceDeployment`
-- EC2 Auto Scaling: `SetDesiredCapacity`, `SetInstanceHealth`, `CancelInstanceRefresh`
-- Application Auto Scaling: `RegisterScalableTarget`, `PutScalingPolicy`
-- Lambda: `PutFunctionConcurrency20171031`, `DeleteFunctionConcurrency20171031`,
-  `PutProvisionedConcurrencyConfig`, `DeleteProvisionedConcurrencyConfig`
-- EventBridge: `DisableRule`, `EnableRule` for the module's three scheduled jobs
-- RDS: `RebootDBInstance`, `ModifyDBParameterGroup`
-- ElastiCache: `RebootCacheCluster`
+Operational checks include ECS task definitions/network changes, ASG desired
+capacity and health, scaling limits, Lambda concurrency, paused module schedules,
+and database/cache tuning. Alert on ECS cluster Exec logging departing from
+`OVERRIDE` or changing destination, not every normal cluster update.
+CloudTrail event names can differ from IAM actions, including versioned Lambda
+events; verify the service's actual events.
 
-Lambda CloudTrail event names can include API version suffixes; match the
-[documented event names](https://docs.aws.amazon.com/lambda/latest/dg/logging-using-cloudtrail.html)
-rather than assuming they always equal IAM action names.
+## Logging destinations
 
-These events should normally create an audit notification rather than a page.
-Raise them to High for unexpected session attribution, target scope, or request
-parameters. Routine maintenance does not require an incident ID or fixed window.
+```mermaid
+flowchart TB
+    subgraph BT[Braintrust]
+        DEP[BYOC deployment service]
+        ENG[Named support personnel]
+    end
 
-## Important request checks
+    subgraph CUSTOMER[Customer AWS environment]
+        subgraph BYOC[BYOC account]
+            API["AWS APIs<br/>Assumption, IAM, and infrastructure"]
+            SSM["SSM shell on EC2<br/>Logged session document"]
+            ECS["ECS Exec<br/>OVERRIDE transcript logging"]
+            CW["CloudWatch log group<br/>Diagnostic transcripts"]
+            OPS[("S3 operation records")]
+        end
+        subgraph ARCHIVE["Separate audit account (recommended)"]
+            CT[("Organization CloudTrail archive")]
+            COPY["Copied diagnostic transcripts"]
+        end
+    end
 
-Event names alone are insufficient for APIs that accept both safe and unsafe
-changes. Inspect request parameters where available:
+    DEP -->|deployment and activation| API
+    ENG -->|attributed sessions| API
+    API -->|StartSession| SSM
+    API -->|ExecuteCommand| ECS
+    API -.->|configured API events, not commands| CT
+    SSM -->|commands and output| CW
+    ECS -->|commands and output| CW
+    CW -.->|optional customer replication| COPY
+    DEP -->|intent, authorization, outcome| OPS
+```
 
-- Diagnostics `AttachRolePolicy` / `DetachRolePolicy`: exact role and one of the
-  three predefined policy ARNs, deployment principal, operation source identity,
-  authorization, and expiry. Activation and cleanup must account for all three
-  attachments; flag partial or unexpected attachment sets. Do not exclude all
-  policy attachments from alerts for identity changes.
-- `StartSession`: exact logged document, matching Brainstore target, and engineer
-  identity. `ExecuteCommand`: matching cluster, task, and container. Compare both
-  with the active window for the bootstrap.
-- `TerminateSession`: expected diagnostic ownership and cleanup result. Alert
-  when sessions remain after closure, transcripts are missing, or cleanup fails.
-- `UpdateService`: task definition, network configuration, public IP,
-  load balancer changes, and ECS Exec enablement.
-- `CreateCluster` / `UpdateCluster` (deployment only): ECS Exec logging must
-  remain `OVERRIDE` to the protected diagnostic group. Alert on unexpected mode,
-  destination, or encryption changes, not ordinary cluster setting updates.
-- `StopServiceDeployment`: target service/deployment, stop type, and the previous
-  revision restored by rollback.
-- `SetDesiredCapacity`, `SetInstanceHealth`, `CancelInstanceRefresh`: target group,
-  requested capacity, instance health transition, or interrupted rollout.
-- `RegisterScalableTarget`, `PutScalingPolicy`: cluster/service resource ID,
-  minimum/maximum capacity, suspended scaling, target values, and cooldowns.
-- Lambda concurrency changes: function, alias/version, requested capacity, zero
-  concurrency, and removal of limits. Consider the shared regional capacity pool.
-- `DisableRule`, `EnableRule`: exact job and whether it remains disabled longer
-  than intended.
-- `UpdateAutoScalingGroup` (deployment only): launch template/configuration,
-  instance types, subnets, and minimum/maximum capacity.
-- `ModifyDBInstance` (deployment only): master credential management, public
-  accessibility, security groups, deletion protection, and other connectivity changes.
-- `PutBucketLifecycleConfiguration`: any new or shortened current version or
-  noncurrent version expiration.
-- `PutBucketPolicy` and `PutKeyPolicy`: new external principals, wildcard
-  principals, or loss of the customer recovery principal.
-- Runtime `CreateRole` and `UpdateAssumeRolePolicy`: expected AWS service or
-  exact internal invocation principal, plus trust required by enabled features. Flag
-  unexpected human principals, accounts, or broadened trust conditions.
-- `CreateGrant`: unexpected grantees, operations, or absence of a matching
-  service provisioning operation. A grant created by an AWS service is expected;
-  arbitrary direct grant creation is not.
-- `AssumeRole` by a runtime identity: source workload role, exact destination
-  role ARN and account, internal invocation path or enabled integration, and
-  activity under the resulting destination session. Internal quarantine and
-  AI Proxy invocation should originate from the API handler for that data plane.
-- Security control update APIs: disabling a GuardDuty detector, narrowing Config
-  recording, disabling Security Hub controls, changing CloudTrail collection, or
-  adding an Access Analyzer archive rule can weaken detection without deletion.
+SSM and ECS Exec write to
+`/braintrust-byoc/<BOOTSTRAP_NAME>/diagnostics` in the BYOC account, using
+default CloudWatch encryption and 90-day retention. Braintrust's bootstrap
+and module configure collection; customers do not need to build this destination.
+We use standard SSM shells, not SSH or port forwarding.
 
-## Response expectations
+CloudTrail is the API audit trail, not the shell transcript. Operation records
+describe authorization, expiry, and outcomes; they are not transcripts either.
+A privileged shell can interfere with capture. Customer-controlled
+[CloudWatch Logs centralization](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html)
+to a separate archive preserves delivered evidence, but cannot prevent missing
+capture at the source.
 
-1. Preserve the event and surrounding session activity in the customer archive.
-2. Stop new sessions and revoke existing sessions for the affected Braintrust
-   role if activity is unexplained or ongoing.
-3. Determine whether protected data, credentials, networking, or retention was
-   affected.
-4. Coordinate with Braintrust to restore intended configuration through the
-   deployment workflow.
-5. Braintrust reconciles lasting Support changes into Terraform and records the
-   outcome.
+## Detection implementation
 
-See AWS documentation for [CloudTrail event types](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-events.html)
-and [CloudTrail data events](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/logging-data-events-with-cloudtrail.html).
+Use the customer's SIEM, EventBridge, or existing alerting pipeline.
+The example below uses CloudWatch Logs filter syntax and requires trail delivery
+to CloudWatch; it is an optional starting point, not a required implementation.
 
-Verify delivery using both allowed and denied test requests. CloudTrail coverage
-varies by service and rejection path; an alert rule is not evidence that every
-denied request will produce an event. CloudTrail is an API audit trail, not a
-record of commands inside a shell. The bootstrap/module must configure the
-diagnostic CloudWatch log group in the customer account and session logging;
-customers do not need to build that destination themselves. This model uses
-logged Session Manager shells and ECS Exec, not SSH or port forwarding sessions.
-Kubernetes API auditing and session handling are separate future implementation work.
+```text
+{ ($.userIdentity.sessionContext.sessionIssuer.userName = "Braintrust*Role-*") && (($.eventName = "StartSession") || ($.eventName = "ExecuteCommand") || ($.eventName = "SendCommand")) }
+```
+
+This filter identifies candidate events, not whether access was authorized.
+Correlate SourceIdentity, exact target, and the recorded window. Match the exact
+bootstrap when implementing a deployment-specific rule. Test delivery and
+detection with safe requests before relying on it.
+
+On unexplained activity, preserve evidence, block new assumptions, revoke issued
+sessions, and terminate active connections using independent customer access.
+Coordinate recovery with Braintrust; lasting configuration changes go through
+the deployment workflow. See [customer revocation](../diagnostics.md#customer-revocation).
+
+References: [CloudTrail event coverage](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-events.html),
+[data events](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/logging-data-events-with-cloudtrail.html),
+[filter syntax](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html).
