@@ -10,6 +10,8 @@ run "gateway_registers_direct_customer_targets" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                    = "vpc-0123456789abcdef0"
@@ -65,6 +67,8 @@ run "loop_runtime_registers_direct_customer_targets" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                         = "bt-test"
     kms_key_arn                             = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
     vpc_id                                  = "vpc-11111111111111111"

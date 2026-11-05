@@ -65,8 +65,8 @@ resource "aws_launch_template" "brainstore_automation_writer" {
     brainstore_cache_file_size                    = local.brainstore_automation_writer_cache_file_size
     skip_pg_for_brainstore_objects                = var.skip_pg_for_brainstore_objects
     ai_proxy_url_ssm_parameter                    = var.ai_proxy_url_ssm_parameter
-    redis_url_secret_arn            = var.redis_url_secret_arn
-    redis_url_secret_version_id     = var.redis_url_secret_version_id
+    redis_url_secret_arn                          = var.redis_url_secret_arn
+    redis_url_secret_version_id                   = var.redis_url_secret_version_id
   }))
 
   tags = merge({

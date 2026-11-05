@@ -24,7 +24,7 @@ locals {
     var.cache_file_size_automation_writer != null ? var.cache_file_size_automation_writer : "${floor(data.aws_ec2_instance_type.brainstore_automation_writer[0].total_instance_storage * 0.75)}gb"
   ) : null
 
-  brainstore_default_env_vars = var.internal_observability_api_key_secret_arn != "" ? { BRAINSTORE_OTLP_TELEMETRY = "metrics" } : {}
+  brainstore_default_env_vars = var.internal_observability_enabled ? { BRAINSTORE_OTLP_TELEMETRY = "metrics" } : {}
 
   # Automation writers handle automations. Other writer-capable nodes handle
   # every writer loop except automations while the automation-writer pool is on.
@@ -48,7 +48,7 @@ module "datadog_agent_telemetry" {
     automation_writer = local.brainstore_automation_writer_extra_env_vars
   }
 
-  env_vars = var.internal_observability_api_key_secret_arn != "" ? merge({ BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry }, local.brainstore_default_env_vars, each.value) : {}
+  env_vars = var.internal_observability_enabled ? merge({ BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry }, local.brainstore_default_env_vars, each.value) : {}
 }
 
 resource "aws_launch_template" "brainstore" {

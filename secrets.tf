@@ -61,3 +61,17 @@ resource "aws_secretsmanager_secret_version" "brainstore_license_key" {
   secret_id     = aws_secretsmanager_secret.brainstore_license_key[0].id
   secret_string = var.brainstore_license_key
 }
+
+# Read version metadata only. The existing license value stays outside Terraform state.
+data "aws_secretsmanager_secret_versions" "brainstore_license_key" {
+  count = !var.use_deployment_mode_external_eks && local.use_existing_brainstore_license_secret ? 1 : 0
+
+  secret_id = var.brainstore_license_key_secret_arn
+
+  lifecycle {
+    postcondition {
+      condition     = length([for version in self.versions : version.version_id if contains(version.version_stages, "AWSCURRENT")]) == 1
+      error_message = "The existing license secret must have exactly one AWSCURRENT version."
+    }
+  }
+}

@@ -733,13 +733,29 @@ variable "extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
   }
 }
 
-variable "brainstore_license_key" {
+variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "License key for the Brainstore instance. Passed to the API container for telemetry authorization and status/metrics reporting."
+  description = "Secrets Manager secret ARN for the Brainstore license."
+
+  validation {
+    condition     = var.brainstore_license_key_secret_arn == null ? false : trimspace(var.brainstore_license_key_secret_arn) != ""
+    error_message = "Provide brainstore_license_key_secret_arn for the license."
+  }
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "License secret version ID. A version change forces a new task revision and service deployment."
+  default     = ""
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
   default     = null
 }
 

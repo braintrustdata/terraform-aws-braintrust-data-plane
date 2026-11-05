@@ -135,6 +135,16 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
           ))
         }
       ],
+      var.brainstore_license_key_kms_key_arn == null ? [] : [{
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = var.brainstore_license_key_kms_key_arn
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
+      }],
       var.brainstore_custom_ca_bundle_kms_key_arn == null ? [] : [
         {
           Effect   = "Allow"

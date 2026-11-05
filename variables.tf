@@ -729,7 +729,7 @@ variable "ai_gateway_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key or brainstore_license_key_secret_arn."
   }
 }
 
@@ -1340,7 +1340,7 @@ variable "braintrust_api_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key or brainstore_license_key_secret_arn."
   }
 }
 
@@ -1778,9 +1778,39 @@ variable "brainstore_port" {
 
 variable "brainstore_license_key" {
   type        = string
-  description = "The license key for the Brainstore instance"
+  description = "License value for a module-managed secret. An existing brainstore_license_key_secret_arn takes precedence."
   default     = null
   sensitive   = true
+
+  validation {
+    condition = var.use_deployment_mode_external_eks || (
+      try(trimspace(var.brainstore_license_key), "") != "" ||
+      try(trimspace(var.brainstore_license_key_secret_arn), "") != ""
+    )
+    error_message = "Provide a nonempty brainstore_license_key or an existing brainstore_license_key_secret_arn. External EKS uses Helm for license delivery."
+  }
+}
+
+variable "brainstore_license_key_secret_arn" {
+  type        = string
+  description = "Existing Secrets Manager secret ARN for the license. The secret must contain the license as a plain string."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_license_key_secret_arn == null ? true : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[0-9]{12}:secret:.+$", var.brainstore_license_key_secret_arn))
+    error_message = "brainstore_license_key_secret_arn must be null or a Secrets Manager secret ARN."
+  }
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret. Leave null for the default Secrets Manager key."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_license_key_kms_key_arn == null || var.brainstore_license_key_secret_arn != null
+    error_message = "Set brainstore_license_key_secret_arn before brainstore_license_key_kms_key_arn."
+  }
 }
 
 variable "brainstore_version_override" {

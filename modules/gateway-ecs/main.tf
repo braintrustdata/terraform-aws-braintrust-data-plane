@@ -60,20 +60,14 @@ locals {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
     } : {},
   )
-  # Use the plan-known enable flag (not the computed secret ARN) so count/for_each stay known during plan.
-  license_key_enabled = var.brainstore_license_key_enabled
-  merged_env_vars     = merge(local.base_env_vars, var.extra_env_vars)
+  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
   # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
   # Format: arn:...:secret:name:json-key:version-stage:version-id
   # Empty json-key = full secret string; empty stage pins by version-id only.
-  gateway_secrets = concat(
-    local.license_key_enabled ? [
-      {
-        name      = "BRAINSTORE_LICENSE_KEY"
-        valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
-      }
-    ] : [],
-  )
+  gateway_secrets = [{
+    name      = "BRAINSTORE_LICENSE_KEY"
+    valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+  }]
 
   gateway_container_definition = {
     name      = local.container_name
@@ -331,8 +325,6 @@ resource "aws_iam_role_policy" "task_execution_custom_ca_bundle_secret" {
 }
 
 resource "aws_iam_role_policy" "task_execution_secrets" {
-  count = local.observability_enabled || local.license_key_enabled ? 1 : 0
-
   name = "${var.deployment_name}-gateway-task-exec-secrets"
   role = aws_iam_role.task_execution.id
 
@@ -346,7 +338,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         ]
         Resource = compact([
           local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
-          local.license_key_enabled ? var.brainstore_license_key_secret_arn : "",
+          var.brainstore_license_key_secret_arn,
         ])
       },
       {
@@ -354,7 +346,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Action = [
           "kms:Decrypt",
         ]
-        Resource = var.kms_key_arn
+        Resource = concat([var.kms_key_arn], var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn])
         Condition = {
           StringEquals = {
             "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"

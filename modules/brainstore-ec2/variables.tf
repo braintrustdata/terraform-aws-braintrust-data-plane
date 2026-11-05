@@ -156,7 +156,7 @@ variable "monitoring_telemetry" {
 
 variable "internal_observability_api_key_secret_arn" {
   type        = string
-  description = "ARN of the Secrets Manager secret containing the Datadog API key. Empty disables the Datadog agent on Brainstore instances."
+  description = "Secret ARN for the Datadog API key. internal_observability_enabled controls the Datadog agent."
   default     = ""
 }
 
@@ -305,4 +305,10 @@ variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
   default     = "/locks"
+}
+
+variable "internal_observability_enabled" {
+  type        = bool
+  description = "Enable internal observability with a value known at plan time."
+  default     = false
 }

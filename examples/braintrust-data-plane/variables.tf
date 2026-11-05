@@ -1,10 +1,18 @@
 variable "brainstore_license_key" {
-  description = "The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > Data Plane."
+  description = "License value for a module-managed secret. An existing secret ARN takes precedence."
   type        = string
+  default     = null
   sensitive   = true
-  validation {
-    condition     = var.brainstore_license_key != null && var.brainstore_license_key != ""
-    error_message = "The brainstore_license_key must be set."
-  }
 }
 
+variable "brainstore_license_key_secret_arn" {
+  description = "Existing Secrets Manager secret ARN for the plain license string."
+  type        = string
+  default     = null
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  description = "Customer-managed KMS key ARN for the existing license secret."
+  type        = string
+  default     = null
+}

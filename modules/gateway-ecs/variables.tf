@@ -262,22 +262,26 @@ variable "custom_tags" {
   default     = {}
 }
 
-variable "brainstore_license_key_enabled" {
-  type        = bool
-  description = "Whether to inject BRAINSTORE_LICENSE_KEY from Secrets Manager. Must be a plan-known boolean (do not derive from the secret ARN)."
-  default     = false
-}
-
 variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "ARN of the Secrets Manager secret containing the Brainstore license key."
-  default     = ""
+  description = "Secrets Manager secret ARN for the Brainstore license."
+
+  validation {
+    condition     = var.brainstore_license_key_secret_arn == null ? false : trimspace(var.brainstore_license_key_secret_arn) != ""
+    error_message = "Provide brainstore_license_key_secret_arn for the license."
+  }
 }
 
 variable "brainstore_license_key_secret_version" {
   type        = string
-  description = "Version ID of the license key secret. Included in the task definition so rotating the key forces a new revision and service rollout."
+  description = "License secret version ID. A version change forces a new task revision and service deployment."
   default     = ""
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
+  default     = null
 }
 
 variable "cpu_architecture" {

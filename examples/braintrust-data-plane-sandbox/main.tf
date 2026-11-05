@@ -79,8 +79,12 @@ module "braintrust-data-plane" {
   DANGER_disable_database_deletion_protection = true
 
   ### Brainstore configuration
-  # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > Data Plane.
-  brainstore_license_key = var.brainstore_license_key
+  # The license key for the Brainstore. You can get this from the Braintrust UI in Settings > API URL.
+  # This can be provided as a plaintext string which will be stored in the AWS Secrets Manager as a new secret,
+  # or as a secret ARN which will be used to retrieve an existing secret from the AWS Secrets Manager.
+  brainstore_license_key             = var.brainstore_license_key
+  brainstore_license_key_secret_arn  = var.brainstore_license_key_secret_arn
+  brainstore_license_key_kms_key_arn = var.brainstore_license_key_kms_key_arn
 
   # Single reader and writer, downsized for sandbox.
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.

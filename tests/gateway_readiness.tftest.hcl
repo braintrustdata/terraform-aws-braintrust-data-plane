@@ -56,4 +56,8 @@ run "gateway_waits_for_healthy_deployment" {
     condition     = output.gateway_url == "http://gateway.internal"
     error_message = "The readiness output must preserve the gateway endpoint."
   }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  }
 }

@@ -43,6 +43,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           ],
           var.custom_ca_bundle_secret_arn == null ? [] : [var.custom_ca_bundle_secret_arn],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
+          [var.brainstore_license_key_secret_arn],
         )
       },
       {
@@ -53,6 +54,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Resource = concat(
           [var.kms_key_arn],
           var.custom_ca_bundle_kms_key_arn == null ? [] : [var.custom_ca_bundle_kms_key_arn],
+          var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn],
         )
         Condition = {
           StringEquals = {

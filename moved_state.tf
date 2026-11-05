@@ -375,5 +375,5 @@ moved {
 # No-op when observability was never enabled (resource absent from state).
 moved {
   from = module.gateway_ecs[0].aws_iam_role_policy.task_execution_observability_secrets[0]
-  to   = module.gateway_ecs[0].aws_iam_role_policy.task_execution_secrets[0]
+  to   = module.gateway_ecs[0].aws_iam_role_policy.task_execution_secrets
 }

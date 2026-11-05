@@ -36,6 +36,38 @@ The default configuration is a large production-sized deployment. Please conside
 
 Before the first deployment in a new AWS account, run `./scripts/create-service-linked-roles.sh` with credentials for that account. When creating a KMS key, the module reads `AWSServiceRoleForAutoScaling` during planning and fails if it is missing; the Terraform identity needs `iam:GetRole` for that role. The role remains account-owned and is not created or deleted by this module. Supplying an existing `kms_key_arn` skips this module-managed KMS check; the key owner remains responsible for its Auto Scaling permissions.
 
+## Brainstore license secret
+
+The module uses one license secret for Brainstore EC2, API ECS, Gateway ECS, and Loop runtime.
+An existing secret takes precedence over `brainstore_license_key`.
+The module does not change or delete an existing secret.
+
+```hcl
+brainstore_license_key_secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:brainstore-license-AbCdEf"
+brainstore_license_key_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+```
+
+The existing secret must contain the license as a plain string and have one `AWSCURRENT` version.
+The secret must use the deployment region.
+The KMS input is optional when the secret uses the default Secrets Manager key.
+
+Terraform reads version metadata with `secretsmanager:ListSecretVersionIds`. It does not read the existing license value.
+
+Runtime roles receive access to the secret and the supplied KMS key.
+For cross-account secrets, the caller controls the secret resource policy and KMS key policy.
+
+Without an existing secret ARN, the module stores `brainstore_license_key` in a new secret under the deployment KMS key.
+This path retains the supplied value in Terraform state.
+
+ECS uses native secret injection. Brainstore fetches the value at startup.
+With an existing secret, this module keeps the value outside Terraform state.
+
+A Terraform apply after a license rotation updates the pinned version in each consumer.
+The version change triggers ECS deployments and Brainstore instance refreshes.
+A secret rotation alone does not update tasks or instances before that apply.
+
+External EKS creates no license secret because Helm owns license delivery.
+
 ## Module Configuration
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).

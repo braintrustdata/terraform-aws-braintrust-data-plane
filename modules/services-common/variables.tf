@@ -214,3 +214,9 @@ variable "diagnostics_transcript_log_group_name" {
     error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
   }
 }
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
+  default     = null
+}

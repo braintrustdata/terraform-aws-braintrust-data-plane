@@ -141,11 +141,7 @@ locals {
     } : {},
   )
 
-  plain_license_env_var = var.brainstore_license_key == null ? {} : {
-    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-  }
-
-  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
@@ -211,6 +207,10 @@ locals {
           valueFrom = var.function_tools_secret_arn
         }
       ],
+      [{
+        name      = "BRAINSTORE_LICENSE_KEY"
+        valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+      }],
       var.custom_ca_bundle_secret_arn == null ? [] : [
         {
           name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
