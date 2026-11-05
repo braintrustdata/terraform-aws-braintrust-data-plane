@@ -1,6 +1,7 @@
 # Bring your own cloud (BYOC)
 
 [Braintrust BYOC](https://docs.braintrust.dev/admin/deployment/byoc) lets customers run the Braintrust data plane inside a dedicated customer AWS account while Braintrust manages deployment and ongoing operation with the customer's approval and security controls.
+
 ## Deployment sequence
 
 ### 1. Agree on the deployment design
