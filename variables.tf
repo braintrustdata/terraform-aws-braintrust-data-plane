@@ -729,7 +729,7 @@ variable "ai_gateway_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
   }
 }
 
@@ -1340,7 +1340,7 @@ variable "braintrust_api_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
   }
 }
 
@@ -1778,8 +1778,30 @@ variable "brainstore_port" {
 
 variable "brainstore_license_key" {
   type        = string
-  description = "The license key for the Brainstore instance"
+  description = "License value for a module-managed secret. existing_brainstore_license_key_secret takes precedence when supplied."
   default     = null
+  sensitive   = true
+
+  validation {
+    condition = var.use_deployment_mode_external_eks || var.existing_brainstore_license_key_secret != null || (
+      try(trimspace(var.brainstore_license_key), "") != ""
+    )
+    error_message = "Provide a nonempty brainstore_license_key or existing_brainstore_license_key_secret. External EKS uses Helm for license delivery."
+  }
+}
+
+variable "existing_brainstore_license_key_secret" {
+  description = "Existing license secret and optional KMS key. The module does not change or delete this secret."
+  type = object({
+    arn         = string
+    kms_key_arn = optional(string)
+  })
+  default = null
+
+  validation {
+    condition     = var.existing_brainstore_license_key_secret == null ? true : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[0-9]{12}:secret:.+$", var.existing_brainstore_license_key_secret.arn))
+    error_message = "existing_brainstore_license_key_secret.arn must be a Secrets Manager secret ARN."
+  }
 }
 
 variable "brainstore_version_override" {
@@ -2068,6 +2090,7 @@ variable "internal_observability_api_key" {
   type        = string
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = ""
+  sensitive   = true
 }
 
 variable "internal_observability_env_name" {

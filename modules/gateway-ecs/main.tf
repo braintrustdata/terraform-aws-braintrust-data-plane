@@ -9,13 +9,17 @@ locals {
     hardLimit = 1048576
   }]
 
-  container_name           = "gateway"
-  container_port           = 8080
-  observability_enabled    = var.internal_observability_enabled
-  gateway_version_tag      = element(reverse(split(":", var.container_image)), 0)
-  unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
-  url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
-  url_security_allow_cidrs = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  container_name        = "gateway"
+  container_port        = 8080
+  observability_enabled = var.internal_observability_enabled
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}:::${var.internal_observability_api_key_secret_version}"
+  gateway_version_tag              = element(reverse(split(":", var.container_image)), 0)
+  unsafe_url_request_mode          = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
+  url_security_dns_servers         = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
+  url_security_allow_cidrs         = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
   url_security_env_vars = merge(
     local.unsafe_url_request_mode != "" ? {
       BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
@@ -56,10 +60,14 @@ locals {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
     } : {},
   )
-  plain_license_env_var = var.brainstore_license_key == null ? {} : {
-    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-  }
-  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
+  gateway_secrets = [{
+    name      = "BRAINSTORE_LICENSE_KEY"
+    valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+  }]
 
   gateway_container_definition = {
     name      = local.container_name
@@ -80,6 +88,7 @@ locals {
       }
     ]
     secrets = concat(
+      local.gateway_secrets,
       var.custom_ca_bundle_secret_arn == null ? [] : [{
         name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
         valueFrom = var.custom_ca_bundle_secret_arn
@@ -156,7 +165,7 @@ locals {
         secrets = [
           {
             name      = "DD_API_KEY"
-            valueFrom = var.internal_observability_api_key_secret_arn
+            valueFrom = local.observability_api_key_value_from
           }
         ]
         healthCheck = {
@@ -315,10 +324,8 @@ resource "aws_iam_role_policy" "task_execution_custom_ca_bundle_secret" {
   })
 }
 
-resource "aws_iam_role_policy" "task_execution_observability_secrets" {
-  count = local.observability_enabled ? 1 : 0
-
-  name = "${var.deployment_name}-gateway-task-exec-observability-secrets"
+resource "aws_iam_role_policy" "task_execution_secrets" {
+  name = "${var.deployment_name}-gateway-task-exec-secrets"
   role = aws_iam_role.task_execution.id
 
   policy = jsonencode({
@@ -329,14 +336,17 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
         Action = [
           "secretsmanager:GetSecretValue",
         ]
-        Resource = var.internal_observability_api_key_secret_arn
+        Resource = compact([
+          local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
+          var.brainstore_license_key_secret_arn,
+        ])
       },
       {
         Effect = "Allow"
         Action = [
           "kms:Decrypt",
         ]
-        Resource = var.kms_key_arn
+        Resource = concat([var.kms_key_arn], var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn])
         Condition = {
           StringEquals = {
             "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
@@ -424,6 +434,9 @@ resource "aws_ecs_task_definition" "gateway" {
 
   container_definitions = jsonencode(concat([local.gateway_container_definition], local.observability_sidecars))
 
+  # Ensure GetSecretValue is granted before a revision that references secrets is registered.
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
+
   tags = merge({
     Name = "${var.deployment_name}-gateway"
   }, local.common_tags)
@@ -487,6 +500,7 @@ resource "aws_ecs_service" "gateway" {
   depends_on = [
     terraform_data.gateway_http_listener,
     aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups,
+    aws_iam_role_policy.task_execution_secrets,
   ]
 
   lifecycle {

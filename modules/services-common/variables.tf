@@ -41,6 +41,18 @@ variable "brainstore_custom_ca_bundle_kms_key_arn" {
   default     = null
 }
 
+variable "brainstore_license_key_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key. Empty when unused."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the Datadog API key. Empty when unused."
+  default     = ""
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
@@ -201,4 +213,10 @@ variable "diagnostics_transcript_log_group_name" {
     condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
     error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
   }
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
+  default     = null
 }

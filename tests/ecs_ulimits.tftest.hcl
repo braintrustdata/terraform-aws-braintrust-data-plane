@@ -14,6 +14,8 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                       = "bt-test"
     kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                = "vpc-0123456789abcdef0"
@@ -146,6 +148,8 @@ run "gateway_containers_have_one_million_nofile_limit" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                    = "vpc-0123456789abcdef0"
@@ -205,6 +209,8 @@ run "gateway_skips_redis_secrets_when_extra_env_overrides" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                = "bt-test"
     kms_key_arn                    = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                         = "vpc-0123456789abcdef0"
@@ -261,6 +267,8 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                    = "vpc-0123456789abcdef0"

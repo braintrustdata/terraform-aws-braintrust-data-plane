@@ -60,4 +60,8 @@ run "serves_sandbox_egress_gateway" {
     )
     error_message = "Only authorized egress gateway security groups may reach the tasks on port 4002."
   }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  }
 }

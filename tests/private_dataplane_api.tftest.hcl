@@ -113,6 +113,8 @@ run "private_api_listener_and_admission" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     enable_private_dataplane = true
     alb_custom_domain        = "api.example.internal"
     alb_certificate_arn      = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -200,6 +202,10 @@ run "public_api_has_no_private_callback_listener" {
     )
     error_message = "Public mode must retain the background API proxy routes and omit internal service routes."
   }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  }
 }
 
 run "private_ssm_url_uses_aws_dns_without_customer_dns" {
@@ -214,6 +220,8 @@ run "private_ssm_url_uses_aws_dns_without_customer_dns" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     enable_private_dataplane = true
     alb_custom_domain        = "api.example.internal"
     alb_certificate_arn      = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -253,6 +261,8 @@ run "private_listeners_bypass_api_proxies" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     enable_private_dataplane = true
     enable_loop_runtime      = true
   }
@@ -334,6 +344,8 @@ run "private_mode_without_loop_omits_loop_targets" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     enable_private_dataplane = true
     enable_loop_runtime      = false
   }

@@ -152,6 +152,29 @@ def check_graph(dot):
             if not dependency_path(graph, caller, dependency):
                 errors.append(f"Direct ingress must precede ECS registration: {caller} -> {dependency}")
 
+    brainstore_policies = [
+        node("module.services_common.aws_iam_role_policy.brainstore_secrets_access"),
+        node("module.services_common.aws_iam_role_policy.brainstore_kms_policy"),
+        node("module.brainstore.aws_iam_role_policy.brainstore_redis_secret_access"),
+    ]
+    for fleet in ["brainstore", "brainstore_writer", "brainstore_fast_reader", "brainstore_automation_writer"]:
+        template = node(f"module.brainstore.aws_launch_template.{fleet}")
+        for policy in brainstore_policies:
+            if not dependency_path(graph, template, policy):
+                errors.append(f"Brainstore startup must wait for its secret permissions: {template} -> {policy}")
+
+    api_policy = node("module.services_common.aws_iam_role_policy_attachment.api_handler_additional_policy")
+    for lookup in [
+        "data.aws_ami.ubuntu_24_04",
+        "data.aws_ec2_instance_type.brainstore",
+        "data.aws_ec2_instance_type.brainstore_writer",
+        "data.aws_ec2_instance_type.brainstore_fast_reader",
+        "data.aws_ec2_instance_type.brainstore_automation_writer",
+    ]:
+        caller = node(f"module.brainstore.{lookup}")
+        if dependency_path(graph, caller, api_policy):
+            errors.append(f"Brainstore data lookups must not wait for unrelated API policies: {caller}")
+
     if errors:
         raise ValueError("\n\n".join(errors))
 

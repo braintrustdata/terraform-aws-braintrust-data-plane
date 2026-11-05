@@ -11,6 +11,16 @@ output "brainstore_iam_role_arn" {
 output "brainstore_iam_role_name" {
   description = "The name of the IAM role for Brainstore instances (supports EC2, EKS Pod Identity, and IRSA)"
   value       = aws_iam_role.brainstore_role.name
+
+  # Instance profiles require these permissions before Brainstore starts.
+  depends_on = [
+    aws_iam_role_policy.brainstore_secrets_access,
+    aws_iam_role_policy.brainstore_kms_policy,
+    aws_iam_role_policy.brainstore_s3_access,
+    aws_iam_role_policy.brainstore_ssm_parameter_access,
+    aws_iam_role_policy.brainstore_cloudwatch_logs_access,
+    aws_iam_role_policy.brainstore_cloudwatch_metrics,
+  ]
 }
 
 output "api_handler_role_arn" {

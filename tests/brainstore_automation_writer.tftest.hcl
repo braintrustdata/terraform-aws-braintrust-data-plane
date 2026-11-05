@@ -26,7 +26,8 @@ mock_provider "aws" {
 
 variables {
   deployment_name                       = "bt-automation-writer"
-  license_key                           = "test-license"
+  license_key_secret_arn                = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  license_key_secret_version            = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
   kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
   vpc_id                                = "vpc-12345678"
   private_subnet_ids                    = ["subnet-12345678", "subnet-23456789", "subnet-34567890"]

@@ -134,12 +134,18 @@ run "api_services_scale_on_memory" {
     )
     error_message = "Memory scaling must use the service's existing target, configured utilization and cooldowns, with scale-in enabled."
   }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  }
 }
 
 run "rejects_braintrust_api_invalid_memory_target" {
   command = plan
   module { source = "./modules/api-ecs" }
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     braintrust_api_memory_autoscaling = {
       target_value       = 101
       scale_in_cooldown  = 300
@@ -154,6 +160,8 @@ run "rejects_braintrust_api_ingest_invalid_memory_target" {
   command = plan
   module { source = "./modules/api-ecs" }
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     braintrust_api_ingest_memory_autoscaling = {
       target_value       = 101
       scale_in_cooldown  = 300
@@ -168,6 +176,8 @@ run "rejects_braintrust_api_background_invalid_memory_target" {
   command = plan
   module { source = "./modules/api-ecs" }
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     braintrust_api_background_memory_autoscaling = {
       target_value       = 101
       scale_in_cooldown  = 300

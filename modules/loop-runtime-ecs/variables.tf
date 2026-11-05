@@ -277,9 +277,25 @@ variable "ai_proxy_url" {
   description = "Model proxy URL for the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL). Root module sets this to the private gateway /v1/proxy when enable_ai_gateway; otherwise hosted gateway or CloudFront API /v1/proxy."
 }
 
-variable "brainstore_license_key" {
+variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "Brainstore license key (plain env)."
+  description = "Secrets Manager secret ARN for the Brainstore license."
+
+  validation {
+    condition     = var.brainstore_license_key_secret_arn == null ? false : trimspace(var.brainstore_license_key_secret_arn) != ""
+    error_message = "Provide brainstore_license_key_secret_arn for the license."
+  }
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "License secret version ID. A version change forces a new task revision and service deployment."
+  default     = ""
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
   default     = null
 }
 
@@ -331,7 +347,7 @@ variable "extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
   }
 
   validation {
@@ -357,6 +373,12 @@ variable "internal_observability_enabled" {
 variable "internal_observability_api_key_secret_arn" {
   type        = string
   description = "Secrets Manager secret ARN containing the internal observability API key."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Datadog secret version ID. A version change forces a new task revision and service deployment."
   default     = ""
 }
 
