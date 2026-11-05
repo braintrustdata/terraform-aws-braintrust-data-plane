@@ -193,6 +193,8 @@ Choose the module version bump based on changes to both the Terraform module and
 - **Minor:** Increment the minor version for non-breaking changes in either the module or the Braintrust release, unless the release contains only documentation changes and backward-compatible bug fixes.
 - **Patch:** Increment the patch version when the release contains only documentation changes and backward-compatible bug fixes.
 
+Removing a top-level Terraform module input variable is a breaking change and requires a major version bump.
+
 Use the highest applicable version bump across all changes in the release. Reset the minor and patch versions to zero when incrementing the major version, and reset the patch version to zero when incrementing the minor version.
 
 ### Bump major when downgrade-after-apply is unsafe
