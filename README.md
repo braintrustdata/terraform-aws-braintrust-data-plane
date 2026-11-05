@@ -280,6 +280,28 @@ This module creates two VPCs by default, three if Loop is enabled:
 - `main` VPC: This is the main VPC that contains the Braintrust services.
 - `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
 
+
+For module-managed Lambda/ECS deployments, `enable_quarantine_destroy_cleanup`
+opts into cleanup of generated quarantine functions during Terraform destroy.
+It defaults to false and requires a published warmup bundle supporting the
+`quarantine-cleanup` lifecycle event. Publish that bundle, select its services
+version, then apply with cleanup enabled before attempting destroy. Initialization
+checks the handler's response before runtime consumers can use the binding.
+
+The native AWS provider invocation runs cleanup after runtime consumers are
+removed and before its Lambda, IAM role, and network dependencies are deleted.
+The handler checks the exact execution role and VPC/subnet/security-group scope,
+function provenance, and published versions. It refuses live API/ECS consumers.
+Terraform waits for AWS to release ENIs; cleanup never force-detaches interfaces.
+Failures stop teardown and require inspection and a fresh retry.
+
+This adds no provider or Terraform runner dependency. External EKS workloads
+remain manually coordinated. Do not disable the hook or downgrade to an
+unsupported handler while runtime consumers remain live. The hook cannot be
+replaced safely with a live namespace; ordinary bundle updates revalidate it
+without requesting cleanup. RDS deletion protection and retained-data decisions
+remain separate reviewed settings.
+
 #### VPC endpoints
 
 The module creates these AWS service endpoints in VPCs it manages:

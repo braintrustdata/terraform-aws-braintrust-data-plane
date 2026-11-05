@@ -11,6 +11,7 @@ resource "aws_lambda_function" "quarantine_pruner" {
 
   depends_on = [
     aws_lambda_invocation.invoke_database_migration,
+    aws_lambda_invocation.quarantine_cleanup,
     # VPC ENI permissions must be attached before the function config is updated.
     aws_iam_role_policy_attachment.quarantine_pruner_vpc_access,
   ]

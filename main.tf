@@ -490,6 +490,7 @@ module "services" {
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
+  enable_quarantine_destroy_cleanup             = var.enable_quarantine_destroy_cleanup
 }
 
 module "ecs" {
@@ -820,7 +821,7 @@ module "api_ecs" {
     local.quarantine_vpc_private_subnet_3_id
   ] : []
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
-  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
+  quarantine_function_role_arn        = var.enable_quarantine_destroy_cleanup ? module.services[0].quarantine_function_role_arn : module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
   quarantine_proxy_url                = var.enable_private_dataplane ? null : local.api_ecs_quarantine_proxy_url
 

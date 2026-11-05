@@ -143,6 +143,11 @@ module "braintrust-data-plane" {
   # You might need to adjust this so it does not conflict with any other VPC CIDR blocks you intend to peer with Braintrust
   # quarantine_vpc_cidr                   = "10.175.8.0/21"
 
+  # After selecting a published services bundle that supports quarantine cleanup,
+  # set this to true and apply BEFORE destroy to remove generated UDF Lambdas.
+  # Requires quarantine networking and module-managed Lambda/ECS consumers.
+  # enable_quarantine_destroy_cleanup = false
+
   # SSM endpoints are created when enable_brainstore_ec2_ssm is true.
   # Set false only when SSM connectivity is provided separately.
   # create_ssm_vpc_endpoints = true

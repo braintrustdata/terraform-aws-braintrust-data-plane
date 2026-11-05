@@ -2220,3 +2220,13 @@ variable "diagnostics_transcript_log_group_name" {
     error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
   }
 }
+
+variable "enable_quarantine_destroy_cleanup" {
+  description = "Enable native generated-function cleanup on destroy. Requires a warmup Lambda bundle supporting the quarantine lifecycle contract."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.enable_quarantine_destroy_cleanup || (var.enable_quarantine_vpc && !var.use_deployment_mode_external_eks)
+    error_message = "Quarantine destroy cleanup requires module-managed runtime consumers and quarantine networking."
+  }
+}
