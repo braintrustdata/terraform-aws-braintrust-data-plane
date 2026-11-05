@@ -30,23 +30,22 @@ run "managed_license" {
 run "existing_license_with_loop" {
   command = plan
   variables {
-    brainstore_license_key_secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:existing-license"
-    brainstore_license_key_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/license"
-    enable_loop_runtime                = true
+    existing_brainstore_license_key_secret = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:existing-license", kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/license" }
+    enable_loop_runtime                    = true
   }
   assert {
-    condition     = length(aws_secretsmanager_secret.brainstore_license_key) == 0 && length(aws_secretsmanager_secret_version.brainstore_license_key) == 0 && local.brainstore_license_key_secret_arn == var.brainstore_license_key_secret_arn && local.brainstore_license_key_secret_version == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    condition     = length(aws_secretsmanager_secret.brainstore_license_key) == 0 && length(aws_secretsmanager_secret_version.brainstore_license_key) == 0 && local.brainstore_license_key_secret_arn == var.existing_brainstore_license_key_secret.arn && local.brainstore_license_key_secret_version == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     error_message = "An existing secret must supply its current version without a managed copy."
   }
 }
 run "existing_license_takes_precedence" {
   command = plan
   variables {
-    brainstore_license_key            = "ignored-license"
-    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:existing-license"
+    brainstore_license_key                 = "ignored-license"
+    existing_brainstore_license_key_secret = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:existing-license" }
   }
   assert {
-    condition     = !local.create_brainstore_license_secret && local.brainstore_license_key_secret_arn == var.brainstore_license_key_secret_arn
+    condition     = !local.create_brainstore_license_secret && local.brainstore_license_key_secret_arn == var.existing_brainstore_license_key_secret.arn
     error_message = "An existing secret must take precedence over a supplied license value."
   }
 }
@@ -67,19 +66,18 @@ run "whitespace_license_rejected" {
   variables { brainstore_license_key = "   " }
   expect_failures = [var.brainstore_license_key]
 }
-run "orphan_key_rejected" {
+run "invalid_secret_arn_rejected" {
   command = plan
   variables {
-    brainstore_license_key             = "test-license"
-    brainstore_license_key_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/license"
+    existing_brainstore_license_key_secret = { arn = "not-a-secret-arn" }
   }
-  expect_failures = [var.brainstore_license_key_kms_key_arn]
+  expect_failures = [var.existing_brainstore_license_key_secret]
 }
 
 run "existing_rotation_uses_new_current_version" {
   command = plan
   variables {
-    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:existing-license"
+    existing_brainstore_license_key_secret = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:existing-license" }
   }
   override_data {
     target = data.aws_secretsmanager_secret_versions.brainstore_license_key[0]
@@ -104,12 +102,12 @@ run "empty_license_rejected" {
 
 run "empty_secret_rejected" {
   command = plan
-  variables { brainstore_license_key_secret_arn = "" }
-  expect_failures = [var.brainstore_license_key_secret_arn]
+  variables { existing_brainstore_license_key_secret = { arn = "" } }
+  expect_failures = [var.existing_brainstore_license_key_secret]
 }
 
 run "whitespace_secret_rejected" {
   command = plan
-  variables { brainstore_license_key_secret_arn = "   " }
-  expect_failures = [var.brainstore_license_key_secret_arn]
+  variables { existing_brainstore_license_key_secret = { arn = "   " } }
+  expect_failures = [var.existing_brainstore_license_key_secret]
 }

@@ -87,10 +87,11 @@ locals {
   create_internal_observability_secret = local.enable_internal_observability && (
     local.create_ecs_api || local.create_ai_gateway || local.create_brainstore_ec2
   )
-  use_existing_brainstore_license_secret = var.brainstore_license_key_secret_arn != null
+  use_existing_brainstore_license_secret = var.existing_brainstore_license_key_secret != null
+  brainstore_license_key_kms_key_arn     = !var.use_deployment_mode_external_eks && local.use_existing_brainstore_license_secret ? var.existing_brainstore_license_key_secret.kms_key_arn : null
   create_brainstore_license_secret       = !var.use_deployment_mode_external_eks && !local.use_existing_brainstore_license_secret
   brainstore_license_key_secret_arn = !var.use_deployment_mode_external_eks ? (
-    local.use_existing_brainstore_license_secret ? var.brainstore_license_key_secret_arn : aws_secretsmanager_secret.brainstore_license_key[0].arn
+    local.use_existing_brainstore_license_secret ? var.existing_brainstore_license_key_secret.arn : aws_secretsmanager_secret.brainstore_license_key[0].arn
   ) : ""
   brainstore_license_key_secret_version = !var.use_deployment_mode_external_eks ? (
     local.use_existing_brainstore_license_secret ? one([
@@ -571,7 +572,7 @@ module "gateway_ecs" {
   custom_tags                           = local.all_custom_tags
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
-  brainstore_license_key_kms_key_arn    = var.brainstore_license_key_kms_key_arn
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
   enable_execute_command                = var.ai_gateway_enable_execute_command
   braintrust_app_url                    = var.ai_gateway_braintrust_app_url
   braintrust_api_url                    = local.internal_api_url
@@ -699,7 +700,7 @@ module "loop_runtime_ecs" {
 
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
-  brainstore_license_key_kms_key_arn    = var.brainstore_license_key_kms_key_arn
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
   monitoring_telemetry                  = var.monitoring_telemetry
 
   org_name        = var.braintrust_org_name
@@ -755,7 +756,7 @@ module "api_ecs" {
   skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
-  brainstore_license_key_kms_key_arn    = var.brainstore_license_key_kms_key_arn
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
 
   brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
 
@@ -903,7 +904,7 @@ module "services_common" {
   kms_key_arn                                = local.kms_key_arn
   database_secret_arn                        = local.postgres_credentials_secret_arn
   brainstore_license_key_secret_arn          = local.brainstore_license_key_secret_arn
-  brainstore_license_key_kms_key_arn         = var.brainstore_license_key_kms_key_arn
+  brainstore_license_key_kms_key_arn         = local.brainstore_license_key_kms_key_arn
   internal_observability_api_key_secret_arn  = local.internal_observability_api_key_secret_arn
   brainstore_custom_ca_bundle_secret_arn     = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_secret_arn : null
   brainstore_custom_ca_bundle_kms_key_arn    = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_kms_key_arn : null
@@ -1007,8 +1008,4 @@ module "brainstore" {
   cache_file_size_reader     = var.brainstore_cache_file_size_reader
   cache_file_size_writer     = var.brainstore_cache_file_size_writer
   locks_s3_path              = var.brainstore_locks_s3_path
-
-  # Ensure brainstore IAM GetSecretValue grants (license / observability / etc.)
-  # are applied before launch templates that fetch those secrets in user_data.
-  depends_on = [module.services_common]
 }

@@ -39,28 +39,38 @@ Before the first deployment in a new AWS account, run `./scripts/create-service-
 ## Brainstore license secret
 
 The module uses one license secret for Brainstore EC2, API ECS, Gateway ECS, and Loop runtime.
-An existing secret takes precedence over `brainstore_license_key`.
-The module does not change or delete an existing secret.
+A supplied `existing_brainstore_license_key_secret` object takes precedence over `brainstore_license_key`.
+The caller owns that secret and its value.
 
 ```hcl
-brainstore_license_key_secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:brainstore-license-AbCdEf"
-brainstore_license_key_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+existing_brainstore_license_key_secret = {
+  arn         = "arn:aws:secretsmanager:us-east-1:123456789012:secret:brainstore-license-AbCdEf"
+  kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+}
 ```
 
-The existing secret must contain the license as a plain string and have one `AWSCURRENT` version.
+The secret must contain the license as a plain string and have one `AWSCURRENT` version.
 The secret must use the deployment region.
-The KMS input is optional when the secret uses the default Secrets Manager key.
+`kms_key_arn` is optional when the secret uses the default Secrets Manager key.
+
+This example assumes that the version resource uses the secret ARN as its `secret_id`:
+
+```hcl
+existing_brainstore_license_key_secret = {
+  arn = aws_secretsmanager_secret_version.license.secret_id
+}
+```
 
 Terraform reads version metadata with `secretsmanager:ListSecretVersionIds`. It does not read the existing license value.
 
 Runtime roles receive access to the secret and the supplied KMS key.
 For cross-account secrets, the caller controls the secret resource policy and KMS key policy.
 
-Without an existing secret ARN, the module stores `brainstore_license_key` in a new secret under the deployment KMS key.
+Without a secret object, the module stores `brainstore_license_key` in a new secret under the deployment KMS key.
 This path retains the supplied value in Terraform state.
 
 ECS uses native secret injection. Brainstore fetches the value at startup.
-With an existing secret, this module keeps the value outside Terraform state.
+With a caller-owned secret, this module keeps the value outside Terraform state.
 
 A Terraform apply after a license rotation updates the pinned version in each consumer.
 The version change triggers ECS deployments and Brainstore instance refreshes.

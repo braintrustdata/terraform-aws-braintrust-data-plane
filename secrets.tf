@@ -66,7 +66,7 @@ resource "aws_secretsmanager_secret_version" "brainstore_license_key" {
 data "aws_secretsmanager_secret_versions" "brainstore_license_key" {
   count = !var.use_deployment_mode_external_eks && local.use_existing_brainstore_license_secret ? 1 : 0
 
-  secret_id = var.brainstore_license_key_secret_arn
+  secret_id = var.existing_brainstore_license_key_secret.arn
 
   lifecycle {
     postcondition {
