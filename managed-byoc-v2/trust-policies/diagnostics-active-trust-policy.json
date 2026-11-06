@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowNamedEngineersDuringWindow",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>"
+      },
+      "Action": [
+        "sts:AssumeRole",
+        "sts:SetSourceIdentity",
+        "sts:TagSession"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceIdentity": [
+            "<ENGINEER_SOURCE_IDENTITY>"
+          ]
+        },
+        "DateGreaterThanEquals": {
+          "aws:CurrentTime": "<DIAGNOSTICS_ACCESS_STARTS_AT>"
+        },
+        "DateLessThan": {
+          "aws:CurrentTime": "<DIAGNOSTICS_ACCESS_EXPIRES_AT>"
+        }
+      }
+    }
+  ]
+}

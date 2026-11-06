@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowExactHumanPrincipal",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_HUMAN_PRINCIPAL_ARN>"
+      },
+      "Action": [
+        "sts:AssumeRole",
+        "sts:SetSourceIdentity",
+        "sts:TagSession"
+      ],
+      "Condition": {
+        "Null": {
+          "aws:SourceIdentity": "false"
+        }
+      }
+    }
+  ]
+}

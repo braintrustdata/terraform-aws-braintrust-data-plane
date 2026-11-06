@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VerifyProtectedDiagnostics",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetDocument",
+        "ssm:DescribeDocument"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:document/BraintrustDiagnosticsShell-<BOOTSTRAP_NAME>"
+    },
+    {
+      "Sid": "VerifyDiagnosticAgents",
+      "Effect": "Allow",
+      "Action": "ssm:DescribeInstanceInformation",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageDiagnosticsTrust",
+      "Effect": "Allow",
+      "Action": "iam:UpdateAssumeRolePolicy",
+      "Resource": "<DIAGNOSTICS_ROLE_ARN>"
+    }
+  ]
+}

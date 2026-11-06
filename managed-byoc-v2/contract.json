@@ -1,0 +1,51 @@
+{
+  "schema_version": "braintrust.byoc.aws-bootstrap-contract/v1",
+  "profile": "customer",
+  "revision": "aws-customer-2026-11-06-preview.1",
+  "audience": "customer",
+  "status": "design-preview",
+  "deployment_ready": false,
+  "license_encryption": "aws/secretsmanager",
+  "default_deprovision_mode": "retain-data",
+  "allowed_deprovision_modes": [
+    "retain-data"
+  ],
+  "export_files": [
+    "README.md",
+    "contract.json",
+    "diagnostics.md",
+    "guardrails/README.md",
+    "guardrails/cloudtrail-alerting.md",
+    "guardrails/customer-service-control-policy.json",
+    "policies/README.md",
+    "policies/deployment-data-policy.json",
+    "policies/deployment-diagnostics-policy.json",
+    "policies/deployment-eks-policy.json",
+    "policies/deployment-infrastructure-policy.json",
+    "policies/deployment-workload-policy.json",
+    "policies/diagnostics-policy.json",
+    "policies/inspection-policy.json",
+    "policies/runtime-permissions-boundary.json",
+    "trust-policies/README.md",
+    "trust-policies/diagnostics-active-trust-policy.json",
+    "trust-policies/diagnostics-role-trust-policy.json",
+    "trust-policies/deployment-role-trust-policy.json",
+    "trust-policies/human-role-trust-policy.json",
+    "validate.sh"
+  ],
+  "policy_sha256": {
+    "policies/deployment-data-policy.json": "2bda7a2294c1a73ab835885162b8b11062a24385120e4aded9de213f62922b24",
+    "policies/deployment-diagnostics-policy.json": "ce3cc1f8a457de77f5ce49d712b0e6e4b672e795f2ed8144ef52238688e60232",
+    "policies/deployment-eks-policy.json": "8b9fa72dc8bce26123da5a06e6a2d8bdf61089bb348f5977c7de65cba633d986",
+    "policies/deployment-infrastructure-policy.json": "c3a598a0d789de05450767e2b4719ac0c8f160c97ca723f12f25d9377fb8e762",
+    "policies/deployment-workload-policy.json": "cbb7ebc372216ee64ec022466b1b711bdcd6b47aaa781608902d4cffeec40778",
+    "policies/diagnostics-policy.json": "6ac7bf28ca9f05c3f8221055858b71fc33aa4514000b2a0cdbf1f494890d9a60",
+    "policies/inspection-policy.json": "23840a696148890897cf6c222be3358dc42009bd43b57b0dd0e356d98db78d07",
+    "policies/runtime-permissions-boundary.json": "685d49b745b973ad114538ee10a7de00b59e5eb063652353a6735b0a5e71e597",
+    "trust-policies/deployment-role-trust-policy.json": "772dfa533eb808d660855469cfdcfc2b70a991c1a275d6355680ea6ac83b88a1",
+    "trust-policies/diagnostics-active-trust-policy.json": "4ae43873e7105a234e9eb1e4e2f4dca602f72308020faf1c7177246bf86871e1",
+    "trust-policies/diagnostics-role-trust-policy.json": "b54b348673a32a77f1ca2bbf63c575111ed0df1a4ea23eb69cc232c82a6f14c5",
+    "trust-policies/human-role-trust-policy.json": "962297c0ac356b6210b4e203b7c1c7990dac4f32fc4c6af1120e322871db241f",
+    "guardrails/customer-service-control-policy.json": "9261646630ab6af17268818fd32a524ede5f34689c14fecd69bb310bf8904b94"
+  }
+}
