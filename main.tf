@@ -567,6 +567,7 @@ module "gateway_ecs" {
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
     OVERRIDE_BRAINTRUST_API_URL = local.internal_api_url
   } : {})
+  extra_secrets                         = var.ai_gateway_extra_secrets
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
   custom_tags                           = local.all_custom_tags
@@ -810,6 +811,7 @@ module "api_ecs" {
     QUARANTINE_API_URL            = local.quarantine_api_url != null ? local.quarantine_api_url : ""
     QUARANTINE_PROXY_URL          = ""
   } : {})
+  extra_secrets = var.braintrust_api_extra_secrets
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc

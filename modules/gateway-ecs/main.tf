@@ -61,13 +61,20 @@ locals {
     } : {},
   )
   merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
+  # Strip optional :json-key:version-stage:version-id so IAM Resource is the secret ARN.
+  extra_secret_arns = [
+    for s in var.extra_secrets : regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom)
+  ]
   # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
   # Format: arn:...:secret:name:json-key:version-stage:version-id
   # Empty json-key = full secret string; empty stage pins by version-id only.
-  gateway_secrets = [{
-    name      = "BRAINSTORE_LICENSE_KEY"
-    valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
-  }]
+  gateway_secrets = concat(
+    [{
+      name      = "BRAINSTORE_LICENSE_KEY"
+      valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+    }],
+    var.extra_secrets,
+  )
 
   gateway_container_definition = {
     name      = local.container_name
@@ -336,10 +343,13 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Action = [
           "secretsmanager:GetSecretValue",
         ]
-        Resource = compact([
-          local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
-          var.brainstore_license_key_secret_arn,
-        ])
+        Resource = compact(concat(
+          [
+            local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
+            var.brainstore_license_key_secret_arn,
+          ],
+          local.extra_secret_arns,
+        ))
       },
       {
         Effect = "Allow"

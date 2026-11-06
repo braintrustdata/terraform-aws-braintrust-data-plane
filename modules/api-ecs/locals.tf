@@ -143,6 +143,11 @@ locals {
 
   merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
+  # Strip optional :json-key:version-stage:version-id so IAM Resource is the secret ARN.
+  extra_secret_arns = [
+    for s in var.extra_secrets : regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom)
+  ]
+
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
   api_log_group_names = {
@@ -217,6 +222,7 @@ locals {
           valueFrom = var.custom_ca_bundle_secret_arn
         }
       ],
+      var.extra_secrets,
     )
     healthCheck = {
       command = [
