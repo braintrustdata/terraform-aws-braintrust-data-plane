@@ -1,6 +1,11 @@
 locals {
-  api_version_tag       = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
-  observability_enabled = var.internal_observability_api_key_secret_arn != ""
+  api_version_tag = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
+  # Use the plan-known enable flag (not the computed secret ARN) so container/IAM shape stays known during plan.
+  observability_enabled = var.internal_observability_enabled
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}:::${var.internal_observability_api_key_secret_version}"
 
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
@@ -136,11 +141,7 @@ locals {
     } : {},
   )
 
-  plain_license_env_var = var.brainstore_license_key == null ? {} : {
-    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-  }
-
-  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
@@ -206,6 +207,10 @@ locals {
           valueFrom = var.function_tools_secret_arn
         }
       ],
+      [{
+        name      = "BRAINSTORE_LICENSE_KEY"
+        valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+      }],
       var.custom_ca_bundle_secret_arn == null ? [] : [
         {
           name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
@@ -246,7 +251,7 @@ locals {
       secretOptions = [
         {
           name      = "apikey"
-          valueFrom = var.internal_observability_api_key_secret_arn
+          valueFrom = local.observability_api_key_value_from
         }
       ]
       }) : jsonencode({
@@ -342,7 +347,7 @@ locals {
           secrets = [
             {
               name      = "DD_API_KEY"
-              valueFrom = var.internal_observability_api_key_secret_arn
+              valueFrom = local.observability_api_key_value_from
             }
           ]
           healthCheck = {

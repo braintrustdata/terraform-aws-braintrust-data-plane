@@ -8,7 +8,8 @@ run "deployment_tag_cannot_be_overridden" {
 
   variables {
     deployment_name                       = "bt-test"
-    license_key                           = "test-license"
+    license_key_secret_arn                = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    license_key_secret_version            = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     kms_key_arn                           = null
     vpc_id                                = "vpc-12345678"
     private_subnet_ids                    = ["subnet-12345678"]

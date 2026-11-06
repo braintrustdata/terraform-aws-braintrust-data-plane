@@ -116,8 +116,9 @@ module "braintrust-data-plane" {
   # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
 
   ### Brainstore configuration
-  # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
-  brainstore_license_key = var.brainstore_license_key
+  # The module uses the supplied secret object or stores the license value in a new secret.
+  brainstore_license_key                 = var.brainstore_license_key
+  existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
 
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory

@@ -77,15 +77,34 @@ locals {
     : module.database.postgres_database_url_secret_arn
   )
 
-  create_ecs_api                             = !var.use_deployment_mode_external_eks
-  enable_ecs_api                             = local.create_ecs_api && var.enable_ecs_api
+  create_ecs_api                = !var.use_deployment_mode_external_eks
+  enable_ecs_api                = local.create_ecs_api && var.enable_ecs_api
+  create_ai_gateway             = var.create_ai_gateway && !var.use_deployment_mode_external_eks
+  enable_ai_gateway             = local.create_ai_gateway && var.enable_ai_gateway
+  create_brainstore_ec2         = !var.use_deployment_mode_external_eks
+  enable_internal_observability = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
+  # Secret is shared by API ECS, gateway ECS, and Brainstore EC2 (Datadog agent).
+  create_internal_observability_secret = local.enable_internal_observability && (
+    local.create_ecs_api || local.create_ai_gateway || local.create_brainstore_ec2
+  )
+  use_existing_brainstore_license_secret = var.existing_brainstore_license_key_secret != null
+  brainstore_license_key_kms_key_arn     = !var.use_deployment_mode_external_eks && local.use_existing_brainstore_license_secret ? var.existing_brainstore_license_key_secret.kms_key_arn : null
+  create_brainstore_license_secret       = !var.use_deployment_mode_external_eks && !local.use_existing_brainstore_license_secret
+  brainstore_license_key_secret_arn = !var.use_deployment_mode_external_eks ? (
+    local.use_existing_brainstore_license_secret ? var.existing_brainstore_license_key_secret.arn : aws_secretsmanager_secret.brainstore_license_key[0].arn
+  ) : ""
+  brainstore_license_key_secret_version = !var.use_deployment_mode_external_eks ? (
+    local.use_existing_brainstore_license_secret ? one([
+      for version in data.aws_secretsmanager_secret_versions.brainstore_license_key[0].versions : version.version_id
+      if contains(version.version_stages, "AWSCURRENT")
+    ]) : aws_secretsmanager_secret_version.brainstore_license_key[0].version_id
+  ) : ""
+  internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_api_key_secret_version = local.create_internal_observability_secret ? aws_secretsmanager_secret_version.internal_observability_api_key[0].version_id : ""
+
   create_ingress                             = !var.use_deployment_mode_external_eks && !var.enable_private_dataplane
   api_url                                    = var.enable_private_dataplane ? (var.braintrust_api_alb_custom_domain == null ? null : "https://${var.braintrust_api_alb_custom_domain}") : (local.create_ingress ? module.ingress[0].api_url : null)
   internal_api_url                           = local.create_ecs_api ? (var.enable_private_dataplane ? module.api_ecs[0].internal_url : module.api_ecs[0].http_url) : null
-  create_ai_gateway                          = var.create_ai_gateway && !var.use_deployment_mode_external_eks
-  enable_ai_gateway                          = local.create_ai_gateway && var.enable_ai_gateway
-  enable_internal_observability              = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
-  create_internal_observability_secret       = local.enable_internal_observability && (local.create_ecs_api || local.create_ai_gateway)
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
   brainstore_ai_proxy_url_ssm_parameter_name = local.enable_ecs_api ? local.api_ecs_url_ssm_parameter_name : local.ai_proxy_url_ssm_parameter_name
@@ -548,20 +567,23 @@ module "gateway_ecs" {
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
     OVERRIDE_BRAINTRUST_API_URL = local.internal_api_url
   } : {})
-  custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
-  custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
-  custom_tags                  = local.all_custom_tags
-  brainstore_license_key       = var.brainstore_license_key
-  enable_execute_command       = var.ai_gateway_enable_execute_command
-  braintrust_app_url           = var.ai_gateway_braintrust_app_url
-  braintrust_api_url           = local.internal_api_url
-  unsafe_url_request_mode      = var.unsafe_url_request_mode
-  url_security_dns_servers     = var.url_security_dns_servers
-  url_security_allow_cidrs     = var.url_security_allow_cidrs
-  bedrock_assume_role_arns     = var.ai_gateway_bedrock_assume_role_arns
+  custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
+  custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
+  custom_tags                           = local.all_custom_tags
+  brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
+  brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
+  enable_execute_command                = var.ai_gateway_enable_execute_command
+  braintrust_app_url                    = var.ai_gateway_braintrust_app_url
+  braintrust_api_url                    = local.internal_api_url
+  unsafe_url_request_mode               = var.unsafe_url_request_mode
+  url_security_dns_servers              = var.url_security_dns_servers
+  url_security_allow_cidrs              = var.url_security_allow_cidrs
+  bedrock_assume_role_arns              = var.ai_gateway_bedrock_assume_role_arns
 
   # Observability
-  internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
+  internal_observability_api_key_secret_version = local.internal_observability_api_key_secret_version
   internal_observability_enabled                = local.create_internal_observability_secret
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region
@@ -676,8 +698,10 @@ module "loop_runtime_ecs" {
   brainstore_wal_footer_version  = var.brainstore_wal_footer_version
   skip_pg_for_brainstore_objects = var.skip_pg_for_brainstore_objects
 
-  brainstore_license_key = var.brainstore_license_key
-  monitoring_telemetry   = var.monitoring_telemetry
+  brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
+  brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
+  monitoring_telemetry                  = var.monitoring_telemetry
 
   org_name        = var.braintrust_org_name
   allowed_org_ids = var.allowed_org_ids
@@ -686,10 +710,11 @@ module "loop_runtime_ecs" {
     LOOP_RUNTIME_AI_PROXY_URL = local.loop_runtime_ai_proxy_url
   } : {})
 
-  internal_observability_enabled            = local.create_internal_observability_secret
-  internal_observability_api_key_secret_arn = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
-  internal_observability_env_name           = var.internal_observability_env_name
-  internal_observability_region             = var.internal_observability_region
+  internal_observability_enabled                = local.create_internal_observability_secret
+  internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
+  internal_observability_api_key_secret_version = local.internal_observability_api_key_secret_version
+  internal_observability_env_name               = var.internal_observability_env_name
+  internal_observability_region                 = var.internal_observability_region
 
   custom_tags = local.all_custom_tags
 }
@@ -705,7 +730,9 @@ module "api_ecs" {
 
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
-  internal_observability_api_key_secret_arn     = local.create_internal_observability_secret ? aws_secretsmanager_secret.internal_observability_api_key[0].arn : ""
+  internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
+  internal_observability_api_key_secret_version = local.internal_observability_api_key_secret_version
+  internal_observability_enabled                = local.create_internal_observability_secret
   internal_observability_env_name               = var.internal_observability_env_name
   internal_observability_region                 = var.internal_observability_region
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
@@ -719,15 +746,17 @@ module "api_ecs" {
   custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
 
   # Brainstore
-  brainstore_hostname             = module.brainstore[0].dns_name
-  brainstore_writer_hostname      = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
-  brainstore_fast_reader_hostname = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
-  brainstore_s3_bucket_name       = module.storage.brainstore_bucket_id
-  brainstore_port                 = module.brainstore[0].port
-  brainstore_etl_batch_size       = var.brainstore_etl_batch_size
-  brainstore_wal_footer_version   = var.brainstore_wal_footer_version
-  skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-  brainstore_license_key          = var.brainstore_license_key
+  brainstore_hostname                   = module.brainstore[0].dns_name
+  brainstore_writer_hostname            = var.brainstore_writer_instance_count > 0 ? module.brainstore[0].writer_dns_name : null
+  brainstore_fast_reader_hostname       = var.brainstore_fast_reader_instance_count > 0 ? module.brainstore[0].fast_reader_dns_name : null
+  brainstore_s3_bucket_name             = module.storage.brainstore_bucket_id
+  brainstore_port                       = module.brainstore[0].port
+  brainstore_etl_batch_size             = var.brainstore_etl_batch_size
+  brainstore_wal_footer_version         = var.brainstore_wal_footer_version
+  skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
+  brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
+  brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
 
   brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
 
@@ -874,6 +903,9 @@ module "services_common" {
   vpc_id                                     = local.main_vpc_id
   kms_key_arn                                = local.kms_key_arn
   database_secret_arn                        = local.postgres_credentials_secret_arn
+  brainstore_license_key_secret_arn          = local.brainstore_license_key_secret_arn
+  brainstore_license_key_kms_key_arn         = local.brainstore_license_key_kms_key_arn
+  internal_observability_api_key_secret_arn  = local.internal_observability_api_key_secret_arn
   brainstore_custom_ca_bundle_secret_arn     = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_secret_arn : null
   brainstore_custom_ca_bundle_kms_key_arn    = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_kms_key_arn : null
   brainstore_s3_bucket_arn                   = module.storage.brainstore_bucket_arn
@@ -905,49 +937,52 @@ module "services_common" {
 
 module "brainstore" {
   source = "./modules/brainstore-ec2"
-  count  = !var.use_deployment_mode_external_eks ? 1 : 0
+  count  = local.create_brainstore_ec2 ? 1 : 0
 
-  deployment_name                       = var.deployment_name
-  instance_count                        = var.brainstore_instance_count
-  instance_type                         = var.brainstore_instance_type
-  instance_key_pair_name                = var.brainstore_instance_key_pair_name
-  port                                  = var.brainstore_port
-  license_key                           = var.brainstore_license_key
-  version_override                      = var.brainstore_version_override
-  reader_version_override               = var.brainstore_reader_version_override
-  writer_version_override               = var.brainstore_writer_version_override
-  fast_reader_version_override          = var.brainstore_fast_reader_version_override
-  automation_writer_version_override    = var.brainstore_automation_writer_version_override
-  skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
-  extra_env_vars                        = var.brainstore_extra_env_vars
-  extra_env_vars_writer                 = var.brainstore_extra_env_vars_writer
-  writer_instance_count                 = var.brainstore_writer_instance_count
-  writer_instance_type                  = var.brainstore_writer_instance_type
-  automation_writer_instance_count      = var.brainstore_automation_writer_instance_count
-  automation_writer_instance_type       = var.brainstore_automation_writer_instance_type
-  extra_env_vars_automation_writer      = var.brainstore_extra_env_vars_automation_writer
-  cache_file_size_automation_writer     = var.brainstore_cache_file_size_automation_writer
-  fast_reader_instance_count            = var.brainstore_fast_reader_instance_count
-  fast_reader_instance_type             = var.brainstore_fast_reader_instance_type
-  extra_env_vars_fast_reader            = var.brainstore_extra_env_vars_fast_reader
-  cache_file_size_fast_reader           = var.brainstore_cache_file_size_fast_reader
-  ai_proxy_url_ssm_parameter            = local.brainstore_ai_proxy_url_ssm_parameter
-  monitoring_telemetry                  = var.monitoring_telemetry
-  database_host                         = local.postgres_host
-  database_port                         = module.database.postgres_database_port
-  database_secret_arn                   = local.postgres_credentials_secret_arn
-  redis_url_secret_arn                  = module.redis.redis_url_secret_arn
-  redis_url_secret_version_id           = module.redis.redis_url_secret_version_id
-  service_token_secret_arn              = module.services_common.function_tools_secret_arn
-  custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
-  brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
-  lambda_responses_s3_bucket_arn        = module.storage.lambda_responses_bucket_arn
-  code_bundle_s3_bucket_arn             = module.storage.code_bundle_bucket_arn
-  internal_observability_api_key        = var.internal_observability_api_key
-  internal_observability_env_name       = var.internal_observability_env_name
-  internal_observability_region         = var.internal_observability_region
-  brainstore_instance_security_group_id = module.services_common.brainstore_instance_security_group_id
-  vpc_id                                = local.main_vpc_id
+  deployment_name                               = var.deployment_name
+  instance_count                                = var.brainstore_instance_count
+  instance_type                                 = var.brainstore_instance_type
+  instance_key_pair_name                        = var.brainstore_instance_key_pair_name
+  port                                          = var.brainstore_port
+  license_key_secret_arn                        = local.brainstore_license_key_secret_arn
+  license_key_secret_version                    = local.brainstore_license_key_secret_version
+  version_override                              = var.brainstore_version_override
+  reader_version_override                       = var.brainstore_reader_version_override
+  writer_version_override                       = var.brainstore_writer_version_override
+  fast_reader_version_override                  = var.brainstore_fast_reader_version_override
+  automation_writer_version_override            = var.brainstore_automation_writer_version_override
+  skip_pg_for_brainstore_objects                = var.skip_pg_for_brainstore_objects
+  extra_env_vars                                = var.brainstore_extra_env_vars
+  extra_env_vars_writer                         = var.brainstore_extra_env_vars_writer
+  writer_instance_count                         = var.brainstore_writer_instance_count
+  writer_instance_type                          = var.brainstore_writer_instance_type
+  automation_writer_instance_count              = var.brainstore_automation_writer_instance_count
+  automation_writer_instance_type               = var.brainstore_automation_writer_instance_type
+  extra_env_vars_automation_writer              = var.brainstore_extra_env_vars_automation_writer
+  cache_file_size_automation_writer             = var.brainstore_cache_file_size_automation_writer
+  fast_reader_instance_count                    = var.brainstore_fast_reader_instance_count
+  fast_reader_instance_type                     = var.brainstore_fast_reader_instance_type
+  extra_env_vars_fast_reader                    = var.brainstore_extra_env_vars_fast_reader
+  cache_file_size_fast_reader                   = var.brainstore_cache_file_size_fast_reader
+  ai_proxy_url_ssm_parameter                    = local.brainstore_ai_proxy_url_ssm_parameter
+  monitoring_telemetry                          = var.monitoring_telemetry
+  database_host                                 = local.postgres_host
+  database_port                                 = module.database.postgres_database_port
+  database_secret_arn                           = local.postgres_credentials_secret_arn
+  service_token_secret_arn                      = module.services_common.function_tools_secret_arn
+  custom_ca_bundle_secret_arn                   = var.custom_ca_bundle_secret_arn
+  brainstore_s3_bucket_arn                      = module.storage.brainstore_bucket_arn
+  lambda_responses_s3_bucket_arn                = module.storage.lambda_responses_bucket_arn
+  code_bundle_s3_bucket_arn                     = module.storage.code_bundle_bucket_arn
+  internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
+  internal_observability_api_key_secret_version = local.internal_observability_api_key_secret_version
+  internal_observability_enabled                = local.create_internal_observability_secret
+  internal_observability_env_name               = var.internal_observability_env_name
+  internal_observability_region                 = var.internal_observability_region
+  brainstore_instance_security_group_id         = module.services_common.brainstore_instance_security_group_id
+  vpc_id                                        = local.main_vpc_id
+  redis_url_secret_arn                          = module.redis.redis_url_secret_arn
+  redis_url_secret_version_id                   = module.redis.redis_url_secret_version_id
   authorized_security_groups = merge(
     merge(
       {

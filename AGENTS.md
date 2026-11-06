@@ -70,6 +70,9 @@ Readable Terraform and readable plans are product requirements.
 - Do not add inputs such as `service_dependency_ids` to force normal Terraform ordering.
 - Let value references create dependencies.
 - Use `depends_on` only for a real dependency that no value reference expresses.
+- Do not add `depends_on` to module blocks or make resources depend on an entire module.
+- Put hidden prerequisites on the relevant output, with dependencies on specific resources.
+- Verify that unrelated changes do not defer data reads or change launch templates.
 - Do not add optional flags for resources that the enabled topology requires.
 - Keep sensitive values in Secrets Manager and use native ECS secret injection.
 - Do not place secret values in plaintext container environment lists.
