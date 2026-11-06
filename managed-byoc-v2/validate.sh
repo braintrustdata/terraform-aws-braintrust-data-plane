@@ -70,6 +70,7 @@ render_policy() {
   local sample_license=arn:aws:secretsmanager:us-east-1:111122223333:secret:braintrust-license-review
   local sample_principal=arn:aws:iam::444455556666:role/braintrust-human
   local sample_external_id=review-only-external-id
+  local sample_engineer=engineer-review
   if [[ "${3:-sample}" == maximum ]]; then
     sample_region=ap-southeast-5
     sample_bootstrap=bbbbbbbbbbbbbbbb
@@ -81,6 +82,7 @@ render_policy() {
     # ARN prefix plus suffix consume 36 characters, leaving 220 at the limit.
     sample_principal="arn:aws:iam::444455556666:role/$(printf '%220s' '' | tr ' ' p)/role"
     sample_external_id="$(printf '%128s' '' | tr ' ' e)"
+    sample_engineer="$(printf '%64s' '' | tr ' ' i)"
   fi
 
   sed \
@@ -91,14 +93,16 @@ render_policy() {
     -e "s|<MANAGED_RESOURCE_PREFIX>|${sample_prefix}|g" \
     -e "s|<RUNTIME_BOUNDARY_ARN>|arn:aws:iam::111122223333:policy/braintrust-byoc/BraintrustRuntimeBoundary-${sample_bootstrap}|g" \
     -e "s|<DIAGNOSTICS_ROLE_ARN>|arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDiagnosticsRole-${sample_bootstrap}|g" \
-    -e "s|<DIAGNOSTICS_POLICY_ARN>|arn:aws:iam::111122223333:policy/braintrust-byoc/BraintrustDiagnosticsPolicy-${sample_bootstrap}|g" \
-    -e 's|<DIAGNOSTICS_ROLE_ID>|AROADIAGNOSTICSEXAMPLE|g' \
     -e "s|<STATE_BUCKET_NAME>|${sample_state}|g" \
     -e "s|<OPERATION_LOG_BUCKET_NAME>|${sample_operations}|g" \
     -e "s|<BRAINTRUST_ARTIFACT_BUCKET_NAME>|${sample_artifacts}|g" \
     -e "s|<LICENSE_SECRET_ARN>|${sample_license}|g" \
     -e "s|<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>|${sample_principal}|g" \
     -e "s|<BRAINTRUST_HUMAN_PRINCIPAL_ARN>|${sample_principal}|g" \
+    -e "s|<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>|${sample_principal}|g" \
+    -e "s|<ENGINEER_SOURCE_IDENTITY>|${sample_engineer}|g" \
+    -e 's|<DIAGNOSTICS_ACCESS_STARTS_AT>|2026-11-06T15:00:00Z|g' \
+    -e 's|<DIAGNOSTICS_ACCESS_EXPIRES_AT>|2026-11-06T17:00:00Z|g' \
     -e "s|<UNIQUE_EXTERNAL_ID>|${sample_external_id}|g" \
     "$input" >"$output"
 }
@@ -127,13 +131,13 @@ for file in "${policy_files[@]}" "${scp_files[@]}" "${trust_files[@]}"; do
 done
 
 check_rendered_names() {
-  local fixture="$1" role policy account bootstrap prefix role_pattern runtime_boundary
+  local fixture="$1" role account bootstrap prefix role_pattern runtime_boundary
   local state_resource state_bucket operation_resource operation_bucket license principal external_id bucket trust file
   local activation_file="$temporary_dir/${fixture}deployment-diagnostics-policy.json"
   local infrastructure_file="$temporary_dir/${fixture}deployment-infrastructure-policy.json"
   local data_file="$temporary_dir/${fixture}deployment-data-policy.json"
   local eks_file="$temporary_dir/${fixture}deployment-eks-policy.json"
-  role="$(jq -er '.Statement[] | select(.Sid == "ActivatePredefinedDiagnostics") | .Resource' "$activation_file")"
+  role="$(jq -er '.Statement[] | select(.Sid == "ManageDiagnosticsTrust") | .Resource' "$activation_file")"
   role_pattern='^arn:aws:iam::([0-9]{12}):role/braintrust-byoc/BraintrustDiagnosticsRole-([a-z0-9][a-z0-9-]{0,15})$'
   if [[ ! "$role" =~ $role_pattern ]]; then
     echo 'Diagnostics role must use the protected IAM path and a bootstrap identifier of at most 16 characters.' >&2
@@ -141,13 +145,9 @@ check_rendered_names() {
   fi
   account="${BASH_REMATCH[1]}"
   bootstrap="${BASH_REMATCH[2]}"
-  policy="$(jq -cer '.Statement[] | select(.Sid == "ActivatePredefinedDiagnostics") | .Condition.ArnEquals."iam:PolicyARN"' "$activation_file")"
   runtime_boundary="arn:aws:iam::${account}:policy/braintrust-byoc/BraintrustRuntimeBoundary-${bootstrap}"
-  jq -e --arg account "$account" --arg bootstrap "$bootstrap" '
-    .Statement[] | select(.Sid == "ActivatePredefinedDiagnostics") |
-    .Condition.ArnEquals."iam:PolicyARN" | sort ==
-      (["BraintrustInspectionPolicy", "BraintrustDiagnosticsPolicy"] |
-       map("arn:aws:iam::" + $account + ":policy/braintrust-byoc/" + . + "-" + $bootstrap) | sort)' \
+  jq -e '.Statement[] | select(.Sid == "ManageDiagnosticsTrust") |
+    .Action == "iam:UpdateAssumeRolePolicy" and (has("Condition") | not)' \
     "$activation_file" >/dev/null
   jq -e --arg boundary "$runtime_boundary" '[.Statement[] |
     select(.Sid == "CreateBoundedRoles" or .Sid == "SetRuntimeBoundary") |
@@ -188,7 +188,7 @@ check_rendered_names() {
     echo 'License secret ARN must be exact and at most 128 characters.' >&2
     exit 1
   }
-  for trust in deployment-role-trust-policy.json human-role-trust-policy.json; do
+  for trust in deployment-role-trust-policy.json human-role-trust-policy.json diagnostics-active-trust-policy.json; do
     principal="$(jq -er '.Statement[0].Principal.AWS' "$temporary_dir/${fixture}${trust}")"
     role_pattern='^arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9_+=,.@/-]+$'
     [[ "$principal" =~ $role_pattern && ${#principal} -le 256 ]] || {
@@ -196,6 +196,13 @@ check_rendered_names() {
       exit 1
     }
   done
+  jq -e '
+    .Statement[0].Condition as $conditions |
+    ($conditions.StringEquals."aws:SourceIdentity" | type == "array" and length > 0 and
+      all(test("^[A-Za-z0-9_+=,.@-]{2,64}$") and (startswith("aws:") | not))) and
+    (($conditions.DateGreaterThanEquals."aws:CurrentTime" | fromdateiso8601) <
+     ($conditions.DateLessThan."aws:CurrentTime" | fromdateiso8601))' \
+    "$temporary_dir/${fixture}diagnostics-active-trust-policy.json" >/dev/null
   external_id="$(jq -er '.Statement[0].Condition.StringEquals."sts:ExternalId"' "$temporary_dir/${fixture}deployment-role-trust-policy.json")"
   [[ ${#external_id} -ge 2 && ${#external_id} -le 128 ]] || {
     echo 'External ID must be between 2 and 128 characters.' >&2
@@ -212,7 +219,43 @@ check_rendered_names ''
 if [[ "$package_dir" == "$source_dir" ]]; then
   check_rendered_names maximum-
 fi
-echo 'Bootstrap naming, protected IAM paths, input lengths, and activation-policy checks passed.'
+echo 'Bootstrap naming, protected IAM paths, input lengths, and Diagnostics trust checks passed.'
+
+# Evaluate only the active template's exact-principal, inherited-identity, and
+# time conditions. This is a local regression check, not AWS policy simulation.
+jq -e '
+  def permits($principal; $identity; $at):
+    .Statement[0] as $grant |
+    ($principal == $grant.Principal.AWS) and
+    ($identity != null) and
+    (($grant.Condition.StringEquals."aws:SourceIdentity" | index($identity)) != null) and
+    (($at | fromdateiso8601) >=
+      ($grant.Condition.DateGreaterThanEquals."aws:CurrentTime" | fromdateiso8601)) and
+    (($at | fromdateiso8601) <
+      ($grant.Condition.DateLessThan."aws:CurrentTime" | fromdateiso8601));
+  .Statement[0].Principal.AWS as $source |
+  .Statement[0].Condition.StringEquals."aws:SourceIdentity"[0] as $engineer |
+  .Statement[0].Condition.DateGreaterThanEquals."aws:CurrentTime" as $start |
+  .Statement[0].Condition.DateLessThan."aws:CurrentTime" as $end |
+  ($start | fromdateiso8601 | . - 1 | todateiso8601) as $before |
+  ($end | fromdateiso8601 | . - 1 | todateiso8601) as $within |
+  ($end | fromdateiso8601 | . + 1 | todateiso8601) as $after |
+  [permits($source; $engineer; $start), permits($source; $engineer; $within),
+   permits($source; $engineer; $before), permits($source; $engineer; $end),
+   permits($source; $engineer; $after), permits($source; null; $within),
+   permits($source; "not-an-allowed-engineer"; $within),
+   permits("arn:aws:iam::999900001111:role/other-source"; $engineer; $within)] ==
+    [true, true, false, false, false, false, false, false]' \
+  "$temporary_dir/diagnostics-active-trust-policy.json" >/dev/null
+if [[ "$package_dir" == "$source_dir" ]]; then
+  # Exercise a six-engineer investigation at maximum principal/identity lengths.
+  jq '.Statement[0].Condition.StringEquals."aws:SourceIdentity" =
+    [range(1; 7) | tostring + ("i" * 63)]' \
+    "$temporary_dir/maximum-diagnostics-active-trust-policy.json" \
+    >"$temporary_dir/six-engineers-trust-policy.json"
+  measure_policy "$temporary_dir/six-engineers-trust-policy.json" "$trust_policy_limit"
+fi
+echo 'Diagnostics trust condition cases passed (local checks, not live authorization).'
 
 
 assert_policy() {
@@ -279,13 +322,23 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     ([.Statement[] | select(.Sid == "UseLoggedShellDocument") |
       .Resource == "arn:aws:ssm:us-east-1:111122223333:document/BraintrustDiagnosticsShell-review"] == [true])'
   assert_policy deployment-diagnostics-policy.json '
-    ([.Statement[] | select(.Sid == "CloseDiagnosticSessions") |
-      .Condition.StringLike."ssm:resourceTag/aws:ssmmessages:session-id" == "AROADIAGNOSTICSEXAMPLE:*"] == [true]) and
-    ([.Statement[] | select(.Sid == "CloseManagedEcsSessions") |
-      .Condition.StringLike."ssm:resourceTag/aws:ssmmessages:target-id" == "ecs:bt-a-*_*_*"] == [true]) and
-    ([.Statement[] | select(.Sid == "AttributeEcsDiagnosticSessions") |
-      .Action == "cloudtrail:LookupEvents" and
-      .Condition.StringEquals."aws:RequestedRegion" == "us-east-1"] == [true])'
+    (.Statement | map(.Sid) | sort) ==
+      (["VerifyProtectedDiagnostics", "VerifyDiagnosticAgents", "ManageDiagnosticsTrust"] | sort) and
+    ([.Statement[] | select(.Sid == "ManageDiagnosticsTrust") |
+      .Action == "iam:UpdateAssumeRolePolicy" and
+      .Resource == "arn:aws:iam::111122223333:role/braintrust-byoc/BraintrustDiagnosticsRole-review"] == [true])'
+  assert_policy diagnostics-role-trust-policy.json '
+    .Statement == [{"Sid":"DenyAssumptionWhileInactive", "Effect":"Deny",
+      "Principal":"*", "Action":"sts:AssumeRole"}]'
+  assert_policy diagnostics-active-trust-policy.json '
+    (.Statement | length) == 1 and
+    (.Statement[0] |
+      .Effect == "Allow" and .Principal.AWS == "arn:aws:iam::444455556666:role/braintrust-human" and
+      (.Action | sort) == (["sts:AssumeRole", "sts:SetSourceIdentity", "sts:TagSession"] | sort) and
+      .Condition == {
+        "StringEquals":{"aws:SourceIdentity":["engineer-review"]},
+        "DateGreaterThanEquals":{"aws:CurrentTime":"2026-11-06T15:00:00Z"},
+        "DateLessThan":{"aws:CurrentTime":"2026-11-06T17:00:00Z"}})'
   assert_policy deployment-eks-policy.json '
     ([.Statement[] | select(.Sid | startswith("Create") and endswith("ClusterEntry")) |
       .Condition.StringEquals."eks:accessEntryType" == "STANDARD" and

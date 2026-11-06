@@ -46,15 +46,16 @@ operational checks, and monitoring still matter.
 
 | Control | Enforcement |
 | --- | --- |
-| Role capabilities and exact Diagnostics activation pairs | [Identity policies](../policies/README.md#role-attachment-model) |
+| Role capabilities and exact Diagnostics trust-update target | [Identity policies](../policies/README.md#role-attachment-model) |
 | Runtime IAM prefix, required boundary, and permitted `PassRole` services | Deployment policy resources and conditions |
 | Workload permissions, excluding bootstrap storage | Module policies intersected with the runtime boundary |
 | Deployment log management excluding diagnostic transcripts | Deployment workload policy resource exclusions |
 | Bucket, key, and external integration access | Scoped IAM and resource/key policies |
 
-Deployment remains able to change workload code and managed runtime trust.
-The SCP does not eliminate that privileged relationship. Customer monitoring
-and revocation remain part of the model.
+Deployment remains able to change workload code, managed runtime trust, and the
+exact Diagnostics trust. The SCP does not enforce Diagnostics participant lists
+or deadlines, or provide an independent customer approval gate. Customer monitoring
+and [revocation](../diagnostics.md#customer-revocation) remain part of the model.
 
 See [monitoring](cloudtrail-alerting.md),
 [AWS SCP scope](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html),

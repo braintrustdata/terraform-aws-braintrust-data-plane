@@ -34,10 +34,10 @@ An API name alone is not evidence of an unsafe change; inspect request parameter
 
 | Priority | Signal | Evaluate |
 | --- | --- | --- |
-| High | Bootstrap IAM or organization safeguards changed | Trust, inline policies, policy versions/defaults, boundaries, attachments, and SCP changes; distinguish the two exact recorded Diagnostics activation pairs |
+| High | Bootstrap IAM or organization safeguards changed | Trust, inline policies, policy versions/defaults, boundaries, attachments, and SCP changes; match Diagnostics trust updates to recorded participants and deadlines |
 | High | Logging or security collection weakened | Trail/event selector changes; Config, GuardDuty, Security Hub, or Access Analyzer changes; logged SSM document or transcript-group configuration changes |
-| High | Unexpected interactive access | SSM `StartSession` or ECS `ExecuteCommand` without an active Diagnostics window, wrong role/target, or missing attribution; generic Run Command or Instance Connect use |
-| High | Diagnostic access not closed | Unexpected/partial attachments, overdue access, remaining sessions, missing transcripts, or failed cleanup |
+| High | Unexpected interactive access | Wrong role/target, missing attribution, or a role session not issued under a valid named Diagnostics grant; generic Run Command or Instance Connect use |
+| High | Unexpected Diagnostics trust or permissions | Unrecorded principal, participant, deadline, or extension; missing time conditions; altered fixed policies, failed trust restoration, or missing transcripts |
 | High | Retained data affected | Brainstore lifecycle expiration, bucket/object deletion, KMS disablement/deletion, final snapshot deletion, and snapshot sharing/export |
 | High | Public or unexpected external access | Account/bucket protection changes, broadened bucket/key/runtime trust, public network changes, or runtime role assumption outside a configured feature |
 | High | Unexpected content access or log routing | Observer content reads; management-role subscription filters, export tasks, deliveries, or content-derived reports outside its permissions |
@@ -47,11 +47,13 @@ The SCP blocks only its listed actions. A successful sensitive API does not
 necessarily mean the SCP was detached: lifecycle expiration and some security
 configuration updates are outside its coverage.
 
-For Diagnostics, correlate the exact role and policy ARNs, initiating engineer,
-bootstrap, approval, expiry, and operation record. Do not suppress all IAM policy
-attachments as expected activity. Successful operations within an active window
-normally need audit recording, not a page; unexpected scope or parameters
-require investigation.
+For Diagnostics, correlate `UpdateAssumeRolePolicy` and successful `AssumeRole`
+events with the exact role, source principal, engineer's SourceIdentity,
+bootstrap, approval, and recorded times. Policy attachments do not change during
+activation; do not treat them as expected window activity. Access after the trust
+deadline can come from credentials issued during the window, so evaluate their
+issue/expiry times and native session limits before treating it as unauthorized.
+An expired grant does not authorize a new role assumption.
 
 Operational checks include ECS task definitions/network changes, ASG desired
 capacity and health, scaling limits, Lambda concurrency, paused module schedules,
@@ -71,7 +73,7 @@ flowchart TB
 
     subgraph CUSTOMER[Customer AWS environment]
         subgraph BYOC[BYOC account]
-            API["AWS APIs<br/>Assumption, IAM, and infrastructure"]
+            API["AWS APIs<br/>Trust updates, assumptions, infrastructure"]
             SSM["SSM shell on EC2<br/>Logged session document"]
             ECS["ECS Exec<br/>OVERRIDE transcript logging"]
             CW["CloudWatch log group<br/>Diagnostic transcripts"]
@@ -83,7 +85,7 @@ flowchart TB
         end
     end
 
-    DEP -->|deployment and activation| API
+    DEP -->|deployment and timed trust updates| API
     ENG -->|attributed sessions| API
     API -->|StartSession| SSM
     API -->|ExecuteCommand| ECS
@@ -101,7 +103,8 @@ and module configure collection; customers do not need to build this destination
 We use standard SSM shells, not SSH or port forwarding.
 
 CloudTrail is the API audit trail, not the shell transcript. Operation records
-describe authorization, expiry, and outcomes; they are not transcripts either.
+describe participants, authorization, expiry, trust changes, and outcomes; they
+are not transcripts either.
 A privileged shell can interfere with capture. Customer-controlled
 [CloudWatch Logs centralization](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html)
 to a separate archive preserves delivered evidence, but cannot prevent missing

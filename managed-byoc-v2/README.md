@@ -1,6 +1,7 @@
 # AWS managed BYOC access model
 
-Status: design preview. Live access and logging acceptance remain pending.
+Status: design preview. Diagnostics trust activation requires implementation
+and live validation of access and logging before use.
 
 This package describes Braintrust's standard AWS roles and customer controls
 for managed BYOC. It is a security review reference, not an installable bootstrap.
@@ -32,16 +33,18 @@ No deployment or placeholder substitution is needed to review these files.
 | `BraintrustObserverRole` | Standing human inspection | Infrastructure health, metrics, alarms, and metadata; no application content or sensitive workload configuration |
 | `BraintrustDiagnosticsRole` | Temporary human operations and troubleshooting | Operational changes, application logs, sensitive configuration, and host/container sessions when activated |
 
-Each role trusts an exact designated Braintrust principal. Deployment uses a
-bootstrap-specific execution role and unique External ID. Human sessions carry
-the individual engineer's source identity. See the [trust guide](trust-policies/README.md).
+Deployment and Observer trust exact designated Braintrust principals. Deployment
+uses a bootstrap-specific execution role and unique External ID. Diagnostics
+trust is normally closed; activation admits the exact Braintrust source role
+for named engineers until a deadline. Human sessions carry each engineer's
+authenticated source identity. See the [trust guide](trust-policies/README.md).
 
 ```mermaid
 flowchart TD
     subgraph Braintrust
         M[BYOC deployment service]
         O[Observer SSO]
-        E[Support SSO]
+        E[Diagnostics SSO source role]
     end
 
     subgraph Customer AWS account
@@ -63,8 +66,8 @@ flowchart TD
     D -->|read / write| T
     D -->|write only| L
     D -->|provision and update| I
-    D -.->|attach / detach fixed policies| G
-    E -->|named human session, when activated| G
+    D -.->|temporarily allow named engineers in trust| G
+    E -->|named identity and time checked by trust| G
     G -->|operations and logged sessions| I
     R -->|health, metrics, alarms, metadata| I
     I --> A
@@ -85,7 +88,7 @@ flowchart TD
 | Host/container sessions | No interactive grant | No | Managed Brainstore SSM shells and ECS Exec |
 | Infrastructure changes | Lifecycle management | No | Scoped scaling, recovery, concurrency, schedules, and database tuning |
 | Runtime IAM management | Prefixed resources with the required boundary and limited `PassRole` | No | No |
-| Bootstrap IAM changes | Two fixed Diagnostics attachments only | No | No |
+| Bootstrap IAM changes | Exact Diagnostics role trust only | No | No |
 | Deletion of SCP-protected buckets, keys, and final snapshots | Blocked for the listed actions | Blocked | Blocked |
 
 The [JSON policies](policies/README.md#role-attachment-model) are the exact
@@ -96,10 +99,11 @@ These capabilities assume no additional identity or resource-policy grants.
 
 ## Temporary Diagnostics
 
-Diagnostics has no policies attached when inactive. Activation attaches shared
-inspection and the predefined Diagnostics policy to the exact role. One window
-covers all data planes under the bootstrap and multiple named engineers. The
-default window is two hours; extensions are explicit and recorded.
+Diagnostics keeps its inspection and operational policies attached. Its trust
+normally blocks role assumption. Activation temporarily replaces that trust
+with the exact Braintrust source role, named engineers' source identities, and
+an expiry. One window covers all data planes under the bootstrap; the default
+is two hours. Participant changes and extensions are explicit and recorded.
 
 Braintrust handles activation and records the applicable customer approval,
 including standing approval where it covers the work. This is a process control,
@@ -110,10 +114,10 @@ Application logs and workload configuration may expose data even without a shell
 The supported interactive paths are logged Session Manager shells and ECS Exec,
 not SSH or port forwarding.
 
-Closure removes both policies and terminates associated sessions. Incomplete
-cleanup remains pending until verified. Customers can remove Braintrust trust
-at any time; this blocks new assumptions but does not alone end existing
-credentials or connections. See [activation and revocation](diagnostics.md).
+Expiry blocks new role assumptions through the trust's time condition. Early
+closure restores closed trust; permissions remain attached. Existing credentials
+and connections follow native timeouts, not active termination. Customers retain
+independent revocation controls. See [activation and revocation](diagnostics.md).
 
 ## Customer controls and responsibilities
 
@@ -121,7 +125,7 @@ credentials or connections. See [activation and revocation](diagnostics.md).
 | --- | --- |
 | Provides the bootstrap and operates deployment, upgrades, and Diagnostics | Applies the bootstrap in a dedicated AWS member account |
 | Configures SSM/ECS transcript collection and verifies prerequisites before Diagnostics | Enables account-level S3 Block Public Access and applies organization safeguards |
-| Records operation intent, authorization, results, and cleanup | Owns CloudTrail, alerting, recovery access, and optional separate audit archival |
+| Records operation intent, authorization, results, and trust closure | Owns CloudTrail, alerting, recovery access, and optional separate audit archival |
 
 The [reference SCP](guardrails/README.md) protects selected account security
 controls, retained resources, and snapshot sharing. It applies to customer
@@ -143,8 +147,11 @@ Created roles must carry the customer-owned runtime permissions boundary.
 grant each workload its actual permissions; the boundary grants none by itself.
 Listed service-linked roles are an AWS-managed exception.
 
-Deployment cannot rewrite its bootstrap policies or trust. Its only bootstrap
-IAM change is attaching or detaching the two fixed Diagnostics policies.
+Deployment cannot rewrite its own or Observer's bootstrap trust or any bootstrap
+permissions policies. Its only bootstrap IAM change is updating the exact
+Diagnostics role's trust policy. IAM scopes that permission to the role, not to
+the contents of the trust document; Braintrust's activation workflow enforces
+the named participants and deadline, with customer-visible audit evidence.
 New lifecycle services or features can require versioned bootstrap or boundary
 updates controlled by the customer. Updating the data-plane module does not
 automatically update those permissions.
@@ -190,8 +197,8 @@ Understand these boundaries:
   a privileged shell can interfere with capture. Activation checks, monitoring,
   and customer-controlled archival reduce risk but do not guarantee a complete
   transcript of every action.
-- **Session removal must be verified:** an expired window or detached policy is
-  not proof that every connection ended.
+- **Expiry limits new assumptions:** existing AWS credentials and interactive
+  sessions can continue beyond the window. Closing trust is not session revocation.
 
 These are the trust boundaries of a managed service, not guarantees of complete
 data isolation from its operator.
@@ -211,6 +218,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-11-06 | Changed Diagnostics activation to temporary trust for named engineers and a deadline. Permissions stay attached; replaced Deployment's attachment activation and automated session termination grants. | Review inactive and active trust examples, exact Deployment trust-update authority, customer revocation, and the distinction between trust expiry and existing session timeouts. This preview requires implementation and live acceptance before use. |
 | 2026-11-04 | Removed unused VPN, edge hardware, specialized compute, VM import/export, legacy EC2 metadata, DynamoDB, and EFS reads from shared inspection. | Observer and activated Diagnostics retain data-plane inspection, networking, capacity, quotas, and EKS metadata. Deployment and SCP permissions are unchanged by this cleanup. |
 | 2026-11-04 | Consolidated organization guardrails into one account-wide SCP and narrowed inspection and ECS lifecycle grants to preserve the three-role model. Simplified the guides and generated handoff. | Review account-wide effects, Deployment's service-content access, retained-data limits, and monitoring. This is a new bootstrap revision, not an update to existing permissions. |
 | 2026-10-29 | Scoped account and organization administration restrictions to Braintrust management and workload roles, consistent with the other safeguards. | Customer administrators outside the reserved IAM namespaces retain control of account settings. Braintrust still cannot change account-level S3 public access protection or organization controls. |

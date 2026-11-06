@@ -11,7 +11,7 @@ implementation requirements; placeholders do not need substitution for review.
 | --- | --- | --- |
 | `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | Five deployment policies below |
 | `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None | [inspection-policy.json](inspection-policy.json) |
-| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None | Inspection and [diagnostics-policy.json](diagnostics-policy.json), only while active |
+| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None | Inspection and [diagnostics-policy.json](diagnostics-policy.json), always attached; trust gates access |
 | Runtime roles created by Terraform | [runtime-permissions-boundary.json](runtime-permissions-boundary.json) | Module policies for each workload |
 
 Identity policies grant role capabilities. The runtime boundary limits delegated
@@ -50,7 +50,7 @@ Five managed policies attach to one role to stay within AWS document limits.
 | [deployment-infrastructure-policy.json](deployment-infrastructure-policy.json) | Service lifecycle, networking, delegated IAM, and data-plane key administration |
 | [deployment-data-policy.json](deployment-data-policy.json) | State, operation records, bucket configuration, and required secrets |
 | [deployment-workload-policy.json](deployment-workload-policy.json) | Lambda configuration/hooks, monitoring, and ordinary log configuration |
-| [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json) | Two exact activation pairs, logging verification metadata, and session cleanup |
+| [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json) | Exact Diagnostics trust updates and logging verification metadata |
 | [deployment-eks-policy.json](deployment-eks-policy.json) | Scoped EKS management |
 
 Deployment remains privileged. Broad EC2, RDS, and SQS lifecycle permissions
@@ -73,7 +73,7 @@ that name to 18 characters. One bootstrap may cover multiple data planes.
 | --- | --- |
 | Management roles, under IAM path `/braintrust-byoc/` | `Braintrust{Deployment,Observer,Diagnostics}Role-<BOOTSTRAP_NAME>` |
 | Runtime boundary, under the same path | `BraintrustRuntimeBoundary-<BOOTSTRAP_NAME>` |
-| Activation policies, under the same path | `BraintrustInspectionPolicy-<BOOTSTRAP_NAME>` and `BraintrustDiagnosticsPolicy-<BOOTSTRAP_NAME>` |
+| Human permissions policies, under the same path | `BraintrustInspectionPolicy-<BOOTSTRAP_NAME>` and `BraintrustDiagnosticsPolicy-<BOOTSTRAP_NAME>` |
 | Other bootstrap managed policies | Same path; names ending in `-<BOOTSTRAP_NAME>` |
 | Runtime roles, policies, and instance profiles | Root path `/`; names beginning with `<MANAGED_RESOURCE_PREFIX>` |
 
@@ -81,7 +81,8 @@ The IAM path is part of the ARN, not the role name. Bootstrap bucket names must
 be outside the runtime prefix. Inline policies inherit their parent role.
 
 Created runtime roles require the exact boundary. Deployment can manage
-prefixed role policies and trust, but not the bootstrap roles or boundary.
+prefixed role policies and trust. Bootstrap IAM is protected except for the
+exact Diagnostics trust update described below; the runtime boundary is unchanged.
 `PassRole` is constrained by resource and service; RDS receives its monitoring
 role through `rds.amazonaws.com`, while that role trusts
 `monitoring.rds.amazonaws.com`. Listed service-linked roles use AWS-managed
@@ -106,8 +107,7 @@ Schedule controls cover only the module's three named jobs.
 | `<BOOTSTRAP_NAME>` | 1–16 lowercase letters, digits, or hyphens; start with a letter or digit |
 | `<MANAGED_RESOURCE_PREFIX>` | 2–8 lowercase letters, digits, or hyphens; start with a letter or digit and end in a hyphen |
 | `<RUNTIME_BOUNDARY_ARN>` | Exact runtime boundary ARN from the naming table |
-| `<DIAGNOSTICS_ROLE_ARN>`, `<DIAGNOSTICS_POLICY_ARN>` | Exact role and policy from this bootstrap |
-| `<DIAGNOSTICS_ROLE_ID>` | Immutable IAM RoleId from Diagnostics creation, used for session cleanup |
+| `<DIAGNOSTICS_ROLE_ARN>` | Exact Diagnostics role from this bootstrap |
 | `<STATE_BUCKET_NAME>`, `<OPERATION_LOG_BUCKET_NAME>` | Distinct customer-owned S3 buckets, outside the runtime prefix |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust software bucket for the Region |
 | `<LICENSE_SECRET_ARN>` | Exact same-account, same-Region license secret ARN, at most 128 characters |
@@ -129,20 +129,26 @@ is a customer control, not a guarantee of this package.
 
 ## Diagnostics constraints
 
-Inactive Diagnostics has neither activation policy attached. The Deployment
-policy allows only the two exact role/policy attachment pairs and cannot rewrite
-their contents, change trust, or attach them elsewhere.
+Diagnostics keeps both policies attached. Its inactive trust blocks assumption;
+activation changes only the exact role's trust to allow the designated source
+role, named engineers, and an explicit time window. Deployment cannot change
+Diagnostics permissions or attachments. Readback uses its existing `iam:GetRole`
+metadata permission.
+
+`iam:UpdateAssumeRolePolicy` replaces the trust document. IAM limits the target
+role, not the policy contents. The activation workflow must preserve the exact
+principal, authenticated source identities, and deadline. See the
+[trust examples](../trust-policies/README.md#diagnostics-trust-states).
 
 Session Manager entry requires the logged document and both deployment and
 Brainstore role tags. ECS Exec targets the managed prefix. Session transport
 uses `ssmmessages:OpenDataChannel` with `Resource: "*"`; target authorization
 remains on `StartSession` and `ExecuteCommand`.
 
-The cleanup grant uses the original Diagnostics RoleId for SSM shells and the
-reserved ECS target tag for ECS sessions. Regional `cloudtrail:LookupEvents`
-supports ECS actor attribution; it cannot be IAM-scoped to one event name.
-These grants are not permission to read transcripts or unrelated sessions.
-See [Diagnostics](../diagnostics.md) for activation, verification, and revocation.
+Deployment has no automated session-termination grant. Trust expiry blocks new
+assumptions; issued credentials and connections follow their own timeouts.
+Diagnostics retains its existing own-session controls.
+See [Diagnostics](../diagnostics.md) for activation, expiry, and revocation.
 
 ## External feature requirements
 
@@ -169,5 +175,5 @@ The optional `./validate.sh` checks these policy references. A supplied director
 must preserve this layout with final values; it is not the CloudFormation handoff.
 `VALIDATE_WITH_AWS=1` additionally uses IAM Access Analyzer.
 These checks verify syntax, sizes, and static constraints, not live behavior.
-Actual deployment, role assumption, allowed/denied access, logging, and cleanup
+Actual deployment, role assumption, allowed/denied access, logging, and trust closure
 require separate acceptance.
