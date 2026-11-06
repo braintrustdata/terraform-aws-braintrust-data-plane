@@ -59,6 +59,7 @@
       "Effect": "Allow",
       "Action": [
         "oam:DeleteLink",
+        "oam:GetLink",
         "oam:ListTagsForResource",
         "oam:TagResource",
         "oam:UntagResource"
@@ -66,13 +67,19 @@
       "Resource": "arn:aws:oam:*:*:link/*"
     },
     {
-      "Sid": "AllowCloudWatchCrossAccountMetricLinkUpdates",
+      "Sid": "AllowCloudWatchCrossAccountMetricLinkCreationAndUpdates",
       "Effect": "Allow",
-      "Action": "oam:UpdateLink",
+      "Action": [
+        "oam:CreateLink",
+        "oam:UpdateLink"
+      ],
       "Resource": "arn:aws:oam:*:*:link/*",
       "Condition": {
         "ForAllValues:StringEquals": {
           "oam:ResourceTypes": "AWS::CloudWatch::Metric"
+        },
+        "Null": {
+          "oam:ResourceTypes": "false"
         }
       }
     },
@@ -87,16 +94,16 @@
         },
         "ForAllValues:StringEquals": {
           "oam:ResourceTypes": "AWS::CloudWatch::Metric"
+        },
+        "Null": {
+          "oam:ResourceTypes": "false"
         }
       }
     },
     {
       "Sid": "AllowCloudWatchCrossAccountLinkReadOnly",
       "Effect": "Allow",
-      "Action": [
-        "oam:GetLink",
-        "oam:ListLinks"
-      ],
+      "Action": "oam:ListLinks",
       "Resource": "*"
     },
     {
