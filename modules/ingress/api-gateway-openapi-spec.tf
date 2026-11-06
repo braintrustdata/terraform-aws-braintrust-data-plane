@@ -906,6 +906,9 @@ locals {
           ]
         })
       }
+      "/brainstore/org-pools" = {
+        for method in ["get", "options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/brainstore/routes" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
