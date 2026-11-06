@@ -48,7 +48,7 @@ resource "aws_launch_template" "brainstore_writer" {
     brainstore_locks_s3_path                      = trimprefix(var.locks_s3_path, "/")
     license_key_secret_arn                        = var.license_key_secret_arn
     license_key_secret_version                    = var.license_key_secret_version
-    brainstore_version_override                   = var.version_override == null ? "" : var.version_override
+    brainstore_version_override                   = local.brainstore_writer_version_override
     brainstore_release_version                    = local.brainstore_release_version
     monitoring_telemetry                          = var.monitoring_telemetry
     is_dedicated_reader_node                      = "false"

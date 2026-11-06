@@ -41,6 +41,50 @@ variable "version_override" {
   default     = null
 }
 
+variable "reader_version_override" {
+  type        = string
+  description = "Lock Brainstore reader nodes on a specific version. Ignored when version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.reader_version_override == null || var.reader_version_override != ""
+    error_message = "reader_version_override must be null or a non-empty string."
+  }
+}
+
+variable "writer_version_override" {
+  type        = string
+  description = "Lock Brainstore writer nodes on a specific version. Ignored when version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.writer_version_override == null || var.writer_version_override != ""
+    error_message = "writer_version_override must be null or a non-empty string."
+  }
+}
+
+variable "fast_reader_version_override" {
+  type        = string
+  description = "Lock Brainstore fast reader nodes on a specific version. Ignored when version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.fast_reader_version_override == null || var.fast_reader_version_override != ""
+    error_message = "fast_reader_version_override must be null or a non-empty string."
+  }
+}
+
+variable "automation_writer_version_override" {
+  type        = string
+  description = "Lock Brainstore automation writer nodes on a specific version. Ignored when version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.automation_writer_version_override == null || var.automation_writer_version_override != ""
+    error_message = "automation_writer_version_override must be null or a non-empty string."
+  }
+}
+
 variable "instance_key_pair_name" {
   type        = string
   description = "Optional. The name of the key pair to use for the Brainstore instances"

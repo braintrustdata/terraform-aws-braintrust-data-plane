@@ -111,3 +111,21 @@ run "rejects_invalid_cloudwatch_retention" {
     var.main_vpc_flow_log,
   ]
 }
+
+run "rejects_empty_brainstore_per_node_type_version_overrides" {
+  command = plan
+
+  variables {
+    brainstore_reader_version_override            = ""
+    brainstore_writer_version_override            = ""
+    brainstore_fast_reader_version_override       = ""
+    brainstore_automation_writer_version_override = ""
+  }
+
+  expect_failures = [
+    var.brainstore_reader_version_override,
+    var.brainstore_writer_version_override,
+    var.brainstore_fast_reader_version_override,
+    var.brainstore_automation_writer_version_override,
+  ]
+}
