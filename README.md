@@ -92,9 +92,22 @@ We still recommend a public dataplane for ease of deployment however a private o
 
 Set `brainstore_automation_writer_min_capacity` and `brainstore_automation_writer_max_capacity` to size the dedicated automation writer pool. Both must be positive integers. Enabled pools use a private NLB; otherwise, automation queries use the normal writer endpoint.
 
-Set both capacity inputs or neither. When both are unset, the minimum uses `brainstore_automation_writer_instance_count` (default 0), and the maximum uses twice that count. A legacy count of 0 disables the pool.
+Set both capacity inputs or neither. When both are unset, the minimum uses `brainstore_automation_writer_instance_count` (default 0), and the maximum uses twice that count. A legacy count of 0 disables the pool when both capacity inputs are unset.
 
-`brainstore_automation_writer_target_cpu_utilization` and `brainstore_automation_writer_target_memory_utilization` both default to 70%, with a 900-second warmup. Either policy can scale out; both must agree to scale in. Autoscaling owns desired capacity after creation. Upgrading an enabled pool rolls its instances to publish ASG-level memory metrics.
+`brainstore_automation_writer_target_cpu_utilization` and `brainstore_automation_writer_target_memory_utilization` both default to 50%, with a 900-second warmup. Both targets can be overridden. Either policy can scale out; both must agree to scale in. Autoscaling owns desired capacity after creation.
+
+#### Upgrade impact
+
+Existing enabled automation writer pools begin autoscaling on upgrade without configuration changes. For example, a legacy `brainstore_automation_writer_instance_count = 2` allows the pool to grow from 2 to 4 instances, potentially increasing EC2 costs. A legacy count of 0 remains disabled when both capacity inputs are unset.
+
+To retain a fixed-size pool of 2 instances, set both bounds in your upgrade configuration:
+
+```hcl
+brainstore_automation_writer_min_capacity = 2
+brainstore_automation_writer_max_capacity = 2
+```
+
+Upgrading an enabled pool also triggers a rolling instance refresh to publish ASG-level memory metrics. Equal bounds prevent autoscaling growth, but the existing rolling refresh preferences can still temporarily double capacity to preserve availability, incurring additional EC2 costs during the rollout.
 
 ### Organization access configuration
 

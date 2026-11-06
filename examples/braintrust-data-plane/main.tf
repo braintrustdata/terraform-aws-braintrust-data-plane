@@ -111,8 +111,8 @@ module "braintrust-data-plane" {
   # brainstore_automation_writer_min_capacity = 1
   # brainstore_automation_writer_max_capacity = 4
   # Targets apply only when the automation writer pool is enabled.
-  brainstore_automation_writer_target_cpu_utilization    = 70
-  brainstore_automation_writer_target_memory_utilization = 70
+  brainstore_automation_writer_target_cpu_utilization    = 50
+  brainstore_automation_writer_target_memory_utilization = 50
 
   ### Redis configuration
   # Reuse a subnet group in the data plane VPC; null creates one (default).

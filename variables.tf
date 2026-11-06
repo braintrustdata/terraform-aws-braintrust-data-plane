@@ -1792,7 +1792,7 @@ variable "brainstore_automation_writer_max_capacity" {
 variable "brainstore_automation_writer_target_cpu_utilization" {
   type        = number
   description = "Target average CPU utilization percentage for dedicated Brainstore automation writer autoscaling."
-  default     = 70
+  default     = 50
 
   validation {
     condition     = var.brainstore_automation_writer_target_cpu_utilization >= 1 && var.brainstore_automation_writer_target_cpu_utilization <= 100
@@ -1803,7 +1803,7 @@ variable "brainstore_automation_writer_target_cpu_utilization" {
 variable "brainstore_automation_writer_target_memory_utilization" {
   type        = number
   description = "Target average memory utilization percentage for dedicated Brainstore automation writer autoscaling."
-  default     = 70
+  default     = 50
 
   validation {
     condition     = var.brainstore_automation_writer_target_memory_utilization >= 1 && var.brainstore_automation_writer_target_memory_utilization <= 100

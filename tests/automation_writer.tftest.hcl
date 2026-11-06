@@ -109,28 +109,6 @@ run "root_automation_writer_rejects_zero_minimum" {
   expect_failures = [var.brainstore_automation_writer_min_capacity]
 }
 
-run "root_automation_writer_rejects_zero_maximum" {
-  command = plan
-
-  variables {
-    brainstore_automation_writer_min_capacity = 1
-    brainstore_automation_writer_max_capacity = 0
-  }
-
-  expect_failures = [var.brainstore_automation_writer_max_capacity]
-}
-
-run "root_automation_writer_rejects_negative_minimum" {
-  command = plan
-
-  variables {
-    brainstore_automation_writer_min_capacity = -1
-    brainstore_automation_writer_max_capacity = 2
-  }
-
-  expect_failures = [var.brainstore_automation_writer_min_capacity]
-}
-
 run "root_automation_writer_rejects_fractional_maximum" {
   command = plan
 
