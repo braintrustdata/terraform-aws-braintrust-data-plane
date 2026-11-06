@@ -17,6 +17,7 @@ run = """
 set -e
 terraform init -backend=false -upgrade
 uv run scripts/check-loop-network-dependencies
+uv run scripts/check-brainstore-autoscaling
 terraform test
 """
 
