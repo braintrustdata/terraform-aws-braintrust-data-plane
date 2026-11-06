@@ -45,12 +45,12 @@ output "main_vpc_private_route_table_id" {
 
 output "quarantine_gateway_privatelink_service_name" {
   value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint_service.gateway_quarantine[0].service_name : null
-  description = "VPC endpoint service name for quarantine→private gateway PrivateLink (null unless use_private_gateway_quarantine_proxy with module-managed VPCs). Existing VPC / existing quarantine callers must set quarantine_proxy_url; use this name if you attach a manual interface endpoint."
+  description = "VPC endpoint service for quarantine PrivateLink. Targets the API ALB in private mode and the gateway ALB in public mode. Null without PrivateLink."
 }
 
 output "quarantine_gateway_privatelink_endpoint_dns_name" {
   value       = local.create_quarantine_gateway_privatelink ? aws_vpc_endpoint.quarantine_gateway[0].dns_entry[0].dns_name : null
-  description = "DNS name of the quarantine VPC endpoint to the private gateway (null unless PrivateLink consumer is created)"
+  description = "DNS name of the quarantine PrivateLink endpoint. Private mode uses the API ALB. Null without PrivateLink."
 }
 
 output "main_vpc_flow_log_s3_bucket_arn" {
@@ -159,7 +159,7 @@ output "gateway_target_group_arn" {
 }
 
 output "gateway_url" {
-  value       = local.create_ai_gateway ? module.gateway_alb[0].gateway_url : null
+  value       = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
   description = "Private in-VPC gateway URL. Set enable_ai_gateway to wire GATEWAY_URL on api-ts services."
 }
 
@@ -193,9 +193,14 @@ output "api_ecs_http_url" {
   description = "URL of the private API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)"
 }
 
+output "api_ecs_internal_url" {
+  value       = local.create_ecs_api ? module.api_ecs[0].internal_url : null
+  description = "Internal API URL for service callbacks. Null when private mode is disabled."
+}
+
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective QUARANTINE_PROXY_URL on API ECS (quarantine_proxy_url override, PrivateLink VPCE /v1/proxy when use_private_gateway_quarantine_proxy, otherwise AI Proxy Function URL)"
+  description = "Effective quarantine proxy base URL. Public mode retains explicit override, gateway endpoint, Function URL, and CloudFront precedence. Private mode derives the proxy URL from the API endpoint when create_quarantine_api_access is true. Otherwise, private mode returns null."
 }
 
 output "api_ecs_task_security_group_id" {
@@ -211,6 +216,11 @@ output "loop_runtime_url" {
 output "loop_runtime_ai_proxy_url" {
   value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
   description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy when enable_ai_gateway, otherwise hosted gateway or CloudFront API /v1/proxy)"
+}
+
+output "loop_runtime_sandbox_egress_gateway_dns_name" {
+  value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_dns_name : null
+  description = "Loop sandbox egress gateway endpoint DNS name. A supplied sandbox VPC must let sandboxes resolve it."
 }
 
 output "loop_runtime_microvm_image_arn" {
@@ -239,22 +249,22 @@ output "redis_arn" {
 }
 
 output "api_url" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].api_url : null
+  value       = var.use_deployment_mode_external_eks ? null : local.api_url
   description = "The primary endpoint for the dataplane API. This is the value that should be entered into the braintrust dashboard under API URL."
 }
 
 output "cloudfront_distribution_domain_name" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_domain_name : null
+  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_domain_name : null
   description = "The domain name of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_arn" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_arn : null
+  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_arn : null
   description = "The ARN of the cloudfront distribution"
 }
 
 output "cloudfront_distribution_hosted_zone_id" {
-  value       = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
+  value       = local.create_ingress ? module.ingress[0].cloudfront_distribution_hosted_zone_id : null
   description = "The hosted zone ID of the cloudfront distribution"
 }
 
@@ -278,9 +288,9 @@ output "monitoring_contract" {
     }
 
     api_gateway = {
-      enabled = !var.use_deployment_mode_external_eks
-      name    = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_name : null
-      stage   = !var.use_deployment_mode_external_eks ? module.ingress[0].api_gateway_stage_name : null
+      enabled = !var.use_deployment_mode_external_eks && !var.enable_ecs_api
+      name    = local.create_ingress ? module.ingress[0].api_gateway_name : null
+      stage   = local.create_ingress ? module.ingress[0].api_gateway_stage_name : null
     }
 
     brainstore = {
@@ -290,8 +300,8 @@ output "monitoring_contract" {
     }
 
     cloudfront = {
-      enabled         = !var.use_deployment_mode_external_eks
-      distribution_id = !var.use_deployment_mode_external_eks ? module.ingress[0].cloudfront_distribution_id : null
+      enabled         = local.create_ingress
+      distribution_id = local.create_ingress ? module.ingress[0].cloudfront_distribution_id : null
     }
 
     ecs = {
@@ -359,4 +369,9 @@ output "quarantine_private_subnet_3_id" {
 output "quarantine_lambda_security_group_id" {
   value       = module.services_common.quarantine_lambda_security_group_id
   description = "ID of the security group for quarantine Lambda functions"
+}
+
+output "quarantine_api_url" {
+  description = "Private API base URL for quarantine. Null when private quarantine API access is disabled or the deployment is public."
+  value       = local.quarantine_api_url
 }

@@ -1,3 +1,27 @@
+variable "enable_private_dataplane" {
+  type        = bool
+  description = "Remove CloudFront access and add an internal HTTP listener on port 8000."
+  default     = false
+}
+
+variable "enable_loop_runtime" {
+  type        = bool
+  description = "Create direct Loop routes on the customer listener in private mode."
+  default     = false
+}
+
+variable "internal_authorized_security_groups" {
+  type        = map(string)
+  description = "Service security groups that can access the internal HTTP listener."
+  default     = {}
+}
+
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop task security groups that can access the internal HTTP listener. Separate rules preserve bootstrap order."
+  default     = {}
+}
+
 variable "deployment_name" {
   type        = string
   description = "Name of this deployment. Will be included in resource names."
@@ -104,6 +128,20 @@ variable "braintrust_api_cpu_autoscaling" {
   }
 }
 
+variable "braintrust_api_memory_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "Memory target tracking autoscaling for the braintrust-api ECS service."
+
+  validation {
+    condition     = var.braintrust_api_memory_autoscaling.target_value > 0 && var.braintrust_api_memory_autoscaling.target_value <= 100
+    error_message = "braintrust_api_memory_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
 variable "braintrust_api_event_loop_utilization_autoscaling" {
   type = object({
     target_value       = number
@@ -200,6 +238,20 @@ variable "braintrust_api_ingest_cpu_autoscaling" {
   }
 }
 
+variable "braintrust_api_ingest_memory_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "Memory target tracking autoscaling for the braintrust-api-ingest ECS service."
+
+  validation {
+    condition     = var.braintrust_api_ingest_memory_autoscaling.target_value > 0 && var.braintrust_api_ingest_memory_autoscaling.target_value <= 100
+    error_message = "braintrust_api_ingest_memory_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
 variable "braintrust_api_ingest_event_loop_utilization_autoscaling" {
   type = object({
     target_value       = number
@@ -293,6 +345,20 @@ variable "braintrust_api_background_cpu_autoscaling" {
   validation {
     condition     = var.braintrust_api_background_cpu_autoscaling.target_value > 0 && var.braintrust_api_background_cpu_autoscaling.target_value <= 100
     error_message = "braintrust_api_background_cpu_autoscaling.target_value must be between 1 and 100."
+  }
+}
+
+variable "braintrust_api_background_memory_autoscaling" {
+  type = object({
+    target_value       = number
+    scale_in_cooldown  = number
+    scale_out_cooldown = number
+  })
+  description = "Memory target tracking autoscaling for the braintrust-api-background ECS service."
+
+  validation {
+    condition     = var.braintrust_api_background_memory_autoscaling.target_value > 0 && var.braintrust_api_background_memory_autoscaling.target_value <= 100
+    error_message = "braintrust_api_background_memory_autoscaling.target_value must be between 1 and 100."
   }
 }
 
@@ -431,6 +497,11 @@ variable "redis_url_secret_arn" {
   description = "ARN of the secret containing the Redis URL."
 }
 
+variable "redis_url_secret_version_id" {
+  type        = string
+  description = "Secrets Manager version id for the Redis URL secret. Pinned in ECS valueFrom so secret content changes create a new task definition revision."
+}
+
 variable "response_bucket" {
   type        = string
   description = "S3 bucket for function responses."
@@ -479,6 +550,12 @@ variable "brainstore_writer_hostname" {
 variable "brainstore_fast_reader_hostname" {
   type        = string
   description = "Optional Brainstore fast reader hostname."
+  default     = null
+}
+
+variable "brainstore_automation_writer_hostname" {
+  type        = string
+  description = "Optional Brainstore automation writer hostname when query routing is enabled."
   default     = null
 }
 
@@ -554,6 +631,18 @@ variable "internal_observability_api_key_secret_arn" {
   default     = ""
 }
 
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Included in the task definition so rotating the key forces a new revision and service rollout."
+  default     = ""
+}
+
+variable "internal_observability_enabled" {
+  type        = bool
+  description = "Whether to enable internal Datadog observability for API ECS. Must be a plan-known boolean (do not derive from the secret ARN)."
+  default     = false
+}
+
 variable "internal_observability_region" {
   type        = string
   description = "Datadog region suffix (e.g. us5) used to build DD_SITE."
@@ -620,7 +709,7 @@ variable "quarantine_vpc_id" {
 
 variable "quarantine_proxy_url" {
   type        = string
-  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), or AI Proxy Function URL. Null or blank omits the env var so api-ts getRuntimeEnv falls back to the caller proxy URL."
+  description = "QUARANTINE_PROXY_URL for quarantine UDF LLM calls. Root module supplies override, PrivateLink VPCE /v1/proxy (when use_private_gateway_quarantine_proxy), the AI Proxy Function URL while that Lambda exists, or the CloudFront /v1/proxy URL once it is gone. Null or blank omits the variable; api-ts uses the caller proxy URL, which is http://localhost:8000/v1/proxy in this ECS configuration. A quarantine Lambda cannot call that address."
   default     = null
 }
 
@@ -644,13 +733,29 @@ variable "extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
   }
 }
 
-variable "brainstore_license_key" {
+variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "License key for the Brainstore instance. Passed to the API container for telemetry authorization and status/metrics reporting."
+  description = "Secrets Manager secret ARN for the Brainstore license."
+
+  validation {
+    condition     = var.brainstore_license_key_secret_arn == null ? false : trimspace(var.brainstore_license_key_secret_arn) != ""
+    error_message = "Provide brainstore_license_key_secret_arn for the license."
+  }
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "License secret version ID. A version change forces a new task revision and service deployment."
+  default     = ""
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
   default     = null
 }
 
@@ -731,4 +836,10 @@ variable "brainstore_deployment_id" {
   description = "Dependency on the completed Brainstore deployment."
   type        = string
   default     = null
+}
+
+variable "gateway_security_groups" {
+  description = "Gateway task security groups authorized to reach the private API listener."
+  type        = map(string)
+  default     = {}
 }

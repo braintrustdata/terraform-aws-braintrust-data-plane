@@ -130,11 +130,16 @@ systemctl enable amazon-cloudwatch-agent
 
 get_secret_value_with_retry() {
   local secret_id="$1"
+  local version_id="$${2:-}"
   local attempt
   local retry_delay
+  local version_args=()
+  if [ -n "$version_id" ]; then
+    version_args=(--version-id "$version_id")
+  fi
 
   for attempt in 1 2 3 4 5; do
-    if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
+    if aws secretsmanager get-secret-value --secret-id "$secret_id" "$${version_args[@]}" --query SecretString --output text; then
       return 0
     fi
 
@@ -167,6 +172,17 @@ if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bund
 fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
 %{ endif ~}
+# license_key_secret_version is baked into user_data so rotating the secret
+# changes the launch template and triggers a rolling instance refresh.
+if ! BRAINSTORE_LICENSE_KEY=$(get_secret_value_with_retry "${license_key_secret_arn}" "${license_key_secret_version}"); then
+  echo "Failed to retrieve BRAINSTORE_LICENSE_KEY from Secrets Manager. Exiting with failure."
+  exit 1
+fi
+
+# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so the user-data is updated when the version changes to force a refresh)
+if ! REDIS_URL=$(get_secret_value_with_retry "${redis_url_secret_arn}" "${redis_url_secret_version_id}"); then
+  exit 1
+fi
 
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
@@ -180,15 +196,15 @@ BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${datab
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
 BRAINSTORE_RESPONSE_CACHE_URI=s3://${lambda_responses_bucket_id}/brainstore-cache
 BRAINSTORE_CODE_BUNDLE_URI=s3://${code_bundle_bucket_id}
-BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
+BRAINSTORE_LICENSE_KEY=$BRAINSTORE_LICENSE_KEY
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
 SERVICE_TOKEN_SECRET_KEY=$SERVICE_TOKEN_SECRET_KEY
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
-BRAINSTORE_REDIS_URI=${redis_scheme}://${redis_host}:${redis_port}
-BRAINSTORE_XACT_MANAGER_URI=${redis_scheme}://${redis_host}:${redis_port}
+BRAINSTORE_REDIS_URI=$REDIS_URL
+BRAINSTORE_XACT_MANAGER_URI=$REDIS_URL
 BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 %{ if skip_pg_for_brainstore_objects != "" ~}
 BRAINSTORE_ASYNC_SCORING_OBJECTS=${skip_pg_for_brainstore_objects}
@@ -223,15 +239,20 @@ else
   exit 1
 fi
 
-if [ -n "${internal_observability_api_key}" ]; then
+if [ -n "${internal_observability_api_key_secret_arn}" ]; then
+  # internal_observability_api_key_secret_version is baked into user_data so
+  # rotating the secret changes the launch template and triggers a rolling
+  # instance refresh.
+  if ! DD_API_KEY=$(get_secret_value_with_retry "${internal_observability_api_key_secret_arn}" "${internal_observability_api_key_secret_version}"); then
+    echo "Failed to retrieve DD_API_KEY from Secrets Manager. Exiting with failure."
+    exit 1
+  fi
   if [ -n "${internal_observability_env_name}" ]; then
     export DD_ENV="${internal_observability_env_name}"
   fi
   # Install Datadog Agent
-  export DD_API_KEY="${internal_observability_api_key}"
+  export DD_API_KEY
   export DD_SITE="${internal_observability_region}.datadoghq.com"
-  export DD_APM_INSTRUMENTATION_ENABLED=host
-  export DD_APM_INSTRUMENTATION_LIBRARIES=java:1,python:3,js:5,php:1,dotnet:3
   bash -c "$(curl -L https://install.datadoghq.com/scripts/install_script_agent7.sh)"
   usermod -a -G docker dd-agent
 
@@ -239,7 +260,10 @@ if [ -n "${internal_observability_api_key}" ]; then
 DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
 DD_COLLECT_EC2_TAGS=true
 DD_COLLECT_EC2_TAGS_USE_IMDS=true
+DD_APM_ENABLED=false
+DD_OTLP_CONFIG_TRACES_ENABLED=false
 EOF
+%{ if datadog_agent_container_logs ~}
   # Configure Datadog Agent to collect Docker logs
   cat <<EOF >> /etc/datadog-agent/datadog.yaml
 logs_enabled: true
@@ -251,6 +275,7 @@ config_providers:
 logs_config:
     container_collect_all: true
 EOF
+%{ endif ~}
 
   # Configure Datadog agent to collect network metrics
   cat <<EOF > /etc/datadog-agent/conf.d/network.d/conf.yaml
@@ -278,9 +303,11 @@ EOF
   systemctl daemon-reload
   systemctl enable datadog-agent
 
-  # Configure Brainstore to send traces to Datadog
+  # Configure Brainstore OTLP export to Datadog
   cat <<EOF >> /etc/brainstore.env
-BRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318
+%{ for env_key, env_value in datadog_agent_otlp_env_vars ~}
+${env_key}=${env_value}
+%{ endfor ~}
 EOF
 fi
 
@@ -301,6 +328,41 @@ docker run -d \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
+
+# Add an 8 GiB swap file on the root volume to absorb short memory spikes
+# before earlyoom or the kernel OOM killer stops Brainstore. swappiness=1
+# keeps swap for memory pressure only. A swap failure does not fail the boot.
+configure_swap() {
+  local swapfile=/swapfile
+  local swap_size_kib=$((8 * 1024 * 1024))
+  local total_memory_kib
+  local swappiness=1
+
+  total_memory_kib=$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo)
+  if [[ -z "$total_memory_kib" || "$swap_size_kib" -gt "$total_memory_kib" ]]; then
+    echo "Skipping 8 GiB swap because it exceeds total memory ($${total_memory_kib:-unknown} KiB)"
+    return 0
+  fi
+
+  if swapon --show=NAME --noheadings | grep -qx "$swapfile"; then
+    return 0
+  fi
+  if [[ ! -e "$swapfile" ]]; then
+    fallocate -l 8G "$swapfile" || dd if=/dev/zero of="$swapfile" bs=1M count=8192 status=progress
+  fi
+  chmod 600 "$swapfile"
+  mkswap "$swapfile"
+  swapon "$swapfile" || {
+    dd if=/dev/zero of="$swapfile" bs=1M count=8192 conv=notrunc status=progress
+    mkswap "$swapfile"
+    swapon "$swapfile"
+  }
+  grep -q "^$swapfile " /etc/fstab || echo "$swapfile none swap sw 0 0" >> /etc/fstab
+
+  echo "vm.swappiness=$swappiness" | tee /etc/sysctl.d/99-swappiness.conf
+  sysctl -w vm.swappiness=$swappiness
+}
+configure_swap || echo "swap setup failed" >&2
 
 %{ if custom_post_install_script != "" ~}
 echo "Running custom post-install script..."

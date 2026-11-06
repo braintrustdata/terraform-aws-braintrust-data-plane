@@ -277,6 +277,26 @@ variable "quarantine_public_subnet_1_az" {
   description = "Availability zone for the public subnet. Leave blank to choose the first available zone"
 }
 
+variable "enable_quarantine_pruner" {
+  type        = bool
+  description = "Deploy an hourly Lambda that deletes unreferenced versions of quarantine functions. Requires enable_quarantine_vpc. Not created in external EKS mode."
+  default     = false
+  validation {
+    condition     = var.enable_quarantine_pruner ? var.enable_quarantine_vpc : true
+    error_message = "enable_quarantine_pruner requires enable_quarantine_vpc = true."
+  }
+}
+
+variable "quarantine_pruner_mode" {
+  type        = string
+  description = "Quarantine pruner mode: off (runs and exits early), dry-run (logs what it would delete), or on (deletes). Note: QUARANTINE_PRUNER_MODE set for QuarantinePrunerFunction in extra_env_vars takes precedence over this variable. Ignored unless enable_quarantine_pruner is true."
+  default     = "off"
+  validation {
+    condition     = contains(["off", "dry-run", "on"], var.quarantine_pruner_mode)
+    error_message = "quarantine_pruner_mode must be one of: off, dry-run, on."
+  }
+}
+
 # VPC Flow Logs (only applied to VPCs this module creates)
 variable "main_vpc_flow_log" {
   description = <<-EOT
@@ -553,18 +573,18 @@ variable "redis_apply_immediately" {
 ## Services
 
 variable "create_ai_gateway" {
-  description = "Create the private gateway infrastructure (internal ALB and ECS gateway service)."
+  description = "Create the private gateway infrastructure (internal ALB and ECS gateway service). External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_ai_gateway" {
-  description = "Wire GATEWAY_URL on APIHandler, AIProxy, and ECS API, and LOOP_RUNTIME_AI_PROXY_URL on Loop ECS, to the private gateway. For existing dataplanes, required: set create_ai_gateway = true (with enable_ai_gateway = false) and apply first, then set enable_ai_gateway = true in a subsequent apply once the private gateway is healthy. Greenfield dataplanes can enable both create_ai_gateway and enable_ai_gateway in a single apply."
+  description = "Route API services and Loop through the private gateway. Requires create_ai_gateway. Existing deployments finish the v6 applies first; see MIGRATION_V7.md. A greenfield stack can set create_ai_gateway and enable_ai_gateway both true in one apply. Caller updates wait for the gateway ECS service to reach steady state. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
-  default     = false
+  default     = true
 
   validation {
-    condition     = !var.enable_ai_gateway || var.create_ai_gateway
+    condition     = var.use_deployment_mode_external_eks || !var.enable_ai_gateway || var.create_ai_gateway
     error_message = "enable_ai_gateway requires create_ai_gateway."
   }
 }
@@ -600,13 +620,22 @@ variable "ai_gateway_cpu" {
 variable "ai_gateway_memory" {
   description = "Memory in MiB for the gateway ECS task definition"
   type        = number
-  default     = 4096
+  default     = 8192
 }
 
 variable "ai_gateway_min_capacity" {
   description = "Minimum task count for the gateway ECS service"
   type        = number
   default     = 2
+
+  validation {
+    condition = !(local.create_ai_gateway && (
+      local.enable_ai_gateway || local.enable_private_ai_gateway_origin || (
+        local.create_quarantine_gateway_privatelink && local.quarantine_proxy_url_override == null
+      )
+    )) || var.ai_gateway_min_capacity >= 1
+    error_message = "ai_gateway_min_capacity must be at least 1 when a gateway route is enabled."
+  }
 }
 
 variable "ai_gateway_max_capacity" {
@@ -634,7 +663,7 @@ variable "ai_gateway_target_cpu_utilization" {
 variable "ai_gateway_target_memory_utilization" {
   description = "Target average memory utilization percentage for gateway ECS autoscaling"
   type        = number
-  default     = 75
+  default     = 65
 
   validation {
     condition     = var.ai_gateway_target_memory_utilization > 0 && var.ai_gateway_target_memory_utilization <= 100
@@ -700,7 +729,7 @@ variable "ai_gateway_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
   }
 }
 
@@ -759,7 +788,7 @@ variable "enable_loop_runtime" {
 
 variable "loop_runtime_version_override" {
   type        = string
-  description = "Pin the Loop runtime container image and MicroVM guest artifact to a specific version tag. Defaults to modules/loop-runtime-ecs/VERSIONS.json."
+  description = "Override the Loop runtime and MicroVM guest version. Restricted sandbox egress requires Loop runtime 2.16.0 or later. Null uses the module's default version."
   default     = null
 }
 
@@ -790,7 +819,7 @@ variable "loop_runtime_min_capacity" {
 variable "loop_runtime_max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 4
+  default     = 50
 }
 
 variable "loop_runtime_target_cpu_utilization" {
@@ -802,6 +831,12 @@ variable "loop_runtime_target_cpu_utilization" {
 variable "loop_runtime_target_memory_utilization" {
   type        = number
   description = "Target average memory use percentage for Loop runtime autoscaling."
+  default     = 50
+}
+
+variable "loop_runtime_target_conversation_utilization" {
+  type        = number
+  description = "Target average claimed conversation use percentage for Loop runtime autoscaling."
   default     = 50
 }
 
@@ -873,26 +908,49 @@ variable "enable_loop_runtime_microvm_runtime_logs" {
   default     = false
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "loop_runtime_sandbox_egress_mode" {
   type        = string
-  description = "Outbound network mode for Loop runtime sandbox MicroVMs. The value internet permits public access. Every other value blocks outbound access."
+  description = "Deprecated. Loop runtime sandboxes always use restricted egress; the only accepted value is restricted."
   default     = "restricted"
+
+  validation {
+    condition     = var.loop_runtime_sandbox_egress_mode == "restricted"
+    error_message = "loop_runtime_sandbox_egress_mode only supports \"restricted\"; internet egress was removed."
+  }
+}
+
+variable "loop_runtime_sandbox_vpc_cidr" {
+  type        = string
+  description = "IPv4 CIDR block for the module-managed Loop sandbox VPC. Ignored when loop_runtime_sandbox_existing_vpc_id is set. Changing this after deployment replaces the sandbox VPC and subnets."
+  default     = "10.255.0.0/16"
+  nullable    = false
+
+  validation {
+    condition = can(cidrnetmask(var.loop_runtime_sandbox_vpc_cidr)) && try(
+      tonumber(split("/", var.loop_runtime_sandbox_vpc_cidr)[1]) >= 16 &&
+      tonumber(split("/", var.loop_runtime_sandbox_vpc_cidr)[1]) <= 21,
+      false,
+    )
+    error_message = "loop_runtime_sandbox_vpc_cidr must be a valid IPv4 CIDR with a prefix length from /16 through /21 to accommodate six /24 subnets."
+  }
 }
 
 variable "loop_runtime_sandbox_existing_vpc_id" {
   type        = string
-  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and DNS restrictions."
+  description = "Optional dedicated VPC for restricted sandbox egress. The caller controls routes and, unless loop_runtime_sandbox_manage_existing_vpc_dns_firewall is true, DNS restrictions."
   default     = null
 
   validation {
     condition     = var.loop_runtime_sandbox_existing_vpc_id == null ? true : trimspace(var.loop_runtime_sandbox_existing_vpc_id) != ""
     error_message = "loop_runtime_sandbox_existing_vpc_id must be null or a nonempty VPC ID."
   }
+}
 
-  validation {
-    condition     = var.loop_runtime_sandbox_existing_vpc_id == null || var.loop_runtime_sandbox_egress_mode != "internet"
-    error_message = "loop_runtime_sandbox_existing_vpc_id requires restricted sandbox egress."
-  }
+variable "loop_runtime_sandbox_manage_existing_vpc_dns_firewall" {
+  type        = bool
+  description = "Manage DNS Firewall in the supplied dedicated sandbox VPC, allowing only the egress gateway endpoint hostname. False leaves DNS policy to the caller. DNS Firewall is always managed in the module-created sandbox VPC."
+  default     = false
 }
 
 variable "loop_runtime_sandbox_existing_private_subnet_1_id" {
@@ -963,15 +1021,44 @@ variable "braintrust_api_version_override" {
   }
 }
 
-variable "enable_ecs_api" {
+variable "enable_private_dataplane" {
   type        = bool
-  description = "Route traffic to the API ECS ALB instead of API Gateway and Lambdas. API ECS infra is always created for standard (non-external-EKS) deployments; this flag only controls traffic. Default false keeps Lambda as the active path while ECS stays warm for cutover."
+  description = "Private mode serves the data plane through the internal API ALB without CloudFront. It requires ECS, the private AI gateway, and a customer hostname and certificate. It supports module-managed or customer-supplied main and quarantine VPCs. A change to this setting causes an outage."
   default     = false
 
   validation {
-    condition     = !var.enable_ecs_api || !var.use_deployment_mode_external_eks
-    error_message = "enable_ecs_api cannot be true when use_deployment_mode_external_eks is true."
+    condition     = !var.enable_private_dataplane || (var.enable_ecs_api && var.create_ai_gateway && var.enable_ai_gateway && !var.use_deployment_mode_external_eks)
+    error_message = "Private mode requires enable_ecs_api, create_ai_gateway, and enable_ai_gateway. External EKS is not supported."
   }
+
+  validation {
+    condition = !var.enable_private_dataplane || (
+      try(trimspace(var.braintrust_api_alb_custom_domain) != "", false) &&
+      try(trimspace(var.braintrust_api_alb_certificate_arn) != "", false)
+    )
+    error_message = "Private mode requires braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn."
+  }
+
+  validation {
+    condition     = !var.enable_private_dataplane || !(var.use_global_ai_proxy || var.use_global_ai_gateway_origin)
+    error_message = "Private mode does not support use_global_ai_proxy or use_global_ai_gateway_origin."
+  }
+
+  validation {
+    condition     = !var.enable_private_dataplane || var.quarantine_proxy_url == null
+    error_message = "quarantine_proxy_url must be null in private mode. Private mode uses create_quarantine_api_access for the API endpoint."
+  }
+
+  validation {
+    condition     = !var.enable_private_dataplane || (var.custom_domain == null && var.custom_certificate_arn == null && var.waf_acl_id == null)
+    error_message = "Private mode does not support CloudFront domain, certificate, or WAF inputs. Private mode requires the API ALB domain and certificate inputs."
+  }
+}
+
+variable "enable_ecs_api" {
+  type        = bool
+  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Public ECS mode uses the CloudFront /v1/proxy URL for quarantine unless an override or PrivateLink selects another URL. Private mode uses create_quarantine_api_access. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
+  default     = true
 }
 
 variable "braintrust_api_log_retention_days" {
@@ -1026,6 +1113,17 @@ variable "braintrust_api_cpu_autoscaling" {
   description = "CPU target tracking autoscaling for the braintrust-api ECS service."
   type = object({
     target_value       = optional(number, 50)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
+
+  default = {}
+}
+
+variable "braintrust_api_memory_autoscaling" {
+  description = "Memory target tracking autoscaling for the braintrust-api ECS service."
+  type = object({
+    target_value       = optional(number, 75)
     scale_in_cooldown  = optional(number, 300)
     scale_out_cooldown = optional(number, 60)
   })
@@ -1108,6 +1206,17 @@ variable "braintrust_api_ingest_cpu_autoscaling" {
   default = {}
 }
 
+variable "braintrust_api_ingest_memory_autoscaling" {
+  description = "Memory target tracking autoscaling for the braintrust-api-ingest ECS service."
+  type = object({
+    target_value       = optional(number, 75)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
+
+  default = {}
+}
+
 variable "braintrust_api_ingest_event_loop_utilization_autoscaling" {
   description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-ingest ECS service."
   type = object({
@@ -1183,6 +1292,17 @@ variable "braintrust_api_background_cpu_autoscaling" {
   default = {}
 }
 
+variable "braintrust_api_background_memory_autoscaling" {
+  description = "Memory target tracking autoscaling for the braintrust-api-background ECS service."
+  type = object({
+    target_value       = optional(number, 75)
+    scale_in_cooldown  = optional(number, 300)
+    scale_out_cooldown = optional(number, 60)
+  })
+
+  default = {}
+}
+
 variable "braintrust_api_background_event_loop_utilization_autoscaling" {
   description = "EventLoopUtilizationPercent target tracking autoscaling for the braintrust-api-background ECS service."
   type = object({
@@ -1220,7 +1340,7 @@ variable "braintrust_api_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
   }
 }
 
@@ -1254,7 +1374,7 @@ variable "braintrust_api_authorized_cidr_blocks" {
 }
 
 variable "braintrust_api_alb_certificate_arn" {
-  description = "Optional ACM certificate ARN for the internal API ECS ALB. When set together with braintrust_api_alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80, plain HTTP is disabled, and all API URLs use https://<braintrust_api_alb_custom_domain>. Defaults to plain HTTP."
+  description = "Optional ACM certificate ARN for the internal API ECS ALB. When set together with braintrust_api_alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80, plain HTTP is disabled, and customer API URLs use https://<braintrust_api_alb_custom_domain>. Private mode also provides HTTP port 8000 for internal callbacks. Defaults to plain HTTP."
   type        = string
   default     = null
 }
@@ -1282,15 +1402,11 @@ variable "api_ecs_enable_execute_command" {
   default     = false
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "braintrust_api_url" {
-  description = "Optional. Braintrust API URL used by the gateway when using external EKS deployment mode."
+  description = "Legacy API URL input for external EKS deployments. Configure the gateway API URL through Helm."
   type        = string
   default     = null
-
-  validation {
-    condition     = !(var.use_deployment_mode_external_eks && var.create_ai_gateway) || var.braintrust_api_url != null
-    error_message = "braintrust_api_url is required when use_deployment_mode_external_eks and create_ai_gateway are both true."
-  }
 }
 
 variable "api_handler_provisioned_concurrency" {
@@ -1434,6 +1550,33 @@ variable "existing_attachment_s3_bucket_kms_key_arn" {
   }
 }
 
+variable "external_attachment_s3_bucket_arns" {
+  description = "Opt-in. ARNs of caller-owned S3 buckets that hold external attachments (`s3://` URLs). Each ARN must name an exact 3-63-character bucket, or use one trailing `*` after a literal 3-62-character prefix to identify ephemeral buckets (for example, `arn:aws:s3:::example-*`). The API role is granted s3:GetObject on their objects, with no list access. The attachment endpoint signs a download for any s3:// URL an authenticated org member supplies. This module does not create, own, or modify the buckets. Same-account buckets are readable through this identity policy, subject to other denies; a bucket in another account must also grant the API role in its bucket policy. Empty disables the feature (default)."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_arns : can(regex("^arn:aws[a-zA-Z-]*:s3:::(?:[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]|[a-z0-9][a-z0-9.-]{2,61}\\*)$", arn))])
+    error_message = "external_attachment_s3_bucket_arns must contain S3 bucket ARNs with either an exact 3-63-character bucket name or a literal 3-62-character prefix followed by one trailing * for ephemeral buckets."
+  }
+}
+
+variable "external_attachment_s3_bucket_kms_key_arns" {
+  description = "Opt-in. ARNs of the KMS keys that encrypt the external_attachment_s3_bucket_arns buckets. The API role is granted kms:Decrypt on these keys through S3 only. A `key/*` ARN with a concrete region and account grants every key in that region and account; alias ARNs remain rejected. A key in another account must also grant the API role in its key policy."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for arn in var.external_attachment_s3_bucket_kms_key_arns : can(regex("^arn:aws[a-zA-Z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/([0-9a-zA-Z-]+|\\*)$", arn))])
+    error_message = "external_attachment_s3_bucket_kms_key_arns must contain KMS key ARNs of the form arn:aws:kms:<region>:<account-id>:key/<key-id>, or arn:aws:kms:<region>:<account-id>:key/* to allow all keys in an account and region."
+  }
+
+  validation {
+    condition     = length(var.external_attachment_s3_bucket_kms_key_arns) == 0 || length(var.external_attachment_s3_bucket_arns) > 0
+    error_message = "external_attachment_s3_bucket_arns is required when external_attachment_s3_bucket_kms_key_arns is set."
+  }
+}
+
 variable "outbound_rate_limit_max_requests" {
   description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
   type        = number
@@ -1464,24 +1607,41 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Optional explicit QUARANTINE_PROXY_URL for quarantine UDF LLM calls (e.g. eu-prod SaaS hosted gateway or GCP-style manual URL). Always wins over auto-selection. When null, see use_private_gateway_quarantine_proxy for how the URL is chosen."
+  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the AI Proxy Function URL while that Lambda exists, then the CloudFront /v1/proxy URL in ECS mode. That CloudFront path follows the configured /v1/proxy origin, including a hosted gateway. Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
   type        = string
   default     = null
 
   validation {
-    condition     = var.quarantine_proxy_url == null || var.quarantine_proxy_url != ""
-    error_message = "quarantine_proxy_url must be null or a non-empty URL."
+    # Ternary so trimspace is not called when the value is null.
+    condition     = var.quarantine_proxy_url == null ? true : trimspace(var.quarantine_proxy_url) != ""
+    error_message = "quarantine_proxy_url must be null or a non-empty URL. Whitespace-only values are rejected."
   }
 }
 
-variable "use_private_gateway_quarantine_proxy" {
-  description = "When true, wire quarantine UDF LLM calls to the private gateway via PrivateLink (NLB→gateway ALB + VPC endpoint in quarantine) and auto-set QUARANTINE_PROXY_URL to http://<vpce-dns>/v1/proxy (unless quarantine_proxy_url is set). Creates the sandwich only when create_vpc and the module quarantine VPC are both enabled. If the module cannot create PrivateLink (existing main VPC, existing quarantine VPC, or quarantine disabled) and quarantine_proxy_url is unset, apply fails. When false (default), do not create PrivateLink or auto-wire — use quarantine_proxy_url if set, else the AI Proxy Function URL. Requires create_ai_gateway. No PrivateLink when use_global_ai_gateway_origin is true (no-op; does not fail). Safe default for SaaS/eu-prod; opt in for dataplanes that should use the private gateway. Extra NLB cost applies when enabled."
+variable "create_quarantine_api_access" {
+  description = "Private mode can provide quarantine access to the API and AI Gateway through one API ALB endpoint. This input defaults to false. Public mode ignores this input. Private mode requires enable_quarantine_vpc when this input is true. The API release must support QUARANTINE_API_ACCESS_ENABLED and QUARANTINE_API_URL."
   type        = bool
   default     = false
 
   validation {
-    condition     = !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
+    condition     = !var.enable_private_dataplane || !var.create_quarantine_api_access || var.enable_quarantine_vpc
+    error_message = "Private quarantine API access requires enable_quarantine_vpc."
+  }
+}
+
+variable "use_private_gateway_quarantine_proxy" {
+  description = "Create quarantine-to-gateway PrivateLink through an internal NLB, the gateway ALB, and an interface endpoint. Supports managed or existing main and quarantine VPCs. Private mode ignores this flag and uses create_quarantine_api_access. Requires create_ai_gateway. Must be false in external EKS mode, where Helm owns the gateway. PrivateLink requires enable_quarantine_vpc. Otherwise, quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. Both VPCs must use the provider account and region, with private subnets in the same availability zones. API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it. An override does not suppress resource creation. False retains URL selection from quarantine_proxy_url, the AI Proxy Function URL, or the ECS-mode CloudFront fallback, except in private mode. When use_global_ai_gateway_origin is true, the module skips PrivateLink and automatic endpoint URL selection. The NLB and interface endpoint add costs."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = var.use_deployment_mode_external_eks || !var.use_private_gateway_quarantine_proxy || var.create_ai_gateway
     error_message = "use_private_gateway_quarantine_proxy requires create_ai_gateway."
+  }
+
+  validation {
+    condition     = !var.use_deployment_mode_external_eks || !var.use_private_gateway_quarantine_proxy
+    error_message = "use_private_gateway_quarantine_proxy cannot be true when use_deployment_mode_external_eks is true. External EKS mode does not create the gateway."
   }
 }
 
@@ -1565,7 +1725,7 @@ variable "brainstore_default" {
 variable "brainstore_instance_type" {
   type        = string
   description = "The instance type to use for Brainstore reader nodes. Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
 variable "brainstore_instance_count" {
@@ -1583,7 +1743,7 @@ variable "brainstore_writer_instance_count" {
 variable "brainstore_writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore writer nodes"
-  default     = "c8gd.8xlarge"
+  default     = "m8gd.8xlarge"
 }
 
 variable "brainstore_automation_writer_instance_count" {
@@ -1595,7 +1755,7 @@ variable "brainstore_automation_writer_instance_count" {
 variable "brainstore_automation_writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore automation writer nodes"
-  default     = "c8gd.8xlarge"
+  default     = "m8gd.8xlarge"
 }
 
 variable "brainstore_extra_env_vars_automation_writer" {
@@ -1618,8 +1778,30 @@ variable "brainstore_port" {
 
 variable "brainstore_license_key" {
   type        = string
-  description = "The license key for the Brainstore instance"
+  description = "License value for a module-managed secret. existing_brainstore_license_key_secret takes precedence when supplied."
   default     = null
+  sensitive   = true
+
+  validation {
+    condition = var.use_deployment_mode_external_eks || var.existing_brainstore_license_key_secret != null || (
+      try(trimspace(var.brainstore_license_key), "") != ""
+    )
+    error_message = "Provide a nonempty brainstore_license_key or existing_brainstore_license_key_secret. External EKS uses Helm for license delivery."
+  }
+}
+
+variable "existing_brainstore_license_key_secret" {
+  description = "Existing license secret and optional KMS key. The module does not change or delete this secret."
+  type = object({
+    arn         = string
+    kms_key_arn = optional(string)
+  })
+  default = null
+
+  validation {
+    condition     = var.existing_brainstore_license_key_secret == null ? true : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[0-9]{12}:secret:.+$", var.existing_brainstore_license_key_secret.arn))
+    error_message = "existing_brainstore_license_key_secret.arn must be a Secrets Manager secret ARN."
+  }
 }
 
 variable "brainstore_version_override" {
@@ -1865,7 +2047,7 @@ variable "brainstore_fast_reader_instance_count" {
 variable "brainstore_fast_reader_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore fast reader nodes"
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
 variable "brainstore_extra_env_vars_fast_reader" {
@@ -1889,6 +2071,7 @@ variable "service_extra_env_vars" {
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
     AutomationCron           = map(string)
+    QuarantinePrunerFunction = optional(map(string), {})
   })
   description = "Extra environment variables to set for services"
   default = {
@@ -1899,6 +2082,7 @@ variable "service_extra_env_vars" {
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
     AutomationCron           = {}
+    QuarantinePrunerFunction = {}
   }
 }
 
@@ -1906,6 +2090,7 @@ variable "internal_observability_api_key" {
   type        = string
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = ""
+  sensitive   = true
 }
 
 variable "internal_observability_env_name" {
@@ -1945,17 +2130,17 @@ variable "use_global_ai_gateway_origin" {
 }
 
 variable "use_private_ai_gateway_origin" {
-  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin."
+  description = "Route CloudFront /v1/proxy to the private gateway ALB via a VPC origin. Requires create_ai_gateway. Mutually exclusive with use_global_ai_gateway_origin. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
-  default     = false
+  default     = true
 
   validation {
-    condition     = !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
-    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true."
+    condition     = var.use_deployment_mode_external_eks || !(var.use_global_ai_gateway_origin && var.use_private_ai_gateway_origin)
+    error_message = "use_global_ai_gateway_origin and use_private_ai_gateway_origin cannot both be true. If use_global_ai_gateway_origin is true, set use_private_ai_gateway_origin to false."
   }
 
   validation {
-    condition     = !var.use_private_ai_gateway_origin || var.create_ai_gateway
+    condition     = var.use_deployment_mode_external_eks || !var.use_private_ai_gateway_origin || var.create_ai_gateway
     error_message = "use_private_ai_gateway_origin requires create_ai_gateway."
   }
 }

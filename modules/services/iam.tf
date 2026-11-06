@@ -44,6 +44,138 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
   tags = local.common_tags
 }
 
+# Dedicated execution role for AutomationCron so it does not share the broad APIHandlerRole.
+resource "aws_iam_role" "automation_cron_role" {
+  name = "${var.deployment_name}-AutomationCronRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "automation_cron_vpc_access" {
+  role       = aws_iam_role.automation_cron_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy" "automation_cron_topic_map_report_read" {
+  name = "${var.deployment_name}-AutomationCronTopicMapReportRead"
+  role = aws_iam_role.automation_cron_role.id
+
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = concat(
+      [
+        {
+          Sid      = "TopicMapReportRead"
+          Action   = ["s3:GetObject"]
+          Effect   = "Allow"
+          Resource = "${var.code_bundle_bucket_arn}/bundles/topic_maps/*/*.report.json"
+        }
+      ],
+      # The code bundle bucket uses SSE-KMS with this key when set.
+      var.kms_key_arn != null ? [
+        {
+          Sid      = "TopicMapReportDecrypt"
+          Action   = ["kms:Decrypt"]
+          Effect   = "Allow"
+          Resource = var.kms_key_arn
+          Condition = {
+            StringEquals = {
+              "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+            }
+          }
+        }
+      ] : []
+    )
+  })
+}
+
+resource "aws_iam_role" "quarantine_pruner_role" {
+  count = var.enable_quarantine_pruner ? 1 : 0
+
+  name = "${var.deployment_name}-QuarantinePrunerRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "quarantine_pruner_vpc_access" {
+  count = var.enable_quarantine_pruner ? 1 : 0
+
+  role       = aws_iam_role.quarantine_pruner_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+# Quarantine functions are created at runtime, so their names are not known
+# here. The tag condition limits the pruner to them.
+resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
+  count = var.enable_quarantine_pruner ? 1 : 0
+
+  name = "${var.deployment_name}-QuarantinePrunerDeleteVersions"
+  role = aws_iam_role.quarantine_pruner_role[0].id
+
+  policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid = "ListQuarantineFunctionVersions"
+        Action = [
+          "lambda:ListVersionsByFunction",
+          "lambda:ListAliases",
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:*"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/BraintrustQuarantine" = "true"
+          }
+        }
+      },
+      {
+        # A qualified ARN (function:name:version) only, so an unqualified
+        # DeleteFunction cannot remove a whole function.
+        Sid      = "DeleteQuarantineFunctionVersions"
+        Action   = ["lambda:DeleteFunction"]
+        Effect   = "Allow"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:*:*"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/BraintrustQuarantine" = "true"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "default_role" {
   name = "${var.deployment_name}-DefaultRole"
 
@@ -67,6 +199,84 @@ resource "aws_iam_role" "default_role" {
 
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   role       = aws_iam_role.default_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role" "billing_cron" {
+  name = "${var.deployment_name}-BillingCronRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "billing_cron_vpc_access" {
+  role       = aws_iam_role.billing_cron.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role" "catchup_etl" {
+  name = "${var.deployment_name}-CatchupETLRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "catchup_etl_vpc_access" {
+  role       = aws_iam_role.catchup_etl.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role" "migrate_database" {
+  name = "${var.deployment_name}-MigrateDatabaseFunctionRole"
+
+  assume_role_policy = jsonencode({ # nosemgrep
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "migrate_database_vpc_access" {
+  role       = aws_iam_role.migrate_database.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
@@ -109,3 +319,82 @@ resource "aws_iam_role_policy" "default_role_policy" {
 
 
 
+resource "aws_iam_role" "quarantine_warmup" {
+  count = var.use_quarantine_vpc ? 1 : 0
+  name  = "${var.deployment_name}-QuarantineWarmupRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+
+  permissions_boundary = var.permissions_boundary_arn
+  tags                 = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "quarantine_warmup_vpc_access" {
+  count      = var.use_quarantine_vpc ? 1 : 0
+  role       = aws_iam_role.quarantine_warmup[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy" "quarantine_warmup" {
+  count = var.use_quarantine_vpc ? 1 : 0
+  name  = "${var.deployment_name}-QuarantineWarmupPolicy"
+  role  = aws_iam_role.quarantine_warmup[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "CreateQuarantine"
+        Effect   = "Allow"
+        Action   = "lambda:CreateFunction"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestTag/BraintrustQuarantine" = "true"
+            "lambda:VpcIds"                       = var.quarantine_vpc_id
+          }
+        }
+      },
+      {
+        Sid      = "TagQuarantine"
+        Effect   = "Allow"
+        Action   = "lambda:TagResource"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
+        Condition = {
+          StringEquals = { "aws:RequestTag/BraintrustQuarantine" = "true" }
+        }
+      },
+      {
+        Sid      = "ReadQuarantine"
+        Effect   = "Allow"
+        Action   = "lambda:GetFunction"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
+        Condition = {
+          StringEquals = { "aws:ResourceTag/BraintrustQuarantine" = "true" }
+        }
+      },
+      {
+        Sid      = "PassQuarantineRole"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = var.quarantine_function_role_arn
+        Condition = {
+          StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" }
+        }
+      },
+      {
+        Sid      = "DescribeQuarantineNetwork"
+        Effect   = "Allow"
+        Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
+        Resource = "*"
+      }
+    ]
+  })
+}

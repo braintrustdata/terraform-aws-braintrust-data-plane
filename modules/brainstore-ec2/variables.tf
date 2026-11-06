@@ -6,16 +6,21 @@ variable "deployment_name" {
 variable "instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
-variable "license_key" {
+variable "license_key_secret_arn" {
   type        = string
-  description = "The license key for the Brainstore"
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key."
   validation {
-    condition     = var.license_key != null && length(var.license_key) > 0
-    error_message = "The license key cannot be empty."
+    condition     = var.license_key_secret_arn != null && length(var.license_key_secret_arn) > 0
+    error_message = "The license key secret ARN cannot be empty."
   }
+}
+
+variable "license_key_secret_version" {
+  type        = string
+  description = "Version ID of the license key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
 }
 
 variable "instance_count" {
@@ -91,19 +96,14 @@ variable "database_port" {
   description = "The port of the database"
 }
 
-variable "use_redis_replication_group" {
-  type        = bool
-  description = "Sets BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI with the appropriate scheme (rediss:// for replication group, redis:// for legacy cluster)"
+variable "redis_url_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Fetched at boot to set BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI."
 }
 
-variable "redis_host" {
+variable "redis_url_secret_version_id" {
   type        = string
-  description = "The hostname of the Redis instance"
-}
-
-variable "redis_port" {
-  type        = string
-  description = "The port of the Redis instance"
+  description = "Secrets Manager version id for the Redis URL secret. Passed into user data so secret content changes force a launch-template update and instance refresh."
 }
 
 variable "extra_env_vars" {
@@ -127,7 +127,7 @@ variable "writer_instance_count" {
 variable "writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore writer nodes"
-  default     = "c8gd.8xlarge"
+  default     = "m8gd.8xlarge"
 }
 
 variable "monitoring_telemetry" {
@@ -154,9 +154,15 @@ variable "monitoring_telemetry" {
   }
 }
 
-variable "internal_observability_api_key" {
+variable "internal_observability_api_key_secret_arn" {
   type        = string
-  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  description = "Secret ARN for the Datadog API key. internal_observability_enabled controls the Datadog agent."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
   default     = ""
 }
 
@@ -246,7 +252,7 @@ variable "automation_writer_instance_count" {
 variable "automation_writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore automation writer nodes"
-  default     = "c8gd.8xlarge"
+  default     = "m8gd.8xlarge"
 }
 
 variable "extra_env_vars_automation_writer" {
@@ -270,7 +276,7 @@ variable "fast_reader_instance_count" {
 variable "fast_reader_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore fast reader nodes"
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
 variable "extra_env_vars_fast_reader" {
@@ -299,4 +305,10 @@ variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
   default     = "/locks"
+}
+
+variable "internal_observability_enabled" {
+  type        = bool
+  description = "Enable internal observability with a value known at plan time."
+  default     = false
 }

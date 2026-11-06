@@ -1,6 +1,11 @@
 locals {
-  api_version_tag       = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
-  observability_enabled = var.internal_observability_api_key_secret_arn != ""
+  api_version_tag = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
+  # Use the plan-known enable flag (not the computed secret ARN) so container/IAM shape stays known during plan.
+  observability_enabled = var.internal_observability_enabled
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}:::${var.internal_observability_api_key_secret_version}"
 
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
@@ -21,12 +26,16 @@ locals {
   alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
   alb_listener_port = local.alb_https_enabled ? 443 : 80
   api_ecs_url       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
-  # Root module resolves override / AI Proxy / hosted / PrivateLink VPCE URL.
-  # Null/blank → omit QUARANTINE_PROXY_URL so api-ts getRuntimeEnv falls back.
+  internal_api_url  = var.enable_private_dataplane ? "http://${aws_lb.api_ecs.dns_name}:8000" : null
+  # Root module resolves override / PrivateLink / Function URL / CloudFront /v1/proxy.
+  # Null or blank omits the variable; api-ts uses the caller proxy URL, which is
+  # http://localhost:8000/v1/proxy in this ECS configuration. A quarantine Lambda
+  # cannot call that address.
+  # Ternary, not &&: trimspace(null) errors even when the null check is false.
   quarantine_proxy_url = (
-    var.quarantine_proxy_url != null && trimspace(var.quarantine_proxy_url) != ""
-    ? trimspace(var.quarantine_proxy_url)
-    : null
+    var.quarantine_proxy_url == null ? null : (
+      trimspace(var.quarantine_proxy_url) != "" ? trimspace(var.quarantine_proxy_url) : null
+    )
   )
   unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
   url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
@@ -34,6 +43,9 @@ locals {
   quarantine_proxy_env_vars = local.quarantine_proxy_url != null ? {
     QUARANTINE_PROXY_URL = local.quarantine_proxy_url
   } : {}
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
   url_security_env_vars = merge(
     local.unsafe_url_request_mode != "" ? {
       BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
@@ -100,6 +112,9 @@ locals {
     local.quarantine_proxy_env_vars,
     local.url_security_env_vars,
     local.btql_audit_log_env_vars,
+    var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != "" ? {
+      BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"
+    } : {},
     local.using_brainstore_fast_reader ? {
       BRAINSTORE_FAST_READER_URL           = "http://${var.brainstore_fast_reader_hostname}:${var.brainstore_port}"
       BRAINSTORE_FAST_READER_QUERY_SOURCES = "summaryPaginatedObjectViewer [realtime],summaryPaginatedObjectViewer,a602c972-1843-4ee1-b6bc-d3c1075cd7e7,traceQueryFn-id,traceQueryFn-rootSpanId,fullSpanQueryFn-root_span_id,fullSpanQueryFn-id"
@@ -126,11 +141,7 @@ locals {
     } : {},
   )
 
-  plain_license_env_var = var.brainstore_license_key == null ? {} : {
-    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-  }
-
-  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
@@ -189,13 +200,17 @@ locals {
         },
         {
           name      = "REDIS_URL"
-          valueFrom = var.redis_url_secret_arn
+          valueFrom = local.redis_url_secret_value_from
         },
         {
           name      = "SERVICE_TOKEN_SECRET_KEY"
           valueFrom = var.function_tools_secret_arn
         }
       ],
+      [{
+        name      = "BRAINSTORE_LICENSE_KEY"
+        valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+      }],
       var.custom_ca_bundle_secret_arn == null ? [] : [
         {
           name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
@@ -236,7 +251,7 @@ locals {
       secretOptions = [
         {
           name      = "apikey"
-          valueFrom = var.internal_observability_api_key_secret_arn
+          valueFrom = local.observability_api_key_value_from
         }
       ]
       }) : jsonencode({
@@ -258,7 +273,7 @@ locals {
         {
           name           = "log-router"
           essential      = true
-          image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
+          image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:3.5.3"
           user           = "0"
           environment    = []
           mountPoints    = []
@@ -332,7 +347,7 @@ locals {
           secrets = [
             {
               name      = "DD_API_KEY"
-              valueFrom = var.internal_observability_api_key_secret_arn
+              valueFrom = local.observability_api_key_value_from
             }
           ]
           healthCheck = {

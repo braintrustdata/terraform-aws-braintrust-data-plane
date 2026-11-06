@@ -15,14 +15,16 @@ locals {
   # If total_instance_storage is 0 or null, instances won't have ephemeral storage
   # The user_data script already validates ephemeral device exists, so this should always be > 0 for valid instance types
   # Postconditions on the data sources guarantee total_instance_storage is non-null
-  
+
   # Use provided override if set, otherwise auto-calculate 90% of ephemeral storage, or 50% for writers
-  brainstore_cache_file_size        = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
+  brainstore_cache_file_size             = var.cache_file_size_reader != null ? var.cache_file_size_reader : "${floor(data.aws_ec2_instance_type.brainstore.total_instance_storage * 0.9)}gb"
   brainstore_fast_reader_cache_file_size = var.cache_file_size_fast_reader != null ? var.cache_file_size_fast_reader : "${floor(data.aws_ec2_instance_type.brainstore_fast_reader.total_instance_storage * 0.9)}gb"
-  brainstore_writer_cache_file_size = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.5)}gb"
+  brainstore_writer_cache_file_size      = var.cache_file_size_writer != null ? var.cache_file_size_writer : "${floor(data.aws_ec2_instance_type.brainstore_writer.total_instance_storage * 0.5)}gb"
   brainstore_automation_writer_cache_file_size = local.has_automation_writer_nodes ? (
     var.cache_file_size_automation_writer != null ? var.cache_file_size_automation_writer : "${floor(data.aws_ec2_instance_type.brainstore_automation_writer[0].total_instance_storage * 0.75)}gb"
   ) : null
+
+  brainstore_default_env_vars = var.internal_observability_enabled ? { BRAINSTORE_OTLP_TELEMETRY = "metrics" } : {}
 
   # Automation writers handle automations. Other writer-capable nodes handle
   # every writer loop except automations while the automation-writer pool is on.
@@ -35,6 +37,18 @@ locals {
   brainstore_reader_writer_extra_env_vars = local.has_automation_writer_nodes && !local.has_writer_nodes ? merge(var.extra_env_vars, {
     BRAINSTORE_WRITER_LOOP_CONFIG = "exclude:automations"
   }) : var.extra_env_vars
+}
+
+module "datadog_agent_telemetry" {
+  source = "../datadog-agent-telemetry"
+  for_each = {
+    reader            = local.brainstore_reader_writer_extra_env_vars
+    writer            = local.brainstore_writer_extra_env_vars
+    fast_reader       = var.extra_env_vars_fast_reader
+    automation_writer = local.brainstore_automation_writer_extra_env_vars
+  }
+
+  env_vars = var.internal_observability_enabled ? merge({ BRAINSTORE_CONTROL_PLANE_TELEMETRY = var.monitoring_telemetry }, local.brainstore_default_env_vars, each.value) : {}
 }
 
 resource "aws_launch_template" "brainstore" {
@@ -78,31 +92,34 @@ resource "aws_launch_template" "brainstore" {
     database_secret_arn         = var.database_secret_arn
     database_host               = var.database_host
     database_port               = var.database_port
-    redis_scheme                = var.use_redis_replication_group ? "rediss" : "redis"
-    redis_host                  = var.redis_host
-    redis_port                  = var.redis_port
+    redis_url_secret_arn        = var.redis_url_secret_arn
+    redis_url_secret_version_id = var.redis_url_secret_version_id
     brainstore_port             = var.port
     brainstore_s3_bucket        = local.brainstore_s3_bucket_id
     lambda_responses_bucket_id  = local.lambda_responses_bucket_id
     code_bundle_bucket_id       = local.code_bundle_bucket_id
     brainstore_locks_s3_path    = trimprefix(var.locks_s3_path, "/")
-    brainstore_license_key      = var.license_key
+    license_key_secret_arn      = var.license_key_secret_arn
+    license_key_secret_version  = var.license_key_secret_version
     brainstore_version_override = var.version_override == null ? "" : var.version_override
     brainstore_release_version  = local.brainstore_release_version
     monitoring_telemetry        = var.monitoring_telemetry
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
-    is_dedicated_reader_node        = local.has_writer_nodes ? "true" : "false"
-    is_dedicated_writer_node        = "false"
-    extra_env_vars                  = local.brainstore_reader_writer_extra_env_vars
-    internal_observability_api_key  = var.internal_observability_api_key
-    internal_observability_env_name = var.internal_observability_env_name
-    internal_observability_region   = var.internal_observability_region
-    service_token_secret_arn        = var.service_token_secret_arn
-    custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
-    custom_post_install_script      = var.custom_post_install_script
-    brainstore_cache_file_size      = local.brainstore_cache_file_size
-    skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-    ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
+    is_dedicated_reader_node                      = local.has_writer_nodes ? "true" : "false"
+    is_dedicated_writer_node                      = "false"
+    extra_env_vars                                = merge(local.brainstore_default_env_vars, local.brainstore_reader_writer_extra_env_vars)
+    internal_observability_api_key_secret_arn     = var.internal_observability_api_key_secret_arn
+    internal_observability_api_key_secret_version = var.internal_observability_api_key_secret_version
+    internal_observability_env_name               = var.internal_observability_env_name
+    internal_observability_region                 = var.internal_observability_region
+    datadog_agent_container_logs                  = module.datadog_agent_telemetry["reader"].container_logs
+    datadog_agent_otlp_env_vars                   = module.datadog_agent_telemetry["reader"].otlp_env_vars
+    service_token_secret_arn                      = var.service_token_secret_arn
+    custom_ca_bundle_secret_arn                   = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
+    custom_post_install_script                    = var.custom_post_install_script
+    brainstore_cache_file_size                    = local.brainstore_cache_file_size
+    skip_pg_for_brainstore_objects                = var.skip_pg_for_brainstore_objects
+    ai_proxy_url_ssm_parameter                    = var.ai_proxy_url_ssm_parameter
   }))
 
   tags = merge({
@@ -135,11 +152,12 @@ resource "aws_launch_template" "brainstore" {
 }
 
 resource "aws_lb" "brainstore" {
-  name               = "${var.deployment_name}-brainstore"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
+  name                             = "${var.deployment_name}-brainstore"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
 
   lifecycle {
     # Changing security groups requires a new NLB.

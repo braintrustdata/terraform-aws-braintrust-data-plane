@@ -14,6 +14,8 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                       = "bt-test"
     kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                = "vpc-0123456789abcdef0"
@@ -23,6 +25,7 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     braintrust_org_name                   = "test-org"
     database_url_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
     redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     brainstore_hostname                   = "brainstore.example.internal"
     brainstore_port                       = 9000
     response_bucket                       = "bt-test-responses"
@@ -43,6 +46,11 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
       scale_in_cooldown  = 60
       scale_out_cooldown = 60
     }
+    braintrust_api_memory_autoscaling = {
+      target_value       = 75
+      scale_in_cooldown  = 60
+      scale_out_cooldown = 60
+    }
     braintrust_api_event_loop_utilization_autoscaling = {
       target_value       = 70
       scale_in_cooldown  = 60
@@ -59,6 +67,11 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
       scale_in_cooldown  = 60
       scale_out_cooldown = 60
     }
+    braintrust_api_ingest_memory_autoscaling = {
+      target_value       = 75
+      scale_in_cooldown  = 60
+      scale_out_cooldown = 60
+    }
     braintrust_api_ingest_event_loop_utilization_autoscaling = {
       target_value       = 70
       scale_in_cooldown  = 60
@@ -72,6 +85,11 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     }
     braintrust_api_background_cpu_autoscaling = {
       target_value       = 70
+      scale_in_cooldown  = 60
+      scale_out_cooldown = 60
+    }
+    braintrust_api_background_memory_autoscaling = {
+      target_value       = 75
       scale_in_cooldown  = 60
       scale_out_cooldown = 60
     }
@@ -101,6 +119,25 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     ])
     error_message = "Every API ECS application container must have a nofile soft and hard limit of 1048576."
   }
+
+  assert {
+    condition = alltrue([
+      for task_definition in [
+        aws_ecs_task_definition.braintrust_api,
+        aws_ecs_task_definition.braintrust_api_ingest,
+        aws_ecs_task_definition.braintrust_api_background,
+        ] : endswith(
+        one([
+          for secret in one([
+            for container in jsondecode(task_definition.container_definitions) : container
+            if container.name == "api"
+          ]).secrets : secret.valueFrom if secret.name == "REDIS_URL"
+        ]),
+        ":::aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      )
+    ])
+    error_message = "API ECS REDIS_URL secrets must pin the Secrets Manager version id in valueFrom."
+  }
 }
 
 run "gateway_containers_have_one_million_nofile_limit" {
@@ -111,6 +148,8 @@ run "gateway_containers_have_one_million_nofile_limit" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                    = "vpc-0123456789abcdef0"
@@ -121,8 +160,9 @@ run "gateway_containers_have_one_million_nofile_limit" {
     target_group_arn                          = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/gateway/1234567890123456"
     alb_security_group_id                     = "sg-0123456789abcdef2"
     gateway_http_listener_arn                 = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
-    use_redis_replication_group               = false
-    redis_host                                = "redis.example.internal"
+    gateway_url                               = "http://gateway.internal"
+    redis_url_secret_arn                      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id               = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     redis_port                                = 6379
     redis_security_group_id                   = "sg-0123456789abcdef1"
     internal_observability_enabled            = true
@@ -143,6 +183,80 @@ run "gateway_containers_have_one_million_nofile_limit" {
     )
     error_message = "Only the Gateway ECS application container must have a nofile soft and hard limit of 1048576."
   }
+
+  assert {
+    condition = alltrue([
+      for secret_name in ["COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"] :
+      endswith(
+        one([
+          for secret in one([
+            for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+            if container.name == "gateway"
+          ]).secrets : secret.valueFrom if secret.name == secret_name
+        ]),
+        ":::aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      )
+    ])
+    error_message = "Gateway Redis URL secrets must pin the Secrets Manager version id in valueFrom."
+  }
+}
+
+run "gateway_skips_redis_secrets_when_extra_env_overrides" {
+  command = plan
+
+  module {
+    source = "./modules/gateway-ecs"
+  }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
+    deployment_name                = "bt-test"
+    kms_key_arn                    = "arn:aws:kms:us-east-1:123456789012:key/test"
+    vpc_id                         = "vpc-0123456789abcdef0"
+    private_subnet_ids             = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+    ecs_cluster_arn                = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"
+    ecs_cluster_name               = "bt-test"
+    container_image                = "123456789012.dkr.ecr.us-east-1.amazonaws.com/gateway:test"
+    target_group_arn               = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/gateway/1234567890123456"
+    alb_security_group_id          = "sg-0123456789abcdef2"
+    gateway_http_listener_arn      = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
+    gateway_url                    = "http://gateway.internal"
+    redis_url_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id    = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    redis_port                     = 6379
+    redis_security_group_id        = "sg-0123456789abcdef1"
+    internal_observability_enabled = false
+    extra_env_vars = {
+      COMPLETIONS_CACHE_REDIS_URL = "redis://custom-cache:6379"
+      AUTH_CACHE_REDIS_URL        = "redis://custom-auth-cache:6379"
+    }
+  }
+
+  assert {
+    condition = (
+      length([
+        for secret in one([
+          for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+          if container.name == "gateway"
+        ]).secrets : secret
+        if contains(["COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"], secret.name)
+      ]) == 0
+      && one([
+        for env in one([
+          for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+          if container.name == "gateway"
+        ]).environment : env.value if env.name == "COMPLETIONS_CACHE_REDIS_URL"
+      ]) == "redis://custom-cache:6379"
+      && one([
+        for env in one([
+          for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : container
+          if container.name == "gateway"
+        ]).environment : env.value if env.name == "AUTH_CACHE_REDIS_URL"
+      ]) == "redis://custom-auth-cache:6379"
+    )
+    error_message = "Gateway must omit default Redis URL secrets and use extra_env_vars when those cache URLs are overridden."
+  }
 }
 
 run "loop_runtime_containers_have_one_million_nofile_limit" {
@@ -153,6 +267,8 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
   }
 
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                    = "vpc-0123456789abcdef0"
@@ -165,6 +281,7 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
     loop_runtime_http_listener_arn            = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/loop-runtime/1234567890123456/1234567890123456"
     database_url_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
     redis_url_secret_arn                      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id               = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     function_tools_secret_arn                 = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
     brainstore_s3_bucket_name                 = "bt-test-brainstore"
     brainstore_s3_bucket_arn                  = "arn:aws:s3:::bt-test-brainstore"
@@ -176,6 +293,8 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
     internal_observability_enabled            = true
     internal_observability_api_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:datadog"
     internal_observability_env_name           = "test"
+
+    sandbox_egress_gateway_target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/loop-egress/1234567890123456"
   }
 
   assert {
@@ -190,5 +309,21 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
       ])
     )
     error_message = "Only the Loop Runtime ECS application container must have a nofile soft and hard limit of 1048576."
+  }
+
+  assert {
+    condition = alltrue([
+      for secret_name in ["BRAINSTORE_XACT_MANAGER_URI", "BRAINSTORE_REDIS_URI"] :
+      endswith(
+        one([
+          for secret in one([
+            for container in jsondecode(aws_ecs_task_definition.loop_runtime.container_definitions) : container
+            if container.name == "loop-runtime"
+          ]).secrets : secret.valueFrom if secret.name == secret_name
+        ]),
+        ":::aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      )
+    ])
+    error_message = "Loop Redis URL secrets must pin the Secrets Manager version id in valueFrom."
   }
 }

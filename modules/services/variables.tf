@@ -100,7 +100,14 @@ variable "postgres_port" {
 
 variable "use_redis_replication_group" {
   type        = bool
-  description = "Sets REDIS_URL with rediss:// scheme for all Redis-configured Lambda services"
+  description = "When true, REDIS_URL is rendered with the rediss:// scheme and the auth token; otherwise a plaintext redis:// URL is used."
+}
+
+variable "redis_auth_token" {
+  type        = string
+  description = "Redis auth token, required when use_redis_replication_group is true. Null/empty for the legacy cluster."
+  default     = null
+  sensitive   = true
 }
 
 variable "redis_host" {
@@ -140,6 +147,26 @@ variable "quarantine_vpc_private_subnets" {
   }
 }
 
+variable "enable_quarantine_pruner" {
+  type        = bool
+  description = "Deploy the hourly Lambda that deletes unreferenced versions of quarantine functions. Requires the quarantine VPC."
+  default     = false
+  validation {
+    condition     = var.enable_quarantine_pruner ? var.use_quarantine_vpc : true
+    error_message = "The quarantine pruner requires the quarantine VPC."
+  }
+}
+
+variable "quarantine_pruner_mode" {
+  type        = string
+  description = "Quarantine pruner mode: off (runs and exits early), dry-run (logs what it would delete), or on (deletes). Note: QUARANTINE_PRUNER_MODE set for QuarantinePrunerFunction in extra_env_vars takes precedence over this variable. Ignored unless enable_quarantine_pruner is true."
+  default     = "off"
+  validation {
+    condition     = contains(["off", "dry-run", "on"], var.quarantine_pruner_mode)
+    error_message = "quarantine_pruner_mode must be one of: off, dry-run, on."
+  }
+}
+
 variable "brainstore_enabled" {
   type        = bool
   description = "Whether Brainstore is enabled"
@@ -165,6 +192,12 @@ variable "brainstore_writer_hostname" {
 variable "brainstore_fast_reader_hostname" {
   type        = string
   description = "Hostname for the dedicated Brainstore fast reader nodes, if enabled"
+  default     = null
+}
+
+variable "brainstore_automation_writer_hostname" {
+  type        = string
+  description = "Hostname for the dedicated Brainstore automation writer nodes, if query routing is enabled"
   default     = null
 }
 
@@ -317,6 +350,12 @@ variable "url_security_allow_cidrs" {
   default     = ""
 }
 
+variable "enable_ecs_api" {
+  type        = bool
+  description = "When true, do not create APIHandler or AIProxy. CloudFront is already routing that traffic to ECS. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Setting this back to false creates APIHandler and AIProxy again."
+  default     = false
+}
+
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
   type        = string
@@ -332,6 +371,7 @@ variable "extra_env_vars" {
     MigrateDatabaseFunction  = map(string)
     QuarantineWarmupFunction = map(string)
     AutomationCron           = map(string)
+    QuarantinePrunerFunction = optional(map(string), {})
   })
   description = "Extra environment variables to set for services"
   default = {
@@ -342,6 +382,7 @@ variable "extra_env_vars" {
     MigrateDatabaseFunction  = {}
     QuarantineWarmupFunction = {}
     AutomationCron           = {}
+    QuarantinePrunerFunction = {}
   }
 }
 
@@ -476,6 +517,12 @@ variable "internal_observability_trace_disabled_plugins" {
 
 variable "brainstore_deployment_id" {
   description = "Dependency on the completed Brainstore deployment."
+  type        = string
+  default     = null
+}
+
+variable "gateway_url" {
+  description = "Private gateway URL for APIHandler and AIProxy after the gateway reaches steady state. Null preserves caller environment values."
   type        = string
   default     = null
 }

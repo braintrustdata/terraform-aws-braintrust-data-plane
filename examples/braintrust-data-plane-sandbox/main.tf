@@ -35,8 +35,9 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "restricted"
+  enable_loop_runtime = false
+  # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
+  # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
   ### Tagging
   # Recommended: tag resources with your name/team for identification in shared accounts.
@@ -78,18 +79,21 @@ module "braintrust-data-plane" {
   DANGER_disable_database_deletion_protection = true
 
   ### Brainstore configuration
-  # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > Data Plane.
-  brainstore_license_key = var.brainstore_license_key
+  # The module uses the supplied secret object or stores the license value in a new secret.
+  brainstore_license_key                 = var.brainstore_license_key
+  existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
 
   # Single reader and writer, downsized for sandbox.
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
-  # Compatible families include: c8gd, c5d, m5d, i3, i4i.
-  # Generic families (t3, m5, c5) will fail — the instance has no local disk.
+  # Compatibility for Graviton5 instances is being validated.
+  # Graviton NVMe families include: m8gd, c8gd, r8gd, m7gd, c7gd, r7gd.
+  # Other compatible families include: c5d, m5d, i3, i4i.
+  # Families without local storage (e.g., m8g, c8g, r8g, t3, m5, c5) will fail.
   brainstore_instance_count = 1
-  brainstore_instance_type  = "c8gd.xlarge"
+  brainstore_instance_type  = "m8gd.xlarge"
 
   brainstore_writer_instance_count = 1
-  brainstore_writer_instance_type  = "c8gd.xlarge"
+  brainstore_writer_instance_type  = "m8gd.xlarge"
 
   # Disable fast reader and automation writer pools to reduce costs in sandbox.
   brainstore_fast_reader_instance_count       = 0
@@ -119,10 +123,12 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # Opt in to wire quarantine → private gateway via PrivateLink
-  # (http://<vpce-dns>/v1/proxy). Default false. Requires create_ai_gateway
-  # and module-managed VPCs (or quarantine_proxy_url). Existing VPC without
-  # an override fails apply, except the global-origin no-op.
+  # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
+  # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
+  # may each be managed or existing, with private subnets in matching AZs.
+  # API ECS receives the URL. External EKS requires this flag to remain false.
+  # An explicit quarantine_proxy_url wins without suppressing resource creation.
+  # The global gateway origin skips this path; see the variable for exceptions.
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 
@@ -133,8 +139,9 @@ module "braintrust-data-plane" {
   # cloudfront_minimum_protocol_version = "TLSv1.2_2021"
 
   # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
-  # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
-  # unsafe_url_request_mode = "warn"
+  # Allowed values: "off", "proxy", "warn", "reject". Leaving it unset uses the
+  # application default of "warn". "reject" blocks private and reserved addresses.
+  unsafe_url_request_mode = "reject"
 
   # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2, and Gateway ECS.
   # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
@@ -192,6 +199,12 @@ module "braintrust-data-plane" {
   #   "arn:aws:iam::123456789012:role/customer-export-role",
   #   "arn:aws:iam::*:role/braintrust-export-*",
   # ]
+
+  # Opt-in: let the API role read caller-owned buckets that traces link to as external
+  # attachments (s3:GetObject only, plus kms:Decrypt through S3 for SSE-KMS buckets).
+  # Buckets and keys in another account must also grant the API role in their policies.
+  # external_attachment_s3_bucket_arns           = ["arn:aws:s3:::your-attachment-bucket"]
+  # external_attachment_s3_bucket_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]

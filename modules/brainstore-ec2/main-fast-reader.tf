@@ -36,35 +36,38 @@ resource "aws_launch_template" "brainstore_fast_reader" {
   }
 
   user_data = base64gzip(templatefile("${path.module}/templates/user_data.sh.tpl", {
-    aws_region                      = data.aws_region.current.region
-    deployment_name                 = var.deployment_name
-    database_secret_arn             = var.database_secret_arn
-    database_host                   = var.database_host
-    database_port                   = var.database_port
-    redis_scheme                    = var.use_redis_replication_group ? "rediss" : "redis"
-    redis_host                      = var.redis_host
-    redis_port                      = var.redis_port
-    brainstore_port                 = var.port
-    brainstore_s3_bucket            = local.brainstore_s3_bucket_id
-    lambda_responses_bucket_id      = local.lambda_responses_bucket_id
-    code_bundle_bucket_id           = local.code_bundle_bucket_id
-    brainstore_locks_s3_path        = trimprefix(var.locks_s3_path, "/")
-    brainstore_license_key          = var.license_key
-    brainstore_version_override     = var.version_override == null ? "" : var.version_override
-    brainstore_release_version      = local.brainstore_release_version
-    monitoring_telemetry            = var.monitoring_telemetry
-    is_dedicated_reader_node        = "true"
-    is_dedicated_writer_node        = "false"
-    extra_env_vars                  = var.extra_env_vars_fast_reader
-    internal_observability_api_key  = var.internal_observability_api_key
-    internal_observability_env_name = var.internal_observability_env_name
-    internal_observability_region   = var.internal_observability_region
-    service_token_secret_arn        = var.service_token_secret_arn
-    custom_ca_bundle_secret_arn     = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
-    custom_post_install_script      = var.custom_post_install_script
-    brainstore_cache_file_size      = local.brainstore_fast_reader_cache_file_size
-    skip_pg_for_brainstore_objects  = var.skip_pg_for_brainstore_objects
-    ai_proxy_url_ssm_parameter      = var.ai_proxy_url_ssm_parameter
+    aws_region                                    = data.aws_region.current.region
+    deployment_name                               = var.deployment_name
+    database_secret_arn                           = var.database_secret_arn
+    database_host                                 = var.database_host
+    database_port                                 = var.database_port
+    brainstore_port                               = var.port
+    brainstore_s3_bucket                          = local.brainstore_s3_bucket_id
+    lambda_responses_bucket_id                    = local.lambda_responses_bucket_id
+    code_bundle_bucket_id                         = local.code_bundle_bucket_id
+    brainstore_locks_s3_path                      = trimprefix(var.locks_s3_path, "/")
+    license_key_secret_arn                        = var.license_key_secret_arn
+    license_key_secret_version                    = var.license_key_secret_version
+    brainstore_version_override                   = var.version_override == null ? "" : var.version_override
+    brainstore_release_version                    = local.brainstore_release_version
+    monitoring_telemetry                          = var.monitoring_telemetry
+    is_dedicated_reader_node                      = "true"
+    is_dedicated_writer_node                      = "false"
+    extra_env_vars                                = merge(local.brainstore_default_env_vars, { BRAINSTORE_QUERY_LOG_THRESHOLD_SECONDS = "3" }, var.extra_env_vars_fast_reader)
+    internal_observability_api_key_secret_arn     = var.internal_observability_api_key_secret_arn
+    internal_observability_api_key_secret_version = var.internal_observability_api_key_secret_version
+    internal_observability_env_name               = var.internal_observability_env_name
+    internal_observability_region                 = var.internal_observability_region
+    datadog_agent_container_logs                  = module.datadog_agent_telemetry["fast_reader"].container_logs
+    datadog_agent_otlp_env_vars                   = module.datadog_agent_telemetry["fast_reader"].otlp_env_vars
+    service_token_secret_arn                      = var.service_token_secret_arn
+    custom_ca_bundle_secret_arn                   = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
+    custom_post_install_script                    = var.custom_post_install_script
+    brainstore_cache_file_size                    = local.brainstore_fast_reader_cache_file_size
+    skip_pg_for_brainstore_objects                = var.skip_pg_for_brainstore_objects
+    ai_proxy_url_ssm_parameter                    = var.ai_proxy_url_ssm_parameter
+    redis_url_secret_arn                          = var.redis_url_secret_arn
+    redis_url_secret_version_id                   = var.redis_url_secret_version_id
   }))
 
   tags = merge({
@@ -97,12 +100,13 @@ resource "aws_launch_template" "brainstore_fast_reader" {
 }
 
 resource "aws_lb" "brainstore_fast_reader" {
-  count              = local.has_fast_reader_nodes ? 1 : 0
-  name               = "${var.deployment_name}-bstr-fr"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = var.private_subnet_ids
-  security_groups    = [aws_security_group.brainstore_elb.id]
+  count                            = local.has_fast_reader_nodes ? 1 : 0
+  name                             = "${var.deployment_name}-bstr-fr"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
 
   lifecycle {
     create_before_destroy = true

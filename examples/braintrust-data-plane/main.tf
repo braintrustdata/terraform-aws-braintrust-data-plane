@@ -34,8 +34,9 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "restricted"
+  enable_loop_runtime = false
+  # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
+  # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
   ### Postgres configuration
   # Optional connection override. Omit either field to keep using the
@@ -85,23 +86,24 @@ module "braintrust-data-plane" {
   # postgres_maintenance_window = "Mon:08:00-Mon:11:00"
 
   ### Brainstore configuration
-  # The license key for the Brainstore instance. You can get this from the Braintrust UI in Settings > API URL.
-  brainstore_license_key = var.brainstore_license_key
+  # The module uses the supplied secret object or stores the license value in a new secret.
+  brainstore_license_key                 = var.brainstore_license_key
+  existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
 
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_instance_count = 2
-  brainstore_instance_type  = "c8gd.4xlarge"
+  brainstore_instance_type  = "m8gd.4xlarge"
 
   # The number of Brainstore fast reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
   brainstore_fast_reader_instance_count = 2
-  brainstore_fast_reader_instance_type  = "c8gd.4xlarge"
+  brainstore_fast_reader_instance_type  = "m8gd.4xlarge"
 
   # The number of dedicated Brainstore writer nodes to create
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
-  brainstore_writer_instance_type  = "c8gd.8xlarge"
+  brainstore_writer_instance_type  = "m8gd.8xlarge"
 
   # Automation writers are optional. Enable only when instructed by Braintrust.
   brainstore_automation_writer_instance_count = 0
@@ -196,11 +198,12 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # Opt in to wire quarantine UDF LLM calls to the private gateway via
-  # PrivateLink (NLB→ALB + VPC endpoint) at http://<vpce-dns>/v1/proxy.
-  # Default false keeps the AI Proxy Function URL / manual quarantine_proxy_url.
-  # Requires create_ai_gateway and module-managed VPCs (or quarantine_proxy_url).
-  # Existing VPC without an override fails apply, except the global-origin no-op.
+  # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
+  # Creating the path requires create_ai_gateway and enable_quarantine_vpc; VPCs
+  # may each be managed or existing, with private subnets in matching AZs.
+  # API ECS receives the URL. External EKS requires this flag to remain false.
+  # An explicit quarantine_proxy_url wins without suppressing resource creation.
+  # The global gateway origin skips this path; see the variable for exceptions.
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 
@@ -211,11 +214,15 @@ module "braintrust-data-plane" {
   # "TLSv1.2_2021") only if you have clients that cannot negotiate TLS 1.3.
   # cloudfront_minimum_protocol_version = "TLSv1.2_2021"
 
-  # Optional URL-security controls for externally supplied outbound HTTP URLs.
-  # Leave unset to use the application default mode of "warn".
-  # unsafe_url_request_mode  = "reject"
+  # URL-security controls for externally supplied outbound HTTP URLs.
+  # "reject" blocks user-supplied URLs that resolve to private or reserved
+  # addresses. Leaving it unset uses the application default of "warn", which
+  # logs and allows them. If users need private destinations such as
+  # self-hosted models or internal MCP servers, allow-list narrow /32 CIDRs in
+  # url_security_allow_cidrs. Never allow-list the Brainstore subnets.
+  unsafe_url_request_mode = "reject"
   # url_security_dns_servers = "1.1.1.1,8.8.8.8"
-  # url_security_allow_cidrs = "10.0.0.0/8"
+  # url_security_allow_cidrs = "10.0.0.15/32"
 
   # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2,
   # and Gateway ECS. The secret value must contain PEM-encoded CA certificates.
@@ -265,6 +272,12 @@ module "braintrust-data-plane" {
   #   "arn:aws:iam::123456789012:role/customer-export-role",
   #   "arn:aws:iam::*:role/braintrust-export-*",
   # ]
+
+  # Opt-in: let the API role read caller-owned buckets that traces link to as external
+  # attachments (s3:GetObject only, plus kms:Decrypt through S3 for SSE-KMS buckets).
+  # Buckets and keys in another account must also grant the API role in their policies.
+  # external_attachment_s3_bucket_arns           = ["arn:aws:s3:::your-attachment-bucket"]
+  # external_attachment_s3_bucket_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # ai_gateway_bedrock_assume_role_arns = ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]

@@ -25,6 +25,7 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 │   └── remote-support/      # Optional remote support access
 ├── examples/
 │   ├── braintrust-data-plane/          # Production example
+│   ├── braintrust-data-plane-private/  # Private API ALB example
 │   ├── braintrust-data-plane-sandbox/  # Sandbox/testing example
 │   ├── braintrust-data-plane-external-eks-quarantine/
 │   └── cloudfront-logging/
@@ -34,7 +35,9 @@ This is a Terraform module that deploys the Braintrust hybrid data plane on AWS.
 
 ### Key architecture concepts
 
-- **Brainstore** has a reader/writer split — separate ASGs, instance types, and scaling. Both require EC2 instances with **local NVMe storage** (e.g., `c8gd`, `c5d`, `m5d`, `i3`, `i4i`). This is a hard requirement enforced by `postcondition` blocks on the `aws_ec2_instance_type` data sources. Generic families (`t3`, `m5`, `c5`) will fail at plan time.
+- **Brainstore** has a reader/writer split — separate ASGs, instance types, and scaling. Both require EC2 instances with **local NVMe storage** (e.g., Graviton4 `m8gd`, `c8gd`, `r8gd`; Graviton3 `m7gd`, `c7gd`, `r7gd`; or `c5d`, `m5d`, `i3`, `i4i`). This is a hard requirement enforced by `postcondition` blocks on the `aws_ec2_instance_type` data sources. Families without local storage (`m8g`, `c8g`, `r8g`, `m7g`, `c7g`, `r7g`, `t3`, `m5`, `c5`) will fail at plan time.
+Compatibility for Graviton5 instances is being validated.
+
 **Quarantine VPC** is a separate VPC for running user-defined functions (scorers, tools) in network isolation. When enabled, a warmup Lambda creates ~30 functions across 9 runtimes **outside Terraform state**.
 - **`deployment_name`** prefixes all resource names. Must be unique per deployment in the same AWS account (max 18 characters).
 
@@ -67,6 +70,9 @@ Readable Terraform and readable plans are product requirements.
 - Do not add inputs such as `service_dependency_ids` to force normal Terraform ordering.
 - Let value references create dependencies.
 - Use `depends_on` only for a real dependency that no value reference expresses.
+- Do not add `depends_on` to module blocks or make resources depend on an entire module.
+- Put hidden prerequisites on the relevant output, with dependencies on specific resources.
+- Verify that unrelated changes do not defer data reads or change launch templates.
 - Do not add optional flags for resources that the enabled topology requires.
 - Keep sensitive values in Secrets Manager and use native ECS secret injection.
 - Do not place secret values in plaintext container environment lists.
@@ -149,6 +155,10 @@ cannot be tagged.
 
 When adding, removing, or renaming variables in the root module's `variables.tf`, update the example `main.tf` files to reflect the change. All examples under `examples/` should remain valid and representative.
 
+### Keep Managed BYOC quota targets above default capacity
+
+`managed-byoc/quota-config.json` sets the quotas requested during onboarding. When you change a Fargate service's default task CPU or max count, or add a Fargate service, recompute the default-scale total. That's each service's max count × task vCPU, with optional services such as Loop runtime turned on. Keep the Fargate On-Demand vCPU target (`L-3032A538`) above that total, with headroom for rolling deployments, which briefly double a service's tasks. Do the same for the EC2 vCPU target (`L-1216C47A`) when Brainstore instance defaults change.
+
 ### `DANGER_`-prefixed variables are production safety toggles
 
 Variables prefixed with `DANGER_` (e.g., `DANGER_disable_database_deletion_protection`) disable production guardrails. Never change their defaults to `true`. They should only appear set to `true` in the sandbox example, with a comment explaining the risk.
@@ -199,6 +209,7 @@ Traffic/cutover flags (`enable_ecs_api`, `enable_ai_gateway`, and similar) are m
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
 - Do not `count` a resource on a rollback-safe flag just to avoid an unused object. Keep it created (same lifetime as the parent module / sibling origin) and only gate *attachment*.
 - `create_*` flags own resource lifetime; `enable_*` flags own routing.
+  Exception: `enable_ecs_api` also owns the lifetime of APIHandler, AIProxy, the public Function URL, and API Gateway. Setting it back to false creates that surface again, including a new Function URL hostname. It does not resume a warm standby. A Lambda-mode upgrade only moves state to `[0]`; Terraform moves surviving `[0]` resources back on downgrade. Resources deleted by an ECS-mode apply are created again on downgrade. On v7 the default is true. Set `enable_ecs_api = false` to keep customer traffic on Lambda. On v6 the default was false.
 
 ### Private gateway ALB relocation
 
@@ -208,84 +219,139 @@ Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assu
 
 ### Private gateway: `create_ai_gateway` vs `enable_ai_gateway`
 
-Similar two-step pattern to API ECS (`enable_ecs_api`), but gateway infra itself is still optional:
-- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists, so the path is ready before cutover.
-- **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler, AIProxy, and ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
+Upgrade an existing deployment with [MIGRATION_V7.md](MIGRATION_V7.md). Finish the v6 applies first.
 
-Use `create_ai_gateway = true` with `enable_ai_gateway = false` for a two-step prod cutover (stand up infra while keeping caller-supplied `GATEWAY_URL` and Loop's hosted/CloudFront proxy URL). Set both true for single-apply wiring on greenfield deployments.
+`enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin` default to `true`. A new stack that sets nothing gets ECS ingress and the private gateway. Set `enable_ecs_api = false` to keep customer traffic on Lambda. The gateway flags still default to `true`, so that is Lambda ingress plus the private gateway. A gateway already built but not enabled must keep `create_ai_gateway = true` and set `enable_ai_gateway` and `use_private_ai_gateway_origin` to `false`. See [MIGRATION_V7.md](MIGRATION_V7.md). On v6 an omitted `enable_ecs_api` means Lambda. On v7 an omitted `enable_ecs_api` means ECS. Existing deployments finish the v6 applies before this upgrade. People who already cut over can leave `enable_ecs_api = true` or drop it.
+
+- **`create_ai_gateway`**: gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`). Loop→gateway ALB SG ingress is also opened when Loop exists.
+- **`enable_ai_gateway`**: wire `GATEWAY_URL` on APIHandler and AIProxy when those Lambdas exist, and on ECS API, and `LOOP_RUNTIME_AI_PROXY_URL` on Loop ECS. Requires `create_ai_gateway`.
+
+External EKS ignores `enable_ecs_api` and the gateway flags. Helm owns the gateway.
+
+### Private data plane mode
+
+`enable_private_dataplane = true` serves customer requests through the internal API ALB without CloudFront or API Gateway.
+Private mode requires these inputs:
+
+- `enable_ecs_api = true`.
+- `create_ai_gateway = true`.
+- `enable_ai_gateway = true`.
+- `braintrust_api_alb_custom_domain` and `braintrust_api_alb_certificate_arn`.
+
+Private mode supports managed, existing, and mixed main/quarantine VPCs through the standard VPC and subnet inputs.
+The caller controls client connectivity, DNS, and network controls in supplied VPCs.
+Private mode rejects external EKS, hosted gateway flags, and an explicit `quarantine_proxy_url`.
+It also rejects the CloudFront inputs `custom_domain`, `custom_certificate_arn`, and `waf_acl_id`.
+`use_private_ai_gateway_origin` has no effect because CloudFront is absent.
+
+The customer listener uses HTTPS port 443.
+Service callbacks use the ALB AWS hostname on HTTP port 8000 through explicit service security groups.
+Both listeners route `/v1/proxy` and `/v1/proxy/*` directly to gateway tasks.
+With Loop enabled, both listeners route `/loop/runtime` and `/loop/runtime/*` directly to Loop tasks.
+Private mode forces the gateway callback URL through `OVERRIDE_BRAINTRUST_API_URL`.
+Organization authentication does not replace that URL.
+
+Private mode creates quarantine PrivateLink only with `create_quarantine_api_access = true`.
+This input defaults to false and requires quarantine when enabled in private mode.
+The private path targets the API ALB internal listener on port 8000.
+The API ALB routes proxy paths to Gateway tasks and API paths to API services.
+Private mode ignores `use_private_gateway_quarantine_proxy`.
+Public mode ignores `create_quarantine_api_access`.
+Private API ECS receives `QUARANTINE_API_ACCESS_ENABLED` and one `QUARANTINE_API_URL`.
+The backend derives the API and proxy URLs from that base.
+The disabled state selects no public fallback and does not block internet traffic.
+Private mode retains outbound access requirements for AWS services, model providers, and other dependencies.
+Transitions between public and private mode cause an outage and delete or recreate CloudFront.
+The [private example README](examples/braintrust-data-plane-private/README.md) describes the client setup and request paths.
 
 ### Quarantine LLM proxy URL
 
-Quarantine UDFs get proxy base URLs from API `getRuntimeEnv` via
-`QUARANTINE_PROXY_URL`. Do **not** derive this from CloudFront
-`*.cloudfront.net` / request Host headers (Terraform cycle with ingress,
-header-spoof risk, and breaks ALB-only / GCP-style non-CF dataplanes).
-Do **not** hairpin via the API ECS ALB (`/v1/proxy` on api-ts); do **not**
-peer the quarantine VPC to main for this path. Prefer PrivateLink to the
-private gateway when opted in. Loop Runtime uses the
-private gateway ALB `/v1/proxy` when `enable_ai_gateway`. When enable is
-false it uses the hosted gateway origin or CloudFront API `/v1/proxy`.
-PrivateLink only affects quarantine when the flag is on.
+Quarantine UDFs receive proxy base URLs from API `getRuntimeEnv` through `QUARANTINE_PROXY_URL`.
+API ECS selects the URL in this order:
+
+1. An explicit `quarantine_proxy_url` override. Private mode rejects this override.
+2. The module-created PrivateLink URL, `http://<vpce-dns>/v1/proxy`.
+3. The AI Proxy Lambda Function URL while that function exists.
+4. The CloudFront API URL with `/v1/proxy` in public ECS mode.
+
+Public mode uses PrivateLink when `use_private_gateway_quarantine_proxy = true`, quarantine is enabled, and `use_global_ai_gateway_origin = false`.
+Private mode uses its API endpoint only with `create_quarantine_api_access = true`.
+An explicit URL override does not suppress resource creation in public mode.
+APIHandler Lambda does not receive automatic URL injection from this flag.
+External EKS rejects `use_private_gateway_quarantine_proxy = true`. Helm owns its gateway and application configuration.
+
+Public fallbacks require quarantine HTTPS egress.
+A managed quarantine VPC uses its own NAT gateway.
+CloudFront serves `/v1/proxy` from the configured hosted gateway, private gateway, or API ECS origin.
+With the hosted gateway origin, quarantine LLM requests leave the data plane.
+A CloudFront WAF or source-IP allowlist must admit the quarantine egress address for that public path.
+The URL presence check does not test egress, WAF admission, or authentication.
+
+Do not derive `QUARANTINE_PROXY_URL` from a request Host header.
+Do not use the main VPC API ALB or gateway ALB hostname directly for quarantine calls.
+Do not peer quarantine to the main VPC for this path.
+
+The main VPC ALBs do not provide direct access from the isolated quarantine VPC.
+PrivateLink provides the private connection between these VPCs.
+An absent `QUARANTINE_PROXY_URL` in the ECS configuration falls back to `http://localhost:8000/v1/proxy`, which quarantine Lambdas cannot reach.
+Loop uses the private gateway when `enable_ai_gateway = true`.
+The hosted gateway or CloudFront fallback applies only in public mode when that gateway is disabled.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 
-Opt-in switch for dataplane-local quarantine → private gateway wiring via
-**PrivateLink** (interim and preferred endgame vs VPC peering).
-Default **false** so SaaS (including eu-prod's manual hosted URL) and
-existing stacks are unchanged until operators explicitly enable it.
+This flag selects quarantine PrivateLink in public mode.
+Private mode ignores this flag.
+The default remains `false`.
 
-- **`false`**: do **not** auto-set from PrivateLink / private gateway; do
-  **not** create the NLB→ALB endpoint sandwich. Use `quarantine_proxy_url`
-  if set; otherwise the AI Proxy Lambda Function URL.
-- **`true`**: requires `create_ai_gateway`. When `create_vpc` and the module
-  quarantine VPC are both enabled, creates PrivateLink and sets
-  `QUARANTINE_PROXY_URL` to `http://<vpce-dns>/v1/proxy` (unless override).
-  No-ops PrivateLink when `use_global_ai_gateway_origin` is true. If the
-  module cannot create PrivateLink (existing main VPC, existing quarantine
-  VPC, or quarantine disabled) and `quarantine_proxy_url` is unset, apply
-  fails. Adds an internal NLB (extra cost) in front of the gateway ALB.
+- In public mode, `false` retains the explicit URL, AI Proxy Function URL, or CloudFront fallback.
+- `true` requires `create_ai_gateway`.
+- With quarantine enabled and the global origin disabled, `true` creates PrivateLink and selects its URL unless an override exists.
+- With the global origin enabled, `true` skips PrivateLink and endpoint URL selection.
+- With quarantine disabled and the global origin disabled, `true` requires an explicit `quarantine_proxy_url`.
 
-#### URL precedence
+#### PrivateLink network path
 
-1. `quarantine_proxy_url` override if set (e.g. eu-prod → SaaS EU API
-   `/v1/proxy`, or GCP-style manual URLs) — **always wins**
-2. else `http://<vpce-dns>/v1/proxy` when
-   `use_private_gateway_quarantine_proxy` wires PrivateLink (module-managed
-   VPCs; not `use_global_ai_gateway_origin`)
-3. else AI Proxy Lambda Function URL
+The following path describes public mode. Private mode targets the API ALB internal listener on port 8000.
 
-#### Networking (PrivateLink; only when the flag wires to private gateway)
+The module creates these resources in managed, existing, and mixed main/quarantine VPCs:
 
-Uses an NLB→ALB PrivateLink sandwich (`target_type = "alb"`):
+1. An endpoint service in the main VPC with same-account access and `acceptance_required = false`.
+2. An internal NLB with a TCP port 80 listener and an ALB target group for the gateway ALB.
+3. An interface endpoint in quarantine private subnets with HTTP port 80 access from the quarantine Lambda security group.
 
-1. **Provider (main VPC)**: internal multi-AZ NLB → target group
-   `target_type = "alb"` attached to the gateway ALB → TCP **80** listener →
-   `aws_vpc_endpoint_service` with `acceptance_required = false`
-   (same-account). Gateway ALB SG allows HTTP from the NLB SG only —
-   quarantine does **not** talk to the ALB directly.
-2. **Consumer (quarantine VPC)**: interface VPC endpoint in quarantine
-   private subnets; endpoint SG allows the quarantine Lambda SG on **:80**.
-3. **URL**: `http://<vpce-dns>/v1/proxy` (VPCE DNS, not gateway ALB DNS).
-   Plain HTTP on this hop is intentional: traffic stays inside AWS PrivateLink
-   (quarantine VPCE → NLB → gateway ALB) and never crosses the public internet.
-   TLS would require certs on the private ALB/NLB path without a customer DNS
-   name; HTTP matches the private-ALB pattern used elsewhere in this module.
+The gateway ALB admits HTTP from the NLB security group.
+Quarantine does not connect directly to the gateway ALB.
+The URL uses the endpoint DNS name: `http://<vpce-dns>/v1/proxy`.
+This HTTP path stays inside AWS PrivateLink and uses the existing gateway ALB listener.
+The endpoint waits for gateway ECS and its network path before it supplies the URL.
+The gate checks service startup, not authenticated inference across the complete PrivateLink path.
 
-Automated only for **module-managed** main + quarantine VPCs
-(`create_vpc` and `enable_quarantine_vpc` without `existing_quarantine_vpc_id`).
-Existing VPC / existing quarantine / quarantine disabled: Terraform fails
-unless you set `quarantine_proxy_url`, or `use_global_ai_gateway_origin` is
-true (documented no-op; Function URL, no PrivateLink). For existing VPCs,
-create an interface endpoint to
-`quarantine_gateway_privatelink_service_name` (when the provider side exists
-in a module-managed stack, or stand up equivalent NLB/service yourself) and
-set `quarantine_proxy_url` to `http://<your-vpce-dns>/v1/proxy`.
+Both VPCs must reside in the provider account and region.
+Subnet IDs must be nonempty and distinct, belong to their respective VPCs, and span distinct availability zones.
+Every quarantine endpoint availability zone must exist on the main VPC NLB.
+Resource-derived IDs can defer validation until apply.
+The caller controls routes, network ACLs, and DNS in existing VPCs.
 
-**Cost / AZ notes**: PrivateLink adds an internal NLB (hourly + LCU) plus
-interface endpoint hourly/GB charges. Place NLB and VPCE ENIs across the
-same AZs as the gateway ALB subnets so the endpoint service is available in
-those AZs; mismatched AZ coverage can yield unresolved or unhealthy
-endpoints.
+Preserve the released root resource addresses, including the root-owned gateway ALB ingress rule.
+Verify both managed and existing VPC paths.
+
+The root-owned ingress rule is an existing exception to destination module ownership.
+It is not a pattern for new rules.
+PrivateLink adds NLB and interface endpoint charges.
+Public-mode PrivateLink covers quarantine LLM requests. Private-mode PrivateLink covers API and Gateway requests, plus existing internal listener routes.
+
+#### Public-mode compatibility and downgrade
+
+Existing public-mode callers with the flag enabled and an explicit URL now create PrivateLink resources in supplied VPCs.
+The explicit URL still takes precedence.
+In public mode, `false` creates no PrivateLink resources.
+In private mode, `create_quarantine_api_access` controls PrivateLink.
+
+Before a public-mode PrivateLink cutover to a fallback, verify that the fallback is reachable.
+For public deployments, disable PrivateLink on a compatible version before a downgrade without existing VPC support.
+
+A private deployment requires a coordinated transition to public mode before it can use that public fallback.
+`create_quarantine_api_access = false` removes private quarantine access.
 
 ### Upgrade Sequencing (for customers upgrading from pre-2.0)
 
@@ -299,9 +365,78 @@ These constraints apply to customers migrating from Data Plane 1.x to 2.0. New d
 
 `BRAINSTORE_WAL_USE_EFFICIENT_FORMAT` is intentionally derived from EITHER `brainstore_wal_footer_version` OR `skip_pg_for_brainstore_objects` being set. This enables efficient format as early as possible in the upgrade sequence (when WAL v1 is set) rather than waiting for no-PG. Do not "simplify" this to only check one condition.
 
+### Route changes in public and private modes
+
+Public mode uses CloudFront as the frontend.
+Private mode uses the API ECS ALB as the frontend and omits CloudFront.
+A change to CloudFront alone does not update private ingress.
+An unmatched ALB request reaches the default API target group, which can hide an incorrect route.
+
+For every path or method change, review both public and private modes.
+Update each affected route definition in this table.
+
+| Route definition | Scope |
+| --- | --- |
+| `modules/ingress/cloudfront.tf` | Public origins and cache behaviors for API, functions, proxy, and Loop requests. |
+| `modules/ingress/api-gateway-openapi-spec.tf` | Public Lambda ingress paths and methods. |
+| `modules/api-ecs/alb-path-routes.tf` | API, ingest, and background routes, plus private gateway and Loop routes. |
+
+Private mode uses two listeners on the same API ALB: customer HTTPS port 443 and internal HTTP port 8000.
+The shared `alb_path_listener_rules` map supplies service routes to both listeners.
+Private gateway and Loop rules also exist on both listeners.
+Private mode excludes two public proxy routes from the shared map because the gateway rules handle those paths.
+
+- Preserve the correct destination for each affected path in both modes.
+- Review exact paths, descendant paths, HTTP methods, and rule precedence.
+- Verify OPTIONS requests, streaming responses, and WebSocket upgrades when the endpoint uses them.
+- Keep the customer listener and internal listener consistent for each applicable route.
+- Preserve stable `METHOD:path` keys and existing priorities.
+- Use unused priority gaps for new rules.
+- Add focused route assertions for both modes and each affected optional service.
+- Run the affected Terraform tests, including `tests/private_dataplane_api.tftest.hcl` for private listener changes.
+- Recompute the ALB rule counts below after each route change.
+
+### API ALB rule capacity
+
+AWS defaults to 100 nondefault rules per ALB, across all listeners.
+This quota is adjustable.
+A second listener does not supply another 100 rules.
+Default listener actions do not count toward this quota.
+These are rule limits, not a limit on the number of application endpoints behind a default action.
+
+The [AWS ALB quotas](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-limits.html) also limit condition values and match evaluations to five per rule.
+The [condition documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/rule-condition-types.html) permits up to three match evaluations per condition.
+A method condition consumes a match evaluation as well as the path condition.
+A path pattern can contain up to 128 characters.
+These limits prevent arbitrary combinations of paths in one rule.
+
+Current counts from `modules/api-ecs/alb-path-routes.tf`, reviewed on October 28, 2026:
+
+| Mode | Customer listener rules | Internal listener rules | Total nondefault rules | Space under default quota |
+| --- | ---: | ---: | ---: | ---: |
+| Public, with or without Loop | 21 | 0 | 21 | 79 |
+| Private, Loop disabled | 20 | 20 | 40 | 60 |
+| Private, Loop enabled | 21 | 21 | 42 | 58 |
+
+Public mode has 21 shared service rules.
+Private mode excludes two public proxy rules and retains 19 shared service rules per listener.
+Each private listener also has one gateway rule and, with Loop enabled, one Loop rule.
+Each gateway or Loop rule contains two path values, but counts as one rule.
+A new shared service route adds one public rule or two private rules across both listeners.
+These counts describe the module configuration, not a live AWS deployment or its approved quota.
+
+Before a route expansion, verify the deployment quota through Service Quotas or `aws elbv2 describe-account-limits`.
+Count all nondefault rules on the same ALB, including rules outside this module.
+Leave capacity for temporary rules during a migration.
+Verify per-condition and per-rule limits before paths share a rule.
+Do not broaden a wildcard solely to reduce the rule count.
+
 ### API Gateway Route Allowlist
 
-`modules/ingress/api-gateway-openapi-spec.tf` is an explicit allowlist of every permitted path and method. Any application route not in this spec returns 403 on hybrid deployments. Browsers report this as a misleading CORS error because the 403 response lacks CORS headers.
+`modules/ingress/api-gateway-openapi-spec.tf` defines the permitted paths and methods for the public Lambda ingress path.
+A route absent from that specification returns 403 through API Gateway.
+Browsers can report a CORS error because that response lacks CORS headers.
+Private mode and public ECS mode do not use API Gateway.
 
 ## Development
 

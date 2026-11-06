@@ -7,12 +7,16 @@ locals {
 resource "aws_lambda_function" "quarantine_warmup" {
   count = var.use_quarantine_vpc ? 1 : 0
 
-  depends_on = [aws_lambda_invocation.invoke_database_migration]
+  depends_on = [
+    aws_lambda_invocation.invoke_database_migration,
+    aws_iam_role_policy_attachment.quarantine_warmup_vpc_access,
+    aws_iam_role_policy.quarantine_warmup,
+  ]
 
   function_name = local.quarantine_warmup_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions[local.quarantine_warmup_base_function_name]
-  role          = var.api_handler_role_arn
+  role          = aws_iam_role.quarantine_warmup[0].arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.quarantine_warmup_original_handler
   runtime       = "nodejs22.x"
   memory_size   = 2048
@@ -82,6 +86,12 @@ resource "aws_lambda_invocation" "invoke_quarantine_warmup" {
   function_name = aws_lambda_function.quarantine_warmup[0].function_name
   input         = jsonencode({})
   triggers = {
-    function_version = aws_lambda_function.api_handler.version
+    # Lambda mode re-warms when APIHandler is published. ECS mode has no
+    # APIHandler. The warmup function does not set publish, so its version
+    # stays $LATEST and would never change; the versioned bundle key does.
+    function_version = coalesce(
+      one(aws_lambda_function.api_handler[*].version),
+      aws_lambda_function.quarantine_warmup[0].s3_key,
+    )
   }
 }

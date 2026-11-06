@@ -35,17 +35,15 @@ module "braintrust-data-plane" {
   # for forward compatibility.
   allowed_org_ids = ""
 
-  # Brainstore license key (required)
-  brainstore_license_key = var.brainstore_license_key
-
   # Enable external EKS deployment mode
   # When true, disables lambdas, ec2, and ingress submodules.
   # It assumes an EKS deployment is being done outside of terraform.
   use_deployment_mode_external_eks = true
 
   # Loop runtime is not supported with external EKS deployments.
-  enable_loop_runtime              = false
-  loop_runtime_sandbox_egress_mode = "restricted"
+  enable_loop_runtime = false
+  # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
+  # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
   # Enable EKS Pod Identity for the Braintrust IAM roles
@@ -128,16 +126,13 @@ module "braintrust-data-plane" {
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
-  # Opt in to wire quarantine → private gateway via PrivateLink
-  # (http://<vpce-dns>/v1/proxy). Default false. Requires create_ai_gateway
-  # and module-managed VPCs (or quarantine_proxy_url). Existing VPC without
-  # an override fails apply, except the global-origin no-op.
+  # External EKS requires this flag to remain false. Helm owns the Gateway
+  # and proxy URL wiring; Terraform does not create this PrivateLink path.
   # use_private_gateway_quarantine_proxy = false
-  # quarantine_proxy_url                 = null
 
-  # How to handle URL-security validation failures for externally supplied outbound HTTP URLs.
-  # Allowed values: "off", "proxy", "warn", "reject". Defaults to "warn".
-  # unsafe_url_request_mode = "warn"
+  # unsafe_url_request_mode has no effect in external EKS mode, because Helm
+  # runs the API and Gateway. Set api.unsafeUrlRequestMode = "reject" in your
+  # Helm values instead.
 
   ### Network configuration
   # WARNING: You should choose these values carefully after discussing with your networking team.
@@ -199,6 +194,12 @@ module "braintrust-data-plane" {
   #   "arn:aws:iam::123456789012:role/customer-export-role",
   #   "arn:aws:iam::*:role/braintrust-export-*",
   # ]
+
+  # Opt-in: let the API role read caller-owned buckets that traces link to as external
+  # attachments (s3:GetObject only, plus kms:Decrypt through S3 for SSE-KMS buckets).
+  # Buckets and keys in another account must also grant the API role in their policies.
+  # external_attachment_s3_bucket_arns           = ["arn:aws:s3:::your-attachment-bucket"]
+  # external_attachment_s3_bucket_kms_key_arns   = ["arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"]
 
   # Opt-in: bound AI Gateway Bedrock AssumeRole to approved role ARNs or IAM patterns (default: unrestricted).
   # Only applies when create_ai_gateway is true.

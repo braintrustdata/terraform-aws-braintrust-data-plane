@@ -11,10 +11,18 @@ locals {
 
   container_name           = "loop-runtime"
   container_port           = 4001
+  egress_gateway_port      = 4002
+  service_name             = "${var.deployment_name}-loop-runtime"
   observability_enabled    = var.internal_observability_enabled
   loop_runtime_version_tag = element(reverse(split(":", var.container_image)), 0)
   brainstore_s3_bucket     = var.brainstore_s3_bucket_name
   use_object_store_locks   = var.brainstore_object_store_locks
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from      = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}:::${var.internal_observability_api_key_secret_version}"
+
+  capacity_metric_namespace = "Braintrust/LoopRuntime"
 
   # Normalize like modules/brainstore-ec2 so Loop uses the deployment's shared
   # lock prefix (the writers must acquire locks from the same S3 namespace).
@@ -34,6 +42,8 @@ locals {
     } : {},
   )
 
+  datadog_firelens_logs = local.observability_enabled && module.datadog_agent_telemetry.container_logs
+
   # Plain (non-secret) environment. Secrets (DB/Redis/service-token URLs) are
   # injected via the container `secrets` block below. Sandbox-specific env comes
   # from var.sandbox_env_vars so this module stays sandbox-agnostic.
@@ -43,7 +53,13 @@ locals {
       LOOP_RUNTIME_HOST                  = "0.0.0.0"
       LOOP_RUNTIME_PORT                  = tostring(local.container_port)
       LOOP_RUNTIME_LIFECYCLE_LOG         = var.loop_runtime_lifecycle_log
+      LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS = "90"
       LOOP_RUNTIME_REDIS_NAMESPACE       = "loop-runtime:${var.deployment_name}"
+
+      LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE    = local.capacity_metric_namespace
+      LOOP_RUNTIME_CAPACITY_METRIC_CLUSTER_NAME = var.ecs_cluster_name
+      LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME = local.service_name
+
       LOOP_RUNTIME_STATE_DIR             = "/mnt/tmp/loop-runtime"
       ORG_NAME                           = var.org_name
       BRAINTRUST_API_URL                 = var.braintrust_api_url
@@ -67,9 +83,6 @@ locals {
     trimspace(var.allowed_org_ids) != "" ? {
       ALLOWED_ORG_IDS = var.allowed_org_ids
     } : {},
-    var.brainstore_license_key == null ? {} : {
-      BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-    },
     local.observability_enabled ? {
       BRAINSTORE_STATSD_ENDPOINT                   = "127.0.0.1:8125"
       BRAINSTORE_OTLP_HTTP_ENDPOINT                = "http://localhost:4318"
@@ -79,23 +92,32 @@ locals {
     } : {},
   )
 
-  merged_env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
+  merged_env_vars = merge(
+    local.core_env,
+    var.sandbox_env_vars,
+    var.extra_env_vars,
+    local.observability_enabled ? module.datadog_agent_telemetry.otlp_env_vars : {},
+  )
 
   container_secrets = concat(
+    [{
+      name      = "BRAINSTORE_LICENSE_KEY"
+      valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+    }],
     [
       { name = "BRAINSTORE_METADATA_URI", valueFrom = var.database_url_secret_arn },
       { name = "BRAINSTORE_WAL_URI", valueFrom = var.database_url_secret_arn },
-      { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = var.redis_url_secret_arn },
-      { name = "BRAINSTORE_REDIS_URI", valueFrom = var.redis_url_secret_arn },
+      { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = local.redis_url_secret_value_from },
+      { name = "BRAINSTORE_REDIS_URI", valueFrom = local.redis_url_secret_value_from },
       { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
       { name = "FUNCTION_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
     ],
     local.use_object_store_locks ? [] : [
-      { name = "BRAINSTORE_LOCKS_URI", valueFrom = var.redis_url_secret_arn },
+      { name = "BRAINSTORE_LOCKS_URI", valueFrom = local.redis_url_secret_value_from },
     ],
   )
 
-  app_log_configuration = jsondecode(local.observability_enabled ? jsonencode({
+  app_log_configuration = jsondecode(local.datadog_firelens_logs ? jsonencode({
     logDriver = "awsfirelens"
     options = {
       Name           = "datadog"
@@ -109,7 +131,7 @@ locals {
       compress       = "gzip"
     }
     secretOptions = [
-      { name = "apikey", valueFrom = var.internal_observability_api_key_secret_arn }
+      { name = "apikey", valueFrom = local.observability_api_key_value_from }
     ]
     }) : jsonencode({
     logDriver = "awslogs"
@@ -121,11 +143,12 @@ locals {
   }))
 
   loop_runtime_container_definition = {
-    name      = local.container_name
-    image     = var.container_image
-    essential = true
-    user      = "1000:1000"
-    ulimits   = local.nofile_ulimits
+    name        = local.container_name
+    image       = var.container_image
+    essential   = true
+    user        = "1000:1000"
+    ulimits     = local.nofile_ulimits
+    stopTimeout = 120
     linuxParameters = {
       initProcessEnabled = true
       capabilities = {
@@ -141,7 +164,12 @@ locals {
         containerPort = local.container_port
         hostPort      = local.container_port
         protocol      = "tcp"
-      }
+      },
+      {
+        containerPort = local.egress_gateway_port
+        hostPort      = local.egress_gateway_port
+        protocol      = "tcp"
+      },
     ]
     environment = [
       for key in sort(keys(local.merged_env_vars)) : {
@@ -154,7 +182,7 @@ locals {
       for dep in [
         { containerName = "log-router", condition = "START" },
         { containerName = "datadog-agent", condition = "START" },
-      ] : dep if local.observability_enabled
+      ] : dep if local.observability_enabled && (dep.containerName != "log-router" || local.datadog_firelens_logs)
     ]
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:${local.container_port}/health/liveness || exit 1"]
@@ -174,7 +202,7 @@ locals {
       {
         name           = "log-router"
         essential      = true
-        image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
+        image          = "public.ecr.aws/aws-observability/aws-for-fluent-bit:3.5.3"
         user           = "0"
         environment    = []
         mountPoints    = []
@@ -225,7 +253,7 @@ locals {
           { name = "DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT", value = "0.0.0.0:4318" },
         ]
         secrets = [
-          { name = "DD_API_KEY", valueFrom = var.internal_observability_api_key_secret_arn }
+          { name = "DD_API_KEY", valueFrom = local.observability_api_key_value_from }
         ]
         healthCheck = {
           command     = ["CMD-SHELL", "agent health"]
@@ -235,7 +263,7 @@ locals {
           timeout     = 5
         }
       }
-    ] : sidecar if local.observability_enabled
+    ] : sidecar if local.observability_enabled && (sidecar.name != "log-router" || local.datadog_firelens_logs)
   ]
 
   valid_fargate_memory_by_cpu = {
@@ -247,6 +275,12 @@ locals {
     "8192"  = [for value in range(16384, 61441, 4096) : value]
     "16384" = [for value in range(32768, 122881, 8192) : value]
   }
+}
+
+module "datadog_agent_telemetry" {
+  source = "../datadog-agent-telemetry"
+
+  env_vars = merge(local.core_env, var.sandbox_env_vars, var.extra_env_vars)
 }
 
 data "aws_region" "current" {}
@@ -288,6 +322,30 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   source_security_group_id = var.alb_security_group_id
   description              = "Allow inbound traffic from Loop runtime ALB to tasks"
   security_group_id        = aws_security_group.task.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "task_from_sandbox_egress_gateway" {
+  for_each = var.sandbox_egress_gateway_authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.egress_gateway_port
+  to_port                      = local.egress_gateway_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow sandbox egress traffic from ${each.key}."
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_ingress_rule" "task_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.container_port
+  to_port                      = local.container_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow inbound traffic from ${each.key}."
+  tags                         = local.common_tags
 }
 
 resource "aws_security_group_rule" "task_egress_all" {
@@ -332,12 +390,13 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
             var.redis_url_secret_arn,
           ],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
+          [var.brainstore_license_key_secret_arn],
         )
       },
       {
         Effect   = "Allow"
         Action   = ["kms:Decrypt"]
-        Resource = var.kms_key_arn
+        Resource = concat([var.kms_key_arn], var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn])
         Condition = {
           StringEquals = {
             "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
@@ -518,6 +577,8 @@ resource "aws_iam_role_policy" "sandbox" {
 }
 
 resource "aws_ecs_task_definition" "loop_runtime" {
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
+
   family                   = "${var.deployment_name}-loop-runtime"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -561,7 +622,7 @@ resource "terraform_data" "loop_runtime_http_listener" {
 }
 
 resource "aws_ecs_service" "loop_runtime" {
-  name                              = "${var.deployment_name}-loop-runtime"
+  name                              = local.service_name
   cluster                           = var.ecs_cluster_arn
   task_definition                   = aws_ecs_task_definition.loop_runtime.arn
   desired_count                     = var.min_capacity
@@ -584,13 +645,32 @@ resource "aws_ecs_service" "loop_runtime" {
     assign_public_ip = false
   }
 
+  dynamic "load_balancer" {
+    for_each = var.additional_target_group_arns
+
+    content {
+      target_group_arn = load_balancer.value
+      container_name   = local.container_name
+      container_port   = local.container_port
+    }
+  }
+
   load_balancer {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
     container_port   = local.container_port
   }
 
-  depends_on = [terraform_data.loop_runtime_http_listener]
+  load_balancer {
+    target_group_arn = var.sandbox_egress_gateway_target_group_arn
+    container_name   = local.container_name
+    container_port   = local.egress_gateway_port
+  }
+
+  depends_on = [
+    terraform_data.loop_runtime_http_listener,
+    aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups,
+  ]
 
   lifecycle {
     ignore_changes = [desired_count]

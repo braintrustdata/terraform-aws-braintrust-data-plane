@@ -90,10 +90,25 @@ output "task_security_group_id" {
 output "http_url" {
   description = "URL for the API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)."
   value       = local.api_ecs_url
+  depends_on = [
+    aws_lb_listener.api_ecs_http,
+    aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway,
+  ]
+}
+
+output "internal_url" {
+  description = "Internal HTTP URL for service callbacks in private mode. Null in public mode."
+  value       = local.internal_api_url
+  depends_on = [
+    aws_lb_listener.api_ecs_internal,
+    aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway,
+    aws_lb_listener_rule.alb_internal_path_routes,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups,
+  ]
 }
 
 output "quarantine_proxy_url" {
-  description = "Effective QUARANTINE_PROXY_URL on API ECS when set; null when the env var is omitted."
+  description = "QUARANTINE_PROXY_URL on API ECS. Private mode uses QUARANTINE_API_URL through extra_env_vars."
   value       = local.quarantine_proxy_url
 }
 
@@ -114,4 +129,27 @@ output "cloudwatch_log_groups" {
     braintrust_api_ingest     = aws_cloudwatch_log_group.braintrust_api_ingest.name
     braintrust_api_background = aws_cloudwatch_log_group.braintrust_api_background.name
   }
+}
+
+output "private_gateway_target_group_arn" {
+  description = "Target group for direct gateway access through the customer listener."
+  value       = one(aws_lb_target_group.private_gateway[*].arn)
+  depends_on  = [aws_lb_listener_rule.private_gateway]
+}
+
+output "private_loop_runtime_target_group_arn" {
+  description = "Target group for direct Loop access through the customer listener."
+  value       = one(aws_lb_target_group.private_loop_runtime[*].arn)
+  depends_on  = [aws_lb_listener_rule.private_loop_runtime]
+}
+
+output "quarantine_alb_arn" {
+  description = "This output returns the API ALB ARN after the internal listener and quarantine authorization exist."
+  value       = aws_lb.api_ecs.arn
+  depends_on = [
+    aws_lb_listener.api_ecs_internal,
+    aws_lb_listener_rule.alb_internal_path_routes,
+    aws_lb_listener_rule.private_internal_gateway,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups,
+  ]
 }

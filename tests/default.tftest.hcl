@@ -39,6 +39,11 @@ run "default_plans" {
   }
 
   assert {
+    condition     = local.enable_ecs_api && module.services[0].api_handler_arn == null && module.ingress[0].api_gateway_name == null
+    error_message = "A new stack that sets nothing must send customer traffic to the API ECS load balancer."
+  }
+
+  assert {
     condition     = length(module.brainstore) == 1
     error_message = "default mode should create the brainstore module"
   }

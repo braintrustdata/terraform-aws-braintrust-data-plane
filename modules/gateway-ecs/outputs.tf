@@ -1,3 +1,9 @@
+output "gateway_url" {
+  description = "Private gateway URL. Callers wait for the ECS service to reach steady state."
+  value       = var.gateway_url
+  depends_on  = [aws_ecs_service.gateway]
+}
+
 output "service_name" {
   description = "Name of the ECS gateway service"
   value       = aws_ecs_service.gateway.name
