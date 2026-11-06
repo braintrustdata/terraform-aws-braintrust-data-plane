@@ -723,13 +723,50 @@ variable "ai_gateway_alb_drop_invalid_header_fields" {
 }
 
 variable "ai_gateway_extra_env_vars" {
-  description = "Extra environment variables for the gateway ECS container"
+  description = "Extra non-secret environment variables for the gateway ECS container. Do not put secret values here. Use ai_gateway_extra_secrets with Secrets Manager ARNs."
   type        = map(string)
   default     = {}
 
   validation {
-    condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
+    condition = length(setintersection(keys(var.ai_gateway_extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in ai_gateway_extra_env_vars. Use ai_gateway_extra_secrets for consumer secrets, or brainstore_license_key / existing_brainstore_license_key_secret for the license."
+  }
+}
+
+variable "ai_gateway_extra_secrets" {
+  description = "Extra ECS secrets for the gateway container. Each entry is a name plus a Secrets Manager valueFrom ARN, optionally pinned as ARN:::version-id. The secret must use the deployment KMS key or the default Secrets Manager key."
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for s in var.ai_gateway_extra_secrets : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom))
+    ])
+    error_message = "ai_gateway_extra_secrets valueFrom must be a Secrets Manager secret ARN, optionally with :json-key:stage:version-id."
+  }
+
+  validation {
+    condition = length(setintersection(toset([for s in var.ai_gateway_extra_secrets : s.name]), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "DD_API_KEY",
+      "BRAINTRUST_CUSTOM_CA_BUNDLE",
+      "COMPLETIONS_CACHE_REDIS_URL",
+      "AUTH_CACHE_REDIS_URL",
+    ]))) == 0
+    error_message = "Do not reuse a module-owned secret name in ai_gateway_extra_secrets."
   }
 }
 
@@ -1334,13 +1371,52 @@ variable "braintrust_api_background_event_loop_delay_autoscaling" {
 }
 
 variable "braintrust_api_extra_env_vars" {
-  description = "Extra environment variables for the API ECS container."
+  description = "Extra non-secret environment variables for the API ECS container. Do not put secret values here. Use braintrust_api_extra_secrets with Secrets Manager ARNs."
   type        = map(string)
   default     = {}
 
   validation {
-    condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
+    condition = length(setintersection(keys(var.braintrust_api_extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in braintrust_api_extra_env_vars. Use braintrust_api_extra_secrets for consumer secrets, or brainstore_license_key / existing_brainstore_license_key_secret for the license."
+  }
+}
+
+variable "braintrust_api_extra_secrets" {
+  description = "Extra ECS secrets for the API containers. Each entry is a name plus a Secrets Manager valueFrom ARN, optionally pinned as ARN:::version-id. The secret must use the deployment KMS key or the default Secrets Manager key."
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for s in var.braintrust_api_extra_secrets : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom))
+    ])
+    error_message = "braintrust_api_extra_secrets valueFrom must be a Secrets Manager secret ARN, optionally with :json-key:stage:version-id."
+  }
+
+  validation {
+    condition = length(setintersection(toset([for s in var.braintrust_api_extra_secrets : s.name]), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "BRAINTRUST_CUSTOM_CA_BUNDLE",
+    ]))) == 0
+    error_message = "Do not reuse a module-owned secret name in braintrust_api_extra_secrets."
   }
 }
 
