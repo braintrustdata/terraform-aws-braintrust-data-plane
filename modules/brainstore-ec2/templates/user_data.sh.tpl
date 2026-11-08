@@ -9,6 +9,7 @@ sed -i "s|http://[a-z0-9-]\+\.ec2\.ports\.ubuntu\.com|http://ports.ubuntu.com|g"
 rm -rf /var/lib/apt/lists/*
 apt-get clean
 apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold upgrade
 
 # Mount the local SSD if it exists
 apt-get install -y nvme-cli mdadm
