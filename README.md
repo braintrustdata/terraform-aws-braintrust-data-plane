@@ -379,6 +379,8 @@ provider "aws" {
 
 The `deployment_name` variable is also used to prefix the names of the resources created by the module wherever possible. It will also be applied as a tag named `BraintrustDeploymentName` to all resources created by the module.
 
+To tag only the Brainstore EC2 instances and their EBS volumes, set `brainstore_instance_tags`. These tags go on the instance and volume tag specifications of the Brainstore launch templates. They do not go on the Auto Scaling groups, launch templates, or any other resource. This is useful when a tag selects instances, for example an SSM association target, and you do not want the tag on every resource. Module tags and `custom_tags` take precedence on key conflicts. A change to this input creates a new launch template version, so the Brainstore nodes are replaced through the normal rollout.
+
 ### CloudFront Access Logging
 
 If you need to enable CloudFront standard access logging, you can configure it independently by referencing the `cloudfront_distribution_arn` output from the module. This approach gives you full flexibility over the logging configuration without requiring changes to the module itself.

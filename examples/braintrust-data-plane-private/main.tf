@@ -155,6 +155,12 @@ module "braintrust-data-plane" {
   #    CustomTagKey = "SomeValue"
   #  }
   #
+  # Optionally add tags to the Brainstore EC2 instances and their EBS volumes only.
+  # A change replaces the Brainstore nodes through the normal rollout.
+  #  brainstore_instance_tags = {
+  #    CustomInstanceTagKey = "SomeValue"
+  #  }
+  #
 
   ### S3 Block Public Access
   # New deployments only: skip bucket Block Public Access configuration when

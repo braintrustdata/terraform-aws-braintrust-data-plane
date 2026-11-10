@@ -75,7 +75,7 @@ resource "aws_launch_template" "brainstore_automation_writer" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = merge({
+    tags = merge(var.instance_tags, {
       Name           = "${var.deployment_name}-brainstore-automation-writer"
       BrainstoreRole = "AutomationWriter"
     }, local.common_tags)
@@ -83,7 +83,7 @@ resource "aws_launch_template" "brainstore_automation_writer" {
 
   tag_specifications {
     resource_type = "volume"
-    tags = merge({
+    tags = merge(var.instance_tags, {
       Name           = "${var.deployment_name}-brainstore-automation-writer"
       BrainstoreRole = "AutomationWriter"
     }, local.common_tags)

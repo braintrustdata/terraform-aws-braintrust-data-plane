@@ -128,7 +128,7 @@ resource "aws_launch_template" "brainstore" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = merge({
+    tags = merge(var.instance_tags, {
       Name           = local.has_writer_nodes ? "${var.deployment_name}-brainstore-reader" : "${var.deployment_name}-brainstore"
       BrainstoreRole = local.has_writer_nodes ? "Reader" : "ReaderWriter"
     }, local.common_tags)
@@ -136,7 +136,7 @@ resource "aws_launch_template" "brainstore" {
 
   tag_specifications {
     resource_type = "volume"
-    tags = merge({
+    tags = merge(var.instance_tags, {
       Name           = local.has_writer_nodes ? "${var.deployment_name}-brainstore-reader" : "${var.deployment_name}-brainstore"
       BrainstoreRole = local.has_writer_nodes ? "Reader" : "ReaderWriter"
     }, local.common_tags)

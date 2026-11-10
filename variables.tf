@@ -2193,6 +2193,12 @@ variable "custom_tags" {
   default     = {}
 }
 
+variable "brainstore_instance_tags" {
+  description = "Tags to apply only to Brainstore EC2 instances and their EBS volumes at launch, for example to target the nodes with an SSM association. Other resources do not get these tags. Module tags and custom_tags take precedence on key conflicts. A change creates a new launch template version, which replaces the Brainstore nodes."
+  type        = map(string)
+  default     = {}
+}
+
 variable "brainstore_custom_post_install_script" {
   type        = string
   description = "Optional custom bash script to run at the end of the Brainstore user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file(\"$${path.module}/scripts/brainstore-post-install.sh\")"

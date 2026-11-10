@@ -76,7 +76,7 @@ resource "aws_launch_template" "brainstore_fast_reader" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = merge({
+    tags = merge(var.instance_tags, {
       Name           = "${var.deployment_name}-brainstore-fast-reader"
       BrainstoreRole = "FastReader"
     }, local.common_tags)
@@ -84,7 +84,7 @@ resource "aws_launch_template" "brainstore_fast_reader" {
 
   tag_specifications {
     resource_type = "volume"
-    tags = merge({
+    tags = merge(var.instance_tags, {
       Name           = "${var.deployment_name}-brainstore-fast-reader"
       BrainstoreRole = "FastReader"
     }, local.common_tags)

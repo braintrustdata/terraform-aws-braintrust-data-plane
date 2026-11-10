@@ -45,6 +45,11 @@ module "braintrust-data-plane" {
   #   Owner = "Your Name"
   #   Team  = "Your Team"
   # }
+  #
+  # Optionally add tags to the Brainstore EC2 instances and their EBS volumes only.
+  # brainstore_instance_tags = {
+  #   CustomInstanceTagKey = "SomeValue"
+  # }
 
   ### Postgres configuration
   # Optional connection override. Omit either field to keep using the
