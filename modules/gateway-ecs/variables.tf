@@ -219,6 +219,18 @@ variable "url_security_allow_cidrs" {
   default     = ""
 }
 
+variable "org_name" {
+  type        = string
+  description = "Organization name allowed to use this gateway (ORG_NAME). '*' allows any name, subject to allowed_org_ids."
+  default     = "*"
+}
+
+variable "allowed_org_ids" {
+  type        = string
+  description = "Comma-separated organization IDs allowed to use this gateway (ALLOWED_ORG_IDS), in addition to a specific org_name. Empty adds no ID restriction when org_name is '*'."
+  default     = ""
+}
+
 variable "braintrust_app_url" {
   type        = string
   description = "Braintrust application URL used by the gateway."

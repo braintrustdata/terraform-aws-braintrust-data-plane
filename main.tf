@@ -574,6 +574,8 @@ module "gateway_ecs" {
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
   brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
   enable_execute_command                = var.ai_gateway_enable_execute_command
+  org_name                              = var.braintrust_org_name
+  allowed_org_ids                       = var.allowed_org_ids
   braintrust_app_url                    = var.ai_gateway_braintrust_app_url
   braintrust_api_url                    = local.internal_api_url
   unsafe_url_request_mode               = var.unsafe_url_request_mode
