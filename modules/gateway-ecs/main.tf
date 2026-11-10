@@ -43,6 +43,8 @@ locals {
     } if !contains(keys(var.extra_env_vars), name)
   ]
   base_env_vars = merge({
+    ORG_NAME                    = var.org_name
+    ALLOWED_ORG_IDS             = var.allowed_org_ids
     GATEWAY_ENV                 = "production"
     GATEWAY_REGION              = data.aws_region.current.region
     BRAINTRUST_APP_URL          = var.braintrust_app_url
