@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CustomerDisabledDiagnosticsTrustUpdates",
+      "Effect": "Deny",
+      "Action": "iam:UpdateAssumeRolePolicy",
+      "Resource": "<DIAGNOSTICS_ROLE_ARN>"
+    }
+  ]
+}

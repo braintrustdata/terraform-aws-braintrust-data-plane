@@ -196,26 +196,6 @@
       }
     },
     {
-      "Sid": "CreateServiceLinkedRoles",
-      "Effect": "Allow",
-      "Action": "iam:CreateServiceLinkedRole",
-      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*",
-      "Condition": {
-        "StringEquals": {
-          "iam:AWSServiceName": [
-            "autoscaling.amazonaws.com",
-            "ecs.amazonaws.com",
-            "ecs.application-autoscaling.amazonaws.com",
-            "elasticache.amazonaws.com",
-            "elasticloadbalancing.amazonaws.com",
-            "rds.amazonaws.com",
-            "spot.amazonaws.com",
-            "vpcorigin.cloudfront.amazonaws.com"
-          ]
-        }
-      }
-    },
-    {
       "Sid": "CreateTaggedDataPlaneKeys",
       "Effect": "Allow",
       "Action": "kms:CreateKey",

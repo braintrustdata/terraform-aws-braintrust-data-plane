@@ -9,7 +9,7 @@ implementation requirements; placeholders do not need substitution for review.
 
 | Role | Boundary | Attached policies |
 | --- | --- | --- |
-| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | Five deployment policies below |
+| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | Six deployment policies below; customer-disable inline policy only when activation is disabled |
 | `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None | [inspection-policy.json](inspection-policy.json) |
 | `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None | Inspection and [diagnostics-policy.json](diagnostics-policy.json), always attached; trust gates access |
 | Runtime roles created by Terraform | [runtime-permissions-boundary.json](runtime-permissions-boundary.json) | Module policies for each workload |
@@ -43,15 +43,22 @@ access path outside this model.
 
 ## Deployment policy files
 
-Five managed policies attach to one role to stay within AWS document limits.
+Six managed policies attach to one role to stay within AWS document limits.
 
 | File | Purpose |
 | --- | --- |
 | [deployment-infrastructure-policy.json](deployment-infrastructure-policy.json) | Service lifecycle, networking, delegated IAM, and data-plane key administration |
 | [deployment-data-policy.json](deployment-data-policy.json) | State, operation records, bucket configuration, and required secrets |
 | [deployment-workload-policy.json](deployment-workload-policy.json) | Lambda configuration/hooks, monitoring, and ordinary log configuration |
-| [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json) | Exact Diagnostics trust updates and logging verification metadata |
+| [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json) | Capability-gated Diagnostics trust updates, logging verification metadata, and protection of the owning bootstrap stack |
 | [deployment-eks-policy.json](deployment-eks-policy.json) | Scoped EKS management |
+| [deployment-service-linked-roles-policy.json](deployment-service-linked-roles-policy.json) | Creation of eleven exact AWS default service-linked roles |
+
+When `DiagnosticsActivationEnabled=false`, bootstrap also installs
+[customer-disable-policy.json](customer-disable-policy.json) as the
+`CustomerDiagnosticsActivationControl` inline policy on Deployment. It explicitly
+denies updates to this bootstrap's Diagnostics trust. It is not a seventh managed
+policy and is absent when activation is enabled.
 
 Deployment remains privileged. Broad EC2, RDS, and SQS lifecycle permissions
 include service-returned content such as console output, database logs, and queue
@@ -62,6 +69,31 @@ excludes the diagnostic transcript group.
 Lambda invocation is limited to prefixed `MigrateDatabaseFunction`,
 `QuarantineWarmupFunction`, and `BrainstoreDeployment` hooks, unqualified or
 at `$LATEST`. It does not allow arbitrary function invocation.
+
+### Approved service-linked roles
+
+Deployment may create these account-wide AWS roles as needed. Each grant requires
+both the exact default role ARN and the matching `iam:AWSServiceName`; no custom
+suffixes, other accounts, Spot, or EKS Fargate roles are included.
+
+| AWS service name | Default role |
+| --- | --- |
+| `autoscaling.amazonaws.com` | `AWSServiceRoleForAutoScaling` |
+| `ecs.amazonaws.com` | `AWSServiceRoleForECS` |
+| `ecs.application-autoscaling.amazonaws.com` | `AWSServiceRoleForApplicationAutoScaling_ECSService` |
+| `elasticache.amazonaws.com` | `AWSServiceRoleForElastiCache` |
+| `elasticloadbalancing.amazonaws.com` | `AWSServiceRoleForElasticLoadBalancing` |
+| `lambda.amazonaws.com` | `AWSServiceRoleForLambda` |
+| `ops.apigateway.amazonaws.com` | `AWSServiceRoleForAPIGateway` |
+| `rds.amazonaws.com` | `AWSServiceRoleForRDS` |
+| `vpcorigin.cloudfront.amazonaws.com` | `AWSServiceRoleForCloudFrontVPCOrigin` |
+| `eks.amazonaws.com` | `AWSServiceRoleForAmazonEKS` |
+| `eks-nodegroup.amazonaws.com` | `AWSServiceRoleForAmazonEKSNodegroup` |
+
+New bootstraps need no separate preparation script for these grants. These roles
+belong to their AWS services, remain outside data-plane teardown, and do not
+expand human access. EKS permissions do not by themselves provide a deployment
+recipe or Kubernetes authorization.
 
 ## Naming and scope
 
@@ -108,6 +140,7 @@ Schedule controls cover only the module's three named jobs.
 | `<MANAGED_RESOURCE_PREFIX>` | 2–8 lowercase letters, digits, or hyphens; start with a letter or digit and end in a hyphen |
 | `<RUNTIME_BOUNDARY_ARN>` | Exact runtime boundary ARN from the naming table |
 | `<DIAGNOSTICS_ROLE_ARN>` | Exact Diagnostics role from this bootstrap |
+| `<BOOTSTRAP_STACK_ARN>` | Actual owning CloudFormation stack ARN (`AWS::StackId`), independent of the stack's name |
 | `<STATE_BUCKET_NAME>`, `<OPERATION_LOG_BUCKET_NAME>` | Distinct customer-owned S3 buckets, outside the runtime prefix |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust software bucket for the Region |
 | `<LICENSE_SECRET_ARN>` | Exact same-account, same-Region license secret ARN, at most 128 characters |
@@ -131,14 +164,27 @@ is a customer control, not a guarantee of this package.
 
 Diagnostics keeps both policies attached. Its inactive trust blocks assumption;
 activation changes only the exact role's trust to allow the designated source
-role, named engineers, and an explicit time window. Deployment cannot change
+role, named engineers, and an absolute deadline. Deployment cannot change
 Diagnostics permissions or attachments. Readback uses its existing `iam:GetRole`
 metadata permission.
 
+The trust-update Allow requires the session tag
+`outpost_diagnostics_capability` to be `diagnostics_grant` or `diagnostics_close`.
+The deployment service derives this tag from the authorized operation; ordinary
+Terraform sessions do not receive it. This is a service-issued capability, not
+independent customer approval. The customer-disable inline deny overrides it.
+
 `iam:UpdateAssumeRolePolicy` replaces the trust document. IAM limits the target
 role, not the policy contents. The activation workflow must preserve the exact
-principal, authenticated source identities, and deadline. See the
+principal, verified UserIds, and deadline. Customer trust binds both requested
+SourceIdentity and role-session name to the signed `identitystore:UserId`. See the
 [trust examples](../trust-policies/README.md#diagnostics-trust-states).
+
+Deployment is explicitly denied updates, deletion, change-set creation/execution,
+and stack-policy changes on the exact owning bootstrap stack. It cannot directly
+remove the disable policy or change the fixed Diagnostics grants. This does not
+prove isolation from another privileged stack service role or Lambda; those
+delegated paths and reserved resource ownership require separate review.
 
 Session Manager entry requires the logged document and both deployment and
 Brainstore role tags. ECS Exec targets the managed prefix. Session transport

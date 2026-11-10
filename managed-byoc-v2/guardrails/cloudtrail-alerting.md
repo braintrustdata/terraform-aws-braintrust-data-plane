@@ -21,6 +21,9 @@ audit collection, alerts, and recovery access outside Braintrust's trust chain.
 - Preserve role ARN, session name, SourceIdentity, event ID/time, source IP,
   request parameters, result, and error code. Evaluate successful and denied
   requests; services use different denial codes and logging paths.
+- Preserve the verified IAM Identity Center UserId and identity-store context
+  where the login and STS event schemas expose them. Diagnostics SourceIdentity
+  and target role-session name must match that verified individual identity.
 
 CloudTrail captures supported activity selected by that configuration, not every
 API call. Validate the required allowed and denied events before relying on alerts.
@@ -37,7 +40,7 @@ An API name alone is not evidence of an unsafe change; inspect request parameter
 | High | Bootstrap IAM or organization safeguards changed | Trust, inline policies, policy versions/defaults, boundaries, attachments, and SCP changes; match Diagnostics trust updates to recorded participants and deadlines |
 | High | Logging or security collection weakened | Trail/event selector changes; Config, GuardDuty, Security Hub, or Access Analyzer changes; logged SSM document or transcript-group configuration changes |
 | High | Unexpected interactive access | Wrong role/target, missing attribution, or a role session not issued under a valid named Diagnostics grant; generic Run Command or Instance Connect use |
-| High | Unexpected Diagnostics trust or permissions | Unrecorded principal, participant, deadline, or extension; missing time conditions; altered fixed policies, failed trust restoration, or missing transcripts |
+| High | Unexpected Diagnostics trust or permissions | Unrecorded principal, participant, deadline, or extension; missing identity/deadline conditions; altered fixed policies or customer-disable deny; failed trust restoration or missing transcripts |
 | High | Retained data affected | Brainstore lifecycle expiration, bucket/object deletion, KMS disablement/deletion, final snapshot deletion, and snapshot sharing/export |
 | High | Public or unexpected external access | Account/bucket protection changes, broadened bucket/key/runtime trust, public network changes, or runtime role assumption outside a configured feature |
 | High | Unexpected content access or log routing | Observer content reads; management-role subscription filters, export tasks, deliveries, or content-derived reports outside its permissions |
@@ -48,12 +51,16 @@ necessarily mean the SCP was detached: lifecycle expiration and some security
 configuration updates are outside its coverage.
 
 For Diagnostics, correlate `UpdateAssumeRolePolicy` and successful `AssumeRole`
-events with the exact role, source principal, engineer's SourceIdentity,
-bootstrap, approval, and recorded times. Policy attachments do not change during
+events with the exact role, source principal, verified UserId, matching
+SourceIdentity and session name, bootstrap, approval, and recorded times.
+Watch customer changes to `DiagnosticsActivationEnabled` and verify the resulting
+trust and protected inline policy. Policy attachments do not change during
 activation; do not treat them as expected window activity. Access after the trust
 deadline can come from credentials issued during the window, so evaluate their
 issue/expiry times and native session limits before treating it as unauthorized.
-An expired grant does not authorize a new role assumption.
+An expired grant does not authorize a new role assumption. Early trust changes
+take time to propagate beyond readback; distinguish that interval from the
+unchanged grant's absolute deadline.
 
 Operational checks include ECS task definitions/network changes, ASG desired
 capacity and health, scaling limits, Lambda concurrency, paused module schedules,

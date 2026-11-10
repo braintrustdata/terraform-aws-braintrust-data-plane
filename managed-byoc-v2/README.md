@@ -1,7 +1,8 @@
 # AWS managed BYOC access model
 
-Status: design preview. Diagnostics trust activation requires implementation
-and live validation of access and logging before use.
+Status: design preview. This review package follows the temporary-trust
+implementation; full deployment, access, customer-control, and logging acceptance
+remain required before use.
 
 This package describes Braintrust's standard AWS roles and customer controls
 for managed BYOC. It is a security review reference, not an installable bootstrap.
@@ -36,8 +37,9 @@ No deployment or placeholder substitution is needed to review these files.
 Deployment and Observer trust exact designated Braintrust principals. Deployment
 uses a bootstrap-specific execution role and unique External ID. Diagnostics
 trust is normally closed; activation admits the exact Braintrust source role
-for named engineers until a deadline. Human sessions carry each engineer's
-authenticated source identity. See the [trust guide](trust-policies/README.md).
+for named engineers until a deadline. Diagnostics binds each engineer's session
+identity and session name to the signed IAM Identity Center UserId supplied by
+the Braintrust login path. See the [trust guide](trust-policies/README.md).
 
 ```mermaid
 flowchart TD
@@ -67,7 +69,7 @@ flowchart TD
     D -->|write only| L
     D -->|provision and update| I
     D -.->|temporarily allow named engineers in trust| G
-    E -->|named identity and time checked by trust| G
+    E -->|verified UserId and deadline checked by trust| G
     G -->|operations and logged sessions| I
     R -->|health, metrics, alarms, metadata| I
     I --> A
@@ -88,7 +90,7 @@ flowchart TD
 | Host/container sessions | No interactive grant | No | Managed Brainstore SSM shells and ECS Exec |
 | Infrastructure changes | Lifecycle management | No | Scoped scaling, recovery, concurrency, schedules, and database tuning |
 | Runtime IAM management | Prefixed resources with the required boundary and limited `PassRole` | No | No |
-| Bootstrap IAM changes | Exact Diagnostics role trust only | No | No |
+| Bootstrap IAM changes | Exact Diagnostics role trust, with a service-issued activation/close capability and customer activation enabled | No | No |
 | Deletion of SCP-protected buckets, keys, and final snapshots | Blocked for the listed actions | Blocked | Blocked |
 
 The [JSON policies](policies/README.md#role-attachment-model) are the exact
@@ -101,9 +103,11 @@ These capabilities assume no additional identity or resource-policy grants.
 
 Diagnostics keeps its inspection and operational policies attached. Its trust
 normally blocks role assumption. Activation temporarily replaces that trust
-with the exact Braintrust source role, named engineers' source identities, and
-an expiry. One window covers all data planes under the bootstrap; the default
-is two hours. Participant changes and extensions are explicit and recorded.
+with the exact Braintrust source role, named engineers' verified UserIds, and
+an absolute expiry. One window covers all data planes under the bootstrap; the
+default is two hours. The participant list is fixed for that activation; changing
+it requires closure and a new activation. Extensions require fresh checks and
+recorded evidence.
 
 Braintrust handles activation and records the applicable customer approval,
 including standing approval where it covers the work. This is a process control,
@@ -115,9 +119,17 @@ The supported interactive paths are logged Session Manager shells and ECS Exec,
 not SSH or port forwarding.
 
 Expiry blocks new role assumptions through the trust's time condition. Early
-closure restores closed trust; permissions remain attached. Existing credentials
-and connections follow native timeouts, not active termination. Customers retain
-independent revocation controls. See [activation and revocation](diagnostics.md).
+closure restores closed trust; permissions remain attached. Trust updates take
+time to propagate beyond policy readback. Existing credentials and connections
+follow native timeouts, not active termination. See
+[activation and revocation](diagnostics.md).
+
+The customer-owned bootstrap parameter `DiagnosticsActivationEnabled` defaults
+to `true`, permitting activation while access remains dormant. Setting it to
+`false` installs an explicit deny on Deployment's Diagnostics trust updates and
+resets Diagnostics trust to disabled. Re-enabling returns to dormant trust and
+requires a fresh activation. This control does not remove Deployment's broader
+privileged workload-management capabilities.
 
 ## Customer controls and responsibilities
 
@@ -145,13 +157,21 @@ Deployment manages runtime roles and policies under a reserved name prefix.
 Created roles must carry the customer-owned runtime permissions boundary.
 `PassRole` is limited to matching roles and listed AWS services. Module policies
 grant each workload its actual permissions; the boundary grants none by itself.
-Listed service-linked roles are an AWS-managed exception.
+Listed service-linked roles are an AWS-managed exception. Deployment can create
+eleven exact default service-linked roles as needed, without a separate account
+preparation script for a new bootstrap. See the
+[approved role inventory](policies/README.md#approved-service-linked-roles).
 
 Deployment cannot rewrite its own or Observer's bootstrap trust or any bootstrap
 permissions policies. Its only bootstrap IAM change is updating the exact
-Diagnostics role's trust policy. IAM scopes that permission to the role, not to
-the contents of the trust document; Braintrust's activation workflow enforces
+Diagnostics role's trust policy, gated by a service-issued activation or closure
+capability. An explicit deny also protects the owning bootstrap stack by its
+exact CloudFormation StackId. IAM scopes the trust-update permission to the role,
+not to the contents of the document; Braintrust's activation workflow enforces
 the named participants and deadline, with customer-visible audit evidence.
+These direct restrictions do not prove that a separate privileged CloudFormation
+service role or Lambda cannot be used indirectly. Review delegated service roles
+and resource ownership before relying on the customer disable control.
 New lifecycle services or features can require versioned bootstrap or boundary
 updates controlled by the customer. Updating the data-plane module does not
 automatically update those permissions.
@@ -218,6 +238,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-11-10 | Aligned temporary trust with verified IAM Identity Center UserIds, matching session names, and a customer-owned activation disable switch. Added the dedicated eleven-role service-linked-role policy. | Review the active/disabled trust documents, capability-gated trust updates, exact bootstrap-stack protection, customer-control limits, and IAM propagation versus fixed expiry. Human permission policies, the runtime boundary, and the account SCP are unchanged. |
 | 2026-11-06 | Changed Diagnostics activation to temporary trust for named engineers and a deadline. Permissions stay attached; replaced Deployment's attachment activation and automated session termination grants. | Review inactive and active trust examples, exact Deployment trust-update authority, customer revocation, and the distinction between trust expiry and existing session timeouts. This preview requires implementation and live acceptance before use. |
 | 2026-11-04 | Removed unused VPN, edge hardware, specialized compute, VM import/export, legacy EC2 metadata, DynamoDB, and EFS reads from shared inspection. | Observer and activated Diagnostics retain data-plane inspection, networking, capacity, quotas, and EKS metadata. Deployment and SCP permissions are unchanged by this cleanup. |
 | 2026-11-04 | Consolidated organization guardrails into one account-wide SCP and narrowed inspection and ECS lifecycle grants to preserve the three-role model. Simplified the guides and generated handoff. | Review account-wide effects, Deployment's service-content access, retained-data limits, and monitoring. This is a new bootstrap revision, not an update to existing permissions. |

@@ -2,9 +2,11 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "DenyAssumptionWhileInactive",
+      "Sid": "NoActiveDiagnosticsGrant",
       "Effect": "Deny",
-      "Principal": "*",
+      "Principal": {
+        "AWS": "*"
+      },
       "Action": "sts:AssumeRole"
     }
   ]

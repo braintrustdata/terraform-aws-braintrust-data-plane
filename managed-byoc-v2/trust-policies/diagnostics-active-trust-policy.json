@@ -1,30 +1,43 @@
 {
-  "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "AllowNamedEngineersDuringWindow",
+      "Action": [
+        "sts:AssumeRole",
+        "sts:SetSourceIdentity"
+      ],
+      "Condition": {
+        "DateLessThan": {
+          "aws:CurrentTime": "<DIAGNOSTICS_ACCESS_EXPIRES_AT>"
+        },
+        "Null": {
+          "identitystore:UserId": "false"
+        },
+        "StringEquals": {
+          "identitystore:UserId": [
+            "<ENGINEER_SOURCE_IDENTITY>"
+          ],
+          "sts:SourceIdentity": "${identitystore:UserId}"
+        }
+      },
       "Effect": "Allow",
       "Principal": {
         "AWS": "<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>"
       },
-      "Action": [
-        "sts:AssumeRole",
-        "sts:SetSourceIdentity",
-        "sts:TagSession"
-      ],
+      "Sid": "AllowNamedDiagnosticsParticipants"
+    },
+    {
+      "Action": "sts:AssumeRole",
       "Condition": {
-        "StringEquals": {
-          "aws:SourceIdentity": [
-            "<ENGINEER_SOURCE_IDENTITY>"
-          ]
-        },
-        "DateGreaterThanEquals": {
-          "aws:CurrentTime": "<DIAGNOSTICS_ACCESS_STARTS_AT>"
-        },
-        "DateLessThan": {
-          "aws:CurrentTime": "<DIAGNOSTICS_ACCESS_EXPIRES_AT>"
+        "StringNotEquals": {
+          "sts:RoleSessionName": "${identitystore:UserId}"
         }
-      }
+      },
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>"
+      },
+      "Sid": "DenyMismatchedDiagnosticsSessionName"
     }
-  ]
+  ],
+  "Version": "2012-10-17"
 }

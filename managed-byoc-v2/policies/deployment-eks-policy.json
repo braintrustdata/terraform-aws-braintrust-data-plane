@@ -144,20 +144,6 @@
           "iam:PassedToService": "eks.amazonaws.com"
         }
       }
-    },
-    {
-      "Sid": "CreateEksServiceLinkedRoles",
-      "Effect": "Allow",
-      "Action": "iam:CreateServiceLinkedRole",
-      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/*",
-      "Condition": {
-        "StringEquals": {
-          "iam:AWSServiceName": [
-            "eks.amazonaws.com",
-            "eks-nodegroup.amazonaws.com"
-          ]
-        }
-      }
     }
   ]
 }
