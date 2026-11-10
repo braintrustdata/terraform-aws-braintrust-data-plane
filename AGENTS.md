@@ -218,9 +218,8 @@ Since v8 there is no Lambda API path and no option to run without a gateway. Do 
 
 - Standard deployments always create API ECS. `local.create_ecs_api` is false only in external EKS mode.
 - `use_global_ai_gateway_origin = false` (default): `local.create_ai_gateway` is true. The module creates the gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`), wires `GATEWAY_URL` on API ECS, sets Loop's `LOOP_RUNTIME_AI_PROXY_URL` to the private gateway, and routes CloudFront `/v1/proxy` to the private gateway VPC origin.
-- `use_global_ai_gateway_origin = true`: no gateway ECS service. The ALB and VPC origin stay, unused. `GATEWAY_URL` on API ECS is the hosted base URL (`https://<global_ai_gateway_origin_domain>`). CloudFront `/v1/proxy` uses the hosted gateway origin and Loop uses the hosted gateway URL.
-- `local.create_ai_gateway_alb` (every non-external-EKS stack) owns the gateway ALB, its CloudFront VPC-origin ingress rule, and the CloudFront VPC origin. Do not gate their lifetime on `use_global_ai_gateway_origin`: CloudFront rejects deleting a VPC origin while the distribution update that detaches it is still deploying.
-- CloudFront `/v1/proxy` never routes to the API ECS ALB. The ingress module validates that exactly one gateway origin is selected.
+- `use_global_ai_gateway_origin = true`: no gateway ECS service, gateway ALB, or CloudFront VPC origin. `GATEWAY_URL` on API ECS is the hosted base URL (`https://<global_ai_gateway_origin_domain>`). CloudFront `/v1/proxy` uses the hosted gateway origin and Loop uses the hosted gateway URL.
+- CloudFront `/v1/proxy` never routes to the API ECS ALB. The ingress module rejects any configuration where `/v1/proxy` has no gateway origin.
 
 External EKS ignores `use_global_ai_gateway_origin`. Helm owns the API and gateway.
 

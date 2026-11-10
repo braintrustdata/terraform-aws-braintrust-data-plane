@@ -95,7 +95,7 @@ run "reject_gateway_without_tasks" {
   expect_failures = [var.ai_gateway_min_capacity]
 }
 
-run "hosted_gateway_keeps_alb_and_wires_hosted_url" {
+run "hosted_gateway_skips_private_gateway_and_wires_hosted_url" {
   command = plan
   variables {
     ai_gateway_min_capacity              = 0
@@ -109,8 +109,8 @@ run "hosted_gateway_keeps_alb_and_wires_hosted_url" {
   }
 
   assert {
-    condition     = length(module.gateway_alb) == 1 && local.create_ai_gateway_alb
-    error_message = "The gateway ALB and its CloudFront VPC origin must outlive the gateway choice so switching never deletes an attached origin."
+    condition     = length(module.gateway_alb) == 0
+    error_message = "The hosted gateway must not create the private gateway ALB or its CloudFront VPC origin."
   }
 
   assert {
