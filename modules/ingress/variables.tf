@@ -28,7 +28,7 @@ variable "use_global_ai_gateway_origin" {
 }
 
 variable "create_gateway_vpc_origin" {
-  description = "Create the CloudFront VPC origin for the private gateway ALB. Owns the origin's lifetime only; use_global_ai_gateway_origin selects which gateway serves /v1/proxy."
+  description = "Create the CloudFront VPC origin for the private gateway ALB and route /v1/proxy to it unless use_global_ai_gateway_origin is true."
   type        = bool
   default     = false
 

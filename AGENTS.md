@@ -217,10 +217,9 @@ Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assu
 
 Since v8 every standard deployment uses a gateway. Do not reintroduce `create_ai_gateway`, `enable_ai_gateway`, `use_private_ai_gateway_origin`, or `use_global_ai_proxy`. Upgrade with [MIGRATION_V8.md](MIGRATION_V8.md).
 
-- `local.create_ai_gateway_alb` (every non-external-EKS stack) owns the gateway ALB, its CloudFront VPC-origin ingress rule, and the CloudFront VPC origin. Do not gate their lifetime on `use_global_ai_gateway_origin`: CloudFront rejects deleting a VPC origin while the distribution update that detaches it is still deploying.
 - **`use_global_ai_gateway_origin = false` (default)**: `local.create_ai_gateway` is true. The module creates the gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`), wires `GATEWAY_URL` on APIHandler, AIProxy, and API ECS, sets Loop's `LOOP_RUNTIME_AI_PROXY_URL` to the private gateway, and routes CloudFront `/v1/proxy` to the private gateway VPC origin.
-- **`use_global_ai_gateway_origin = true`**: no gateway ECS service. The ALB and VPC origin stay, unused. `GATEWAY_URL` on APIHandler, AIProxy, and API ECS is the hosted base URL (`https://<global_ai_gateway_origin_domain>`). CloudFront `/v1/proxy` uses the hosted gateway origin and Loop uses the hosted gateway URL.
-- CloudFront `/v1/proxy` never routes to the AI Proxy Lambda, Cloudflare, or the API ECS ALB. The ingress module validates that exactly one gateway origin is selected.
+- **`use_global_ai_gateway_origin = true`**: no gateway ECS service, gateway ALB, or CloudFront VPC origin. `GATEWAY_URL` on APIHandler, AIProxy, and API ECS is the hosted base URL (`https://<global_ai_gateway_origin_domain>`). CloudFront `/v1/proxy` uses the hosted gateway origin and Loop uses the hosted gateway URL.
+- CloudFront `/v1/proxy` never routes to the AI Proxy Lambda, Cloudflare, or the API ECS ALB. The ingress module rejects any configuration where `/v1/proxy` has no gateway origin.
 - `enable_ecs_api` still selects the API path. AIProxy still serves `/v1/eval` and `/function/*` in Lambda mode.
 
 External EKS ignores the gateway inputs. Helm owns the gateway.

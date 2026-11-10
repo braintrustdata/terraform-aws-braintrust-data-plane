@@ -12,7 +12,7 @@ v8 no longer accepts these inputs. Delete them from your module block or the pla
 
 | Removed input | Replacement |
 | --- | --- |
-| `create_ai_gateway` | Derived: the gateway ECS service runs unless `use_global_ai_gateway_origin = true`. The gateway ALB and CloudFront VPC origin always exist. |
+| `create_ai_gateway` | Derived: the private gateway (ECS service, internal ALB, and CloudFront VPC origin) exists unless `use_global_ai_gateway_origin = true`. |
 | `enable_ai_gateway` | Derived: API services (`GATEWAY_URL`), Loop, and CloudFront `/v1/proxy` always use the selected gateway. |
 | `use_private_ai_gateway_origin` | Derived: CloudFront `/v1/proxy` uses the private gateway unless `use_global_ai_gateway_origin = true`. |
 | `use_global_ai_proxy` | None. The Cloudflare proxy origin is removed. |
@@ -45,8 +45,7 @@ Model calls on `/v1/proxy` that went to the API load balancer or the AI Proxy La
 `use_global_ai_gateway_origin = true`. Keep it and remove the other gateway flags. v8:
 
 - sets `GATEWAY_URL = https://<global_ai_gateway_origin_domain>` on APIHandler, AIProxy, and API ECS, so in-process API model calls use the hosted gateway. On v7 these had no `GATEWAY_URL` unless you also enabled a private gateway.
-- creates the internal gateway ALB and its CloudFront VPC origin if they do not exist. They stay idle so a later switch to the private gateway does not create or delete them. The ALB has a small hourly charge.
-- if you also had `create_ai_gateway = true`, destroys the gateway ECS service but keeps its ALB. If you had `enable_ai_gateway = true`, `GATEWAY_URL` moves from the private gateway to the hosted one.
+- if you also had `create_ai_gateway = true`, destroys the gateway ECS service and its internal ALB. Nothing routed to them: CloudFront `/v1/proxy` already used the hosted gateway. If you had `enable_ai_gateway = true`, `GATEWAY_URL` moves from the private gateway to the hosted one.
 
 ### `use_global_ai_proxy = true`
 
@@ -64,7 +63,12 @@ The AI Proxy Function URL fallback is removed.
 
 ## Switching gateways later
 
-Changing `use_global_ai_gateway_origin` in either direction never deletes the gateway ALB or CloudFront VPC origin; only the `/v1/proxy` behavior, `GATEWAY_URL`, Loop's URL, and the gateway ECS service change. Switching to the private gateway waits for the gateway ECS service to reach steady state before callers move. Each direction applies cleanly in one pass. The hosted gateway accepts the same control-plane credential as the private gateway, so hosted mode needs no extra auth setup for `GATEWAY_URL`.
+Changing `use_global_ai_gateway_origin` creates or destroys the private gateway (ECS service, internal ALB, and CloudFront VPC origin) and moves `/v1/proxy`, `GATEWAY_URL`, and Loop's URL to the selected gateway. This works the same way as on v7.
+
+- **Hosted to private:** Terraform waits for the gateway ECS service to reach steady state before callers move.
+- **Private to hosted:** the same apply detaches the VPC origin from CloudFront and deletes it. CloudFront deploys distribution changes asynchronously, so the delete can fail with `CannotDeleteEntityWhileInUse`. Wait for the distribution to finish deploying, then rerun the apply.
+
+The hosted gateway accepts the same control-plane credential as the private gateway, so hosted mode needs no extra auth setup for `GATEWAY_URL`.
 
 ## External EKS
 
@@ -72,11 +76,4 @@ External EKS deployments ignore the gateway inputs. Remove any removed inputs fr
 
 ## Rollback
 
-v7 defaults keep the private gateway enabled, so a v8 private-gateway stack rolls back without extra settings.
-
-Rolling a **hosted-gateway** stack straight back to v7 is not supported. v7 ties the CloudFront VPC origin's lifetime to `use_private_ai_gateway_origin`, so that rollback deletes the origin that v8 keeps attached, and a failed delete can repeat on every apply. Instead:
-
-1. On v8, set `use_global_ai_gateway_origin = false` and apply. This switches to the private gateway without deleting the VPC origin.
-2. Roll back to v7 with its defaults (private gateway enabled). Nothing gateway-related is deleted.
-
-Moving that v7 stack back to the hosted gateway hits the same VPC-origin limitation v7 already has, so stay on the private gateway until you can upgrade again.
+Roll back to v7 with the gateway settings that match your v8 stack: the v7 defaults for the private gateway, or `use_global_ai_gateway_origin = true` with `create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin` set to `false` for the hosted gateway. v7 creates the same gateway resources for each choice, so nothing gateway-related is replaced.
