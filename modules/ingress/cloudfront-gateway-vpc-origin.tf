@@ -1,9 +1,7 @@
 locals {
   cloudfront_PrivateGatewayOrigin = "PrivateGatewayOrigin"
   # Use the boolean flag only — do not gate on gateway_alb_arn/dns (unknown at
-  # plan on greenfield create_vpc applies). Lifetime follows the gateway ALB,
-  # not the /v1/proxy routing choice, so switching gateways never deletes an
-  # origin that the same apply detaches.
+  # plan on greenfield create_vpc applies).
   create_private_gateway_cloudfront_origin = var.create_gateway_vpc_origin
 }
 

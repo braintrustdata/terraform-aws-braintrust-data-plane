@@ -80,13 +80,8 @@ locals {
   # API ECS is always created outside external EKS mode. Every standard
   # deployment uses a gateway: the hosted gateway when
   # use_global_ai_gateway_origin is true, otherwise the private gateway.
-  # The gateway ALB and its CloudFront VPC origin outlive that choice so a
-  # switch in either direction only moves the /v1/proxy behavior. CloudFront
-  # rejects deleting a VPC origin while a distribution update that detaches
-  # it is still deploying.
   create_ecs_api                       = !var.use_deployment_mode_external_eks
-  create_ai_gateway_alb                = !var.use_deployment_mode_external_eks
-  create_ai_gateway                    = local.create_ai_gateway_alb && !var.use_global_ai_gateway_origin
+  create_ai_gateway                    = !var.use_deployment_mode_external_eks && !var.use_global_ai_gateway_origin
   enable_internal_observability        = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   create_internal_observability_secret = local.enable_internal_observability && local.create_ecs_api
   api_ecs_url_ssm_parameter_name       = "/braintrust/${var.deployment_name}/ecs-api-url"
@@ -150,7 +145,7 @@ locals {
   selected_ai_gateway_url = (
     local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : local.hosted_ai_gateway_url
   )
-  gateway_env_vars = local.create_ai_gateway_alb ? {
+  gateway_env_vars = !var.use_deployment_mode_external_eks ? {
     GATEWAY_URL = local.selected_ai_gateway_url
   } : {}
 
@@ -445,12 +440,12 @@ module "ecs" {
 
 module "gateway_alb" {
   source = "./modules/gateway-alb"
-  count  = local.create_ai_gateway_alb ? 1 : 0
+  count  = local.create_ai_gateway ? 1 : 0
 
   deployment_name                      = var.deployment_name
   vpc_id                               = local.main_vpc_id
   private_subnet_ids                   = local.main_vpc_private_subnet_ids
-  enable_cloudfront_vpc_origin_ingress = local.create_ai_gateway_alb
+  enable_cloudfront_vpc_origin_ingress = true
   authorized_security_groups = merge(
     {
       "API"        = module.services_common.api_security_group_id
@@ -773,11 +768,11 @@ module "ingress" {
   cloudfront_origin_read_timeout      = var.cloudfront_origin_read_timeout
   cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
   use_global_ai_gateway_origin        = var.use_global_ai_gateway_origin
-  create_gateway_vpc_origin           = local.create_ai_gateway_alb
+  create_gateway_vpc_origin           = local.create_ai_gateway
   global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
-  gateway_alb_arn                     = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name                = local.create_ai_gateway ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : (local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_alb_dns_name : null)
-  gateway_cloudfront_ingress_rule_id  = local.create_ai_gateway_alb ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
+  gateway_alb_arn                     = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_arn : null
+  gateway_alb_dns_name                = local.create_ai_gateway ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : null
+  gateway_cloudfront_ingress_rule_id  = local.create_ai_gateway ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled
