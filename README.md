@@ -322,12 +322,7 @@ NLB and interface endpoint charges apply. Other outbound connectivity remains ne
 | Deployment mode | PrivateLink selection |
 | --- | --- |
 | Public | `use_private_gateway_quarantine_proxy = true`, with quarantine enabled and the global gateway origin disabled. |
-| Private | `create_quarantine_api_access = true`, with quarantine enabled. Defaults to `false`; `use_private_gateway_quarantine_proxy` is ignored. |
-
-Public mode ignores `create_quarantine_api_access`. Its PrivateLink path provides LLM proxy access through the Gateway ALB; private mode provides API and Gateway access through the API ALB on HTTP port 8000.
-In private mode, disabling `create_quarantine_api_access` creates no quarantine PrivateLink connection and selects no public proxy fallback.
-Before switching from public to private mode, set `create_quarantine_api_access = true` if quarantine functions need API or Gateway access, even when `use_private_gateway_quarantine_proxy` is already enabled.
-See the [private example's quarantine configuration](examples/braintrust-data-plane-private/README.md#optional-quarantine-api-access) for the mode-specific inputs and defaults.
+| Private | `create_quarantine_api_access = true`, with quarantine enabled. |
 
 The [private example](examples/braintrust-data-plane-private/README.md#existing-vpcs) lists existing VPC inputs and network requirements.
 

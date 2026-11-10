@@ -40,26 +40,6 @@ create_ai_gateway        = true
 enable_ai_gateway        = true
 ```
 
-## Optional quarantine API access
-
-Choose quarantine connectivity before applying.
-Enabling the quarantine VPC does not automatically enable PrivateLink access to the API or AI Gateway.
-
-| Input | Default | Private mode | Public mode |
-| --- | --- | --- | --- |
-| `create_quarantine_api_access` | `false` | Enables quarantine API and AI Gateway access through the API ALB on HTTP port 8000. Requires `enable_quarantine_vpc = true`. | Ignored. |
-| `use_private_gateway_quarantine_proxy` | `false` | Ignored. | Enables quarantine LLM proxy access through the Gateway ALB when quarantine and `create_ai_gateway` are enabled and `use_global_ai_gateway_origin = false`. |
-
-For quarantine functions that need API callbacks or the data plane's AI Gateway in private mode, set:
-
-```hcl
-enable_quarantine_vpc        = true
-create_quarantine_api_access = true
-```
-
-When switching from public to private mode, set `create_quarantine_api_access = true` before applying if quarantine functions need this access. Leaving only `use_private_gateway_quarantine_proxy = true` does not preserve it: that flag is ignored in private mode, and Terraform removes quarantine PrivateLink when `create_quarantine_api_access` is false.
-Conversely, public mode ignores `create_quarantine_api_access`; select `use_private_gateway_quarantine_proxy` for quarantine LLM PrivateLink in that mode. The public path provides Gateway access, not the private API callback path.
-
 ## Deploy and configure DNS
 
 1. For a new AWS account, run `scripts/create-service-linked-roles.sh` from the module repository.
@@ -168,3 +148,29 @@ existing_quarantine_private_subnet_1_id = "subnet-44444444444444444"
 existing_quarantine_private_subnet_2_id = "subnet-55555555555555555"
 existing_quarantine_private_subnet_3_id = "subnet-66666666666666666"
 ```
+
+## Optional quarantine API access
+
+Choose quarantine connectivity before applying.
+Enabling the quarantine VPC does not automatically enable PrivateLink access to the API or AI Gateway.
+
+| Input | Default | Private mode | Public mode |
+| --- | --- | --- | --- |
+| `create_quarantine_api_access` | `false` | Enables quarantine API and AI Gateway access through the API ALB on HTTP port 8000. Requires `enable_quarantine_vpc = true`. | Ignored. |
+| `use_private_gateway_quarantine_proxy` | `false` | Ignored. | Enables quarantine LLM proxy access through the Gateway ALB when quarantine and `create_ai_gateway` are enabled and `use_global_ai_gateway_origin = false`. |
+
+For quarantine functions that need API callbacks or the data plane's AI Gateway in private mode, set:
+
+```hcl
+enable_quarantine_vpc        = true
+create_quarantine_api_access = true
+```
+
+With access enabled, quarantine uses one base URL from `quarantine_api_url`.
+The backend uses that URL for API requests and appends `/v1/proxy` for Gateway requests.
+The internal API listener also includes Loop routes when Loop is enabled.
+The endpoint accepts only the quarantine Lambda security group and the NLB reaches only the API ALB on TCP port 8000.
+User authentication and organization permissions remain required.
+
+When switching from public to private mode, set `create_quarantine_api_access = true` before applying if quarantine functions need this access. Leaving only `use_private_gateway_quarantine_proxy = true` does not preserve it: that flag is ignored in private mode, and Terraform removes quarantine PrivateLink when `create_quarantine_api_access` is false.
+Conversely, public mode ignores `create_quarantine_api_access`; select `use_private_gateway_quarantine_proxy` for quarantine LLM PrivateLink in that mode. The public path provides Gateway access, not the private API callback path.
