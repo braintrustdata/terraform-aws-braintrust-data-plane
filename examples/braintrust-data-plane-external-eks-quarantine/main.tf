@@ -35,9 +35,6 @@ module "braintrust-data-plane" {
   # for forward compatibility.
   allowed_org_ids = ""
 
-  # Brainstore license key (required)
-  brainstore_license_key = var.brainstore_license_key
-
   # Enable external EKS deployment mode
   # When true, disables lambdas, ec2, and ingress submodules.
   # It assumes an EKS deployment is being done outside of terraform.
