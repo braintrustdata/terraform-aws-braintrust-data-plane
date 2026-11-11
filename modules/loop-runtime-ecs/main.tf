@@ -19,7 +19,8 @@ locals {
   use_object_store_locks   = var.brainstore_object_store_locks
   # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
   # Empty json-key and version-stage with a version-id pins the full secret string.
-  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
+  redis_url_secret_value_from      = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}:::${var.internal_observability_api_key_secret_version}"
 
   capacity_metric_namespace = "Braintrust/LoopRuntime"
 
@@ -82,9 +83,6 @@ locals {
     trimspace(var.allowed_org_ids) != "" ? {
       ALLOWED_ORG_IDS = var.allowed_org_ids
     } : {},
-    var.brainstore_license_key == null ? {} : {
-      BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-    },
     local.observability_enabled ? {
       BRAINSTORE_STATSD_ENDPOINT                   = "127.0.0.1:8125"
       BRAINSTORE_OTLP_HTTP_ENDPOINT                = "http://localhost:4318"
@@ -102,6 +100,10 @@ locals {
   )
 
   container_secrets = concat(
+    [{
+      name      = "BRAINSTORE_LICENSE_KEY"
+      valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+    }],
     [
       { name = "BRAINSTORE_METADATA_URI", valueFrom = var.database_url_secret_arn },
       { name = "BRAINSTORE_WAL_URI", valueFrom = var.database_url_secret_arn },
@@ -129,7 +131,7 @@ locals {
       compress       = "gzip"
     }
     secretOptions = [
-      { name = "apikey", valueFrom = var.internal_observability_api_key_secret_arn }
+      { name = "apikey", valueFrom = local.observability_api_key_value_from }
     ]
     }) : jsonencode({
     logDriver = "awslogs"
@@ -251,7 +253,7 @@ locals {
           { name = "DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT", value = "0.0.0.0:4318" },
         ]
         secrets = [
-          { name = "DD_API_KEY", valueFrom = var.internal_observability_api_key_secret_arn }
+          { name = "DD_API_KEY", valueFrom = local.observability_api_key_value_from }
         ]
         healthCheck = {
           command     = ["CMD-SHELL", "agent health"]
@@ -334,6 +336,18 @@ resource "aws_vpc_security_group_ingress_rule" "task_from_sandbox_egress_gateway
   tags                         = local.common_tags
 }
 
+resource "aws_vpc_security_group_ingress_rule" "task_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.container_port
+  to_port                      = local.container_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow inbound traffic from ${each.key}."
+  tags                         = local.common_tags
+}
+
 resource "aws_security_group_rule" "task_egress_all" {
   type              = "egress"
   from_port         = 0
@@ -376,12 +390,13 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
             var.redis_url_secret_arn,
           ],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
+          [var.brainstore_license_key_secret_arn],
         )
       },
       {
         Effect   = "Allow"
         Action   = ["kms:Decrypt"]
-        Resource = var.kms_key_arn
+        Resource = concat([var.kms_key_arn], var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn])
         Condition = {
           StringEquals = {
             "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
@@ -562,6 +577,8 @@ resource "aws_iam_role_policy" "sandbox" {
 }
 
 resource "aws_ecs_task_definition" "loop_runtime" {
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
+
   family                   = "${var.deployment_name}-loop-runtime"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
@@ -628,6 +645,16 @@ resource "aws_ecs_service" "loop_runtime" {
     assign_public_ip = false
   }
 
+  dynamic "load_balancer" {
+    for_each = var.additional_target_group_arns
+
+    content {
+      target_group_arn = load_balancer.value
+      container_name   = local.container_name
+      container_port   = local.container_port
+    }
+  }
+
   load_balancer {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
@@ -640,7 +667,10 @@ resource "aws_ecs_service" "loop_runtime" {
     container_port   = local.egress_gateway_port
   }
 
-  depends_on = [terraform_data.loop_runtime_http_listener]
+  depends_on = [
+    terraform_data.loop_runtime_http_listener,
+    aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups,
+  ]
 
   lifecycle {
     ignore_changes = [desired_count]

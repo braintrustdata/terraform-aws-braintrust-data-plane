@@ -91,6 +91,10 @@ run "scales_and_drains_runtime_by_default" {
     )
     error_message = "The runtime must drain for 90 seconds within the container's 120-second stop timeout."
   }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  }
 }
 
 run "custom_scaling_keeps_fixed_drain" {
@@ -99,6 +103,8 @@ run "custom_scaling_keeps_fixed_drain" {
     source = "./modules/loop-runtime-ecs"
   }
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     container_image                 = "public.ecr.aws/braintrust/loop-runtime:v1.2.3"
     target_cpu_utilization          = 65
     target_memory_utilization       = 75
@@ -122,6 +128,8 @@ run "rejects_capacity_metric_override" {
     source = "./modules/loop-runtime-ecs"
   }
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     extra_env_vars = {
       LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME = "another-service"
     }
@@ -135,6 +143,8 @@ run "rejects_drain_timeout_override" {
     source = "./modules/loop-runtime-ecs"
   }
   variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+
     extra_env_vars = {
       LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS = "300"
     }

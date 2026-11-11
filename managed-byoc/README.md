@@ -42,6 +42,24 @@ This role and policy set is the required baseline for managed BYOC. You can revi
 - Trust Policy: `managed-byoc/policies/management-role-trust-policy.json` (base policy; ExternalId is always injected by the script at runtime)
 - Inline Policy: `managed-byoc/policies/management-role-policy.json`
 
+### Optional: Add an AWS Organizations service control policy guardrail
+
+You can create a service control policy (SCP) to restrict the management
+role's permissions further. Here is an [example](https://github.com/braintrustdata/terraform-aws-braintrust-data-plane/blob/main/managed-byoc/policies/byoc-service-control-policy.json)
+that denies billing, organization/landing-zone, Identity Center,
+Marketplace/WorkSpaces, and IAM user/group management actions while leaving the
+data-plane deployment surface available. Please share any proposed SCP with
+Braintrust for review before applying it so that we can ensure it does not
+block required deployment and management operations.
+
+Additionally you should review the policy with your AWS organization administrator before attaching it:
+
+- SCPs apply to all principals in attached accounts, including administrative
+  roles you may have created for yourself.
+- Explicit deny statements in the SCP override identity-based allows.
+- Prefer attaching it to a dedicated organizational unit or account used for
+  Braintrust-managed infrastructure.
+
 ### 6. Check service quotas
 
 New AWS accounts often need quota increases before deployment can succeed.

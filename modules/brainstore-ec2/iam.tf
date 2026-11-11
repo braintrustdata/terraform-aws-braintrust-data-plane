@@ -2,6 +2,8 @@ resource "aws_iam_instance_profile" "brainstore" {
   name = "${var.deployment_name}-brainstore-instance-profile"
   role = var.brainstore_iam_role_name
 
+  depends_on = [aws_iam_role_policy.brainstore_redis_secret_access]
+
   tags = local.common_tags
 }
 

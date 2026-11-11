@@ -31,17 +31,63 @@ This ordering applies only to the module-managed reader and fast-reader Brainsto
 
 ## How to use this module
 
-Dedicated automation writers get an internal NLB and an API endpoint when `brainstore_automation_writer_instance_count > 0`. The application decides which queries use this endpoint. Deployments without an automation writer pool continue using the normal writer URL.
-
 To use this module, **copy the [`examples/braintrust-data-plane`](examples/braintrust-data-plane) directory to a new Terraform directory in your own repository**. Follow the instructions in the [`README.md`](examples/braintrust-data-plane/README.md) file in that directory to configure the module for your environment.
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
 
 Before the first deployment in a new AWS account, run `./scripts/create-service-linked-roles.sh` with credentials for that account. When creating a KMS key, the module reads `AWSServiceRoleForAutoScaling` during planning and fails if it is missing; the Terraform identity needs `iam:GetRole` for that role. The role remains account-owned and is not created or deleted by this module. Supplying an existing `kms_key_arn` skips this module-managed KMS check; the key owner remains responsible for its Auto Scaling permissions.
 
+## Brainstore license secret
+
+The module uses one license secret for Brainstore EC2, API ECS, Gateway ECS, and Loop runtime.
+A supplied `existing_brainstore_license_key_secret` object takes precedence over `brainstore_license_key`.
+The caller owns that secret and its value.
+
+```hcl
+existing_brainstore_license_key_secret = {
+  arn         = "arn:aws:secretsmanager:us-east-1:123456789012:secret:brainstore-license-AbCdEf"
+  kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+}
+```
+
+The secret must contain the license as a plain string and have one `AWSCURRENT` version.
+The secret must use the deployment region.
+`kms_key_arn` is optional when the secret uses the default Secrets Manager key.
+
+This example assumes that the version resource uses the secret ARN as its `secret_id`:
+
+```hcl
+existing_brainstore_license_key_secret = {
+  arn = aws_secretsmanager_secret_version.license.secret_id
+}
+```
+
+Terraform reads version metadata with `secretsmanager:ListSecretVersionIds`. It does not read the existing license value.
+
+Runtime roles receive access to the secret and the supplied KMS key.
+For cross-account secrets, the caller controls the secret resource policy and KMS key policy.
+
+Without a secret object, the module stores `brainstore_license_key` in a new secret under the deployment KMS key.
+This path retains the supplied value in Terraform state.
+
+ECS uses native secret injection. Brainstore fetches the value at startup.
+With a caller-owned secret, this module keeps the value outside Terraform state.
+
+A Terraform apply after a license rotation updates the pinned version in each consumer.
+The version change triggers ECS deployments and Brainstore instance refreshes.
+A secret rotation alone does not update tasks or instances before that apply.
+
+External EKS creates no license secret because Helm owns license delivery.
+
 ## Module Configuration
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
+
+### Private data plane
+
+Private mode serves the data plane through an internal API ALB instead of CloudFront which is public.
+See the [private data plane example](examples/braintrust-data-plane-private/) for requirements, configuration, and deployment steps.
+We still recommend a public dataplane for ease of deployment however a private one is fully supported as long as all prerequisites are met. 
 
 ### Organization access configuration
 
@@ -124,6 +170,7 @@ Every standard deployment runs the API on ECS and uses an AI gateway. There is n
 - **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API ECS gets `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane.
 
 CloudFront `/v1/proxy` never routes to the API ECS load balancer. Existing deployments must finish the v7 ECS cutover before upgrading to v8. See [Migrating from v7 to v8](MIGRATION_V8.md).
+Private data planes (`enable_private_dataplane = true`) require the private gateway. The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
 Terraform waits for the private gateway ECS service to reach steady state before caller updates.
 The service uses the ALB `/health` check. A failed initial deployment leaves existing callers on their previous configuration.
 
@@ -162,22 +209,6 @@ Loop sends model requests to the private AI gateway, or to the hosted gateway wh
 Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
 The endpoint policy allows connections only to MicroVMs in the deployment account.
 The public MicroVM endpoint remains available because AWS does not support its removal.
-
-### Startup dependencies and upgrades
-
-Loop ingress rules are owned by the database, Redis, Brainstore, and gateway
-modules. Their internal `loop_runtime_security_groups` maps are separate from
-baseline `authorized_security_groups`: Loop waits for Gateway startup, which
-indirectly waits for database migration. Combining the maps would delay the
-migration Lambda's own database access until after migration succeeds.
-The database connection address waits for baseline ingress, but not Loop
-ingress. This changes creation order without broadening network permissions.
-
-State moves preserve existing Loop rules from their original Loop-module
-addresses. Downgrading after these moves is not safe without a reviewed state
-migration: older versions can
-destroy/recreate the rules. These address changes require a major release and
-the corresponding migration guide before publication.
 
 ### Sandbox isolation
 
@@ -251,7 +282,7 @@ Required for new AWS accounts to ensure IAM service-linked roles are created.
 
 ### VPCs
 
-This module creates two VPCs by default:
+This module creates two VPCs by default, three if Loop is enabled:
 
 - `main` VPC: This is the main VPC that contains the Braintrust services.
 - `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
@@ -292,33 +323,18 @@ module-managed quarantine VPC.
 
 ### Quarantine LLM calls through PrivateLink
 
-`use_private_gateway_quarantine_proxy = true` connects Quarantine to the private
-Gateway through an internal NLB and interface endpoint. It supports managed,
-existing, and mixed main/quarantine VPCs using the existing VPC/subnet inputs.
-The default remains `false`. Creating the path also requires `enable_quarantine_vpc`. With quarantine disabled,
-an explicit `quarantine_proxy_url` is required unless the global origin is enabled.
-External EKS deployments must leave this flag `false`; Helm owns their Gateway.
-NLB and endpoint charges apply when the path is created.
+PrivateLink connects quarantine LLM requests to the gateway through an internal NLB and interface endpoint.
+NLB and interface endpoint charges apply. Other outbound connectivity remains necessary.
 
-For PrivateLink, both VPCs must be in the provider's account and region, with
-three distinct private subnets per VPC in matching AZs. The module validates
-subnet membership and AZ coverage. Routes, network ACLs, and DNS remain the caller's responsibility
-for existing VPCs; DNS must resolve the endpoint hostname and network ACLs must
-permit the connection and return traffic.
+| Deployment mode | PrivateLink selection |
+| --- | --- |
+| Public | `use_private_gateway_quarantine_proxy = true`, with quarantine enabled and the global gateway origin disabled. |
+| Private | Automatic when quarantine is enabled, even with the flag at its default `false`. |
 
-When PrivateLink is created, API ECS receives `http://<vpce-dns>/v1/proxy` unless
-`quarantine_proxy_url` overrides it. Private DNS remains disabled, and
-`use_global_ai_gateway_origin` skips this path. With quarantine enabled and the
-global origin disabled, existing-VPC deployments already using the flag with a
-manual URL will now create PrivateLink resources while retaining that override;
-set the flag to `false` to use only the manual connection.
+The [private example](examples/braintrust-data-plane-private/README.md#existing-vpcs) lists existing VPC inputs and network requirements.
 
-Existing resource addresses are preserved. Disabling the feature requires a
-reachable fallback for continued LLM connectivity. Deployments using PrivateLink
-with existing VPCs should disable the feature on the newer version before
-downgrading to a version without that support. This covers Quarantine
-LLM calls; other outbound connectivity and external application wiring remain
-separate requirements.
+In public mode, verify that the fallback is reachable before you disable PrivateLink.
+Before a downgrade without existing VPC support, disable PrivateLink on a compatible version in public mode.
 
 ### Existing ElastiCache subnet group
 
@@ -471,33 +487,8 @@ For example, `braintrust/brainstore/<account>/<region>/<bucket>/2026/08/12/...`.
 
 ### Using an Existing VPC
 
-The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
-
-The passed in VPC must have the following resources:
-
-- At least 3 private subnets in different availability zones
-- At least 1 public subnet
-- Internet gateway and NAT gateway with proper route tables configured for private subnets
-
-Important note: The module will still create and manage security groups for the services.
-
-To use an existing VPC, set `create_vpc = false` and provide the required VPC details:
-
-```hcl
-module "braintrust-data-plane" {
-  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
-
-  # ... your existing configuration ...
-
-  # Use existing VPC
-  create_vpc = false
-  existing_vpc_id                        = "vpc-xxxxxxxxx"
-  existing_private_subnet_1_id           = "subnet-xxxxxxxxx"
-  existing_private_subnet_2_id           = "subnet-yyyyyyyyy"
-  existing_private_subnet_3_id           = "subnet-zzzzzzzzz"
-  existing_public_subnet_1_id            = "subnet-aaaaaaaaa"
-}
-```
+Both public and private modes support existing main and quarantine VPCs, including mixed configurations.
+The [existing VPC section](examples/braintrust-data-plane-private/README.md#existing-vpcs) lists inputs, subnet requirements, and customer responsibilities.
 
 ## Development Setup
 

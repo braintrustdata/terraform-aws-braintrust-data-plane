@@ -70,7 +70,7 @@ variable "cpu" {
 variable "memory" {
   type        = number
   description = "Memory (MiB) for the gateway task definition."
-  default     = 4096
+  default     = 8192
 }
 
 variable "min_capacity" {
@@ -104,7 +104,7 @@ variable "target_cpu_utilization" {
 variable "target_memory_utilization" {
   type        = number
   description = "Target average memory utilization percentage for gateway ECS service autoscaling."
-  default     = 75
+  default     = 65
 
   validation {
     condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
@@ -155,6 +155,12 @@ variable "internal_observability_api_key_secret_arn" {
   default     = ""
 }
 
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Included in the task definition so rotating the key forces a new revision and service rollout."
+  default     = ""
+}
+
 variable "internal_observability_enabled" {
   type        = bool
   description = "Whether to enable internal Datadog observability for gateway ECS."
@@ -186,7 +192,7 @@ variable "extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
   }
 }
 
@@ -256,9 +262,25 @@ variable "custom_tags" {
   default     = {}
 }
 
-variable "brainstore_license_key" {
+variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "License key for the Brainstore instance. Used for telemetry authorization."
+  description = "Secrets Manager secret ARN for the Brainstore license."
+
+  validation {
+    condition     = var.brainstore_license_key_secret_arn == null ? false : trimspace(var.brainstore_license_key_secret_arn) != ""
+    error_message = "Provide brainstore_license_key_secret_arn for the license."
+  }
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "License secret version ID. A version change forces a new task revision and service deployment."
+  default     = ""
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
   default     = null
 }
 
@@ -305,4 +327,16 @@ variable "diagnostics_transcript_log_group_name" {
     condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
     error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
   }
+}
+
+variable "additional_target_group_arns" {
+  type        = map(string)
+  description = "Additional target groups for the application port, keyed by load balancer name."
+  default     = {}
+}
+
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Additional load balancer security groups that can access the application port."
+  default     = {}
 }
