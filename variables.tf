@@ -603,7 +603,7 @@ variable "ai_gateway_cpu" {
 variable "ai_gateway_memory" {
   description = "Memory in MiB for the gateway ECS task definition"
   type        = number
-  default     = 4096
+  default     = 8192
 }
 
 variable "ai_gateway_min_capacity" {
@@ -642,7 +642,7 @@ variable "ai_gateway_target_cpu_utilization" {
 variable "ai_gateway_target_memory_utilization" {
   description = "Target average memory utilization percentage for gateway ECS autoscaling"
   type        = number
-  default     = 75
+  default     = 65
 
   validation {
     condition     = var.ai_gateway_target_memory_utilization > 0 && var.ai_gateway_target_memory_utilization <= 100
@@ -708,7 +708,7 @@ variable "ai_gateway_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
   }
 }
 
@@ -1000,9 +1000,43 @@ variable "braintrust_api_version_override" {
   }
 }
 
+variable "enable_private_dataplane" {
+  type        = bool
+  description = "Private mode serves the data plane through the internal API ALB without CloudFront. It requires ECS, the private AI gateway, and a customer hostname and certificate. It supports module-managed or customer-supplied main and quarantine VPCs. A change to this setting causes an outage."
+  default     = false
+
+  validation {
+    condition     = !var.enable_private_dataplane || (var.enable_ecs_api && !var.use_deployment_mode_external_eks)
+    error_message = "Private mode requires enable_ecs_api. External EKS is not supported."
+  }
+
+  validation {
+    condition = !var.enable_private_dataplane || (
+      try(trimspace(var.braintrust_api_alb_custom_domain) != "", false) &&
+      try(trimspace(var.braintrust_api_alb_certificate_arn) != "", false)
+    )
+    error_message = "Private mode requires braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn."
+  }
+
+  validation {
+    condition     = !var.enable_private_dataplane || !var.use_global_ai_gateway_origin
+    error_message = "Private mode requires the private gateway and does not support use_global_ai_gateway_origin."
+  }
+
+  validation {
+    condition     = !var.enable_private_dataplane || var.quarantine_proxy_url == null
+    error_message = "quarantine_proxy_url must be null in private mode. Private mode uses create_quarantine_api_access for the API endpoint."
+  }
+
+  validation {
+    condition     = !var.enable_private_dataplane || (var.custom_domain == null && var.custom_certificate_arn == null && var.waf_acl_id == null)
+    error_message = "Private mode does not support CloudFront domain, certificate, or WAF inputs. Private mode requires the API ALB domain and certificate inputs."
+  }
+}
+
 variable "enable_ecs_api" {
   type        = bool
-  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. API ECS sends quarantine LLM calls to the CloudFront /v1/proxy URL (served by the selected gateway) via the quarantine VPC NAT gateway in both modes, unless quarantine_proxy_url or use_private_gateway_quarantine_proxy sets one. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
+  description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. In public mode, API ECS sends quarantine LLM calls to the CloudFront /v1/proxy URL (served by the selected gateway) unless quarantine_proxy_url or use_private_gateway_quarantine_proxy selects another URL. Private mode uses create_quarantine_api_access. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
   default     = true
 }
 
@@ -1285,7 +1319,7 @@ variable "braintrust_api_extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
   }
 }
 
@@ -1319,7 +1353,7 @@ variable "braintrust_api_authorized_cidr_blocks" {
 }
 
 variable "braintrust_api_alb_certificate_arn" {
-  description = "Optional ACM certificate ARN for the internal API ECS ALB. When set together with braintrust_api_alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80, plain HTTP is disabled, and all API URLs use https://<braintrust_api_alb_custom_domain>. Defaults to plain HTTP."
+  description = "Optional ACM certificate ARN for the internal API ECS ALB. When set together with braintrust_api_alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80, plain HTTP is disabled, and customer API URLs use https://<braintrust_api_alb_custom_domain>. Private mode also provides HTTP port 8000 for internal callbacks. Defaults to plain HTTP."
   type        = string
   default     = null
 }
@@ -1563,8 +1597,19 @@ variable "quarantine_proxy_url" {
   }
 }
 
+variable "create_quarantine_api_access" {
+  description = "Private mode can provide quarantine access to the API and AI Gateway through one API ALB endpoint. This input defaults to false. Public mode ignores this input. Private mode requires enable_quarantine_vpc when this input is true. The API release must support QUARANTINE_API_ACCESS_ENABLED and QUARANTINE_API_URL."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_private_dataplane || !var.create_quarantine_api_access || var.enable_quarantine_vpc
+    error_message = "Private quarantine API access requires enable_quarantine_vpc."
+  }
+}
+
 variable "use_private_gateway_quarantine_proxy" {
-  description = "Create quarantine-to-gateway PrivateLink (internal NLB→gateway ALB and interface endpoint) in managed or existing main and quarantine VPCs. Must be false in external EKS mode, where Helm owns the Gateway. Creating PrivateLink also requires enable_quarantine_vpc; otherwise, an explicit quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. For PrivateLink, both VPCs must be in the provider's account and region, with private subnets in matching availability zones. When the endpoint is created, API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it; an override does not suppress resource creation. False (default) retains URL selection from the explicit override or the CloudFront /v1/proxy fallback. Skips PrivateLink creation and automatic endpoint URL selection when use_global_ai_gateway_origin is true. Adds NLB and interface endpoint costs when created."
+  description = "Create quarantine-to-gateway PrivateLink through an internal NLB, the gateway ALB, and an interface endpoint. Supports managed or existing main and quarantine VPCs. Private mode ignores this flag and uses create_quarantine_api_access. Must be false in external EKS mode, where Helm owns the gateway. PrivateLink requires enable_quarantine_vpc. Otherwise, quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. Both VPCs must use the provider account and region, with private subnets in the same availability zones. API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it. An override does not suppress resource creation. False retains URL selection from quarantine_proxy_url or the CloudFront /v1/proxy fallback, except in private mode. When use_global_ai_gateway_origin is true, the module skips PrivateLink and automatic endpoint URL selection. The NLB and interface endpoint add costs."
   type        = bool
   default     = false
 
@@ -1707,8 +1752,30 @@ variable "brainstore_port" {
 
 variable "brainstore_license_key" {
   type        = string
-  description = "The license key for the Brainstore instance"
+  description = "License value for a module-managed secret. existing_brainstore_license_key_secret takes precedence when supplied."
   default     = null
+  sensitive   = true
+
+  validation {
+    condition = var.use_deployment_mode_external_eks || var.existing_brainstore_license_key_secret != null || (
+      try(trimspace(var.brainstore_license_key), "") != ""
+    )
+    error_message = "Provide a nonempty brainstore_license_key or existing_brainstore_license_key_secret. External EKS uses Helm for license delivery."
+  }
+}
+
+variable "existing_brainstore_license_key_secret" {
+  description = "Existing license secret and optional KMS key. The module does not change or delete this secret."
+  type = object({
+    arn         = string
+    kms_key_arn = optional(string)
+  })
+  default = null
+
+  validation {
+    condition     = var.existing_brainstore_license_key_secret == null ? true : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[0-9]{12}:secret:.+$", var.existing_brainstore_license_key_secret.arn))
+    error_message = "existing_brainstore_license_key_secret.arn must be a Secrets Manager secret ARN."
+  }
 }
 
 variable "brainstore_version_override" {
@@ -1997,6 +2064,7 @@ variable "internal_observability_api_key" {
   type        = string
   description = "Support for internal observability agent. Do not set this unless instructed by support."
   default     = ""
+  sensitive   = true
 }
 
 variable "internal_observability_env_name" {

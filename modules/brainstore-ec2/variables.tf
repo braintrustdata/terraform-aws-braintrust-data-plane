@@ -9,13 +9,18 @@ variable "instance_type" {
   default     = "m8gd.4xlarge"
 }
 
-variable "license_key" {
+variable "license_key_secret_arn" {
   type        = string
-  description = "The license key for the Brainstore"
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key."
   validation {
-    condition     = var.license_key != null && length(var.license_key) > 0
-    error_message = "The license key cannot be empty."
+    condition     = var.license_key_secret_arn != null && length(var.license_key_secret_arn) > 0
+    error_message = "The license key secret ARN cannot be empty."
   }
+}
+
+variable "license_key_secret_version" {
+  type        = string
+  description = "Version ID of the license key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
 }
 
 variable "instance_count" {
@@ -149,9 +154,15 @@ variable "monitoring_telemetry" {
   }
 }
 
-variable "internal_observability_api_key" {
+variable "internal_observability_api_key_secret_arn" {
   type        = string
-  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  description = "Secret ARN for the Datadog API key. internal_observability_enabled controls the Datadog agent."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
   default     = ""
 }
 
@@ -294,4 +305,10 @@ variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
   default     = "/locks"
+}
+
+variable "internal_observability_enabled" {
+  type        = bool
+  description = "Enable internal observability with a value known at plan time."
+  default     = false
 }

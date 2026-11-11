@@ -1,18 +1,11 @@
-# PrivateLink sandwich (NLB→ALB): quarantine VPC reaches the
-# private gateway ALB without VPC peering.
-#
-# Provider (main VPC): internal NLB → target_type=alb (gateway ALB) → VPC
-# endpoint service (acceptance_required=false for same-account) + allowed
-# principal for this account root. Consumer (quarantine VPC): interface VPC
-# endpoint → QUARANTINE_PROXY_URL uses http://<vpce-dns>/v1/proxy.
-#
-# Only when use_private_gateway_quarantine_proxy wires to the private gateway
-# and quarantine is enabled. Both VPCs may be managed or supplied by the caller;
-# only the source of the VPC/subnet IDs differs. Routes and DNS are not modified.
+# Public mode retains quarantine-to-gateway PrivateLink.
+# Private mode uses create_quarantine_api_access for one API ALB endpoint.
+# The endpoint and NLB keep their released addresses in both modes.
+# Managed and supplied VPCs use the same subnet and authorization checks.
 
 locals {
   create_quarantine_gateway_privatelink = (
-    local.wire_quarantine_to_private_gateway &&
+    (local.wire_quarantine_to_private_gateway || local.create_private_quarantine_api_access) &&
     var.enable_quarantine_vpc
   )
   privatelink_tags = merge({
@@ -65,10 +58,12 @@ data "aws_subnet" "quarantine_privatelink_quarantine" {
   }
 }
 
-# Fail when the flag is on but this module cannot create PrivateLink and there
-# is no URL override. use_global_ai_gateway_origin stays a documented no-op.
+# Validate the selected PrivateLink path.
 resource "terraform_data" "quarantine_privatelink_requirements" {
-  count = var.use_private_gateway_quarantine_proxy ? 1 : 0
+  count = (
+    (!var.enable_private_dataplane && var.use_private_gateway_quarantine_proxy) ||
+    local.create_quarantine_gateway_privatelink
+  ) ? 1 : 0
 
   lifecycle {
     precondition {
@@ -117,11 +112,11 @@ resource "aws_vpc_security_group_egress_rule" "gateway_quarantine_privatelink_nl
   count = local.create_quarantine_gateway_privatelink ? 1 : 0
 
   security_group_id            = aws_security_group.gateway_quarantine_privatelink_nlb[0].id
-  referenced_security_group_id = module.gateway_alb[0].gateway_alb_security_group_id
-  from_port                    = 80
-  to_port                      = 80
+  referenced_security_group_id = var.enable_private_dataplane ? module.api_ecs[0].alb_security_group_id : module.gateway_alb[0].gateway_alb_security_group_id
+  from_port                    = var.enable_private_dataplane ? 8000 : 80
+  to_port                      = var.enable_private_dataplane ? 8000 : 80
   ip_protocol                  = "tcp"
-  description                  = "Allow HTTP from the PrivateLink NLB to the gateway ALB."
+  description                  = var.enable_private_dataplane ? "Allow HTTP from the PrivateLink NLB to the API ALB." : "Allow HTTP from the PrivateLink NLB to the gateway ALB."
 
   tags = merge({
     Name = "${var.deployment_name}-gw-q-pl-nlb-to-alb"
@@ -129,7 +124,7 @@ resource "aws_vpc_security_group_egress_rule" "gateway_quarantine_privatelink_nl
 }
 
 resource "aws_vpc_security_group_ingress_rule" "gateway_alb_from_quarantine_privatelink_nlb" {
-  count = local.create_quarantine_gateway_privatelink ? 1 : 0
+  count = local.create_quarantine_gateway_privatelink && !var.enable_private_dataplane ? 1 : 0
 
   security_group_id            = module.gateway_alb[0].gateway_alb_security_group_id
   referenced_security_group_id = aws_security_group.gateway_quarantine_privatelink_nlb[0].id
@@ -164,7 +159,7 @@ resource "aws_lb" "gateway_quarantine_privatelink" {
 }
 
 resource "aws_lb_target_group" "gateway_quarantine_privatelink_alb" {
-  count = local.create_quarantine_gateway_privatelink ? 1 : 0
+  count = local.create_quarantine_gateway_privatelink && !var.enable_private_dataplane ? 1 : 0
 
   name        = "${var.deployment_name}-gw-q-pl-alb"
   port        = 80
@@ -185,7 +180,7 @@ resource "aws_lb_target_group" "gateway_quarantine_privatelink_alb" {
 }
 
 resource "aws_lb_target_group_attachment" "gateway_quarantine_privatelink_alb" {
-  count = local.create_quarantine_gateway_privatelink ? 1 : 0
+  count = local.create_quarantine_gateway_privatelink && !var.enable_private_dataplane ? 1 : 0
 
   target_group_arn = aws_lb_target_group.gateway_quarantine_privatelink_alb[0].arn
   target_id        = module.gateway_alb[0].gateway_alb_arn
@@ -194,6 +189,35 @@ resource "aws_lb_target_group_attachment" "gateway_quarantine_privatelink_alb" {
   # ALB must have a listener before NLB alb-target registration (same ordering
   # concern as gateway-ecs waiting on the HTTP listener).
   depends_on = [module.gateway_alb]
+}
+
+resource "aws_lb_target_group" "api_quarantine_privatelink_alb" {
+  count = local.create_private_quarantine_api_access ? 1 : 0
+
+  name        = "${var.deployment_name}-api-q-pl-alb"
+  port        = 8000
+  protocol    = "TCP"
+  target_type = "alb"
+  vpc_id      = local.main_vpc_id
+
+  health_check {
+    enabled  = true
+    protocol = "HTTP"
+    path     = "/"
+    matcher  = "200-399"
+  }
+
+  tags = merge({
+    Name = "${var.deployment_name}-api-q-pl-alb"
+  }, local.privatelink_tags)
+}
+
+resource "aws_lb_target_group_attachment" "api_quarantine_privatelink_alb" {
+  count = local.create_private_quarantine_api_access ? 1 : 0
+
+  target_group_arn = aws_lb_target_group.api_quarantine_privatelink_alb[0].arn
+  target_id        = module.api_ecs[0].quarantine_alb_arn
+  port             = 8000
 }
 
 resource "aws_lb_listener" "gateway_quarantine_privatelink_http" {
@@ -205,7 +229,7 @@ resource "aws_lb_listener" "gateway_quarantine_privatelink_http" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.gateway_quarantine_privatelink_alb[0].arn
+    target_group_arn = var.enable_private_dataplane ? aws_lb_target_group.api_quarantine_privatelink_alb[0].arn : aws_lb_target_group.gateway_quarantine_privatelink_alb[0].arn
   }
 }
 
@@ -285,6 +309,7 @@ resource "aws_vpc_endpoint" "quarantine_gateway" {
     aws_vpc_endpoint_service_allowed_principal.gateway_quarantine_current_account,
     aws_lb_listener.gateway_quarantine_privatelink_http,
     aws_lb_target_group_attachment.gateway_quarantine_privatelink_alb,
+    aws_lb_target_group_attachment.api_quarantine_privatelink_alb,
     aws_vpc_security_group_egress_rule.gateway_quarantine_privatelink_nlb_to_alb,
     aws_vpc_security_group_ingress_rule.gateway_alb_from_quarantine_privatelink_nlb,
     aws_vpc_security_group_ingress_rule.quarantine_gateway_privatelink_endpoint_http,
