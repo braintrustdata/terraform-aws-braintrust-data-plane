@@ -7,7 +7,7 @@ For the latest guidance, always refer to the official Braintrust documentation:
 - [Upgrade your deployment](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/v2)
 
-This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
+This module is used to create the VPC, databases, API and gateway ECS services, Brainstore, and associated resources for the self-hosted Braintrust data plane.
 
 ## Major versions
 
@@ -17,6 +17,7 @@ Each major version may include required configuration changes or a multi-step ap
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
 - [Migrating from v6 to v7](MIGRATION_V7.md)
+- [Migrating from v7 to v8](MIGRATION_V8.md)
 
 ### Brainstore and API upgrades
 
@@ -24,9 +25,9 @@ A normal `terraform apply` waits for the reader and, when enabled, fast-reader B
 
 For the gated reader fleets, the helper checks the exact numbered launch-template version, ASG and target health, and termination of old instances. Healthy instances from the previous version do not satisfy it. Refreshes can temporarily double capacity to preserve availability. API deployments remain blocked if a gated refresh fails, health checks fail, or the final attempt reaches its 14-minute waiting budget. Terraform automatically invokes the controller a second time during the same apply after the first waiting budget expires, resuming the active refresh with another 14-minute budget. The final invocation also rechecks readiness when the first attempt completes. Fix any reported failure and rerun `terraform apply`; the gate rechecks AWS state and resumes an active refresh. Each retry gets a fresh waiting budget and inspects live AWS state.
 
-The module installs the deployment Lambda from a regional Braintrust artifact using the active API release tag: the ECS API version when `enable_ecs_api` is true, or the API Lambda version otherwise. The corresponding `braintrust_api_version_override` or `lambda_version_tag_override` is respected. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
+The module installs the deployment Lambda from a regional Braintrust artifact using the ECS API release tag. `braintrust_api_version_override` is respected. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
 
-This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
+This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
 ## How to use this module
 
@@ -161,26 +162,35 @@ Leave the default enabled for existing deployments. Changing it from `true` to
 the same permission the SCP may prohibit; it is not a supported ownership
 handoff for an existing deployment.
 
-## Private AI gateway cutover
+## AI gateway
 
-New deployments use ECS ingress and a private AI gateway by default.
-Existing deployments require the [v7 migration procedure](MIGRATION_V7.md).
+Every standard deployment runs the API on ECS and uses an AI gateway. There is no option to run without one. Choose one of two:
 
-| Input | Default | Purpose |
-| --- | --- | --- |
-| `enable_ecs_api` | `true` | Selects ECS instead of Lambda ingress. |
-| `create_ai_gateway` | `true` | Creates the gateway ALB and ECS service. |
-| `enable_ai_gateway` | `true` | Selects the gateway for API services and Loop. Requires `create_ai_gateway`. |
-| `use_private_ai_gateway_origin` | `true` | Routes CloudFront `/v1/proxy` traffic through a VPC origin. |
+- **Private gateway (default).** The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API ECS, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
+- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API ECS gets `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane.
 
-In public mode, `enable_ecs_api = false` retains Lambda ingress with the private gateway.
-All three gateway inputs must be `false` to disable the gateway and its CloudFront origin.
-Private data planes require ECS and the gateway.
+CloudFront `/v1/proxy` never routes to the API ECS load balancer. Existing deployments must finish the v7 ECS cutover before upgrading to v8. See [Migrating from v7 to v8](MIGRATION_V8.md).
+Private data planes (`enable_private_dataplane = true`) require the private gateway. The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
+Terraform waits for the private gateway ECS service to reach steady state before caller updates.
+The service uses the ALB `/health` check. A failed initial deployment leaves existing callers on their previous configuration.
 
-An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
-Terraform waits for gateway ECS steady state before caller updates.
-The startup check does not test authenticated inference across the complete request path.
-The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
+The CloudFront private origin and the module-managed quarantine PrivateLink endpoint also wait for gateway ECS steady state.
+Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
+The private gateway requires `ai_gateway_min_capacity` of at least one.
+
+External EKS deployments do not create the API ECS or gateway services. Helm manages them in that mode.
+
+The gateway's default API address is the private API ECS load balancer.
+An API address from organization authentication replaces that default.
+The API ECS service already exists in standard deployments. Its listener accepts traffic from the gateway task security group.
+The listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
+This private address removes the dependency cycle between gateway startup and CloudFront cutover.
+External EKS deployments configure the gateway API URL through Helm.
+
+The gate checks service startup. It does not test authenticated inference or health across the complete PrivateLink path.
+Caller-supplied network paths retain their own readiness requirements.
+Existing deployments retain their resource addresses. The change adds one ingress rule for the gateway on the API ALB.
+The separate gateway authorization map preserves the existing legacy rules and follows the separate Loop authorization maps in adjacent modules.
 
 ## Loop runtime
 
@@ -194,8 +204,7 @@ Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serve
 The module selects the runtime image and matching MicroVM guest artifact by default.
 Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
 
-When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
-Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
+Loop sends model requests to the private AI gateway, or to the hosted gateway when `use_global_ai_gateway_origin` is true.
 
 Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
 The endpoint policy allows connections only to MicroVMs in the deployment account.
@@ -253,7 +262,6 @@ This script will dump the logs for the given deployment and services to the `log
 # ./scripts/dump-logs.sh <deployment_name> [--minutes N] [--service <svc1,svc2,...|all>]
 
 ./scripts/dump-logs.sh bt-sandbox
-Fetching logs for the last 60 minutes for APIHandler...
 Fetching logs for the last 60 minutes for braintrust-api...
 Fetching logs for the last 60 minutes for braintrust-api-ingest...
 Fetching logs for the last 60 minutes for braintrust-api-background...
@@ -262,7 +270,6 @@ Fetching logs for the last 60 minutes for brainstore...
 ✅ Saved logs for braintrust-api to logs-bt-sandbox/braintrust-api.log
 ✅ Saved logs for braintrust-api-ingest to logs-bt-sandbox/braintrust-api-ingest.log
 ✅ Saved logs for braintrust-api-background to logs-bt-sandbox/braintrust-api-background.log
-✅ Saved logs for APIHandler to logs-bt-sandbox/APIHandler.log
 ```
 
 ### create-service-linked-roles.sh

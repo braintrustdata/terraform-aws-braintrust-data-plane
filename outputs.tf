@@ -129,7 +129,7 @@ output "api_security_group_id" {
 }
 
 output "ecs_cluster_arn" {
-  value       = local.create_ai_gateway || local.create_ecs_api ? module.ecs[0].cluster_arn : null
+  value       = local.create_ecs_api ? module.ecs[0].cluster_arn : null
   description = "ARN of the ECS cluster used for ECS services"
 }
 
@@ -160,7 +160,7 @@ output "gateway_target_group_arn" {
 
 output "gateway_url" {
   value       = local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : null
-  description = "Private in-VPC gateway URL. Set enable_ai_gateway to wire GATEWAY_URL on api-ts services."
+  description = "Private in-VPC gateway URL. Null when use_global_ai_gateway_origin is true; GATEWAY_URL on api-ts services is then the hosted gateway base URL, not this output."
 }
 
 output "gateway_task_security_group_id" {
@@ -200,7 +200,7 @@ output "api_ecs_internal_url" {
 
 output "quarantine_proxy_url" {
   value       = local.create_ecs_api ? local.api_ecs_quarantine_proxy_url : null
-  description = "Effective quarantine proxy base URL. Public mode retains explicit override, gateway endpoint, Function URL, and CloudFront precedence. Private mode derives the proxy URL from the API endpoint when create_quarantine_api_access is true. Otherwise, private mode returns null."
+  description = "Effective QUARANTINE_PROXY_URL on API ECS. Public mode: quarantine_proxy_url override, module-created PrivateLink endpoint /v1/proxy, otherwise the CloudFront /v1/proxy URL (served by the selected gateway). Private mode derives the proxy URL from the API endpoint when create_quarantine_api_access is true, otherwise null. Null when API ECS is not created."
 }
 
 output "api_ecs_task_security_group_id" {
@@ -215,7 +215,7 @@ output "loop_runtime_url" {
 
 output "loop_runtime_ai_proxy_url" {
   value       = local.create_loop_runtime ? local.loop_runtime_ai_proxy_url : null
-  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy when enable_ai_gateway, otherwise hosted gateway or CloudFront API /v1/proxy)"
+  description = "LOOP_RUNTIME_AI_PROXY_URL on Loop ECS (private gateway /v1/proxy, or the hosted gateway when use_global_ai_gateway_origin is true)"
 }
 
 output "loop_runtime_sandbox_egress_gateway_dns_name" {
@@ -287,10 +287,11 @@ output "monitoring_contract" {
       functions = !var.use_deployment_mode_external_eks ? module.services[0].monitoring_functions : {}
     }
 
+    # Kept for the version-2 contract shape. API Gateway no longer exists.
     api_gateway = {
-      enabled = !var.use_deployment_mode_external_eks && !var.enable_ecs_api
-      name    = local.create_ingress ? module.ingress[0].api_gateway_name : null
-      stage   = local.create_ingress ? module.ingress[0].api_gateway_stage_name : null
+      enabled = false
+      name    = null
+      stage   = null
     }
 
     brainstore = {
