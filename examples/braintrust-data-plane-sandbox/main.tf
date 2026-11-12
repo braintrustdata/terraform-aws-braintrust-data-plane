@@ -146,6 +146,14 @@ module "braintrust-data-plane" {
   # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2, and Gateway ECS.
   # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
 
+  # Non-secret env only. Put Secrets Manager ARNs in *_extra_secrets.
+  # ai_gateway_extra_secrets = [
+  #   {
+  #     name      = "NATIVE_INFERENCE_SECRET_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:native-inference-AbCdEf"
+  #   }
+  # ]
+
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to
   # peer with other VPCs and the default CIDRs conflict.
