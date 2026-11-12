@@ -1,0 +1,61 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ProtectOrganizationMembership",
+      "Effect": "Deny",
+      "Action": "organizations:LeaveOrganization",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ProtectAccountPublicAccessBlock",
+      "Effect": "Deny",
+      "Action": "s3:PutAccountPublicAccessBlock",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ProtectSecurityServices",
+      "Effect": "Deny",
+      "Action": [
+        "access-analyzer:DeleteAnalyzer",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:StopLogging",
+        "config:DeleteConfigurationRecorder",
+        "config:DeleteDeliveryChannel",
+        "config:StopConfigurationRecorder",
+        "guardduty:DeleteDetector",
+        "guardduty:DisassociateFromAdministratorAccount",
+        "guardduty:DisassociateFromMasterAccount",
+        "securityhub:DisableSecurityHub",
+        "securityhub:DisassociateFromAdministratorAccount",
+        "securityhub:DisassociateFromMasterAccount"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ProtectRetainedData",
+      "Effect": "Deny",
+      "Action": [
+        "kms:ScheduleKeyDeletion",
+        "rds:DeleteDBSnapshot",
+        "s3:DeleteBucket"
+      ],
+      "Resource": [
+        "arn:aws:kms:*:*:key/*",
+        "arn:aws:rds:*:*:snapshot:*-main-final-snapshot-*",
+        "arn:aws:s3:::*-brainstore-*"
+      ]
+    },
+    {
+      "Sid": "DenySnapshotAndImageSharing",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:ModifyImageAttribute",
+        "ec2:ModifySnapshotAttribute",
+        "rds:ModifyDBClusterSnapshotAttribute",
+        "rds:ModifyDBSnapshotAttribute"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
