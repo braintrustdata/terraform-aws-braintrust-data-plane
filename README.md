@@ -322,7 +322,7 @@ NLB and interface endpoint charges apply. Other outbound connectivity remains ne
 | Deployment mode | PrivateLink selection |
 | --- | --- |
 | Public | `use_private_gateway_quarantine_proxy = true`, with quarantine enabled and the global gateway origin disabled. |
-| Private | Automatic when quarantine is enabled, even with the flag at its default `false`. |
+| Private | `create_quarantine_api_access = true`, with quarantine enabled. |
 
 The [private example](examples/braintrust-data-plane-private/README.md#existing-vpcs) lists existing VPC inputs and network requirements.
 
