@@ -29,6 +29,44 @@ variable "instance_count" {
   default     = 2
 }
 
+variable "reader_min_capacity" {
+  type        = number
+  description = "Minimum reader count (at least 1) for reader autoscaling. Set with reader_max_capacity to enable autoscaling, or omit both to keep a fixed instance_count pool."
+  default     = null
+
+  validation {
+    condition     = var.reader_min_capacity == null ? true : (var.reader_min_capacity >= 1 && floor(var.reader_min_capacity) == var.reader_min_capacity)
+    error_message = "reader_min_capacity must be a positive integer."
+  }
+}
+
+variable "reader_max_capacity" {
+  type        = number
+  description = "Maximum reader count for reader autoscaling. Set with reader_min_capacity, or omit both to keep a fixed instance_count pool."
+  default     = null
+
+  validation {
+    condition     = (var.reader_min_capacity == null) == (var.reader_max_capacity == null)
+    error_message = "reader_min_capacity and reader_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.reader_max_capacity == null ? true : (floor(var.reader_max_capacity) == var.reader_max_capacity && var.reader_max_capacity >= coalesce(var.reader_min_capacity, 1))
+    error_message = "reader_max_capacity must be an integer greater than or equal to reader_min_capacity."
+  }
+}
+
+variable "reader_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for reader autoscaling."
+  default     = 70
+
+  validation {
+    condition     = var.reader_target_cpu_utilization >= 1 && var.reader_target_cpu_utilization <= 100
+    error_message = "reader_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
 variable "port" {
   type        = number
   description = "The port to use for the Brainstore"

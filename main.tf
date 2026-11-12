@@ -943,6 +943,9 @@ module "brainstore" {
 
   deployment_name                               = var.deployment_name
   instance_count                                = var.brainstore_instance_count
+  reader_min_capacity                           = var.brainstore_reader_min_capacity
+  reader_max_capacity                           = var.brainstore_reader_max_capacity
+  reader_target_cpu_utilization                 = var.brainstore_reader_target_cpu_utilization
   instance_type                                 = var.brainstore_instance_type
   instance_key_pair_name                        = var.brainstore_instance_key_pair_name
   port                                          = var.brainstore_port
