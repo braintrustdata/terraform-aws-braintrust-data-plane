@@ -5,6 +5,8 @@ locals {
   })
   architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes = var.writer_instance_count > 0
+  # Reader autoscaling is opt-in. Unset bounds keep the fixed instance_count pool.
+  reader_autoscaling_enabled = var.reader_min_capacity != null
   # Preserve legacy bounds when explicit autoscaling capacities are not supplied.
   automation_writer_min_capacity = coalesce(var.automation_writer_min_capacity, var.automation_writer_instance_count)
   automation_writer_max_capacity = coalesce(var.automation_writer_max_capacity, local.automation_writer_min_capacity * 2)
@@ -209,18 +211,19 @@ resource "aws_lb_listener" "brainstore" {
   tags = local.common_tags
 }
 
+# With reader autoscaling, Terraform leaves desired capacity to target tracking.
 resource "aws_autoscaling_group" "brainstore" {
   name_prefix         = "${var.deployment_name}-brainstore"
-  min_size            = var.instance_count
-  max_size            = var.instance_count * 2
-  desired_capacity    = var.instance_count
+  min_size            = local.reader_autoscaling_enabled ? var.reader_min_capacity : var.instance_count
+  max_size            = local.reader_autoscaling_enabled ? var.reader_max_capacity : var.instance_count * 2
+  desired_capacity    = local.reader_autoscaling_enabled ? null : var.instance_count
   vpc_zone_identifier = var.private_subnet_ids
   health_check_type   = "EBS,ELB"
   # This is essentially the expected boot and setup time of the instance.
   # If too low, the ASG may terminate the instance before it has a chance to boot.
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore.arn]
-  wait_for_elb_capacity     = var.instance_count
+  wait_for_elb_capacity     = local.reader_autoscaling_enabled ? var.reader_min_capacity : var.instance_count
   launch_template {
     id      = aws_launch_template.brainstore.id
     version = aws_launch_template.brainstore.latest_version
@@ -244,6 +247,23 @@ resource "aws_autoscaling_group" "brainstore" {
       value               = tag.value
       propagate_at_launch = true
     }
+  }
+}
+
+# Matches the CloudFormation BrainstoreTargetTrackingPolicy.
+resource "aws_autoscaling_policy" "brainstore_reader_cpu_target" {
+  count                  = local.reader_autoscaling_enabled ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-reader-cpu-target"
+  autoscaling_group_name = aws_autoscaling_group.brainstore.name
+  policy_type            = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value     = var.reader_target_cpu_utilization
+    disable_scale_in = false
   }
 }
 

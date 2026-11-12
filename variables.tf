@@ -1734,6 +1734,44 @@ variable "brainstore_instance_count" {
   default     = 2
 }
 
+variable "brainstore_reader_min_capacity" {
+  type        = number
+  description = "Minimum Brainstore reader count (at least 1) for reader autoscaling. Set with brainstore_reader_max_capacity to enable autoscaling, or omit both to keep a fixed brainstore_instance_count pool."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_reader_min_capacity == null ? true : (var.brainstore_reader_min_capacity >= 1 && floor(var.brainstore_reader_min_capacity) == var.brainstore_reader_min_capacity)
+    error_message = "brainstore_reader_min_capacity must be a positive integer."
+  }
+}
+
+variable "brainstore_reader_max_capacity" {
+  type        = number
+  description = "Maximum Brainstore reader count for reader autoscaling. Set with brainstore_reader_min_capacity, or omit both to keep a fixed brainstore_instance_count pool."
+  default     = null
+
+  validation {
+    condition     = (var.brainstore_reader_min_capacity == null) == (var.brainstore_reader_max_capacity == null)
+    error_message = "brainstore_reader_min_capacity and brainstore_reader_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.brainstore_reader_max_capacity == null ? true : (floor(var.brainstore_reader_max_capacity) == var.brainstore_reader_max_capacity && var.brainstore_reader_max_capacity >= coalesce(var.brainstore_reader_min_capacity, 1))
+    error_message = "brainstore_reader_max_capacity must be an integer greater than or equal to brainstore_reader_min_capacity."
+  }
+}
+
+variable "brainstore_reader_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for Brainstore reader autoscaling. Applies only when reader autoscaling is enabled."
+  default     = 70
+
+  validation {
+    condition     = var.brainstore_reader_target_cpu_utilization >= 1 && var.brainstore_reader_target_cpu_utilization <= 100
+    error_message = "brainstore_reader_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
 variable "brainstore_writer_instance_count" {
   type        = number
   description = "The number of dedicated writer nodes to create"

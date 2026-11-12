@@ -94,6 +94,11 @@ module "braintrust-data-plane" {
   # Recommended Graviton instance type with 16GB of memory
   brainstore_instance_count = 2
   brainstore_instance_type  = "m8gd.4xlarge"
+  # Reader autoscaling is optional. Enable only when instructed by Braintrust.
+  # Set both bounds to enable it; unset bounds keep brainstore_instance_count fixed.
+  # brainstore_reader_min_capacity           = 2
+  # brainstore_reader_max_capacity           = 10
+  # brainstore_reader_target_cpu_utilization = 70
 
   # The number of Brainstore fast reader instances to provision
   # Recommended Graviton instance type with 16GB of memory

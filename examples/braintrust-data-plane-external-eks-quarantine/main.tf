@@ -42,6 +42,8 @@ module "braintrust-data-plane" {
   # brainstore_automation_writer_min_capacity, brainstore_automation_writer_max_capacity,
   # brainstore_automation_writer_target_cpu_utilization, and
   # brainstore_automation_writer_target_memory_utilization apply only to module-managed EC2, not EKS.
+  # brainstore_reader_min_capacity, brainstore_reader_max_capacity, and
+  # brainstore_reader_target_cpu_utilization also apply only to module-managed EC2.
 
   # Loop runtime is not supported with external EKS deployments.
   enable_loop_runtime = false

@@ -9,7 +9,29 @@ locals {
   deployment = {
     schema_version  = 1
     deployment_name = var.deployment_name
-    fleets          = var.fleets
+    # Send only the capacity form each fleet uses, so exact-capacity fleets keep
+    # the original request and helpers without autoscaled-fleet support accept it.
+    # A conditional would unify both object shapes into map(string); indexing a
+    # tuple keeps each shape and its number types.
+    fleets = [for fleet in var.fleets : [
+      {
+        role                    = fleet.role
+        asg_name                = fleet.asg_name
+        launch_template_id      = fleet.launch_template_id
+        launch_template_version = fleet.launch_template_version
+        desired_capacity        = fleet.desired_capacity
+        target_group_arn        = fleet.target_group_arn
+      },
+      {
+        role                    = fleet.role
+        asg_name                = fleet.asg_name
+        launch_template_id      = fleet.launch_template_id
+        launch_template_version = fleet.launch_template_version
+        min_capacity            = fleet.min_capacity
+        max_capacity            = fleet.max_capacity
+        target_group_arn        = fleet.target_group_arn
+      },
+    ][fleet.desired_capacity != null ? 0 : 1]]
   }
   asg_arns = [for fleet in var.fleets : "arn:${data.aws_partition.current.partition}:autoscaling:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:autoScalingGroup:*:autoScalingGroupName/${fleet.asg_name}"]
 }
