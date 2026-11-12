@@ -81,9 +81,9 @@ output "deployment_fleets" {
       asg_name                = group.name
       launch_template_id      = aws_launch_template.brainstore_fast_reader[0].id
       launch_template_version = tostring(aws_launch_template.brainstore_fast_reader[0].latest_version)
-      desired_capacity        = var.fast_reader_instance_count
-      min_capacity            = null
-      max_capacity            = null
+      desired_capacity        = local.fast_reader_autoscaling_enabled ? null : var.fast_reader_instance_count
+      min_capacity            = local.fast_reader_autoscaling_enabled ? var.fast_reader_min_capacity : null
+      max_capacity            = local.fast_reader_autoscaling_enabled ? var.fast_reader_max_capacity : null
       target_group_arn        = aws_lb_target_group.brainstore_fast_reader[0].arn
     }],
   )

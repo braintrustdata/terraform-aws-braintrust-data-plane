@@ -2141,6 +2141,49 @@ variable "brainstore_fast_reader_instance_count" {
   default     = 2
 }
 
+variable "brainstore_fast_reader_min_capacity" {
+  type        = number
+  description = "Minimum Brainstore fast reader count (at least 1) for fast reader autoscaling. Set with brainstore_fast_reader_max_capacity to enable autoscaling, or omit both to keep a fixed brainstore_fast_reader_instance_count pool."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_fast_reader_min_capacity == null ? true : (var.brainstore_fast_reader_min_capacity >= 1 && floor(var.brainstore_fast_reader_min_capacity) == var.brainstore_fast_reader_min_capacity)
+    error_message = "brainstore_fast_reader_min_capacity must be a positive integer."
+  }
+}
+
+variable "brainstore_fast_reader_max_capacity" {
+  type        = number
+  description = "Maximum Brainstore fast reader count for fast reader autoscaling. Set with brainstore_fast_reader_min_capacity, or omit both to keep a fixed brainstore_fast_reader_instance_count pool."
+  default     = null
+
+  validation {
+    condition     = (var.brainstore_fast_reader_min_capacity == null) == (var.brainstore_fast_reader_max_capacity == null)
+    error_message = "brainstore_fast_reader_min_capacity and brainstore_fast_reader_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.brainstore_fast_reader_max_capacity == null ? true : (floor(var.brainstore_fast_reader_max_capacity) == var.brainstore_fast_reader_max_capacity && var.brainstore_fast_reader_max_capacity >= coalesce(var.brainstore_fast_reader_min_capacity, 1))
+    error_message = "brainstore_fast_reader_max_capacity must be an integer greater than or equal to brainstore_fast_reader_min_capacity."
+  }
+
+  validation {
+    condition     = var.brainstore_fast_reader_max_capacity == null ? true : var.brainstore_fast_reader_instance_count > 0
+    error_message = "Fast reader autoscaling requires brainstore_fast_reader_instance_count > 0 to enable the fast reader pool."
+  }
+}
+
+variable "brainstore_fast_reader_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for Brainstore fast reader autoscaling. Applies only when fast reader autoscaling is enabled."
+  default     = 70
+
+  validation {
+    condition     = var.brainstore_fast_reader_target_cpu_utilization >= 1 && var.brainstore_fast_reader_target_cpu_utilization <= 100
+    error_message = "brainstore_fast_reader_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
 variable "brainstore_fast_reader_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore fast reader nodes"

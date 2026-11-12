@@ -12,6 +12,8 @@ locals {
   automation_writer_max_capacity = coalesce(var.automation_writer_max_capacity, local.automation_writer_min_capacity * 2)
   has_automation_writer_nodes    = local.automation_writer_min_capacity > 0
   has_fast_reader_nodes          = var.fast_reader_instance_count > 0
+  # Fast reader autoscaling is opt-in. Unset bounds keep the fixed fast_reader_instance_count pool.
+  fast_reader_autoscaling_enabled = local.has_fast_reader_nodes && var.fast_reader_min_capacity != null
   # Extract bucket ID from ARN (format: arn:aws:s3:::bucket-name)
   brainstore_s3_bucket_id    = split(":::", var.brainstore_s3_bucket_arn)[1]
   lambda_responses_bucket_id = split(":::", var.lambda_responses_s3_bucket_arn)[1]
