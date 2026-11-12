@@ -19,6 +19,7 @@ run "deployment_tag_cannot_be_overridden" {
     redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-redis-url"
     redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:token-test"
+    braintrust_api_url                    = "http://api.example.internal:8000"
     ai_proxy_url_ssm_parameter            = "/bt-test/ai-proxy-url"
     brainstore_s3_bucket_arn              = "arn:aws:s3:::test-brainstore"
     lambda_responses_s3_bucket_arn        = "arn:aws:s3:::test-responses"
@@ -31,6 +32,11 @@ run "deployment_tag_cannot_be_overridden" {
       BraintrustDeploymentName = "another-deployment"
       Environment              = "test"
     }
+  }
+
+  assert {
+    condition     = local.brainstore_default_env_vars.BRAINTRUST_API_URL == var.braintrust_api_url
+    error_message = "Brainstore must default to the deployment's internal API URL."
   }
 
   assert {
