@@ -966,6 +966,7 @@ module "brainstore" {
   fast_reader_instance_type                     = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader                    = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader                   = var.brainstore_cache_file_size_fast_reader
+  braintrust_api_url                            = local.internal_api_url
   ai_proxy_url_ssm_parameter                    = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                          = var.monitoring_telemetry
   database_host                                 = local.postgres_host

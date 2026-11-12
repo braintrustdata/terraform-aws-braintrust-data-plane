@@ -189,6 +189,12 @@ variable "custom_ca_bundle_secret_arn" {
   default     = null
 }
 
+variable "braintrust_api_url" {
+  type        = string
+  description = "Internal API URL for Brainstore callbacks. Null leaves BRAINTRUST_API_URL unset unless supplied through extra_env_vars."
+  default     = null
+}
+
 variable "ai_proxy_url_ssm_parameter" {
   type        = string
   description = "Selector for the SSM parameter holding the URL Brainstore uses for BRAINSTORE_AI_PROXY_URL. Either a bare \"<name>\" or a version-pinned \"<name>:<version>\". When a version is pinned, it is baked into user_data so a URL change forces a rolling instance refresh."
