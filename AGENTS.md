@@ -188,6 +188,18 @@ Module changes must be applyable directly to live customer stacks without tear-d
 - Avoid env-only changes on Lambdas that do not need them — e.g. do not merge shared env into `MigrateDatabaseFunction` or crons, because that publishes a new Lambda version and re-invokes migrations.
 - Prefer state moves and in-place updates over replace; if a resource must be replaced, document why and whether downtime is expected.
 
+### Release Versioning
+
+Choose the module version bump based on changes to both the Terraform module and the Braintrust release it deploys:
+
+- **Major:** Increment the major version for breaking changes in either the module or the Braintrust release.
+- **Minor:** Increment the minor version for non-breaking changes in either the module or the Braintrust release, unless the release contains only documentation changes and backward-compatible bug fixes.
+- **Patch:** Increment the patch version when the release contains only documentation changes and backward-compatible bug fixes.
+
+Removing a top-level Terraform module input variable is a breaking change and requires a major version bump.
+
+Use the highest applicable version bump across all changes in the release. Reset the minor and patch versions to zero when incrementing the major version, and reset the patch version to zero when incrementing the minor version.
+
 ### Bump major when downgrade-after-apply is unsafe
 
 Some Terraform changes apply forward in place (`moved` blocks, new resource keys, gapped priorities) but a revert or module downgrade after apply **recreates live resources**. Example: ALB listener rules fall through to the default target group. Do not hide these in a patch.
@@ -199,7 +211,7 @@ Spot these:
 - Listener rule priorities or names that collide on rollback
 - State identity changes where `terraform plan` on the previous module version after apply would destroy load balancer rules, endpoint services, databases, or similar
 
-Call this out in the PR. Bump **major** (preferred). If a major is truly wrong, bump at least **minor** and say why rollback is unsafe in the GitHub release notes. This repo has no CHANGELOG; versions are git tags (`v6.6.0`) and GitHub Releases via `.github/workflows/create-release.yml`. For a major, add or update `MIGRATION_V*.md` and the Major versions section in `README.md`.
+Treat changes that make downgrade-after-apply unsafe as breaking changes and increment the major version. Explain the upgrade and rollback implications in the PR and GitHub release notes. This repository uses git tags and GitHub Releases via `.github/workflows/create-release.yml`, with no CHANGELOG. For a major release, add or update `MIGRATION_V*.md` and the Major versions section in `README.md`.
 
 ### Review the inverse of every `count` / `for_each`
 
