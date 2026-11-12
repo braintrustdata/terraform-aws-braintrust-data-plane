@@ -129,7 +129,7 @@ output "api_security_group_id" {
 }
 
 output "ecs_cluster_arn" {
-  value       = local.create_ai_gateway || local.create_ecs_api ? module.ecs[0].cluster_arn : null
+  value       = local.create_ecs_api ? module.ecs[0].cluster_arn : null
   description = "ARN of the ECS cluster used for ECS services"
 }
 
@@ -287,10 +287,11 @@ output "monitoring_contract" {
       functions = !var.use_deployment_mode_external_eks ? module.services[0].monitoring_functions : {}
     }
 
+    # Kept for the version-2 contract shape. API Gateway no longer exists.
     api_gateway = {
-      enabled = !var.use_deployment_mode_external_eks && !var.enable_ecs_api
-      name    = local.create_ingress ? module.ingress[0].api_gateway_name : null
-      stage   = local.create_ingress ? module.ingress[0].api_gateway_stage_name : null
+      enabled = false
+      name    = null
+      stage   = null
     }
 
     brainstore = {

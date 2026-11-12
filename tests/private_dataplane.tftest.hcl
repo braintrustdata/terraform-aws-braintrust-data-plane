@@ -18,7 +18,6 @@ variables {
   deployment_name                    = "bt-test"
   brainstore_license_key             = "test-license"
   enable_private_dataplane           = true
-  enable_ecs_api                     = true
   enable_quarantine_vpc              = true
   braintrust_api_alb_custom_domain   = "api.example.internal"
   braintrust_api_alb_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
@@ -48,8 +47,8 @@ run "private_dataplane_preserves_services_without_cloudfront" {
   }
 
   assert {
-    condition     = length(module.services) == 1 && module.services[0].api_handler_arn == null && module.services[0].ai_proxy_arn == null
-    error_message = "Private mode must retain the services module and omit only the existing ECS replacements."
+    condition     = length(module.services) == 1
+    error_message = "Private mode must retain the services module."
   }
 
   assert {
@@ -127,14 +126,6 @@ run "private_callbacks_use_internal_api_and_gateway_urls" {
   }
 }
 
-run "rejects_private_mode_without_ecs_api" {
-  command = plan
-  variables {
-    enable_ecs_api = false
-  }
-  expect_failures = [var.enable_private_dataplane]
-}
-
 run "rejects_private_mode_without_customer_hostname" {
   command = plan
   variables {
@@ -179,7 +170,6 @@ run "rejects_private_mode_with_external_eks" {
   command = plan
   variables {
     use_deployment_mode_external_eks = true
-    enable_ecs_api                   = false
     braintrust_api_url               = "https://external-api.example.internal"
   }
   expect_failures = [var.enable_private_dataplane]

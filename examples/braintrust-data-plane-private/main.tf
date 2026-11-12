@@ -36,7 +36,6 @@ module "braintrust-data-plane" {
   # Private mode requires ECS and the private AI gateway.
   # A mode transition causes an outage. See this example README.
   enable_private_dataplane = true
-  enable_ecs_api           = true
 
   # Optional private access to both the API and AI Gateway. Defaults to false. When disabled the Quarantine workloads will not be able to access the API or AI Gateway.
   # create_quarantine_api_access = false
@@ -215,13 +214,6 @@ module "braintrust-data-plane" {
 
   ### Advanced configuration
 
-  # The maximum number of concurrent executions to reserve and constrain Braintrust lambdas to.
-  # If you run Braintrust in a dedicated account you can leave these at "-1" (unlimited).
-  # If you run Braintrust in a shared account you should set these to a reasonable limit to avoid
-  # impacting other non-Braintrust Lambdas. Recommended 100 to 1000 for production in a shared account.
-  # api_handler_reserved_concurrent_executions = -1
-  # ai_proxy_reserved_concurrent_executions    = -1
-
   # Optional URL-security controls for externally supplied outbound HTTP URLs.
   # Leave unset to use the application default mode of "warn".
   # unsafe_url_request_mode  = "reject"
@@ -242,8 +234,6 @@ module "braintrust-data-plane" {
   # brainstore_extra_env_vars_writer = {}
   #
   # service_extra_env_vars = {
-  #   APIHandler               = {}
-  #   AIProxy                  = {}
   #   BillingCron              = {}
   #   CatchupETL               = {}
   #   MigrateDatabaseFunction  = {}

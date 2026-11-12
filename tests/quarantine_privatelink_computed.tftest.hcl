@@ -14,7 +14,6 @@ run "new_managed_vpcs_plan_without_known_subnet_ids" {
     braintrust_org_name                  = "test-org"
     primary_org_name                     = "test-org"
     brainstore_license_key               = "test-license"
-    enable_ecs_api                       = true
     enable_quarantine_vpc                = true
     use_private_gateway_quarantine_proxy = true
   }

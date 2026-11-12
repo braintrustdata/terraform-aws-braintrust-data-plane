@@ -46,30 +46,15 @@ run "ai_gateway_plans" {
   }
 }
 
-run "create_and_enable_with_lambda_api" {
+run "all_private_paths" {
   command = plan
   variables {
-    enable_ecs_api = false
-  }
-}
-
-run "create_and_enable_with_ecs_api" {
-  command = plan
-  variables {
-    enable_ecs_api = true
-  }
-}
-
-run "create_and_enable_all_private_paths" {
-  command = plan
-  variables {
-    enable_ecs_api                       = true
     enable_loop_runtime                  = true
     use_private_gateway_quarantine_proxy = true
   }
 }
 
-run "create_and_enable_in_existing_vpc" {
+run "existing_vpc" {
   command = plan
   variables {
     create_vpc                   = false
@@ -81,7 +66,7 @@ run "create_and_enable_in_existing_vpc" {
   }
 }
 
-run "create_and_enable_with_https_api" {
+run "https_api" {
   command = plan
   variables {
     braintrust_api_alb_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/test"

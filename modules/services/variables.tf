@@ -3,64 +3,6 @@ variable "braintrust_org_name" {
   description = "The name of your organization in Braintrust (e.g. acme.com)"
 }
 
-variable "primary_org_name" {
-  type        = string
-  default     = ""
-  description = "Required when braintrust_org_name is empty or \"*\". Used to authorize self-hosted service-token management."
-  validation {
-    # ok if non-empty or braintrust_org_name is not empty or "*"
-    condition     = !contains(["", "*"], trimspace(var.braintrust_org_name)) || trimspace(var.primary_org_name) != ""
-    error_message = "Set primary_org_name when braintrust_org_name is empty or \"*\"; self-hosted service-token management needs a primary organization."
-  }
-}
-
-variable "allowed_org_ids" {
-  type        = string
-  default     = ""
-  description = "Optional comma-separated Braintrust Org ID allowlist. Use Braintrust Org IDs, not org names; for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\". If braintrust_org_name is a specific name, include that org's Braintrust Org ID here for forward compatibility."
-  validation {
-    condition     = var.allowed_org_ids == "" || can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(,[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})*$", var.allowed_org_ids))
-    error_message = "allowed_org_ids must be empty or a comma-separated list of Braintrust Org UUIDs without spaces, for example: \"00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002\"."
-  }
-}
-
-variable "btql_audit_logs_strict_org_ids" {
-  description = "Braintrust Org UUIDs for which BTQL query.read audit logging is enabled in strict mode. Strict mode writes audit rows before returning query results. Mutually exclusive with btql_audit_logs_best_effort_org_ids."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition     = length(var.btql_audit_logs_strict_org_ids) == length(distinct(var.btql_audit_logs_strict_org_ids))
-    error_message = "btql_audit_logs_strict_org_ids must not contain duplicate org UUIDs."
-  }
-
-  validation {
-    condition     = alltrue([for org_id in var.btql_audit_logs_strict_org_ids : can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$", org_id))])
-    error_message = "btql_audit_logs_strict_org_ids must contain only Braintrust Org UUIDs."
-  }
-}
-
-variable "btql_audit_logs_best_effort_org_ids" {
-  description = "Braintrust Org UUIDs for which BTQL query.read audit logging is enabled in best-effort mode. Best-effort mode writes audit rows asynchronously and logs failures. Mutually exclusive with btql_audit_logs_strict_org_ids."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition     = length(var.btql_audit_logs_strict_org_ids) == 0 || length(var.btql_audit_logs_best_effort_org_ids) == 0
-    error_message = "Set either btql_audit_logs_strict_org_ids or btql_audit_logs_best_effort_org_ids, not both."
-  }
-
-  validation {
-    condition     = length(var.btql_audit_logs_best_effort_org_ids) == length(distinct(var.btql_audit_logs_best_effort_org_ids))
-    error_message = "btql_audit_logs_best_effort_org_ids must not contain duplicate org UUIDs."
-  }
-
-  validation {
-    condition     = alltrue([for org_id in var.btql_audit_logs_best_effort_org_ids : can(regex("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$", org_id))])
-    error_message = "btql_audit_logs_best_effort_org_ids must contain only Braintrust Org UUIDs."
-  }
-}
-
 variable "deployment_name" {
   type        = string
   description = "Name of this deployment. Will be included in resource names"
@@ -189,18 +131,6 @@ variable "brainstore_writer_hostname" {
   default     = null
 }
 
-variable "brainstore_fast_reader_hostname" {
-  type        = string
-  description = "Hostname for the dedicated Brainstore fast reader nodes, if enabled"
-  default     = null
-}
-
-variable "brainstore_automation_writer_hostname" {
-  type        = string
-  description = "Hostname for the dedicated Brainstore automation writer nodes, if query routing is enabled"
-  default     = null
-}
-
 variable "brainstore_port" {
   type        = number
   description = "Port for Brainstore"
@@ -218,73 +148,6 @@ variable "brainstore_s3_bucket_name" {
   validation {
     condition     = var.brainstore_enabled ? var.brainstore_s3_bucket_name != null : true
     error_message = "Brainstore S3 bucket name is required when Brainstore is enabled."
-  }
-}
-
-variable "whitelisted_origins" {
-  type        = list(string)
-  description = "List of origins to whitelist for CORS"
-}
-
-variable "outbound_rate_limit_max_requests" {
-  type        = number
-  description = "The maximum number of requests per user allowed in the time frame specified by OutboundRateLimitMaxRequests. Setting to 0 will disable rate limits"
-  default     = 0
-}
-variable "outbound_rate_limit_window_minutes" {
-  type        = number
-  description = "The time frame in minutes over which rate per-user rate limits are accumulated"
-  default     = 1
-}
-
-variable "unsafe_url_request_mode" {
-  description = "Controls how Braintrust backends handle outbound requests to user-supplied URLs that fail URL-security checks, such as URLs resolving to private or reserved IP ranges. Use off to allow, proxy to proxy, warn to allow with warnings, or reject to block. Leave empty to use the application default of warn."
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = contains(["", "off", "proxy", "warn", "reject"], var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode))
-    error_message = "unsafe_url_request_mode must be empty or one of: off, proxy, warn, reject."
-  }
-}
-
-variable "api_handler_provisioned_concurrency" {
-  type        = number
-  description = "The number API Handler instances to provision and keep alive. This reduces cold start times and improves latency, with some increase in cost."
-  default     = 1
-}
-
-variable "api_handler_reserved_concurrent_executions" {
-  type        = number
-  description = "The number of concurrent executions to reserve for the API Handler. Setting this will prevent the API Handler from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
-  default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
-}
-
-variable "api_handler_memory_limit" {
-  type        = number
-  description = "The maximum memory in MB for the API Handler."
-  default     = 10240
-
-  validation {
-    condition     = var.api_handler_memory_limit > 0 && var.api_handler_memory_limit <= 10240
-    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
-  }
-}
-
-variable "ai_proxy_reserved_concurrent_executions" {
-  type        = number
-  description = "The number of concurrent executions to reserve for the AI Proxy. Setting this will prevent the AI Proxy from throttling other lambdas in your account. Note this will take away from your global concurrency limit in your AWS account."
-  default     = -1 # -1 means no reserved concurrency. Use up to the max concurrency limit in your AWS account.
-}
-
-variable "ai_proxy_memory_limit" {
-  type        = number
-  description = "The maximum memory in MB for the AI Proxy."
-  default     = 10240
-
-  validation {
-    condition     = var.ai_proxy_memory_limit > 0 && var.ai_proxy_memory_limit <= 10240
-    error_message = "The maximum supported value by AWS Lambda is 10240 MB (10 GB)."
   }
 }
 
@@ -317,44 +180,6 @@ variable "brainstore_default" {
   }
 }
 
-variable "brainstore_wal_footer_version" {
-  type        = string
-  description = "If set, sets BRAINSTORE_WAL_FOOTER_VERSION on the API Handler Lambda. Also enables BRAINSTORE_WAL_USE_EFFICIENT_FORMAT. Omit to leave unset."
-  default     = ""
-  validation {
-    condition     = var.brainstore_wal_footer_version == "" || contains(["v1", "v2", "v3"], var.brainstore_wal_footer_version)
-    error_message = "brainstore_wal_footer_version must be v1, v2, v3, or empty string (unset)."
-  }
-}
-
-variable "skip_pg_for_brainstore_objects" {
-  type        = string
-  description = "If set, adds SKIP_PG_FOR_BRAINSTORE_OBJECTS to the API Handler Lambda environment."
-  default     = ""
-  validation {
-    condition     = var.skip_pg_for_brainstore_objects == "" || var.skip_pg_for_brainstore_objects == "all" || startswith(var.skip_pg_for_brainstore_objects, "include:") || startswith(var.skip_pg_for_brainstore_objects, "exclude:")
-    error_message = "skip_pg_for_brainstore_objects must be an empty string (disabled), \"all\", or start with \"include:\" or \"exclude:\"."
-  }
-}
-
-
-variable "url_security_dns_servers" {
-  description = "Comma-separated DNS resolver IP addresses Braintrust backends should query when checking user-supplied URLs. Set this to force URL-security validation through trusted resolvers, such as VPC or corporate DNS, before falling back to the host resolver. Leave empty to use the application default resolver behavior."
-  type        = string
-  default     = ""
-}
-
-variable "url_security_allow_cidrs" {
-  description = "Optional comma-separated CIDR ranges that Braintrust backend URL-security validation may allow even if private or reserved. Hard-blocked metadata, link-local, multicast, unspecified, and future-use ranges remain blocked."
-  type        = string
-  default     = ""
-}
-
-variable "enable_ecs_api" {
-  type        = bool
-  description = "When true, do not create APIHandler or AIProxy. CloudFront is already routing that traffic to ECS. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Setting this back to false creates APIHandler and AIProxy again."
-  default     = false
-}
 
 variable "lambda_version_tag_override" {
   description = "Optional override for the lambda version tag. If not provided, will use locked versions from VERSIONS.json"
@@ -364,8 +189,6 @@ variable "lambda_version_tag_override" {
 
 variable "extra_env_vars" {
   type = object({
-    APIHandler               = map(string)
-    AIProxy                  = map(string)
     BillingCron              = map(string)
     CatchupETL               = map(string)
     MigrateDatabaseFunction  = map(string)
@@ -375,8 +198,6 @@ variable "extra_env_vars" {
   })
   description = "Extra environment variables to set for services"
   default = {
-    APIHandler               = {}
-    AIProxy                  = {}
     BillingCron              = {}
     CatchupETL               = {}
     MigrateDatabaseFunction  = {}
@@ -438,26 +259,9 @@ variable "code_bundle_bucket_arn" {
   description = "The ARN of the code bundle bucket"
 }
 
-variable "lambda_responses_bucket_arn" {
-  type        = string
-  description = "The ARN of the lambda responses bucket"
-}
-
-variable "attachment_bucket_name" {
-  type        = string
-  description = "Name of the caller-provided attachment S3 bucket. When set, ATTACHMENT_BUCKET is wired into the API Handler. Null disables the feature."
-  default     = null
-}
-
 variable "api_security_group_id" {
   type        = string
   description = "The ID of the security group for the API and other lambdas"
-}
-
-variable "api_handler_role_arn" {
-  type        = string
-  description = "The ARN of the API handler role used by the API handler lambda and various other lambdas"
-  default     = null
 }
 
 variable "quarantine_invoke_role_arn" {
@@ -521,8 +325,3 @@ variable "brainstore_deployment_id" {
   default     = null
 }
 
-variable "gateway_url" {
-  description = "Private gateway URL for APIHandler and AIProxy after the gateway reaches steady state. Null preserves caller environment values."
-  type        = string
-  default     = null
-}
