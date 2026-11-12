@@ -50,7 +50,8 @@ resource "aws_launch_template" "brainstore_writer" {
     license_key_secret_version                    = var.license_key_secret_version
     brainstore_version_override                   = var.version_override == null ? "" : var.version_override
     brainstore_release_version                    = local.brainstore_release_version
-    cloudwatch_asg_metrics                        = false
+    cloudwatch_asg_metrics                        = local.writer_autoscaling_enabled
+    cloudwatch_statsd_metrics                     = local.writer_autoscaling_enabled
     monitoring_telemetry                          = var.monitoring_telemetry
     is_dedicated_reader_node                      = "false"
     is_dedicated_writer_node                      = "true"
@@ -153,17 +154,19 @@ resource "aws_lb_listener" "brainstore_writer" {
   tags = local.common_tags
 }
 
+# With writer autoscaling, Terraform leaves desired capacity to target tracking,
+# and the launch template publishes ASG-level statsd metrics for those policies.
 resource "aws_autoscaling_group" "brainstore_writer" {
   count                     = local.has_writer_nodes ? 1 : 0
   name_prefix               = "${var.deployment_name}-brainstore-writer"
-  min_size                  = var.writer_instance_count
-  max_size                  = var.writer_instance_count * 2
-  desired_capacity          = var.writer_instance_count
+  min_size                  = local.writer_autoscaling_enabled ? var.writer_min_capacity : var.writer_instance_count
+  max_size                  = local.writer_autoscaling_enabled ? var.writer_max_capacity : var.writer_instance_count * 2
+  desired_capacity          = local.writer_autoscaling_enabled ? null : var.writer_instance_count
   vpc_zone_identifier       = var.private_subnet_ids
   health_check_type         = "EBS,ELB"
   health_check_grace_period = 60
   target_group_arns         = [aws_lb_target_group.brainstore_writer[0].arn]
-  wait_for_elb_capacity     = var.writer_instance_count
+  wait_for_elb_capacity     = local.writer_autoscaling_enabled ? var.writer_min_capacity : var.writer_instance_count
   launch_template {
     id      = aws_launch_template.brainstore_writer[0].id
     version = aws_launch_template.brainstore_writer[0].latest_version
@@ -195,5 +198,54 @@ resource "aws_autoscaling_group" "brainstore_writer" {
       value               = tag.value
       propagate_at_launch = true
     }
+  }
+}
+
+# Matches the CloudFormation writer policies. Either backlog policy can scale
+# out; both must agree before scale-in.
+resource "aws_autoscaling_policy" "brainstore_writer_compaction_queue_target" {
+  count                  = local.writer_autoscaling_enabled ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-writer-compaction-queue-target"
+  autoscaling_group_name = aws_autoscaling_group.brainstore_writer[0].name
+  policy_type            = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    customized_metric_specification {
+      # The CloudWatch agent publishes statsd metrics to its default namespace.
+      namespace   = "CWAgent"
+      metric_name = "brainstore_backfill_compaction_queue_size"
+      statistic   = "Average"
+
+      metric_dimension {
+        name  = "AutoScalingGroupName"
+        value = aws_autoscaling_group.brainstore_writer[0].name
+      }
+    }
+
+    target_value     = var.writer_target_compaction_queue_size
+    disable_scale_in = false
+  }
+}
+
+resource "aws_autoscaling_policy" "brainstore_writer_merge_loop_segments_target" {
+  count                  = local.writer_autoscaling_enabled ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-writer-merge-loop-segments-target"
+  autoscaling_group_name = aws_autoscaling_group.brainstore_writer[0].name
+  policy_type            = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    customized_metric_specification {
+      namespace   = "CWAgent"
+      metric_name = "brainstore_backfill_merge_loop_segments"
+      statistic   = "Average"
+
+      metric_dimension {
+        name  = "AutoScalingGroupName"
+        value = aws_autoscaling_group.brainstore_writer[0].name
+      }
+    }
+
+    target_value     = var.writer_target_merge_loop_segments
+    disable_scale_in = false
   }
 }

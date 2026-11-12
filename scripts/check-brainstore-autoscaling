@@ -3,7 +3,7 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Check rendered Brainstore memory metrics against the autoscaling consumer.
+"""Check rendered Brainstore autoscaling metrics against their policies.
 
 Run after terraform init. Runs only mocked Terraform tests, never live AWS calls.
 Terraform cannot decompress base64gzip user data in a test assertion, so inspect
@@ -24,6 +24,11 @@ def check_plan(plan, run_name):
         for resource in plan["resource_changes"]
         if resource["mode"] == "managed" and resource["change"]["after"] is not None
     }
+    unknown = {
+        resource["address"]: resource["change"].get("after_unknown") or {}
+        for resource in plan["resource_changes"]
+        if resource["mode"] == "managed"
+    }
     checked = 0
     for address, values in resources.items():
         # Root plans defer user data until shared secrets and endpoints exist.
@@ -31,6 +36,7 @@ def check_plan(plan, run_name):
         if "aws_launch_template.brainstore" not in address or "user_data" not in values:
             continue
         script = gzip.decompress(base64.b64decode(values["user_data"])).decode()
+        env_file = script.split("cat <<EOF > /etc/brainstore.env\n", 1)[1].split("\nEOF", 1)[0].splitlines()
         config = json.loads(
             script.split("cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json\n", 1)[1]
             .split("\nEOF", 1)[0]
@@ -57,10 +63,38 @@ def check_plan(plan, run_name):
             assert metric["metric_name"] == memory["measurement"][0]["rename"], address
             assert [dimension["name"] for dimension in metric["metric_dimension"]] in config["aggregation_dimensions"], address
             checked += 1
+        elif "aws_launch_template.brainstore_writer" in address and address.replace(
+            "aws_launch_template.brainstore_writer", "aws_autoscaling_policy.brainstore_writer_compaction_queue_target"
+        ) in resources:
+            # Writer autoscaling reads ASG-level backfill gauges that Brainstore
+            # sends to the local CloudWatch agent over statsd.
+            assert config["append_dimensions"]["AutoScalingGroupName"] == "${aws:AutoScalingGroupName}", address
+            assert ["AutoScalingGroupName"] in config["aggregation_dimensions"], address
+            statsd = config["metrics_collected"]["statsd"]
+            assert statsd["service_address"] == "127.0.0.1:8125", address
+            assert f"BRAINSTORE_STATSD_ENDPOINT={statsd['service_address']}" in env_file, address
+            asg_address = address.replace("aws_launch_template", "aws_autoscaling_group")
+            assert unknown[asg_address].get("desired_capacity") is True, "autoscaled writer desired capacity must stay unmanaged"
+            for policy_name, metric_name in [
+                ("compaction_queue_target", "brainstore_backfill_compaction_queue_size"),
+                ("merge_loop_segments_target", "brainstore_backfill_merge_loop_segments"),
+            ]:
+                policy_address = address.replace(
+                    "aws_launch_template.brainstore_writer",
+                    f"aws_autoscaling_policy.brainstore_writer_{policy_name}",
+                )
+                metric = resources[policy_address]["target_tracking_configuration"][0]["customized_metric_specification"][0]
+                assert metric["namespace"] == config.get("namespace", "CWAgent"), policy_address
+                assert metric["metric_name"] == metric_name, policy_address
+                assert metric["statistic"] == "Average", policy_address
+                assert [dimension["name"] for dimension in metric["metric_dimension"]] in config["aggregation_dimensions"], policy_address
+            checked += 1
         else:
-            # Non-automation fleets retain their existing metric dimensions.
+            # Other fleets retain their existing metric dimensions and collect no statsd metrics.
             assert config["append_dimensions"] == {"InstanceId": "${aws:InstanceId}"}, address
             assert config["aggregation_dimensions"] == [["InstanceId"], []], address
+            assert "statsd" not in config["metrics_collected"], address
+            assert not any(line.startswith("BRAINSTORE_STATSD_ENDPOINT=") for line in env_file), address
 
     if run_name == "automation_writer_custom_targets_plan_in_existing_vpc":
         asg = resources["module.brainstore[0].aws_autoscaling_group.brainstore_automation_writer[0]"]
@@ -82,7 +116,9 @@ def main():
         result = subprocess.run(
             ["terraform", "test", "-json", "-verbose",
              "-filter=tests/brainstore_automation_writer.tftest.hcl",
-             "-filter=tests/automation_writer.tftest.hcl"],
+             "-filter=tests/automation_writer.tftest.hcl",
+             "-filter=tests/brainstore_writer_autoscaling.tftest.hcl",
+             "-filter=tests/writer_autoscaling.tftest.hcl"],
             cwd=Path(__file__).resolve().parent.parent, text=True, capture_output=True,
         )
         if result.returncode:
@@ -96,8 +132,8 @@ def main():
             checked += check_plan(event["test_plan"], event["@testrun"])
         if event["type"] == "test_summary":
             assert event["test_summary"]["status"] == "pass", event["test_summary"]
-    assert checked > 0, "No enabled automation writer plans checked."
-    print(f"Brainstore autoscaling: checked {checked} rendered automation writer metric producers and their policies.")
+    assert checked > 0, "No enabled autoscaling plans checked."
+    print(f"Brainstore autoscaling: checked {checked} rendered autoscaled metric producers and their policies.")
 
 
 if __name__ == "__main__":

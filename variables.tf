@@ -1740,6 +1740,60 @@ variable "brainstore_writer_instance_count" {
   default     = 1
 }
 
+variable "brainstore_writer_min_capacity" {
+  type        = number
+  description = "Minimum Brainstore writer count (at least 1) for writer autoscaling. Set with brainstore_writer_max_capacity to enable autoscaling, or omit both to keep a fixed brainstore_writer_instance_count pool."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_writer_min_capacity == null ? true : (var.brainstore_writer_min_capacity >= 1 && floor(var.brainstore_writer_min_capacity) == var.brainstore_writer_min_capacity)
+    error_message = "brainstore_writer_min_capacity must be a positive integer."
+  }
+}
+
+variable "brainstore_writer_max_capacity" {
+  type        = number
+  description = "Maximum Brainstore writer count for writer autoscaling. Set with brainstore_writer_min_capacity, or omit both to keep a fixed brainstore_writer_instance_count pool."
+  default     = null
+
+  validation {
+    condition     = (var.brainstore_writer_min_capacity == null) == (var.brainstore_writer_max_capacity == null)
+    error_message = "brainstore_writer_min_capacity and brainstore_writer_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.brainstore_writer_max_capacity == null ? true : (floor(var.brainstore_writer_max_capacity) == var.brainstore_writer_max_capacity && var.brainstore_writer_max_capacity >= coalesce(var.brainstore_writer_min_capacity, 1))
+    error_message = "brainstore_writer_max_capacity must be an integer greater than or equal to brainstore_writer_min_capacity."
+  }
+
+  validation {
+    condition     = var.brainstore_writer_max_capacity == null ? true : var.brainstore_writer_instance_count > 0
+    error_message = "Writer autoscaling requires brainstore_writer_instance_count > 0 to enable the writer pool."
+  }
+}
+
+variable "brainstore_writer_target_compaction_queue_size" {
+  type        = number
+  description = "Target average brainstore_backfill_compaction_queue_size for Brainstore writer autoscaling. Applies only when writer autoscaling is enabled."
+  default     = 15
+
+  validation {
+    condition     = var.brainstore_writer_target_compaction_queue_size > 0
+    error_message = "brainstore_writer_target_compaction_queue_size must be greater than 0."
+  }
+}
+
+variable "brainstore_writer_target_merge_loop_segments" {
+  type        = number
+  description = "Target average brainstore_backfill_merge_loop_segments for Brainstore writer autoscaling. Applies only when writer autoscaling is enabled."
+  default     = 400
+
+  validation {
+    condition     = var.brainstore_writer_target_merge_loop_segments > 0
+    error_message = "brainstore_writer_target_merge_loop_segments must be greater than 0."
+  }
+}
+
 variable "brainstore_writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore writer nodes"

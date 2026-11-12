@@ -104,6 +104,12 @@ module "braintrust-data-plane" {
   # Recommended Graviton instance type with 32GB of memory
   brainstore_writer_instance_count = 1
   brainstore_writer_instance_type  = "m8gd.8xlarge"
+  # Writer autoscaling is optional. Enable only when instructed by Braintrust.
+  # Set both bounds to enable it; unset bounds keep brainstore_writer_instance_count fixed.
+  # brainstore_writer_min_capacity                 = 1
+  # brainstore_writer_max_capacity                 = 4
+  # brainstore_writer_target_compaction_queue_size = 15
+  # brainstore_writer_target_merge_loop_segments   = 400
 
   # Automation writers are optional. Enable only when instructed by Braintrust.
   brainstore_automation_writer_instance_count = 0
