@@ -5,6 +5,8 @@ locals {
   })
   architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes = var.writer_instance_count > 0
+  # Writer autoscaling is opt-in. Unset bounds keep the fixed writer_instance_count pool.
+  writer_autoscaling_enabled = local.has_writer_nodes && var.writer_min_capacity != null
   # Preserve legacy bounds when explicit autoscaling capacities are not supplied.
   automation_writer_min_capacity = coalesce(var.automation_writer_min_capacity, var.automation_writer_instance_count)
   automation_writer_max_capacity = coalesce(var.automation_writer_max_capacity, local.automation_writer_min_capacity * 2)
@@ -110,6 +112,7 @@ resource "aws_launch_template" "brainstore" {
     brainstore_version_override = var.version_override == null ? "" : var.version_override
     brainstore_release_version  = local.brainstore_release_version
     cloudwatch_asg_metrics      = false
+    cloudwatch_statsd_metrics   = false
     monitoring_telemetry        = var.monitoring_telemetry
     # Important note: if there are no dedicated writer nodes, this node serves as a read/writer node
     is_dedicated_reader_node                      = local.has_writer_nodes ? "true" : "false"

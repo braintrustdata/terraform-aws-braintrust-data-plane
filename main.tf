@@ -953,6 +953,10 @@ module "brainstore" {
   extra_env_vars                                = var.brainstore_extra_env_vars
   extra_env_vars_writer                         = var.brainstore_extra_env_vars_writer
   writer_instance_count                         = var.brainstore_writer_instance_count
+  writer_min_capacity                           = var.brainstore_writer_min_capacity
+  writer_max_capacity                           = var.brainstore_writer_max_capacity
+  writer_target_compaction_queue_size           = var.brainstore_writer_target_compaction_queue_size
+  writer_target_merge_loop_segments             = var.brainstore_writer_target_merge_loop_segments
   writer_instance_type                          = var.brainstore_writer_instance_type
   automation_writer_instance_count              = var.brainstore_automation_writer_instance_count
   automation_writer_min_capacity                = var.brainstore_automation_writer_min_capacity
