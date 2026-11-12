@@ -117,6 +117,12 @@ When enabled, a target-tracking policy scales the reader ASG on average CPU util
 
 The Brainstore deployment gate receives the reader bounds instead of a fixed count and waits for the ASG's live desired capacity. This requires a deployment helper with autoscaled-fleet support for the selected API version. With an older helper, the gate rejects the request and the apply stops before the API updates.
 
+### Fast reader autoscaling
+
+Fast reader autoscaling is opt-in. Set `brainstore_fast_reader_min_capacity` and `brainstore_fast_reader_max_capacity` together to enable it for an enabled fast reader pool (`brainstore_fast_reader_instance_count > 0`). Leave both unset to keep the existing fixed pool; that path plans no changes.
+
+When enabled, a target-tracking policy scales the fast reader ASG on average CPU utilization (`brainstore_fast_reader_target_cpu_utilization`, default 70%, matching CloudFormation). Autoscaling owns desired capacity after creation. As with reader autoscaling, the deployment gate receives the bounds and requires a helper with autoscaled-fleet support.
+
 ### Organization access configuration
 
 Prefer ID-based organization access for new deployments:
