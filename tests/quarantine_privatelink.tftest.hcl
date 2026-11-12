@@ -118,9 +118,6 @@ variables {
   brainstore_license_key               = "test-license"
   enable_ecs_api                       = true
   enable_quarantine_vpc                = true
-  create_ai_gateway                    = true
-  enable_ai_gateway                    = true
-  use_private_ai_gateway_origin        = true
   use_private_gateway_quarantine_proxy = true
   kms_key_arn                          = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
 
@@ -323,23 +320,10 @@ run "existing_vpcs_explicit_override_wins_but_keeps_infrastructure" {
   }
 }
 
-run "privatelink_does_not_require_other_gateway_cutover_flags" {
-  command = plan
-  variables {
-    enable_ai_gateway             = false
-    use_private_ai_gateway_origin = false
-  }
-  assert {
-    condition     = output.quarantine_proxy_url == "http://vpce-quarantine.example.com/v1/proxy"
-    error_message = "Quarantine routing must be independent of API and CloudFront gateway cutover."
-  }
-}
-
 run "global_gateway_skips_privatelink" {
   command = plan
   variables {
-    use_global_ai_gateway_origin  = true
-    use_private_ai_gateway_origin = false
+    use_global_ai_gateway_origin = true
   }
   assert {
     condition = (
@@ -369,16 +353,6 @@ run "disabled_quarantine_allows_manual_override" {
     condition     = length(aws_vpc_endpoint.quarantine_gateway) == 0 && output.quarantine_proxy_url == "https://manual.example.com/v1/proxy"
     error_message = "Preserve the existing manual-URL escape hatch when quarantine is disabled."
   }
-}
-
-run "requires_gateway" {
-  command = plan
-  variables {
-    create_ai_gateway             = false
-    enable_ai_gateway             = false
-    use_private_ai_gateway_origin = false
-  }
-  expect_failures = [var.use_private_gateway_quarantine_proxy]
 }
 
 run "rejects_empty_main_subnet" {
@@ -649,7 +623,7 @@ run "private_existing_main_existing_quarantine" {
 
   assert {
     condition = (
-      length(module.ingress) == 0 && local.enable_ai_gateway &&
+      length(module.ingress) == 0 && local.create_ai_gateway &&
       output.api_url == "https://api.example.internal" &&
       module.api_ecs[0].internal_url != null
     )
@@ -687,7 +661,7 @@ run "private_existing_main_managed_quarantine" {
 
   assert {
     condition = (
-      length(module.ingress) == 0 && local.enable_ai_gateway &&
+      length(module.ingress) == 0 && local.create_ai_gateway &&
       output.api_url == "https://api.example.internal" &&
       module.api_ecs[0].internal_url != null
     )
@@ -725,7 +699,7 @@ run "private_managed_main_existing_quarantine" {
 
   assert {
     condition = (
-      length(module.ingress) == 0 && local.enable_ai_gateway &&
+      length(module.ingress) == 0 && local.create_ai_gateway &&
       output.api_url == "https://api.example.internal" &&
       module.api_ecs[0].internal_url != null
     )

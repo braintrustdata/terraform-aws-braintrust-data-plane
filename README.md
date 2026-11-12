@@ -17,6 +17,7 @@ Each major version may include required configuration changes or a multi-step ap
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
 - [Migrating from v6 to v7](MIGRATION_V7.md)
+- [Migrating from v7 to v8](MIGRATION_V8.md)
 
 ### Brainstore and API upgrades
 
@@ -161,26 +162,37 @@ Leave the default enabled for existing deployments. Changing it from `true` to
 the same permission the SCP may prohibit; it is not a supported ownership
 handoff for an existing deployment.
 
-## Private AI gateway cutover
+## AI gateway
 
-New deployments use ECS ingress and a private AI gateway by default.
-Existing deployments require the [v7 migration procedure](MIGRATION_V7.md).
+Every standard deployment uses an AI gateway. There is no option to run without one. Choose one of two:
 
-| Input | Default | Purpose |
-| --- | --- | --- |
-| `enable_ecs_api` | `true` | Selects ECS instead of Lambda ingress. |
-| `create_ai_gateway` | `true` | Creates the gateway ALB and ECS service. |
-| `enable_ai_gateway` | `true` | Selects the gateway for API services and Loop. Requires `create_ai_gateway`. |
-| `use_private_ai_gateway_origin` | `true` | Routes CloudFront `/v1/proxy` traffic through a VPC origin. |
+- **Private gateway (default).** The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API services, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
+- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API services get `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane.
 
-In public mode, `enable_ecs_api = false` retains Lambda ingress with the private gateway.
-All three gateway inputs must be `false` to disable the gateway and its CloudFront origin.
-Private data planes require ECS and the gateway.
+`enable_ecs_api` still chooses whether customer API traffic goes to API ECS or the Lambda path. Either way, CloudFront `/v1/proxy` goes to a gateway, never to the AI Proxy Lambda or the API load balancer.
+Existing deployments upgrade with [Migrating from v7 to v8](MIGRATION_V8.md).
+Private data planes (`enable_private_dataplane = true`) require ECS and the private gateway. The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
+Terraform waits for the private gateway ECS service to reach steady state before caller updates.
+The service uses the ALB `/health` check. A failed initial deployment leaves existing callers on their previous configuration.
 
-An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
-Terraform waits for gateway ECS steady state before caller updates.
-The startup check does not test authenticated inference across the complete request path.
-The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
+The CloudFront private origin and the module-managed quarantine PrivateLink endpoint also wait for gateway ECS steady state.
+Quarantine PrivateLink remains opt-in through `use_private_gateway_quarantine_proxy`.
+The private gateway requires `ai_gateway_min_capacity` of at least one.
+
+External EKS deployments ignore the gateway inputs. Helm manages the gateway in that mode.
+Terraform does not create the gateway or enable its routes when `use_deployment_mode_external_eks = true`.
+
+The gateway's default API address is the private API ECS load balancer, including while customer traffic stays on Lambda.
+An API address from organization authentication replaces that default.
+The API ECS service already exists in standard deployments. Its listener accepts traffic from the gateway task security group.
+The listener uses HTTP by default or HTTPS with the configured API ALB certificate and domain.
+This private address removes the dependency cycle between gateway startup and CloudFront cutover.
+External EKS deployments configure the gateway API URL through Helm.
+
+The gate checks service startup. It does not test authenticated inference or health across the complete PrivateLink path.
+Caller-supplied network paths retain their own readiness requirements.
+Existing deployments retain their resource addresses. The change adds one ingress rule for the gateway on the API ALB.
+The separate gateway authorization map preserves the existing legacy rules and follows the separate Loop authorization maps in adjacent modules.
 
 ## Loop runtime
 
@@ -194,8 +206,7 @@ Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serve
 The module selects the runtime image and matching MicroVM guest artifact by default.
 Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
 
-When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
-Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
+Loop sends model requests to the private AI gateway, or to the hosted gateway when `use_global_ai_gateway_origin` is true.
 
 Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
 The endpoint policy allows connections only to MicroVMs in the deployment account.

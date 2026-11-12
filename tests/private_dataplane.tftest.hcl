@@ -19,10 +19,7 @@ variables {
   brainstore_license_key             = "test-license"
   enable_private_dataplane           = true
   enable_ecs_api                     = true
-  create_ai_gateway                  = true
-  enable_ai_gateway                  = true
   enable_quarantine_vpc              = true
-  use_private_ai_gateway_origin      = false
   braintrust_api_alb_custom_domain   = "api.example.internal"
   braintrust_api_alb_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
 }
@@ -138,23 +135,6 @@ run "rejects_private_mode_without_ecs_api" {
   expect_failures = [var.enable_private_dataplane]
 }
 
-run "rejects_private_mode_without_gateway_infrastructure" {
-  command = plan
-  variables {
-    create_ai_gateway = false
-    enable_ai_gateway = false
-  }
-  expect_failures = [var.enable_private_dataplane]
-}
-
-run "rejects_private_mode_without_gateway_activation" {
-  command = plan
-  variables {
-    enable_ai_gateway = false
-  }
-  expect_failures = [var.enable_private_dataplane]
-}
-
 run "rejects_private_mode_without_customer_hostname" {
   command = plan
   variables {
@@ -171,14 +151,6 @@ run "rejects_private_mode_without_customer_certificate" {
   expect_failures = [var.braintrust_api_alb_custom_domain]
 }
 
-run "rejects_private_mode_with_hosted_proxy" {
-  command = plan
-  variables {
-    use_global_ai_proxy = true
-  }
-  expect_failures = [var.enable_private_dataplane]
-}
-
 run "rejects_private_mode_with_hosted_gateway_origin" {
   command = plan
   variables {
@@ -187,14 +159,11 @@ run "rejects_private_mode_with_hosted_gateway_origin" {
   expect_failures = [var.enable_private_dataplane]
 }
 
-run "private_mode_ignores_default_cloudfront_private_gateway_origin" {
+run "private_mode_skips_cloudfront_private_gateway_origin" {
   command = plan
-  variables {
-    use_private_ai_gateway_origin = true
-  }
   assert {
-    condition     = length(module.ingress) == 0 && !local.enable_private_ai_gateway_origin
-    error_message = "Private mode must ignore the default CloudFront gateway origin flag."
+    condition     = length(module.ingress) == 0 && !local.enable_private_ai_gateway_origin && local.create_ai_gateway
+    error_message = "Private mode must create the private gateway without a CloudFront gateway origin."
   }
 }
 

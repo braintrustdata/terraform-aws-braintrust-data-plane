@@ -21,22 +21,21 @@ variable "waf_acl_id" {
   default     = null
 }
 
-variable "use_global_ai_proxy" {
-  description = "Whether to use the global Cloudflare proxy"
-  type        = bool
-  default     = false
-}
-
 variable "use_global_ai_gateway_origin" {
   description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev"
   type        = bool
   default     = false
 }
 
-variable "use_private_ai_gateway_origin" {
-  description = "Whether to route /v1/proxy traffic to the private gateway ALB via a VPC origin"
+variable "create_gateway_vpc_origin" {
+  description = "Create the CloudFront VPC origin for the private gateway ALB and route /v1/proxy to it unless use_global_ai_gateway_origin is true."
   type        = bool
   default     = false
+
+  validation {
+    condition     = var.use_global_ai_gateway_origin || var.create_gateway_vpc_origin
+    error_message = "/v1/proxy must route to a gateway: set use_global_ai_gateway_origin or create_gateway_vpc_origin."
+  }
 }
 
 variable "gateway_alb_arn" {
@@ -110,7 +109,7 @@ variable "api_handler_function_arn" {
 }
 
 variable "enable_ecs_api" {
-  description = "Route CloudFront API and function traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda. When true, API Gateway and the API Gateway and AI Proxy CloudFront origins are not created. /v1/proxy can still use a hosted or private gateway origin ahead of the ECS ALB."
+  description = "Route CloudFront API and function traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda. When true, API Gateway and the API Gateway and AI Proxy CloudFront origins are not created. /v1/proxy always uses the hosted or private gateway origin in both modes."
   type        = bool
   default     = false
 }

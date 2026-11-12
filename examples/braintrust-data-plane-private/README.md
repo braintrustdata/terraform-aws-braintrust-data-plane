@@ -36,8 +36,6 @@ The example sets all required mode flags:
 ```hcl
 enable_private_dataplane = true
 enable_ecs_api           = true
-create_ai_gateway        = true
-enable_ai_gateway        = true
 ```
 
 ## Deploy and configure DNS
