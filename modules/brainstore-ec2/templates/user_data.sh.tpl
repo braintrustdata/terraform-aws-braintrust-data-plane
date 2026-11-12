@@ -52,7 +52,18 @@ EOF
 # Set AWS region for CLI commands
 export AWS_DEFAULT_REGION=${aws_region}
 
-sudo snap install aws-cli --classic
+# Install AWS CLI v2 for all users with the AWS-recommended installer.
+(
+  set -e
+  apt-get install -y ca-certificates curl unzip gnupg libc6 groff less
+  aws_cli_install_dir=$(mktemp -d)
+  trap 'rm -rf "$aws_cli_install_dir"' EXIT
+  curl --fail --silent --show-error --location --retry 5 \
+    https://awscli.amazonaws.com/v2/install.sh -o "$aws_cli_install_dir/install.sh"
+  bash "$aws_cli_install_dir/install.sh" --system
+  /usr/local/bin/aws --version
+)
+[ "$?" -eq 0 ] || exit 1
 # Set up docker log rotation
 mkdir -p /etc/docker
 cat <<EOF > /etc/docker/daemon.json
