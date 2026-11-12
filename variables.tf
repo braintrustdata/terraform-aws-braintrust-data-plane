@@ -1869,6 +1869,50 @@ variable "brainstore_version_override" {
   default     = null
 }
 
+variable "brainstore_reader_version_override" {
+  type        = string
+  description = "Lock Brainstore reader nodes on a specific version. Ignored when brainstore_version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_reader_version_override == null || var.brainstore_reader_version_override != ""
+    error_message = "brainstore_reader_version_override must be null or a non-empty string."
+  }
+}
+
+variable "brainstore_writer_version_override" {
+  type        = string
+  description = "Lock Brainstore writer nodes on a specific version. Ignored when brainstore_version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_writer_version_override == null || var.brainstore_writer_version_override != ""
+    error_message = "brainstore_writer_version_override must be null or a non-empty string."
+  }
+}
+
+variable "brainstore_fast_reader_version_override" {
+  type        = string
+  description = "Lock Brainstore fast reader nodes on a specific version. Ignored when brainstore_version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_fast_reader_version_override == null || var.brainstore_fast_reader_version_override != ""
+    error_message = "brainstore_fast_reader_version_override must be null or a non-empty string."
+  }
+}
+
+variable "brainstore_automation_writer_version_override" {
+  type        = string
+  description = "Lock Brainstore automation writer nodes on a specific version. Ignored when brainstore_version_override is set. Don't set this unless instructed by Braintrust."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_automation_writer_version_override == null || var.brainstore_automation_writer_version_override != ""
+    error_message = "brainstore_automation_writer_version_override must be null or a non-empty string."
+  }
+}
+
 variable "brainstore_cache_file_size_reader" {
   type        = string
   description = "Optional. Override the cache file size for reader nodes (e.g., '50gb'). If not set, automatically calculates 90% of the ephemeral storage size."
