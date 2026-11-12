@@ -2092,7 +2092,7 @@ variable "permissions_boundary_arn" {
 }
 
 variable "use_global_ai_gateway_origin" {
-  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module runs no gateway ECS service, sets GATEWAY_URL on API services to https://<global_ai_gateway_origin_domain>, routes CloudFront /v1/proxy there, and points Loop at it. When false (default), the module runs the private gateway ECS service, sets GATEWAY_URL to it, and routes CloudFront /v1/proxy and Loop through it. The gateway ALB and its CloudFront VPC origin exist in both cases, so changing this flag does not delete the VPC origin. Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
+  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module creates no private gateway (no gateway ECS service, internal ALB, or CloudFront VPC origin), sets GATEWAY_URL on API services to https://<global_ai_gateway_origin_domain>, routes CloudFront /v1/proxy there, and points Loop at it. When false (default), the module creates the private gateway (ECS service, internal ALB, and CloudFront VPC origin), sets GATEWAY_URL to it, and routes CloudFront /v1/proxy and Loop through it. Changing false to true deletes the VPC origin in the same apply that detaches it from CloudFront; if that fails with CannotDeleteEntityWhileInUse, rerun the apply after the distribution finishes deploying (see MIGRATION_V8.md). Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
   type        = bool
   default     = false
 }
