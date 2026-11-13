@@ -342,6 +342,7 @@ docker run -d \
 %{ endif ~}
   --restart always \
   --ulimit nofile=65535:65535 \
+  --ulimit memlock=-1:-1 \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
