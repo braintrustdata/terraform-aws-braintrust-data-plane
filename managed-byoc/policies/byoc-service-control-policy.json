@@ -42,7 +42,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenySsoAndIdentityCenter",
+      "Sid": "DenySSOAndIdentityCenter",
       "Effect": "Deny",
       "Action": [
         "sso:*",
@@ -70,7 +70,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyIamUserAndGroupManagement",
+      "Sid": "DenyIAMUserAndGroupManagement",
       "Effect": "Deny",
       "Action": [
         "iam:CreateAccountAlias",

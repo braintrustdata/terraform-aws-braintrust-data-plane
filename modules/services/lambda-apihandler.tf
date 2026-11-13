@@ -196,7 +196,7 @@ resource "aws_iam_role" "ai_proxy_invoke_role" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy" "ai_proxy_invoke_policy" {
