@@ -226,6 +226,15 @@ resource "aws_autoscaling_group" "brainstore" {
     version = aws_launch_template.brainstore.latest_version
   }
 
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 100
+      max_healthy_percentage = 200
+    }
+    triggers = ["tag"]
+  }
+
   lifecycle {
     # If this ever has to be replaced, we want a new ASG to be created before the old one is terminated.
     create_before_destroy = true
