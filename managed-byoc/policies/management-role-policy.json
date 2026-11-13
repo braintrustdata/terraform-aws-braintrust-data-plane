@@ -31,6 +31,7 @@
         "route53:*",
         "route53domains:*",
         "route53resolver:*",
+        "scheduler:*",
         "secretsmanager:*",
         "servicequotas:*",
         "sns:*",
@@ -55,7 +56,7 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyEc2DataExfiltrationPaths",
+      "Sid": "DenyEC2DataExfiltrationPaths",
       "Effect": "Deny",
       "Action": [
         "ec2:CreateInstanceExportTask",
@@ -106,13 +107,13 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyS3BucketAclChanges",
+      "Sid": "DenyS3BucketACLChanges",
       "Effect": "Deny",
       "Action": "s3:PutBucketAcl",
       "Resource": "*"
     },
     {
-      "Sid": "AllowLimitedIam",
+      "Sid": "AllowLimitedIAM",
       "Effect": "Allow",
       "Action": [
         "iam:CreateRole",

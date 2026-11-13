@@ -3,6 +3,8 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
 }
 
 # Role that can be assumed by Braintrust support team to optionally access Cloudwatch logs or optionally access the bastion host
@@ -29,7 +31,7 @@ resource "aws_iam_role" "braintrust_support" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy" "braintrust_support_logs" {

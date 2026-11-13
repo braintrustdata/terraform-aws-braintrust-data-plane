@@ -68,7 +68,7 @@ resource "aws_iam_role" "brainstore_role" {
 
   tags = merge({
     Name = "${var.deployment_name}-brainstore-ec2-role"
-  }, local.common_tags)
+  }, local.iam_tags)
 
   lifecycle {
     ignore_changes = [name]

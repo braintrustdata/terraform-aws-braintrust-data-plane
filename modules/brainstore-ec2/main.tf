@@ -3,6 +3,9 @@ locals {
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
+
   architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes = var.writer_instance_count > 0
   # Preserve legacy bounds when explicit autoscaling capacities are not supplied.

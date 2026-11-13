@@ -1,0 +1,276 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
+"""Check that every module-created IAM role, policy and instance profile carries the owner tag.
+
+Mocked Terraform tests can't plan every module (the database module's outputs are
+sensitive, for one), so this reads the Terraform source instead. Every
+`aws_iam_role`, `aws_iam_policy` and `aws_iam_instance_profile` under the root
+directory and `modules/` must set `tags` with `local.iam_tags`, and each module
+that does so must define `iam_tags` as the module's common tags plus
+`BraintrustIAMOwner = "braintrust"`, merged last so callers can't override it.
+
+It never runs Terraform and never calls AWS.
+"""
+
+import argparse
+from pathlib import Path
+import re
+import tempfile
+
+IAM_RESOURCE_HEADER = re.compile(
+    r'^resource\s+"(aws_iam_role|aws_iam_policy|aws_iam_instance_profile)"\s+"([^"]+)"\s*\{',
+    re.MULTILINE,
+)
+# The tags expression is either `local.iam_tags` or a merge() that ends with it, so no
+# caller tag is merged after the owner tag.
+IAM_TAGS_ARGUMENT = re.compile(r"\s*(local\.iam_tags|merge\(.*,\s*local\.iam_tags\s*,?\s*\))\s*", re.DOTALL)
+IAM_TAGS_DEFINITION = re.compile(
+    r'\biam_tags\s*=\s*merge\(\s*local\.common_tags\s*,\s*\{\s*BraintrustIAMOwner\s*=\s*"braintrust"\s*\}\s*\)'
+)
+HEREDOC_START = re.compile(r"<<-?([A-Za-z_]\w*)[ \t]*\n")
+
+
+def mask_strings_and_comments(text, keep_strings=False):
+    """Return text of the same length with comments, strings and heredocs blanked.
+
+    Newlines stay in place, so offsets and line numbers still match the original.
+    Interpolations inside strings are blanked too. That keeps brace matching on the
+    result simple. With keep_strings, string contents are left as written and only
+    comments and heredocs are blanked.
+    """
+    def blank(chunk):
+        return chunk if keep_strings else re.sub(r"[^\n]", " ", chunk)
+
+    out = []
+    contexts = ["code"]  # "string" and "interpolation" frames nest inside each other.
+    interpolation_depths = []
+    i = 0
+    while i < len(text):
+        char = text[i]
+        context = contexts[-1]
+
+        if context == "string":
+            if char == "\\":
+                out.append(blank(text[i : i + 2]))
+                i += 2
+            elif text.startswith(("${", "%{"), i):
+                contexts.append("interpolation")
+                interpolation_depths.append(0)
+                out.append(blank(text[i : i + 2]))
+                i += 2
+            elif char == '"':
+                contexts.pop()
+                out.append('"')
+                i += 1
+            else:
+                out.append(blank(char))
+                i += 1
+            continue
+
+        if char == '"':
+            contexts.append("string")
+            out.append('"')
+            i += 1
+        elif char == "#" or text.startswith("//", i):
+            end = text.find("\n", i)
+            end = len(text) if end == -1 else end
+            out.append(" " * (end - i))
+            i = end
+        elif text.startswith("/*", i):
+            end = text.find("*/", i)
+            end = len(text) if end == -1 else end + 2
+            out.append(re.sub(r"[^\n]", " ", text[i:end]))
+            i = end
+        elif heredoc := HEREDOC_START.match(text, i):
+            terminator = re.compile(rf"^[ \t]*{re.escape(heredoc.group(1))}[ \t]*$", re.MULTILINE)
+            found = terminator.search(text, heredoc.end())
+            end = len(text) if found is None else found.end()
+            out.append(re.sub(r"[^\n]", " ", text[i:end]))
+            i = end
+        else:
+            if context == "interpolation":
+                if char == "{":
+                    interpolation_depths[-1] += 1
+                elif char == "}":
+                    if interpolation_depths[-1] == 0:
+                        contexts.pop()
+                        interpolation_depths.pop()
+                        out.append(blank(char))
+                        i += 1
+                        continue
+                    interpolation_depths[-1] -= 1
+            out.append(char)
+            i += 1
+    return "".join(out)
+
+
+def closing_brace(masked, open_index):
+    depth = 0
+    for index in range(open_index, len(masked)):
+        if masked[index] == "{":
+            depth += 1
+        elif masked[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    raise ValueError("Unbalanced braces")
+
+
+def starts_argument(text_before_name):
+    before = text_before_name.rstrip()
+    return before == "" or before.endswith("{")
+
+
+def top_level_tags_expression(masked_block):
+    """Return the expression assigned to the block's own `tags` argument, or None."""
+    depth = 0
+    line_start = 0
+    for index, char in enumerate(masked_block):
+        if char == "\n":
+            line_start = index + 1
+        if char in "{[(":
+            depth += 1
+        elif char in "}])":
+            depth -= 1
+        # Only the resource's own argument counts. It starts its line, or follows the
+        # resource's opening brace in a single-line block.
+        elif depth == 1 and masked_block.startswith("tags", index) and starts_argument(masked_block[line_start:index]):
+            assignment = re.match(r"tags\s*=(?!=)", masked_block[index:])
+            if assignment:
+                return expression_from(masked_block, index + assignment.end())
+    return None
+
+
+def expression_from(masked_block, start):
+    """Return the expression that starts at `start`, up to its end of line or the block's closing brace."""
+    depth = 0
+    for index in range(start, len(masked_block)):
+        char = masked_block[index]
+        if char in "{[(":
+            depth += 1
+        elif char in "}])":
+            if depth == 0:
+                return masked_block[start:index]
+            depth -= 1
+        elif char == "\n" and depth == 0 and masked_block[start:index].strip():
+            return masked_block[start:index]
+    return masked_block[start:]
+
+
+def terraform_files(root):
+    paths = list(root.glob("*.tf")) + list((root / "modules").rglob("*.tf"))
+    return sorted(path for path in paths if ".terraform" not in path.parts)
+
+
+def check(root):
+    errors = []
+    checked = 0
+    resources_by_directory = {}
+    definitions_by_directory = {}
+
+    for path in terraform_files(root):
+        text = path.read_text()
+        masked = mask_strings_and_comments(text)
+        directory = path.parent
+        # Strings stay in view here so the definition's `"braintrust"` value can match,
+        # but a commented-out definition doesn't count.
+        if IAM_TAGS_DEFINITION.search(mask_strings_and_comments(text, keep_strings=True)):
+            definitions_by_directory[directory] = True
+        for header in IAM_RESOURCE_HEADER.finditer(text):
+            resource_type, name = header.groups()
+            block_end = closing_brace(masked, header.end() - 1)
+            tags = top_level_tags_expression(masked[header.start() : block_end + 1])
+            checked += 1
+            resources_by_directory.setdefault(directory, []).append(name)
+            line = text.count("\n", 0, header.start()) + 1
+            location = f"{path.relative_to(root)}:{line} {resource_type}.{name}"
+            if tags is None:
+                errors.append(f"{location} sets no tags. Use local.iam_tags.")
+            elif not IAM_TAGS_ARGUMENT.fullmatch(tags):
+                errors.append(f"{location} must set tags with local.iam_tags, or a merge() that ends with it.")
+
+    for directory in resources_by_directory:
+        if directory not in definitions_by_directory:
+            errors.append(
+                f"{directory.relative_to(root)} creates IAM but doesn't define "
+                'iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" }).'
+            )
+
+    if checked == 0:
+        errors.append("Found no IAM resources. Check that this script is run against the module root.")
+    return checked, errors
+
+
+IAM_TAGS_LOCAL = 'locals {\n  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })\n}\n'
+
+
+def self_test():
+    """Run the check against small synthetic modules, so the checker itself can't silently rot."""
+    cases = {
+        "plain tags": (IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" {\n  name = "${var.x}"\n  tags = local.iam_tags\n}\n', []),
+        "merge ending with iam_tags": (
+            IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" {\n  tags = merge({\n    Name = "n"\n  }, local.iam_tags)\n}\n',
+            [],
+        ),
+        "braces and comments in the block": (
+            IAM_TAGS_LOCAL
+            + 'resource "aws_iam_policy" "r" {\n  # tags = local.common_tags }\n  policy = jsonencode({ a = "}{${var.x}" })\n  tags = local.iam_tags\n}\n',
+            [],
+        ),
+        "single-line block": (IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" { tags = local.iam_tags }\n', []),
+        "single-line block with common tags": (
+            IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" { tags = local.common_tags }\n',
+            ["must set tags"],
+        ),
+        "no tags": (IAM_TAGS_LOCAL + 'resource "aws_iam_instance_profile" "r" {\n  name = "n"\n}\n', ["sets no tags"]),
+        "caller tags merged after the owner tag": (
+            IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" {\n  tags = merge(local.iam_tags, var.custom_tags)\n}\n',
+            ["must set tags"],
+        ),
+        "common tags": (IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" {\n  tags = local.common_tags\n}\n', ["must set tags"]),
+        "commented-out definition": (
+            '# iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })\n'
+            'resource "aws_iam_role" "r" {\n  tags = local.iam_tags\n}\n',
+            ["doesn't define iam_tags"],
+        ),
+        "owner tag merged first": (
+            'locals {\n  iam_tags = merge({ BraintrustIAMOwner = "braintrust" }, local.common_tags)\n}\n'
+            'resource "aws_iam_role" "r" {\n  tags = local.iam_tags\n}\n',
+            ["doesn't define iam_tags"],
+        ),
+    }
+    failures = []
+    for name, (source, expected) in cases.items():
+        with tempfile.TemporaryDirectory() as directory:
+            module = Path(directory) / "modules" / "example"
+            module.mkdir(parents=True)
+            (module / "main.tf").write_text(source)
+            _, errors = check(Path(directory))
+        found = [fragment for fragment in expected if any(fragment in error for error in errors)]
+        if found != expected or len(errors) != len(expected):
+            failures.append(f"{name}: expected {expected or 'no errors'}, got {errors or 'no errors'}")
+    return len(cases), failures
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--directory", type=Path, default=Path(__file__).resolve().parent.parent)
+    parser.add_argument("--self-test", action="store_true", help="Check the checker against synthetic modules instead of the repository.")
+    args = parser.parse_args()
+    if args.self_test:
+        total, failures = self_test()
+        if failures:
+            parser.exit(1, "\n".join(failures) + "\n")
+        print(f"IAM ownership tag self-test passes. {total} cases behave as expected.")
+        return
+    checked, errors = check(args.directory)
+    if errors:
+        parser.exit(1, "\n".join(errors) + "\n")
+    print(f"IAM ownership tags pass. {checked} IAM roles, policies and instance profiles use local.iam_tags.")
+
+
+if __name__ == "__main__":
+    main()

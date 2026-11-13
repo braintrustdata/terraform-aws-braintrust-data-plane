@@ -2247,9 +2247,16 @@ variable "enable_brainstore_ec2_ssm" {
 }
 
 variable "custom_tags" {
-  description = "Custom tags to apply to all created resources"
+  description = "Custom tags to apply to all created resources. The BraintrustIAMOwner key (in any letter case) is reserved for the module and can't be set."
   type        = map(string)
   default     = {}
+  nullable    = false
+
+  validation {
+    # Tag keys on IAM roles and users are case-insensitive, so a differently cased key would collide with the owner tag.
+    condition     = !contains([for key in keys(var.custom_tags) : lower(key)], "braintrustiamowner")
+    error_message = "custom_tags must not contain the BraintrustIAMOwner key, in any letter case. It's reserved for module-managed IAM ownership and is set to \"braintrust\" on every IAM role, managed policy and instance profile the module creates."
+  }
 }
 
 variable "brainstore_custom_post_install_script" {

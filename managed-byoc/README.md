@@ -42,6 +42,50 @@ This role and policy set is the required baseline for managed BYOC. You can revi
 - Trust Policy: `managed-byoc/policies/management-role-trust-policy.json` (base policy; ExternalId is always injected by the script at runtime)
 - Inline Policy: `managed-byoc/policies/management-role-policy.json`
 
+### Updating the management role policy on an existing role
+
+The inline policy changes from release to release. Release `v7.3.0` adds `scheduler:*`, which the deployment needs to manage EventBridge Scheduler schedules. It also renames the statement IDs (the `Sid` values) in the policy.
+
+Braintrust won't update the policy on your role for you. You run the script. The `--policy-only` flag applies the new policy to an existing role.
+
+```bash
+./managed-byoc/create-management-role.sh --profile <aws-profile> --policy-only
+```
+
+This only runs `aws iam put-role-policy` on the existing role. It does not call `update-assume-role-policy` or `update-role`, so your trust policy, ExternalId and max session duration stay exactly as they are. This is because a full re-run rewrites the trust policy and session duration, which would overwrite any changes you've made to them. Pass `--role-name` if you didn't use the default role name.
+
+Before it asks you to continue, the script shows a diff between the policy currently on the role and the new one. It exits with an error if the role doesn't exist, or if the role has no inline policy with the expected name. It needs `jq` for the diff.
+
+**Note** - `--policy-only` replaces the whole inline policy document. Any edits you made to the inline policy are removed, so re-apply them afterwards, or keep them in a separate policy attached to the role. The script updates the policy named by the `INLINE_POLICY_NAME` environment variable (default `BraintrustManagementRolePolicy`). Set it if you used a different name when you created the role.
+
+The `Sid` renames only change capitalization, for example `AllowLimitedIam` becomes `AllowLimitedIAM`. They don't change what the policy allows or denies, so you don't need to do anything about them. If you copied `byoc-service-control-policy.json` into your organization, its renamed statement IDs are cosmetic as well, and your deployed SCP keeps working unchanged.
+
+Apply this update before you upgrade a stack to v8. The v8 apply replaces the EventBridge rules with Scheduler schedules, so a deploy role without `scheduler:*` can leave the scheduled Lambdas stopped until the role is fixed. If you use an allow-list SCP, add `scheduler` to it before v8 too, since an SCP that doesn't allow the service blocks it no matter what the role policy says.
+
+You can check the result with read-only credentials before upgrading. The principal you run this with needs `iam:SimulatePrincipalPolicy`.
+
+```bash
+aws iam simulate-principal-policy \
+  --profile <aws-profile> \
+  --policy-source-arn arn:aws:iam::<account-id>:role/BraintrustManagementRole \
+  --action-names scheduler:CreateScheduleGroup scheduler:CreateSchedule iam:PassRole iam:TagRole iam:TagPolicy iam:TagInstanceProfile \
+  --query 'EvaluationResults[].[EvalActionName,EvalDecision]' \
+  --output table
+```
+
+Each action should show `allowed`. Simulation doesn't evaluate every service control policy or resource policy, so treat it as a preflight check and not proof.
+
+### Tag permissions for IAM ownership
+
+Release `v7.3.0` also tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. This is an in-place tag update on existing stacks, and it needs a few things on your side.
+
+1. The role that runs Terraform needs `iam:TagRole`, `iam:TagPolicy` and `iam:TagInstanceProfile`, plus `iam:ListRoleTags`, `iam:ListPolicyTags` and `iam:ListInstanceProfileTags` so Terraform can read the tags back. The management role policy already grants the three tagging actions, and its `iam:List*` grant covers the `List*Tags` actions. Check them if you narrowed that policy.
+1. Check any SCP or permissions boundary that has a condition on tag keys, such as `aws:RequestTag` or `aws:TagKeys`. This is the most likely thing to block the new tag.
+1. An organization tag policy only matters if it defines `BraintrustIAMOwner` or a differently cased variant of it. Tag policies don't block keys they don't mention.
+1. IAM allows 50 tags per resource. A role that is already close to that limit can't take another tag.
+
+The module reserves this key, so setting it in `custom_tags` fails at plan time, in any letter case. Don't set it through the AWS provider's `default_tags` either. The module can't validate those, and the module's own value has to be the one that applies.
+
 ### Optional: Add an AWS Organizations service control policy guardrail
 
 You can create a service control policy (SCP) to restrict the management

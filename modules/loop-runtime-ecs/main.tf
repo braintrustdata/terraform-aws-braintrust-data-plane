@@ -2,6 +2,8 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
 
   nofile_ulimits = [{
     name      = "nofile"
@@ -365,7 +367,7 @@ resource "aws_iam_role" "task_execution" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-task-exec"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 resource "aws_iam_role_policy_attachment" "task_execution_default" {
@@ -414,7 +416,7 @@ resource "aws_iam_role" "task" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-task"
-  }, local.common_tags)
+  }, local.iam_tags)
 
   lifecycle {
     precondition {
