@@ -111,6 +111,17 @@ resource "aws_iam_role_policy" "api_handler_cloudwatch_metrics" {
             "cloudwatch:namespace" = "Braintrust/Api"
           }
         }
+      },
+      {
+        Sid      = "ECSScalingTaskStatus"
+        Effect   = "Allow"
+        Action   = ["ecs:DescribeTasks"]
+        Resource = "arn:${data.aws_partition.current.partition}:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:task/${var.deployment_name}/*"
+        Condition = {
+          ArnEquals = {
+            "ecs:cluster" = "arn:${data.aws_partition.current.partition}:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:cluster/${var.deployment_name}"
+          }
+        }
       }
     ]
   })
