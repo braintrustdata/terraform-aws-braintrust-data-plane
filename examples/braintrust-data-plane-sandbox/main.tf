@@ -83,8 +83,6 @@ module "braintrust-data-plane" {
   brainstore_license_key                 = var.brainstore_license_key
   existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
 
-  brainstore_legacy_filesystem_tuning = true
-
   # Single reader and writer, downsized for sandbox.
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
   # Compatibility for Graviton5 instances is being validated.
