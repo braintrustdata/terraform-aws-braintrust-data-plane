@@ -60,6 +60,8 @@ output "alb_domain" {
     aws_lb_listener_rule.alb_path_routes,
     aws_lb_listener_rule.alb_public_http_path_routes,
     aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront_http,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_gateway,
   ]
 }
 
@@ -98,13 +100,17 @@ output "http_url" {
   depends_on = [
     aws_lb_listener.api_ecs_http,
     aws_lb_listener.api_ecs_public_http,
+    aws_lb_listener_rule.alb_path_routes,
+    aws_lb_listener_rule.alb_public_http_path_routes,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_public_services,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_gateway,
     aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway,
   ]
 }
 
 output "customer_https_url" {
-  description = "Customer HTTPS URL after the listener and direct Gateway and Loop routes are ready. Null without a customer certificate."
-  value       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : null
+  description = "Customer HTTPS URL after the listener and direct Gateway and Loop routes are ready. Null until direct routes are active."
+  value       = local.customer_https_routes ? "https://${var.alb_custom_domain}" : null
   depends_on = [
     aws_lb_listener.api_ecs_http,
     aws_lb_listener.api_ecs_https,

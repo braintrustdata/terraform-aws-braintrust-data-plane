@@ -129,12 +129,13 @@ resource "aws_cloudfront_vpc_origin" "api_ecs_http" {
 }
 
 resource "aws_cloudfront_distribution" "dataplane" {
-  comment      = "Braintrust Dataplane - ${var.deployment_name}"
-  enabled      = true
-  http_version = "http2and3"
-  web_acl_id   = var.waf_acl_id
-  price_class  = var.cloudfront_price_class
-  aliases      = var.custom_domain != null ? [var.custom_domain] : null
+  comment             = "Braintrust Dataplane - ${var.deployment_name}"
+  enabled             = true
+  wait_for_deployment = true
+  http_version        = "http2and3"
+  web_acl_id          = var.waf_acl_id
+  price_class         = var.cloudfront_price_class
+  aliases             = var.custom_domain != null ? [var.custom_domain] : null
 
   dynamic "origin" {
     for_each = var.enable_ecs_api ? [] : [1]

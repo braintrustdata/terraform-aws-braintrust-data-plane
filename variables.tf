@@ -1062,6 +1062,17 @@ variable "legacy_api_https_listener" {
 
 }
 
+variable "legacy_api_https_private_routes" {
+  type        = bool
+  description = "Migration-only setting to keep or enable private routes on an existing HTTPS:443 listener while CloudFront uses HTTP:80. Set true for existing private deployments or after the HTTP origin is deployed for existing public HTTPS deployments."
+  default     = false
+
+  validation {
+    condition     = !var.legacy_api_https_private_routes || var.legacy_api_https_listener
+    error_message = "legacy_api_https_private_routes requires an existing HTTPS:443 listener."
+  }
+}
+
 variable "retire_legacy_api_https_listener" {
   type        = bool
   description = "Retire the legacy HTTPS:443 listener after returning to public mode. Use only for an existing HTTPS deployment, after customer-owned NLB targets on port 443 are deregistered and drained."
@@ -1390,6 +1401,7 @@ variable "braintrust_api_authorized_security_groups" {
       !contains(keys(var.braintrust_api_authorized_security_groups), "API") && !contains(keys(var.braintrust_api_authorized_security_groups), "Brainstore")
       ) && (
       var.enable_private_dataplane || var.braintrust_api_alb_custom_domain == null ||
+      (var.legacy_api_https_listener && !var.retire_legacy_api_https_listener && !var.legacy_api_https_private_routes) ||
       (var.enable_ecs_api && var.create_ai_gateway && var.enable_ai_gateway && !var.use_deployment_mode_external_eks)
     )
     error_message = "Testing private access in public mode requires ECS API and an enabled private Gateway; use keys other than API and Brainstore for customer security groups."

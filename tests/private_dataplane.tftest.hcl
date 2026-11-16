@@ -104,6 +104,37 @@ run "public_certificate_stages_private_access" {
   }
 }
 
+run "legacy_public_https_keeps_existing_routes_without_gateway" {
+  command = plan
+
+  variables {
+    enable_private_dataplane  = false
+    legacy_api_https_listener = true
+    create_ai_gateway         = false
+    enable_ai_gateway         = false
+  }
+
+  assert {
+    condition     = length(module.ingress) == 1 && length(module.gateway_ecs) == 0 && module.api_ecs[0].alb_https_enabled && output.private_api_url == null
+    error_message = "A legacy public HTTPS upgrade must keep the existing route without requiring or enabling a private Gateway."
+  }
+}
+
+run "legacy_public_https_can_stage_private_routes_later" {
+  command = plan
+
+  variables {
+    enable_private_dataplane        = false
+    legacy_api_https_listener       = true
+    legacy_api_https_private_routes = true
+  }
+
+  assert {
+    condition     = local.create_direct_api_routes && length(module.ingress) == 1 && length(module.gateway_ecs) == 1
+    error_message = "Legacy private routes should be available after the public HTTP origin is deployed."
+  }
+}
+
 run "rejects_staging_with_reserved_service_security_group_key" {
   command = plan
 

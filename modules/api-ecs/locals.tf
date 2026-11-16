@@ -22,12 +22,14 @@ locals {
 
   # The original listener keeps its deployed protocol. New and public HTTP
   # deployments retain port 80; only an explicit legacy upgrade keeps it on 443.
-  alb_https_enabled      = var.alb_certificate_arn != null && var.alb_custom_domain != null
-  customer_https_routes  = local.alb_https_enabled
+  alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
+  # Keep a legacy public HTTPS listener's existing routes unchanged until
+  # CloudFront has moved away from it. New staged listeners have their own port.
+  customer_https_routes  = local.alb_https_enabled && (!local.legacy_https_listener || var.enable_private_dataplane || var.legacy_https_private_routes)
   legacy_https_listener  = var.legacy_https_listener && !var.retire_legacy_https_listener
   separate_http_listener = var.legacy_https_listener
   alb_listener_port      = local.alb_https_enabled ? 443 : 80
-  api_ecs_url            = local.legacy_https_listener ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
+  api_ecs_url            = "http://${aws_lb.api_ecs.dns_name}"
   internal_api_url       = var.enable_private_dataplane ? "http://${aws_lb.api_ecs.dns_name}:8000" : null
   # Root module resolves override / PrivateLink / Function URL / CloudFront /v1/proxy.
   # Null or blank omits the variable; api-ts uses the caller proxy URL, which is

@@ -33,6 +33,7 @@ module "braintrust-data-plane" {
   # Retire a legacy HTTPS listener only after its external NLB targets drain.
   # retire_legacy_api_https_listener = true
   # legacy_api_https_listener = true # Only if the original listener is already HTTPS:443.
+  # legacy_api_https_private_routes = true # Existing private deployments, or after CloudFront has switched to HTTP:80.
 
   # Optional BTQL query.read audit logging by Braintrust Org ID.
   # Strict mode writes audit rows before returning query results.

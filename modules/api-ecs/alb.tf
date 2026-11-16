@@ -33,7 +33,7 @@ resource "aws_security_group_rule" "alb_ingress_http_from_authorized_cidr_blocks
 
 # Keep the existing rule addresses and types for live deployments.
 resource "aws_vpc_security_group_ingress_rule" "alb_ingress_from_gateway" {
-  for_each = var.gateway_security_groups
+  for_each = var.retire_legacy_https_listener && !var.enable_private_dataplane ? {} : var.gateway_security_groups
 
   security_group_id            = aws_security_group.alb.id
   referenced_security_group_id = each.value
@@ -44,6 +44,18 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_from_gateway" {
   tags                         = local.common_tags
 }
 
+resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_gateway" {
+  for_each = !var.enable_private_dataplane && var.legacy_https_listener ? var.gateway_security_groups : {}
+
+  security_group_id            = aws_security_group.alb.id
+  referenced_security_group_id = each.value
+  from_port                    = 80
+  to_port                      = 80
+  ip_protocol                  = "tcp"
+  description                  = "Allow ${each.key} to use the public HTTP API listener."
+  tags                         = local.common_tags
+}
+
 data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
   count = var.enable_private_dataplane ? 0 : 1
 
@@ -51,14 +63,37 @@ data "aws_ec2_managed_prefix_list" "cloudfront_origin_facing" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_cloudfront" {
-  count = var.enable_private_dataplane ? 0 : 1
+  count = var.enable_private_dataplane || var.retire_legacy_https_listener ? 0 : 1
+
+  security_group_id = aws_security_group.alb.id
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing[0].id
+  from_port         = local.legacy_https_listener ? 443 : 80
+  to_port           = local.legacy_https_listener ? 443 : 80
+  ip_protocol       = "tcp"
+  description       = "Allow inbound traffic from CloudFront VPC origins."
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_cloudfront_http" {
+  count = !var.enable_private_dataplane && var.legacy_https_listener ? 1 : 0
 
   security_group_id = aws_security_group.alb.id
   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing[0].id
   from_port         = 80
   to_port           = 80
   ip_protocol       = "tcp"
-  description       = "Allow inbound traffic from CloudFront VPC origins."
+  description       = "Allow CloudFront VPC origins to reach the public HTTP listener."
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_public_services" {
+  for_each = !var.enable_private_dataplane && var.legacy_https_listener ? var.public_http_service_security_groups : {}
+
+  security_group_id            = aws_security_group.alb.id
+  referenced_security_group_id = each.value
+  from_port                    = 80
+  to_port                      = 80
+  ip_protocol                  = "tcp"
+  description                  = "Allow ${each.key} to use the public HTTP API listener."
+  tags                         = local.common_tags
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_internal_security_groups" {
@@ -278,6 +313,12 @@ resource "aws_ssm_parameter" "api_url" {
   tags = local.common_tags
 
   depends_on = [
+    aws_lb_listener.api_ecs_http,
+    aws_lb_listener.api_ecs_public_http,
+    aws_lb_listener_rule.alb_path_routes,
+    aws_lb_listener_rule.alb_public_http_path_routes,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_public_services,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_gateway,
     aws_lb_listener.api_ecs_internal,
     aws_lb_listener_rule.alb_internal_path_routes,
     aws_vpc_security_group_ingress_rule.alb_ingress_http_from_internal_security_groups,

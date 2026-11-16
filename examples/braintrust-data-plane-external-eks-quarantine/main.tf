@@ -8,7 +8,7 @@
 # - Enables EKS Pod Identity (enable_eks_pod_identity = true)
 # - Deploys the Quarantine VPC (enable_quarantine_vpc = true)
 # - Deploys all IAM permissions needed for the Quarantine VPC
-# - Does not use legacy_api_https_listener or retire_legacy_api_https_listener;
+# - Does not use legacy_api_https_listener, legacy_api_https_private_routes, or retire_legacy_api_https_listener;
 #   external EKS owns its API ingress outside this module.
 
 module "braintrust-data-plane" {

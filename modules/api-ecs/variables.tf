@@ -10,6 +10,12 @@ variable "legacy_https_listener" {
   default     = false
 }
 
+variable "legacy_https_private_routes" {
+  type        = bool
+  description = "Keep private routes on a legacy HTTPS listener while public CloudFront traffic uses the separate HTTP listener. Enable after the HTTP origin is deployed, or when upgrading an existing private deployment."
+  default     = false
+}
+
 variable "retire_legacy_https_listener" {
   type        = bool
   description = "Remove the legacy listener after an HTTPS deployment has moved back to public HTTP. Detach and drain any external NLB target first."
@@ -19,6 +25,12 @@ variable "retire_legacy_https_listener" {
 variable "authorized_security_group_ports" {
   type        = map(number)
   description = "Port overrides for service security groups in authorized_security_groups."
+  default     = {}
+}
+
+variable "public_http_service_security_groups" {
+  type        = map(string)
+  description = "Service security groups that also need HTTP:80 access while a legacy HTTPS:443 listener remains active."
   default     = {}
 }
 

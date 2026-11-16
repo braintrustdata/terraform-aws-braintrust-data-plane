@@ -179,7 +179,7 @@ output "api_ecs_alb_arn" {
 }
 
 output "private_api_url" {
-  description = "Customer HTTPS API ALB URL for private-path testing and private mode. Null until the ALB hostname and certificate are configured. Public api_url continues to point to CloudFront."
+  description = "Customer HTTPS API ALB URL for private-path testing and private mode. Null until direct private routes are active. Public api_url continues to point to CloudFront."
   value       = local.create_ecs_api ? module.api_ecs[0].customer_https_url : null
 }
 

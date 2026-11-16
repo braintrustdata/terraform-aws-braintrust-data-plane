@@ -28,7 +28,7 @@ run "public_http_origin_stays_attached_during_private_staging" {
   }
 
   assert {
-    condition     = length([for origin in aws_cloudfront_distribution.dataplane.origin : origin if origin.origin_id == "ApiEcsOrigin" && origin.domain_name == var.api_ecs_alb_domain]) == 1
+    condition     = length([for origin in aws_cloudfront_distribution.dataplane.origin : origin if origin.origin_id == "ApiEcsOrigin" && origin.domain_name == var.api_ecs_alb_domain]) == 1 && aws_cloudfront_distribution.dataplane.wait_for_deployment
     error_message = "The distribution must retain its API ALB origin on the AWS-assigned ALB hostname."
   }
 }

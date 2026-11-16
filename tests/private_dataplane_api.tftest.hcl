@@ -256,20 +256,65 @@ run "legacy_https_listener_gains_independent_public_http" {
     source = "./modules/api-ecs"
   }
 
+  override_resource {
+    target          = aws_lb.api_ecs
+    override_during = plan
+    values = {
+      arn      = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/api/1111111111111111"
+      dns_name = "internal-api.us-east-1.elb.amazonaws.com"
+    }
+  }
+
   variables {
     brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
     legacy_https_listener             = true
     alb_custom_domain                 = "api.example.internal"
     alb_certificate_arn               = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    authorized_security_groups = {
+      API        = "sg-11111111111111111"
+      Brainstore = "sg-22222222222222222"
+    }
+    authorized_security_group_ports = {
+      API        = 443
+      Brainstore = 443
+    }
+    public_http_service_security_groups = {
+      API        = "sg-11111111111111111"
+      Brainstore = "sg-22222222222222222"
+    }
+    gateway_security_groups = {
+      Gateway = "sg-44444444444444444"
+    }
   }
 
   assert {
     condition = (
       aws_lb_listener.api_ecs_http[0].port == 443 && aws_lb_listener.api_ecs_http[0].protocol == "HTTPS" &&
       aws_lb_listener.api_ecs_public_http[0].port == 80 && aws_lb_listener.api_ecs_public_http[0].protocol == "HTTP" &&
-      length(aws_lb_listener_rule.alb_public_http_path_routes) == length(local.alb_public_http_path_listener_rules)
+      length(aws_lb_listener_rule.alb_public_http_path_routes) == length(local.alb_public_http_path_listener_rules) &&
+      contains(keys(aws_lb_listener_rule.alb_path_routes), "ANY:/v1/proxy/responses") &&
+      length(aws_lb_listener_rule.private_gateway) == 0 &&
+      output.customer_https_url == null
     )
-    error_message = "An existing HTTPS listener must remain in place while a complete HTTP 80 path is added for CloudFront."
+    error_message = "An existing HTTPS listener must keep its public routes while a complete HTTP 80 path is added for CloudFront."
+  }
+
+  assert {
+    condition = (
+      aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront[0].from_port == 443 &&
+      aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront_http[0].from_port == 80 &&
+      alltrue([for rule in aws_security_group_rule.alb_ingress_http_from_authorized_security_groups : rule.from_port == 443]) &&
+      toset(keys(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_public_services)) == toset(["API", "Brainstore"]) &&
+      alltrue([for rule in aws_vpc_security_group_ingress_rule.alb_ingress_http_from_public_services : rule.from_port == 80]) &&
+      aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway["Gateway"].from_port == 443 &&
+      aws_vpc_security_group_ingress_rule.alb_ingress_http_from_gateway["Gateway"].from_port == 80
+    )
+    error_message = "Legacy public HTTPS must keep CloudFront and service access on 443 while adding the complete HTTP 80 path."
+  }
+
+  assert {
+    condition     = aws_ssm_parameter.api_url.value == "http://internal-api.us-east-1.elb.amazonaws.com"
+    error_message = "The public internal API URL must switch to HTTP:80 after its listener and service admission are ready."
   }
 }
 
@@ -284,11 +329,54 @@ run "retiring_legacy_https_keeps_http_listener" {
     brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
     legacy_https_listener             = true
     retire_legacy_https_listener      = true
+    public_http_service_security_groups = {
+      API        = "sg-11111111111111111"
+      Brainstore = "sg-22222222222222222"
+    }
+    gateway_security_groups = {
+      Gateway = "sg-44444444444444444"
+    }
   }
 
   assert {
-    condition     = length(aws_lb_listener.api_ecs_http) == 0 && aws_lb_listener.api_ecs_public_http[0].port == 80 && aws_lb_listener.api_ecs_public_http[0].protocol == "HTTP" && length(aws_lb_listener_rule.alb_public_http_path_routes) > 0
-    error_message = "Retiring the legacy HTTPS listener must leave a complete HTTP 80 request path."
+    condition = (
+      length(aws_lb_listener.api_ecs_http) == 0 &&
+      aws_lb_listener.api_ecs_public_http[0].port == 80 && aws_lb_listener.api_ecs_public_http[0].protocol == "HTTP" &&
+      length(aws_lb_listener_rule.alb_public_http_path_routes) > 0 &&
+      length(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront) == 0 &&
+      aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront_http[0].from_port == 80 &&
+      length(aws_vpc_security_group_ingress_rule.alb_ingress_http_from_public_services) == 2 &&
+      length(aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway) == 0 &&
+      aws_vpc_security_group_ingress_rule.alb_ingress_http_from_gateway["Gateway"].from_port == 80
+    )
+    error_message = "Retiring legacy HTTPS must leave complete HTTP 80 listener and admission paths."
+  }
+}
+
+run "legacy_https_can_stage_private_routes_after_public_cutover" {
+  command = plan
+
+  module {
+    source = "./modules/api-ecs"
+  }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    legacy_https_listener             = true
+    legacy_https_private_routes       = true
+    alb_custom_domain                 = "api.example.internal"
+    alb_certificate_arn               = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+  }
+
+  assert {
+    condition = (
+      aws_lb_listener.api_ecs_http[0].port == 443 &&
+      aws_lb_listener.api_ecs_public_http[0].port == 80 &&
+      length(aws_lb_listener_rule.private_gateway) == 1 &&
+      !contains(keys(aws_lb_listener_rule.alb_path_routes), "ANY:/v1/proxy/responses") &&
+      contains(keys(aws_lb_listener_rule.alb_public_http_path_routes), "ANY:/v1/proxy/responses")
+    )
+    error_message = "After the CloudFront cutover, legacy HTTPS can test private routes without changing public HTTP routing."
   }
 }
 
