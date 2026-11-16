@@ -11,7 +11,7 @@ apt-get clean
 apt-get update
 
 # Mount the local SSD if it exists
-apt-get install -y nvme-cli mdadm xfsprogs
+apt-get install -y nvme-cli mdadm${deployment_name == "observability-prod" ? " xfsprogs" : ""}
 MOUNT_DIR="/mnt/tmp/brainstore"
 mkdir -p "$MOUNT_DIR"
 
@@ -28,6 +28,7 @@ else
 fi
 if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
+%{ if deployment_name == "observability-prod" ~}
   blkid "$DEVICE" >/dev/null || mkfs.xfs -f -d agcount=32 -l size=512m,version=2,su=256k -i size=512 "$DEVICE"
   FS_TYPE=$(blkid -s TYPE -o value "$DEVICE")
   MOUNT_OPTIONS="noatime,nodiratime,discard"
@@ -35,15 +36,24 @@ if [ -n "$DEVICE" ]; then
     MOUNT_OPTIONS="$MOUNT_OPTIONS,logbufs=8,logbsize=256k,allocsize=64m"
   fi
   mount -o "$MOUNT_OPTIONS" "$DEVICE" "$MOUNT_DIR"
+%{ else ~}
+  blkid "$DEVICE" >/dev/null || mkfs.ext4 -F "$DEVICE"
+  mount "$DEVICE" "$MOUNT_DIR"
+%{ endif ~}
   chmod -R 0777 "$MOUNT_DIR"
   # Add to fstab using UUID rather than device name
   UUID=$(blkid -s UUID -o value "$DEVICE")
+%{ if deployment_name == "observability-prod" ~}
   echo "UUID=$UUID $MOUNT_DIR $FS_TYPE $MOUNT_OPTIONS 0 0" >> /etc/fstab
+%{ else ~}
+  echo "UUID=$UUID $MOUNT_DIR ext4 defaults 0 2" >> /etc/fstab
+%{ endif ~}
 else
   echo "No ephemeral device found. Exiting with failure."
   exit 1
 fi
 
+%{ if deployment_name == "observability-prod" ~}
 cat <<EOF > /etc/sysctl.d/99-brainstore.conf
 # Start background writeback early (128 MB) to keep the NVMe queue steadily fed
 vm.dirty_background_bytes=134217728
@@ -65,6 +75,7 @@ vm.vfs_cache_pressure=50
 EOF
 sysctl -p /etc/sysctl.d/99-brainstore.conf
 
+%{ endif ~}
 # Raise the file descriptor limit
 cat <<EOF > /etc/security/limits.d/brainstore.conf
 # Root users has to be set explicitly
