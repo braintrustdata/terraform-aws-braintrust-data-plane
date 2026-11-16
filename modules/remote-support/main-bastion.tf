@@ -36,7 +36,7 @@ resource "aws_instance" "bastion" {
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2
+    http_put_response_hop_limit = 1
   }
 
   user_data = templatefile("${path.module}/bastion-user-data.sh", {
