@@ -31,7 +31,7 @@ locals {
   # forwarding the viewer Host header can make CloudFront validate the ALB certificate against
   # the viewer hostname; the ALB already sets X-Forwarded-Proto=https in that case.
   # The policy resource is always created; this flag only controls whether it is attached.
-  cloudfront_use_ecs_forwarded_proto_policy = var.enable_ecs_api && !var.api_ecs_alb_https_enabled
+  cloudfront_use_ecs_forwarded_proto_policy = (var.enable_ecs_api || var.enable_ecs_voice_sessions) && !var.api_ecs_alb_https_enabled
   cloudfront_ecs_origin_request_policy_id = (
     local.cloudfront_use_ecs_forwarded_proto_policy
     ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto.id
@@ -233,6 +233,23 @@ resource "aws_cloudfront_distribution" "dataplane" {
 
     cache_policy_id          = local.cloudfront_CachingDisabled
     origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_api_origin_id]
+  }
+
+  dynamic "ordered_cache_behavior" {
+    for_each = var.enable_ecs_voice_sessions ? toset([
+      "/v1/project/*/simulated_user/*/session",
+      "/v1/voice_session/*/connect",
+    ]) : toset([])
+    content {
+      path_pattern           = ordered_cache_behavior.value
+      allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods         = ["GET", "HEAD", "OPTIONS"]
+      target_origin_id       = local.cloudfront_ApiEcsOrigin
+      viewer_protocol_policy = "redirect-to-https"
+
+      cache_policy_id          = local.cloudfront_CachingDisabled
+      origin_request_policy_id = local.cloudfront_ecs_origin_request_policy_id
+    }
   }
 
   dynamic "ordered_cache_behavior" {

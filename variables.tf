@@ -1055,6 +1055,17 @@ variable "enable_private_dataplane" {
   }
 }
 
+variable "enable_ecs_voice_sessions" {
+  type        = bool
+  description = "Enable hosted voice session creation and WebSocket connections on the background API ECS pool. Requires an API image containing braintrustdata/braintrust#25882. Not supported with external EKS."
+  default     = false
+
+  validation {
+    condition     = !var.enable_ecs_voice_sessions || !var.use_deployment_mode_external_eks
+    error_message = "Hosted ECS voice sessions are not supported with external EKS. Configure voice sessions through the external deployment instead."
+  }
+}
+
 variable "enable_ecs_api" {
   type        = bool
   description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Public ECS mode uses the CloudFront /v1/proxy URL for quarantine unless an override or PrivateLink selects another URL. Private mode uses create_quarantine_api_access. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."

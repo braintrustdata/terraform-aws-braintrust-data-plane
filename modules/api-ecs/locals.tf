@@ -157,7 +157,9 @@ locals {
       OTEL_SERVICE_NAME                  = service_name
       CLOUDWATCH_METRICS_SERVICE_NAME    = service_name
       CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
-    })
+      }, service_name == "braintrust-api-background" && var.enable_ecs_voice_sessions ? {
+      VOICE_SESSION_WS_BASE_URL = var.voice_session_ws_base_url
+    } : {})
   }
 
   api_container_depends_on = [
@@ -374,7 +376,7 @@ locals {
             value = local.api_service_env_vars[service_name][key]
           }
         ]
-      })
+      }, service_name == "braintrust-api-background" ? { stopTimeout = 120 } : {})
     ], local.observability_sidecars[service_name]))
   }
 
