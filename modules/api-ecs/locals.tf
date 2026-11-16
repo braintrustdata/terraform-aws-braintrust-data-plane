@@ -20,13 +20,12 @@ locals {
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
 
-  # A customer certificate and hostname enable HTTPS:443. The preparation flag
-  # keeps the legacy listener on HTTP:80; legacy HTTPS deployments retain their
-  # listener on 443 and gain a separate HTTP:80 listener for CloudFront.
+  # The original listener keeps its deployed protocol. New and public HTTP
+  # deployments retain port 80; only an explicit legacy upgrade keeps it on 443.
   alb_https_enabled      = var.alb_certificate_arn != null && var.alb_custom_domain != null
-  customer_https_routes  = var.enable_private_dataplane || var.prepare_private_dataplane
-  legacy_https_listener  = local.alb_https_enabled && !var.prepare_private_dataplane && !var.retire_legacy_https_listener
-  separate_http_listener = local.legacy_https_listener || var.retire_legacy_https_listener
+  customer_https_routes  = local.alb_https_enabled
+  legacy_https_listener  = var.legacy_https_listener && !var.retire_legacy_https_listener
+  separate_http_listener = var.legacy_https_listener
   alb_listener_port      = local.alb_https_enabled ? 443 : 80
   api_ecs_url            = local.legacy_https_listener ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
   internal_api_url       = var.enable_private_dataplane ? "http://${aws_lb.api_ecs.dns_name}:8000" : null

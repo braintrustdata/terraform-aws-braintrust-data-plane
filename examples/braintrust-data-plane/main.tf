@@ -28,12 +28,11 @@ module "braintrust-data-plane" {
   allowed_org_ids = ""
 
   # To test private API access before cutover, see MIGRATION_V8.md in the module.
-  # prepare_private_dataplane          = true
   # braintrust_api_alb_custom_domain   = "api.example.internal"
   # braintrust_api_alb_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
   # Retire a legacy HTTPS listener only after its external NLB targets drain.
   # retire_legacy_api_https_listener = true
-  # allow_legacy_public_https_listener = true # Only if the existing public listener is already HTTPS:443.
+  # legacy_api_https_listener = true # Only if the original listener is already HTTPS:443.
 
   # Optional BTQL query.read audit logging by Braintrust Org ID.
   # Strict mode writes audit rows before returning query results.

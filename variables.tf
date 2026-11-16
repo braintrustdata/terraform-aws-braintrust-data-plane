@@ -1055,36 +1055,11 @@ variable "enable_private_dataplane" {
   }
 }
 
-variable "prepare_private_dataplane" {
+variable "legacy_api_https_listener" {
   type        = bool
-  description = "Provision a separate HTTPS API ALB listener for private-path testing while CloudFront continues using HTTP port 80. Set this on an existing public HTTP deployment before adding the API ALB hostname and certificate; keep it set for cutover and rollback."
+  description = "Migration-only setting for an existing api_ecs_http listener that is already HTTPS:443. Leave false for new installations and existing HTTP:80 deployments."
   default     = false
 
-  validation {
-    condition = !var.prepare_private_dataplane || (
-      var.enable_ecs_api && var.create_ai_gateway && var.enable_ai_gateway &&
-      !var.use_deployment_mode_external_eks &&
-      try(trimspace(var.braintrust_api_alb_custom_domain) != "", false) &&
-      try(trimspace(var.braintrust_api_alb_certificate_arn) != "", false)
-    )
-    error_message = "prepare_private_dataplane requires ECS API, the private AI gateway, an API ALB hostname and certificate, and a standard deployment."
-  }
-
-  validation {
-    condition     = !var.prepare_private_dataplane || !contains(keys(var.braintrust_api_authorized_security_groups), "API") && !contains(keys(var.braintrust_api_authorized_security_groups), "Brainstore")
-    error_message = "Use keys other than API and Brainstore in braintrust_api_authorized_security_groups; those names are reserved for service access to HTTP port 80."
-  }
-}
-
-variable "allow_legacy_public_https_listener" {
-  type        = bool
-  description = "Compatibility opt-in for an existing public HTTPS:443 API listener. Required when keeping its certificate in public mode without prepare_private_dataplane; new public-to-private staging should use prepare_private_dataplane instead."
-  default     = false
-
-  validation {
-    condition     = var.enable_private_dataplane || var.prepare_private_dataplane || var.braintrust_api_alb_certificate_arn == null || var.allow_legacy_public_https_listener
-    error_message = "A public API ALB certificate requires prepare_private_dataplane. Set allow_legacy_public_https_listener only if the existing listener is already HTTPS:443."
-  }
 }
 
 variable "retire_legacy_api_https_listener" {
@@ -1093,11 +1068,8 @@ variable "retire_legacy_api_https_listener" {
   default     = false
 
   validation {
-    condition = !var.retire_legacy_api_https_listener || var.allow_legacy_public_https_listener && (
-      var.prepare_private_dataplane ||
-      !var.enable_private_dataplane && var.braintrust_api_alb_certificate_arn == null && var.braintrust_api_alb_custom_domain == null
-    )
-    error_message = "retire_legacy_api_https_listener requires allow_legacy_public_https_listener and either a prepared separate HTTPS listener or public mode with the ALB hostname and certificate removed."
+    condition     = !var.retire_legacy_api_https_listener || var.legacy_api_https_listener
+    error_message = "Retirement requires an existing HTTPS:443 listener."
   }
 }
 
@@ -1411,6 +1383,17 @@ variable "braintrust_api_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)
   default     = {}
+
+  validation {
+    condition = (
+      var.enable_private_dataplane || var.braintrust_api_alb_certificate_arn == null ||
+      !contains(keys(var.braintrust_api_authorized_security_groups), "API") && !contains(keys(var.braintrust_api_authorized_security_groups), "Brainstore")
+      ) && (
+      var.enable_private_dataplane || var.braintrust_api_alb_custom_domain == null ||
+      (var.enable_ecs_api && var.create_ai_gateway && var.enable_ai_gateway && !var.use_deployment_mode_external_eks)
+    )
+    error_message = "Testing private access in public mode requires ECS API and an enabled private Gateway; use keys other than API and Brainstore for customer security groups."
+  }
 }
 
 variable "braintrust_api_authorized_cidr_blocks" {
@@ -1420,7 +1403,7 @@ variable "braintrust_api_authorized_cidr_blocks" {
 }
 
 variable "braintrust_api_alb_certificate_arn" {
-  description = "Optional ACM certificate ARN for the customer HTTPS listener on the internal API ALB. Pair with braintrust_api_alb_custom_domain. With prepare_private_dataplane, HTTPS port 443 is separate from the CloudFront HTTP port 80. Private mode also provides HTTP port 8000 for callbacks."
+  description = "Optional ACM certificate ARN for the customer HTTPS:443 listener on the internal API ALB. Pair with braintrust_api_alb_custom_domain to test private access while public mode remains active. Private mode also provides HTTP:8000 for callbacks."
   type        = string
   default     = null
 }
@@ -1434,6 +1417,12 @@ variable "braintrust_api_alb_custom_domain" {
     condition     = (var.braintrust_api_alb_custom_domain == null) == (var.braintrust_api_alb_certificate_arn == null)
     error_message = "braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn must both be set or both be null."
   }
+
+  validation {
+    condition     = !var.legacy_api_https_listener || var.retire_legacy_api_https_listener || var.braintrust_api_alb_custom_domain != null
+    error_message = "Preserving an existing HTTPS:443 listener requires its hostname and certificate until retirement."
+  }
+
 }
 
 variable "braintrust_api_alb_drop_invalid_header_fields" {

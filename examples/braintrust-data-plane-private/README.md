@@ -34,14 +34,13 @@ The [standard example](../braintrust-data-plane/README.md#configure-terraform) d
 The example sets all required mode flags:
 
 ```hcl
-enable_private_dataplane  = true
-prepare_private_dataplane = true
-enable_ecs_api            = true
-create_ai_gateway         = true
-enable_ai_gateway         = true
+enable_private_dataplane = true
+enable_ecs_api           = true
+create_ai_gateway        = true
+enable_ai_gateway        = true
 ```
 
-For an existing public deployment, follow [the v8 migration guide](../../MIGRATION_V8.md) to test this HTTPS path while CloudFront remains live. Keep `prepare_private_dataplane = true` when cutting over and when returning to public mode. An existing private deployment whose original listener is already HTTPS:443 must follow the legacy-listener sequence in that guide instead of turning on the preparation flag immediately.
+For an existing public deployment, follow [the v8 migration guide](../../MIGRATION_V8.md) if you want to test the HTTPS path while CloudFront remains live. Supply the ALB hostname and certificate while staying in public mode. An existing deployment whose original listener is already HTTPS:443 must set `legacy_api_https_listener = true` during upgrade and follow the legacy-listener sequence in that guide.
 
 ## Deploy and configure DNS
 

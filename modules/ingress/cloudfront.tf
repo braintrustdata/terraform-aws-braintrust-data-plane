@@ -102,9 +102,11 @@ resource "aws_cloudfront_vpc_origin" "api_ecs" {
   }
 }
 
-# CloudFront rejects protocol updates to an origin in use. Give the permanent
-# public HTTP path a new origin ID, then update the distribution attachment.
+# Only legacy HTTPS deployments need a new origin ID. Public HTTP deployments
+# keep their existing attached origin, avoiding an extra account quota slot.
 resource "aws_cloudfront_vpc_origin" "api_ecs_http" {
+  count = var.legacy_api_https_listener ? 1 : 0
+
   vpc_origin_endpoint_config {
     name                   = "${var.deployment_name}-api-ecs-http"
     arn                    = var.api_ecs_alb_arn
@@ -211,7 +213,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     domain_name = var.api_ecs_alb_domain
 
     vpc_origin_config {
-      vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs_http.id
+      vpc_origin_id            = var.legacy_api_https_listener ? aws_cloudfront_vpc_origin.api_ecs_http[0].id : aws_cloudfront_vpc_origin.api_ecs.id
       origin_keepalive_timeout = 60
       origin_read_timeout      = var.cloudfront_origin_read_timeout
     }

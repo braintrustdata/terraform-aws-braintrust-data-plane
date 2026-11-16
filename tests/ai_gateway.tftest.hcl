@@ -88,7 +88,6 @@ run "create_and_enable_with_https_api" {
   command = plan
   variables {
     enable_ai_gateway                  = true
-    allow_legacy_public_https_listener = true
     braintrust_api_alb_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/test"
     braintrust_api_alb_custom_domain   = "api.internal.example.com"
   }

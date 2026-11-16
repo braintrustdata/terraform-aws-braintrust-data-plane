@@ -65,9 +65,8 @@ run "stage_private_access_without_cutting_over_cloudfront" {
   command = plan
 
   variables {
-    enable_private_dataplane  = false
-    prepare_private_dataplane = true
-    enable_loop_runtime       = true
+    enable_private_dataplane = false
+    enable_loop_runtime      = true
   }
 
   assert {
@@ -81,41 +80,41 @@ run "stage_private_access_without_cutting_over_cloudfront" {
   }
 }
 
-run "rejects_staging_without_customer_tls" {
+run "rejects_staging_with_only_certificate" {
   command = plan
 
   variables {
-    enable_private_dataplane           = false
-    prepare_private_dataplane          = true
-    braintrust_api_alb_custom_domain   = null
-    braintrust_api_alb_certificate_arn = null
+    enable_private_dataplane         = false
+    braintrust_api_alb_custom_domain = null
   }
 
-  expect_failures = [var.prepare_private_dataplane]
+  expect_failures = [var.braintrust_api_alb_custom_domain]
 }
 
-run "rejects_public_certificate_without_staging" {
+run "public_certificate_stages_private_access" {
   command = plan
 
   variables {
     enable_private_dataplane = false
   }
 
-  expect_failures = [var.allow_legacy_public_https_listener]
+  assert {
+    condition     = length(module.ingress) == 1 && module.api_ecs[0].alb_https_enabled
+    error_message = "The public endpoint must remain available while the customer HTTPS path is staged."
+  }
 }
 
 run "rejects_staging_with_reserved_service_security_group_key" {
   command = plan
 
   variables {
-    enable_private_dataplane  = false
-    prepare_private_dataplane = true
+    enable_private_dataplane = false
     braintrust_api_authorized_security_groups = {
       API = "sg-11111111111111111"
     }
   }
 
-  expect_failures = [var.prepare_private_dataplane]
+  expect_failures = [var.braintrust_api_authorized_security_groups]
 }
 
 run "rejects_retiring_legacy_listener_in_private_mode" {

@@ -558,10 +558,10 @@ module "gateway_ecs" {
   alb_security_group_id       = module.gateway_alb[0].gateway_alb_security_group_id
   gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
   gateway_url                 = module.gateway_alb[0].gateway_url
-  additional_target_group_arns = (var.enable_private_dataplane || var.prepare_private_dataplane) ? {
+  additional_target_group_arns = var.braintrust_api_alb_certificate_arn != null ? {
     "API" = module.api_ecs[0].private_gateway_target_group_arn
   } : {}
-  authorized_security_groups = (var.enable_private_dataplane || var.prepare_private_dataplane) ? {
+  authorized_security_groups = var.braintrust_api_alb_certificate_arn != null ? {
     "API" = module.api_ecs[0].alb_security_group_id
   } : {}
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
@@ -666,10 +666,10 @@ module "loop_runtime_ecs" {
   target_group_arn               = module.loop_runtime_alb[0].loop_runtime_target_group_arn
   alb_security_group_id          = module.loop_runtime_alb[0].loop_runtime_alb_security_group_id
   loop_runtime_http_listener_arn = module.loop_runtime_alb[0].loop_runtime_http_listener_arn
-  additional_target_group_arns = (var.enable_private_dataplane || var.prepare_private_dataplane) ? {
+  additional_target_group_arns = var.braintrust_api_alb_certificate_arn != null ? {
     "API" = module.api_ecs[0].private_loop_runtime_target_group_arn
   } : {}
-  authorized_security_groups = (var.enable_private_dataplane || var.prepare_private_dataplane) ? {
+  authorized_security_groups = var.braintrust_api_alb_certificate_arn != null ? {
     "API" = module.api_ecs[0].alb_security_group_id
   } : {}
 
@@ -846,7 +846,7 @@ module "api_ecs" {
   } : {}
 
   enable_private_dataplane     = var.enable_private_dataplane
-  prepare_private_dataplane    = var.prepare_private_dataplane
+  legacy_https_listener        = var.legacy_api_https_listener
   retire_legacy_https_listener = var.retire_legacy_api_https_listener
   enable_loop_runtime          = local.create_loop_runtime
   internal_authorized_security_groups = merge({
@@ -891,6 +891,7 @@ module "ingress" {
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api
+  legacy_api_https_listener           = var.legacy_api_https_listener
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
 

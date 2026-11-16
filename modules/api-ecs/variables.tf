@@ -4,9 +4,9 @@ variable "enable_private_dataplane" {
   default     = false
 }
 
-variable "prepare_private_dataplane" {
+variable "legacy_https_listener" {
   type        = bool
-  description = "Create a separate HTTPS customer listener while preserving the HTTP listener and public CloudFront route. Keep enabled through private cutover and rollback."
+  description = "Set only when upgrading an existing deployment whose original api_ecs_http listener is already HTTPS:443. New installations and HTTP:80 upgrades leave this false."
   default     = false
 }
 

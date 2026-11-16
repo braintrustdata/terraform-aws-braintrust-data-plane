@@ -37,8 +37,8 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_from_gateway" {
 
   security_group_id            = aws_security_group.alb.id
   referenced_security_group_id = each.value
-  from_port                    = var.enable_private_dataplane ? 8000 : (var.prepare_private_dataplane ? 80 : local.alb_listener_port)
-  to_port                      = var.enable_private_dataplane ? 8000 : (var.prepare_private_dataplane ? 80 : local.alb_listener_port)
+  from_port                    = var.enable_private_dataplane ? 8000 : (local.alb_https_enabled && !local.legacy_https_listener ? 80 : local.alb_listener_port)
+  to_port                      = var.enable_private_dataplane ? 8000 : (local.alb_https_enabled && !local.legacy_https_listener ? 80 : local.alb_listener_port)
   ip_protocol                  = "tcp"
   description                  = "Allow inbound traffic from ${each.key}."
   tags                         = local.common_tags
@@ -238,7 +238,7 @@ resource "aws_lb_listener" "api_ecs_public_http" {
 }
 
 resource "aws_lb_listener" "api_ecs_https" {
-  count = local.alb_https_enabled && var.prepare_private_dataplane ? 1 : 0
+  count = local.alb_https_enabled && local.customer_https_routes && !local.legacy_https_listener ? 1 : 0
 
   load_balancer_arn = aws_lb.api_ecs.arn
   port              = 443
