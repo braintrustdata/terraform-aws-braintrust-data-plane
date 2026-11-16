@@ -1,15 +1,5 @@
 #!/bin/bash
 
-# Help prevent immediate failure of apt commands if another background process is holding the lock
-echo 'DPkg::Lock::Timeout "60";' > /etc/apt/apt.conf.d/99apt-lock-retry
-# Add retries
-echo 'Acquire::Retries "5";' >> /etc/apt/apt.conf.d/99apt-lock-retry
-
-sed -i "s|http://[a-z0-9-]\+\.ec2\.ports\.ubuntu\.com|http://ports.ubuntu.com|g" /etc/apt/sources.list.d/ubuntu.sources
-rm -rf /var/lib/apt/lists/*
-apt-get clean
-apt-get update
-
 # Mount the local SSD if it exists
 apt-get install -y nvme-cli mdadm
 MOUNT_DIR="/mnt/tmp/brainstore"
@@ -189,14 +179,14 @@ if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bund
 fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
 %{ endif ~}
-# license_key_secret_version is baked into user_data so rotating the secret
+# license_key_secret_version is included in bootstrap metadata so rotating the secret
 # changes the launch template and triggers a rolling instance refresh.
 if ! BRAINSTORE_LICENSE_KEY=$(get_secret_value_with_retry "${license_key_secret_arn}" "${license_key_secret_version}"); then
   echo "Failed to retrieve BRAINSTORE_LICENSE_KEY from Secrets Manager. Exiting with failure."
   exit 1
 fi
 
-# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so the user-data is updated when the version changes to force a refresh)
+# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so the metadata stack and launch template change to force a refresh)
 if ! REDIS_URL=$(get_secret_value_with_retry "${redis_url_secret_arn}" "${redis_url_secret_version_id}"); then
   exit 1
 fi
@@ -233,8 +223,8 @@ ${env_key}=${env_value}
 EOF
 
 # ai_proxy_url_ssm_parameter is either a bare "<name>" or a version-pinned
-# "<name>:<version>" selector. When a version is pinned, it is baked into
-# user_data, so a value change (e.g. the API URL switching from HTTP to HTTPS)
+# "<name>:<version>" selector. When a version is pinned, it is included in
+# bootstrap metadata, so a value change (e.g. the API URL switching from HTTP to HTTPS)
 # bumps the version, changes the launch template, and triggers a rolling
 # instance refresh.
 BRAINSTORE_AI_PROXY_URL=""
@@ -257,7 +247,7 @@ else
 fi
 
 if [ -n "${internal_observability_api_key_secret_arn}" ]; then
-  # internal_observability_api_key_secret_version is baked into user_data so
+  # internal_observability_api_key_secret_version is included in bootstrap metadata so
   # rotating the secret changes the launch template and triggers a rolling
   # instance refresh.
   if ! DD_API_KEY=$(get_secret_value_with_retry "${internal_observability_api_key_secret_arn}" "${internal_observability_api_key_secret_version}"); then

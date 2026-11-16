@@ -6,13 +6,10 @@
 """Check rendered Brainstore memory metrics against the autoscaling consumer.
 
 Run after terraform init. Runs only mocked Terraform tests, never live AWS calls.
-Terraform cannot decompress base64gzip user data in a test assertion, so inspect
-its verbose JSON plans here instead. --test-output reuses saved JSON test output.
+Inspect CloudFormation Init bootstrap scripts in verbose JSON plans. --test-output reuses saved JSON test output.
 """
 
 import argparse
-import base64
-import gzip
 import json
 from pathlib import Path
 import subprocess
@@ -26,11 +23,11 @@ def check_plan(plan, run_name):
     }
     checked = 0
     for address, values in resources.items():
-        # Root plans defer user data until shared secrets and endpoints exist.
-        # Child-module plans supply known values so their templates are rendered.
-        if "aws_launch_template.brainstore" not in address or "user_data" not in values:
+        # Root plans can defer metadata until shared secrets/endpoints exist.
+        if "aws_cloudformation_stack.brainstore_init" not in address or "template_body" not in values:
             continue
-        script = gzip.decompress(base64.b64decode(values["user_data"])).decode()
+        metadata = json.loads(values["template_body"])["Resources"]["BrainstoreInit"]["Metadata"]
+        script = metadata["AWS::CloudFormation::Init"]["config"]["files"]["/opt/braintrust/bootstrap.sh"]["content"]
         config = json.loads(
             script.split("cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json\n", 1)[1]
             .split("\nEOF", 1)[0]
@@ -43,11 +40,11 @@ def check_plan(plan, run_name):
         assert ["InstanceId"] in config["aggregation_dimensions"], address
         assert [] in config["aggregation_dimensions"], address
 
-        if "aws_launch_template.brainstore_automation_writer" in address:
+        if address.endswith('aws_cloudformation_stack.brainstore_init["automation_writer"]'):
             assert config["append_dimensions"]["AutoScalingGroupName"] == "${aws:AutoScalingGroupName}", address
             policy_address = address.replace(
-                "aws_launch_template.brainstore_automation_writer",
-                "aws_autoscaling_policy.brainstore_automation_writer_memory_target",
+                'aws_cloudformation_stack.brainstore_init["automation_writer"]',
+                "aws_autoscaling_policy.brainstore_automation_writer_memory_target[0]",
             )
             tracking = resources[policy_address]["target_tracking_configuration"][0]
             metric = tracking["customized_metric_specification"][0]

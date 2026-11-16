@@ -20,7 +20,7 @@ variable "license_key_secret_arn" {
 
 variable "license_key_secret_version" {
   type        = string
-  description = "Version ID of the license key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
+  description = "Version ID of the license key secret. Included in bootstrap metadata so rotating the key changes the launch template and forces a rolling instance refresh."
 }
 
 variable "instance_count" {
@@ -103,7 +103,7 @@ variable "redis_url_secret_arn" {
 
 variable "redis_url_secret_version_id" {
   type        = string
-  description = "Secrets Manager version id for the Redis URL secret. Passed into user data so secret content changes force a launch-template update and instance refresh."
+  description = "Secrets Manager version id for the Redis URL secret. Included in bootstrap metadata so secret content changes force a launch-template update and instance refresh."
 }
 
 variable "extra_env_vars" {
@@ -162,7 +162,7 @@ variable "internal_observability_api_key_secret_arn" {
 
 variable "internal_observability_api_key_secret_version" {
   type        = string
-  description = "Version ID of the observability API key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
+  description = "Version ID of the observability API key secret. Included in bootstrap metadata so rotating the key changes the launch template and forces a rolling instance refresh."
   default     = ""
 }
 
@@ -197,7 +197,7 @@ variable "braintrust_api_url" {
 
 variable "ai_proxy_url_ssm_parameter" {
   type        = string
-  description = "Selector for the SSM parameter holding the URL Brainstore uses for BRAINSTORE_AI_PROXY_URL. Either a bare \"<name>\" or a version-pinned \"<name>:<version>\". When a version is pinned, it is baked into user_data so a URL change forces a rolling instance refresh."
+  description = "Selector for the SSM parameter holding the URL Brainstore uses for BRAINSTORE_AI_PROXY_URL. Either a bare \"<name>\" or a version-pinned \"<name>:<version>\". When a version is pinned, it is included in bootstrap metadata so a URL change forces a launch-template update and rolling instance refresh."
 }
 
 variable "brainstore_s3_bucket_arn" {
@@ -233,7 +233,7 @@ variable "custom_tags" {
 
 variable "custom_post_install_script" {
   type        = string
-  description = "Optional custom bash script to run at the end of the user-data script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file(\"$${path.module}/scripts/brainstore-post-install.sh\")"
+  description = "Optional custom bash script to run at the end of the instance bootstrap script for additional setup or configuration. Supports multi-line scripts. For complex scripts, it's recommended to store the script in a separate file and load it using file() or templatefile(). Example: file(\"$${path.module}/scripts/brainstore-post-install.sh\")"
   default     = ""
 }
 

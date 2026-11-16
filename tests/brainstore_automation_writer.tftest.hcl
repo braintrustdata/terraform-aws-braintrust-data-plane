@@ -59,7 +59,7 @@ run "automation_writer_loop_config_is_rendered" {
 
   assert {
     condition = (
-      aws_launch_template.brainstore_writer[0].user_data != aws_launch_template.brainstore_automation_writer[0].user_data &&
+      local.writer_init_script != local.automation_writer_init_script &&
       aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
       aws_autoscaling_group.brainstore_automation_writer[0].max_size == 2 &&
       aws_autoscaling_group.brainstore_automation_writer[0].desired_capacity == 1 &&
