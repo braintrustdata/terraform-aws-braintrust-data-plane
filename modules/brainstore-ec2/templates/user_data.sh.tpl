@@ -11,7 +11,7 @@ apt-get clean
 apt-get update
 
 # Mount the local SSD if it exists
-apt-get install -y nvme-cli mdadm
+apt-get install -y nvme-cli mdadm xfsprogs
 MOUNT_DIR="/mnt/tmp/brainstore"
 mkdir -p "$MOUNT_DIR"
 
@@ -28,16 +28,42 @@ else
 fi
 if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
-  blkid "$DEVICE" >/dev/null || mkfs.ext4 -F "$DEVICE"
-  mount "$DEVICE" "$MOUNT_DIR"
+  blkid "$DEVICE" >/dev/null || mkfs.xfs -f -d agcount=32 -l size=512m,version=2,su=256k -i size=512 "$DEVICE"
+  FS_TYPE=$(blkid -s TYPE -o value "$DEVICE")
+  MOUNT_OPTIONS="noatime,nodiratime,discard"
+  if [ "$FS_TYPE" = "xfs" ]; then
+    MOUNT_OPTIONS="$MOUNT_OPTIONS,logbufs=8,logbsize=256k,allocsize=64m"
+  fi
+  mount -o "$MOUNT_OPTIONS" "$DEVICE" "$MOUNT_DIR"
   chmod -R 0777 "$MOUNT_DIR"
   # Add to fstab using UUID rather than device name
   UUID=$(blkid -s UUID -o value "$DEVICE")
-  echo "UUID=$UUID $MOUNT_DIR ext4 defaults 0 2" >> /etc/fstab
+  echo "UUID=$UUID $MOUNT_DIR $FS_TYPE $MOUNT_OPTIONS 0 0" >> /etc/fstab
 else
   echo "No ephemeral device found. Exiting with failure."
   exit 1
 fi
+
+cat <<EOF > /etc/sysctl.d/99-brainstore.conf
+# Start background writeback early (128 MB) to keep the NVMe queue steadily fed
+vm.dirty_background_bytes=134217728
+
+# Hard throttle application writes if dirty cache hits 512 MB, preventing giant backlogs
+vm.dirty_bytes=536870912
+
+# Age out dirty pages faster (10 seconds instead of 30s) to keep memory turnover active
+vm.dirty_expire_centisecs=1000
+
+# Wake up background flush threads more frequently (every 2 seconds instead of 5s)
+vm.dirty_writeback_centisecs=200
+
+# Provide a larger watermark buffer (1 GB) for kswapd to prevent direct reclaim stalls
+vm.min_free_kbytes=1048576
+
+# Reduce directory/inode cache pressure slightly to keep active path lookups cached
+vm.vfs_cache_pressure=50
+EOF
+sysctl -p /etc/sysctl.d/99-brainstore.conf
 
 # Raise the file descriptor limit
 cat <<EOF > /etc/security/limits.d/brainstore.conf
