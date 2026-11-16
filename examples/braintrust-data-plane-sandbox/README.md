@@ -6,7 +6,7 @@ This is an example of a **sandbox** Braintrust data plane deployment for testing
 ## Prerequisites
 
 * AWS CLI configured with access to your target account
-* Terraform >= 1.10
+* Terraform >= 1.17
 * A **separate Braintrust Organization** for sandbox testing — [create one here](https://www.braintrust.dev/app/setup). Do not reuse your production Organization's license key, as it will affect production metrics and alerting.
 * Brainstore license key from the sandbox Organization (Braintrust UI > Settings > Data Plane)
 

@@ -53,3 +53,6 @@ braintrust-sandbox/*
 scripts/logs*
 scripts/.venv/
 .vscode/*
+
+# Parent of the upgrade test, written by scripts/prepare-upgrade-fixture
+/tests/fixtures/.upgrade-parent/

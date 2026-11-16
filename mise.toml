@@ -1,12 +1,13 @@
 [tools]
 tflint = "latest"
 pre-commit = "latest"
-terraform = "1.10"
-opentofu = "1.10"
+terraform = "1.17"
+opentofu = "1.13"
 uv = "latest"
 
 [tasks]
-lint = ["terraform fmt -recursive", "tflint --recursive"]
+# The upgrade fixture directory is dot-prefixed, so fmt and tflint skip it.
+lint = ["terraform fmt -recursive", "tflint --recursive", "uv run scripts/check-versions-tofu"]
 setup = ["pre-commit install", "tflint --init"]
 precommit = ["pre-commit run --all-files"]
 
@@ -15,12 +16,16 @@ description = "Run mocked Terraform plan smoke tests (no AWS credentials require
 run = """
 #!/usr/bin/env bash
 set -e
+# The upgrade test applies the parent from a local copy, so write it before init.
+# Set UPGRADE_BASE_REF to compare against another ref, for example latest-v7.
+uv run scripts/prepare-upgrade-fixture
 terraform init -backend=false -upgrade
 uv run scripts/check-loop-network-dependencies
 uv run scripts/check-brainstore-autoscaling
 uv run scripts/check-iam-ownership-tags
 uv run scripts/check-iam-ownership-tags --self-test
 terraform test
+uv run scripts/check-upgrade-plan
 """
 
 [tasks.validate]
@@ -49,6 +54,9 @@ EOF
 }
 
 echo "Validating module"
+# terraform init loads tests/, and the upgrade test points at the parent fixture,
+# so write it first. Without it a fresh checkout fails with "Unreadable module directory".
+uv run scripts/prepare-upgrade-fixture
 terraform init -upgrade
 terraform validate
 

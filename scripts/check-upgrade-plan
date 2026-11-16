@@ -1,0 +1,153 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
+"""Fail when the upgrade test plans an action that the allow-list doesn't name.
+
+tests/v7_upgrade.tftest.hcl applies the parent and plans this working tree
+against the same state. Test assertions can't inspect planned actions, so this
+script runs the test with `terraform test -json -verbose`, reads each emitted
+plan, and checks every resource and output change.
+
+Only no-op passes by default, and a moved resource is a no-op with a
+previous_address. Anything else needs an entry in the allow-list, including
+updates and data source reads. An entry that matches no change is an error too,
+so the list can't drift from the PR. The allow-list is a JSON file:
+
+    {"allowed_changes": [
+      {"address": "module\\.services\\[0\\]\\.aws_x\\.y", "actions": ["create"], "reason": "..."}
+    ]}
+
+`address` is a regular expression that must match the whole plan address. Output
+changes use the address `output.<name>`.
+
+Run scripts/prepare-upgrade-fixture and `terraform init` first.
+"""
+
+import argparse
+from collections import Counter
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+UPGRADE_TEST = "tests/v7_upgrade.tftest.hcl"
+DEFAULT_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json"
+
+
+def read_test_output(plan_json_path: str | None) -> tuple[list[dict], int | None, str]:
+    """Return the JSON messages, terraform's exit code and its stderr.
+
+    The exit code is None when reading saved output, which has none to check.
+    """
+    if plan_json_path:
+        stdout, returncode, stderr = Path(plan_json_path).read_text(), None, ""
+    else:
+        result = subprocess.run(
+            ["terraform", "test", f"-filter={UPGRADE_TEST}", "-json", "-verbose"],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        stdout, returncode, stderr = result.stdout, result.returncode, result.stderr
+    messages = [json.loads(line) for line in stdout.splitlines() if line.startswith("{")]
+    return messages, returncode, stderr
+
+
+def expected_plan_runs() -> set[str]:
+    """Names of the test runs that plan the working tree. Each must emit a plan."""
+    names = re.findall(r'^run\s+"(plans_[^"]+)"', (REPOSITORY_ROOT / UPGRADE_TEST).read_text(), re.MULTILINE)
+    if not names:
+        sys.exit(f'{UPGRADE_TEST} has no run named "plans_*" to check.')
+    return set(names)
+
+
+def load_allow_list(path: Path) -> list[dict]:
+    entries = json.loads(path.read_text())["allowed_changes"]
+    for entry in entries:
+        missing = {"address", "actions", "reason"} - entry.keys()
+        if missing:
+            sys.exit(f"{path}: entry {entry.get('address')!r} lacks {sorted(missing)}")
+    return entries
+
+
+def planned_changes(plan: dict) -> list[tuple[str, tuple[str, ...], str | None]]:
+    """Return (address, actions, previous_address) for resources, then outputs."""
+    changes = [
+        (change["address"], tuple(change["change"]["actions"]), change.get("previous_address"))
+        for change in plan.get("resource_changes", [])
+    ]
+    changes += [
+        (f"output.{name}", tuple(change["actions"]), None)
+        for name, change in plan.get("output_changes", {}).items()
+    ]
+    return changes
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--allow-list", type=Path, default=DEFAULT_ALLOW_LIST)
+    parser.add_argument(
+        "--plan-json",
+        help="Read saved `terraform test -json -verbose` output instead of running the test.",
+    )
+    arguments = parser.parse_args()
+
+    allow_list = load_allow_list(arguments.allow_list)
+    messages, returncode, stderr = read_test_output(arguments.plan_json)
+
+    errors = []
+    # In JSON mode terraform reports its errors as messages on stdout.
+    reported = "\n".join(m["@message"] for m in messages if m.get("@level") == "error")
+    if returncode:
+        errors.append(
+            f"terraform test exited with {returncode}.\n"
+            f"stderr: {stderr.strip() or '(empty)'}\nerrors reported: {reported or '(none)'}"
+        )
+    summaries = [message["test_summary"] for message in messages if message["type"] == "test_summary"]
+    if len(summaries) != 1 or summaries[0]["status"] != "pass" or summaries[0]["failed"] + summaries[0]["errored"] > 0:
+        errors.append(f"Expected exactly one passing test summary, found {summaries}.")
+    plans = [(m["@testrun"], m["test_plan"]) for m in messages if m["type"] == "test_plan"]
+    if not plans:
+        errors.append(
+            "The test emitted no plan. Run `uv run scripts/prepare-upgrade-fixture` and "
+            "`terraform init -backend=false` first."
+        )
+    for missing in sorted(expected_plan_runs() - {run_name for run_name, _ in plans}):
+        errors.append(f"The run {missing} emitted no plan, so its changes were not checked.")
+
+    used_entries = Counter()
+    for run_name, plan in plans:
+        counts = Counter()
+        for address, actions, previous_address in planned_changes(plan):
+            if actions == ("no-op",):
+                counts["moved" if previous_address else "no-op"] += 1
+                continue
+            matches = [
+                index
+                for index, entry in enumerate(allow_list)
+                if re.fullmatch(entry["address"], address) and tuple(entry["actions"]) == actions
+            ]
+            if not matches:
+                errors.append(f"{run_name}: unexpected {'+'.join(actions)} on {address}")
+                continue
+            used_entries.update(matches)
+            counts["allowed"] += 1
+        summary = ", ".join(f"{count} {kind}" for kind, count in sorted(counts.items()))
+        print(f"{run_name}: {summary}")
+
+    for index, entry in enumerate(allow_list):
+        if not used_entries[index]:
+            errors.append(f"The allow-list entry for {entry['address']} matched no change.")
+
+    if errors:
+        print("\n".join(["", *errors]), file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
