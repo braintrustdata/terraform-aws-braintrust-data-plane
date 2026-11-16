@@ -402,16 +402,7 @@ The `deployment_name` variable is also used to prefix the names of the resources
 
 #### IAM ownership tag
 
-Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. We use it to tell module-managed IAM apart from IAM that you create yourself. On an existing stack it's an in-place tag update, and nothing is replaced.
-
-A few things to know before you apply it.
-
-- The principal that runs `terraform apply` needs `iam:TagRole`, `iam:TagPolicy` and `iam:TagInstanceProfile`, plus `iam:ListRoleTags`, `iam:ListPolicyTags` and `iam:ListInstanceProfileTags` to read the tags back.
-- The key is reserved. The module rejects `BraintrustIAMOwner` in `custom_tags` at plan time, in any letter case, and you shouldn't set it in the AWS provider's `default_tags` either.
-- Check any SCP or permissions boundary with a tag-key condition, and any organization tag policy that defines this key.
-- Apply it on its own, without a Braintrust service version bump in the same apply. That keeps the plan to tag changes only, which is easy to review.
-
-Managed BYOC customers should also update the deploy role policy before upgrading to v8. See the [BYOC README](managed-byoc/README.md#updating-the-management-role-policy-on-an-existing-role).
+Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. We use it to tell module-managed IAM apart from IAM that you create yourself. The module reserves the key, so it rejects `BraintrustIAMOwner` in `custom_tags` at plan time in any letter case. Don't change the tag by hand. See [Migrating to v7](MIGRATION_V7.md#v730-iam-ownership-tag) for the upgrade steps.
 
 ### CloudFront Access Logging
 
