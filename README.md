@@ -144,10 +144,6 @@ Expect apply impact on **every** stack, not only replication-group users. Ship t
 - Support bastion replacement when `enable_braintrust_support_shell_access` is enabled (`user_data_replace_on_change = true`)
 - Existing replication-group stacks that predate at-rest encryption / customer-managed KMS: Redis **replace** (`at_rest_encryption_enabled` and `kms_key_id` are ForceNew). Plan for Redis downtime. A downgrade can replace Redis again.
 
-### Removed BTQL audit log inputs
-
-Data plane v2.23.0 no longer uses `BTQL_AUDIT_LOGS_STRICT_ORG_IDS` or `BTQL_AUDIT_LOGS_BEST_EFFORT_ORG_IDS`. Remove `btql_audit_logs_strict_org_ids` and `btql_audit_logs_best_effort_org_ids` from module calls before upgrading; this module no longer accepts these inputs.
-
 ### S3 Block Public Access ownership
 
 By default, the module manages all four Block Public Access settings on its
