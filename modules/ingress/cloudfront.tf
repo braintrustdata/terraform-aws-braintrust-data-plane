@@ -25,13 +25,11 @@ locals {
 
   cloudfront_function_origin_id = var.enable_ecs_api ? local.cloudfront_ApiEcsOrigin : local.cloudfront_ProxyOrigin
 
-  # When CloudFront reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http even
-  # though the viewer connected to CloudFront over HTTPS. Add CloudFront-Forwarded-Proto so
-  # the API can recover the viewer protocol. Do not use this policy for HTTPS origins because
-  # forwarding the viewer Host header can make CloudFront validate the ALB certificate against
-  # the viewer hostname; the ALB already sets X-Forwarded-Proto=https in that case.
+  # CloudFront reaches the ECS ALB over HTTP, so the ALB sets X-Forwarded-Proto=http even
+  # when the viewer used HTTPS. Forward CloudFront-Forwarded-Proto so the API can
+  # recover the viewer protocol.
   # The policy resource is always created; this flag only controls whether it is attached.
-  cloudfront_use_ecs_forwarded_proto_policy = var.enable_ecs_api && !var.api_ecs_alb_https_enabled
+  cloudfront_use_ecs_forwarded_proto_policy = var.enable_ecs_api
   cloudfront_ecs_origin_request_policy_id = (
     local.cloudfront_use_ecs_forwarded_proto_policy
     ? aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto.id
@@ -82,7 +80,37 @@ resource "aws_cloudfront_vpc_origin" "api_ecs" {
     arn                    = var.api_ecs_alb_arn
     http_port              = 80
     https_port             = 443
-    origin_protocol_policy = var.api_ecs_alb_https_enabled ? "https-only" : "http-only"
+    origin_protocol_policy = "http-only"
+
+    origin_ssl_protocols {
+      items    = ["TLSv1.2"]
+      quantity = 1
+    }
+  }
+
+  timeouts {
+    create = "30m"
+    update = "30m"
+  }
+
+  tags = local.common_tags
+
+  # Existing deployments may have this origin attached with HTTPS. Keep its
+  # live protocol unchanged while the distribution moves to api_ecs_http.
+  lifecycle {
+    ignore_changes = [vpc_origin_endpoint_config[0].origin_protocol_policy]
+  }
+}
+
+# CloudFront rejects protocol updates to an origin in use. Give the permanent
+# public HTTP path a new origin ID, then update the distribution attachment.
+resource "aws_cloudfront_vpc_origin" "api_ecs_http" {
+  vpc_origin_endpoint_config {
+    name                   = "${var.deployment_name}-api-ecs-http"
+    arn                    = var.api_ecs_alb_arn
+    http_port              = 80
+    https_port             = 443
+    origin_protocol_policy = "http-only"
 
     origin_ssl_protocols {
       items    = ["TLSv1.2"]
@@ -183,7 +211,7 @@ resource "aws_cloudfront_distribution" "dataplane" {
     domain_name = var.api_ecs_alb_domain
 
     vpc_origin_config {
-      vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs.id
+      vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs_http.id
       origin_keepalive_timeout = 60
       origin_read_timeout      = var.cloudfront_origin_read_timeout
     }
@@ -297,4 +325,8 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   tags = local.common_tags
+
+  # The legacy origin may still be attached at the start of an upgrade. On
+  # private-mode cutover, delete the distribution before either VPC origin.
+  depends_on = [aws_cloudfront_vpc_origin.api_ecs]
 }

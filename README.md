@@ -17,6 +17,7 @@ Each major version may include required configuration changes or a multi-step ap
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
 - [Migrating from v6 to v7](MIGRATION_V7.md)
+- [Migrating from v7 to v8](MIGRATION_V8.md)
 
 ### Brainstore and API upgrades
 

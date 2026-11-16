@@ -35,10 +35,11 @@ module "braintrust-data-plane" {
 
   # Private mode requires ECS and the private AI gateway.
   # A mode transition causes an outage. See this example README.
-  enable_private_dataplane = true
-  enable_ecs_api           = true
-  create_ai_gateway        = true
-  enable_ai_gateway        = true
+  enable_private_dataplane  = true
+  prepare_private_dataplane = true
+  enable_ecs_api            = true
+  create_ai_gateway         = true
+  enable_ai_gateway         = true
 
   # Optional private access to both the API and AI Gateway. Defaults to false. When disabled the Quarantine workloads will not be able to access the API or AI Gateway.
   # create_quarantine_api_access = false

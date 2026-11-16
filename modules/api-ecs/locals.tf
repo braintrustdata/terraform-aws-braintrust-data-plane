@@ -20,13 +20,16 @@ locals {
   using_brainstore_writer      = var.brainstore_writer_hostname != null && var.brainstore_writer_hostname != ""
   using_brainstore_fast_reader = var.brainstore_fast_reader_hostname != null && var.brainstore_fast_reader_hostname != ""
 
-  # When both an ACM certificate and a custom domain are provided, the ALB serves
-  # HTTPS on 443 and the API URL points at the custom domain so the certificate
-  # validates. Otherwise the ALB serves plain HTTP on 80 via its AWS DNS name.
-  alb_https_enabled = var.alb_certificate_arn != null && var.alb_custom_domain != null
-  alb_listener_port = local.alb_https_enabled ? 443 : 80
-  api_ecs_url       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
-  internal_api_url  = var.enable_private_dataplane ? "http://${aws_lb.api_ecs.dns_name}:8000" : null
+  # A customer certificate and hostname enable HTTPS:443. The preparation flag
+  # keeps the legacy listener on HTTP:80; legacy HTTPS deployments retain their
+  # listener on 443 and gain a separate HTTP:80 listener for CloudFront.
+  alb_https_enabled      = var.alb_certificate_arn != null && var.alb_custom_domain != null
+  customer_https_routes  = var.enable_private_dataplane || var.prepare_private_dataplane
+  legacy_https_listener  = local.alb_https_enabled && !var.prepare_private_dataplane && !var.retire_legacy_https_listener
+  separate_http_listener = local.legacy_https_listener || var.retire_legacy_https_listener
+  alb_listener_port      = local.alb_https_enabled ? 443 : 80
+  api_ecs_url            = local.legacy_https_listener ? "https://${var.alb_custom_domain}" : "http://${aws_lb.api_ecs.dns_name}"
+  internal_api_url       = var.enable_private_dataplane ? "http://${aws_lb.api_ecs.dns_name}:8000" : null
   # Root module resolves override / PrivateLink / Function URL / CloudFront /v1/proxy.
   # Null or blank omits the variable; api-ts uses the caller proxy URL, which is
   # http://localhost:8000/v1/proxy in this ECS configuration. A quarantine Lambda

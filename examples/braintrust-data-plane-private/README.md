@@ -34,11 +34,14 @@ The [standard example](../braintrust-data-plane/README.md#configure-terraform) d
 The example sets all required mode flags:
 
 ```hcl
-enable_private_dataplane = true
-enable_ecs_api           = true
-create_ai_gateway        = true
-enable_ai_gateway        = true
+enable_private_dataplane  = true
+prepare_private_dataplane = true
+enable_ecs_api            = true
+create_ai_gateway         = true
+enable_ai_gateway         = true
 ```
+
+For an existing public deployment, follow [the v8 migration guide](../../MIGRATION_V8.md) to test this HTTPS path while CloudFront remains live. Keep `prepare_private_dataplane = true` when cutting over and when returning to public mode. An existing private deployment whose original listener is already HTTPS:443 must follow the legacy-listener sequence in that guide instead of turning on the preparation flag immediately.
 
 ## Deploy and configure DNS
 
@@ -97,6 +100,7 @@ The client access network is separate from the module-managed quarantine Private
 
 The API certificate must reside in ACM in the deployment account and region and cover `braintrust_api_alb_custom_domain`.
 ACM-issued, imported, and private CA certificates work if every client trusts the issuer.
+CloudFront uses a separate HTTP:80 listener and does not connect to this customer HTTPS listener. A private CA certificate is therefore suitable for direct clients that trust it; it is not suitable for an HTTPS CloudFront origin.
 
 ACM public certificates require domain ownership validation.
 For DNS validation, the validation CNAME must resolve through public DNS.

@@ -49,13 +49,18 @@ output "alb_dns_name" {
 }
 
 output "alb_https_enabled" {
-  description = "Whether the API ECS ALB serves HTTPS (a certificate and custom domain were provided)."
+  description = "Whether a customer HTTPS listener is configured on the API ALB."
   value       = local.alb_https_enabled
 }
 
 output "alb_domain" {
-  description = "Domain to use as the API ECS ALB origin: the custom domain when serving HTTPS (so the certificate validates), otherwise the ALB's AWS-assigned DNS name."
-  value       = local.alb_https_enabled ? var.alb_custom_domain : aws_lb.api_ecs.dns_name
+  description = "AWS-assigned API ALB DNS name for the CloudFront HTTP origin."
+  value       = aws_lb.api_ecs.dns_name
+  depends_on = [
+    aws_lb_listener_rule.alb_path_routes,
+    aws_lb_listener_rule.alb_public_http_path_routes,
+    aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront,
+  ]
 }
 
 output "target_group_arn" {
@@ -88,11 +93,27 @@ output "task_security_group_id" {
 }
 
 output "http_url" {
-  description = "URL for the API ECS ALB (https://<custom domain> when a certificate and custom domain are provided, otherwise http://<ALB DNS name>)."
+  description = "Internal API ECS URL for services. The separate-listener layout uses HTTP on the ALB DNS name."
   value       = local.api_ecs_url
   depends_on = [
     aws_lb_listener.api_ecs_http,
+    aws_lb_listener.api_ecs_public_http,
     aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway,
+  ]
+}
+
+output "customer_https_url" {
+  description = "Customer HTTPS URL after the listener and direct Gateway and Loop routes are ready. Null without a customer certificate."
+  value       = local.alb_https_enabled ? "https://${var.alb_custom_domain}" : null
+  depends_on = [
+    aws_lb_listener.api_ecs_http,
+    aws_lb_listener.api_ecs_https,
+    aws_lb_listener_rule.alb_path_routes,
+    aws_lb_listener_rule.alb_customer_https_path_routes,
+    aws_lb_listener_rule.private_gateway,
+    aws_lb_listener_rule.private_loop_runtime,
+    aws_security_group_rule.alb_ingress_http_from_authorized_security_groups,
+    aws_security_group_rule.alb_ingress_http_from_authorized_cidr_blocks,
   ]
 }
 

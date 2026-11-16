@@ -4,6 +4,24 @@ variable "enable_private_dataplane" {
   default     = false
 }
 
+variable "prepare_private_dataplane" {
+  type        = bool
+  description = "Create a separate HTTPS customer listener while preserving the HTTP listener and public CloudFront route. Keep enabled through private cutover and rollback."
+  default     = false
+}
+
+variable "retire_legacy_https_listener" {
+  type        = bool
+  description = "Remove the legacy listener after an HTTPS deployment has moved back to public HTTP. Detach and drain any external NLB target first."
+  default     = false
+}
+
+variable "authorized_security_group_ports" {
+  type        = map(number)
+  description = "Port overrides for service security groups in authorized_security_groups."
+  default     = {}
+}
+
 variable "enable_loop_runtime" {
   type        = bool
   description = "Create direct Loop routes on the customer listener in private mode."
@@ -778,13 +796,13 @@ variable "authorized_cidr_blocks" {
 
 variable "alb_certificate_arn" {
   type        = string
-  description = "Optional ACM certificate ARN for the API ECS ALB. When set together with alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80."
+  description = "Optional ACM certificate ARN for the customer HTTPS listener on the API ECS ALB."
   default     = null
 }
 
 variable "alb_custom_domain" {
   type        = string
-  description = "Optional custom domain served by the API ECS ALB. Must be covered by alb_certificate_arn. When set together with alb_certificate_arn, the ALB serves HTTPS on port 443 and the API URL becomes https://<alb_custom_domain>."
+  description = "Optional customer hostname for HTTPS port 443. Must be covered by alb_certificate_arn."
   default     = null
 
   validation {

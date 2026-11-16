@@ -11,8 +11,8 @@ resource "aws_security_group_rule" "alb_ingress_http_from_authorized_security_gr
   for_each = var.authorized_security_groups
 
   type                     = "ingress"
-  from_port                = local.alb_listener_port
-  to_port                  = local.alb_listener_port
+  from_port                = lookup(var.authorized_security_group_ports, each.key, local.alb_listener_port)
+  to_port                  = lookup(var.authorized_security_group_ports, each.key, local.alb_listener_port)
   protocol                 = "tcp"
   source_security_group_id = each.value
   description              = "Allow inbound traffic from ${each.key}."
@@ -37,8 +37,8 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_from_gateway" {
 
   security_group_id            = aws_security_group.alb.id
   referenced_security_group_id = each.value
-  from_port                    = var.enable_private_dataplane ? 8000 : local.alb_listener_port
-  to_port                      = var.enable_private_dataplane ? 8000 : local.alb_listener_port
+  from_port                    = var.enable_private_dataplane ? 8000 : (var.prepare_private_dataplane ? 80 : local.alb_listener_port)
+  to_port                      = var.enable_private_dataplane ? 8000 : (var.prepare_private_dataplane ? 80 : local.alb_listener_port)
   ip_protocol                  = "tcp"
   description                  = "Allow inbound traffic from ${each.key}."
   tags                         = local.common_tags
@@ -55,8 +55,8 @@ resource "aws_vpc_security_group_ingress_rule" "alb_ingress_http_from_cloudfront
 
   security_group_id = aws_security_group.alb.id
   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing[0].id
-  from_port         = local.alb_listener_port
-  to_port           = local.alb_listener_port
+  from_port         = 80
+  to_port           = 80
   ip_protocol       = "tcp"
   description       = "Allow inbound traffic from CloudFront VPC origins."
 }
@@ -202,13 +202,15 @@ resource "aws_lb_target_group" "braintrust_api_background" {
 }
 
 resource "aws_lb_listener" "api_ecs_http" {
-  load_balancer_arn = aws_lb.api_ecs.arn
-  port              = local.alb_listener_port
-  protocol          = local.alb_https_enabled ? "HTTPS" : "HTTP"
+  count = var.retire_legacy_https_listener ? 0 : 1
 
-  # This must be a policy that support TLS 1.2 since Cloudfront does not support TLS 1.3 for origins yet.
-  ssl_policy      = local.alb_https_enabled ? "ELBSecurityPolicy-TLS13-1-2-2021-06" : null
-  certificate_arn = local.alb_https_enabled ? var.alb_certificate_arn : null
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = local.legacy_https_listener ? 443 : 80
+  protocol          = local.legacy_https_listener ? "HTTPS" : "HTTP"
+
+  # Keep TLS 1.2 available to customer clients that cannot negotiate TLS 1.3.
+  ssl_policy      = local.legacy_https_listener ? "ELBSecurityPolicy-TLS13-1-2-2021-06" : null
+  certificate_arn = local.legacy_https_listener ? var.alb_certificate_arn : null
 
   # Unmatched traffic goes to braintrust-api. Ingest/background traffic is routed
   # by the path rules in alb-path-routes.tf.
@@ -216,6 +218,40 @@ resource "aws_lb_listener" "api_ecs_http" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.braintrust_api.arn
   }
+}
+
+# Public CloudFront traffic always uses HTTP:80. For an existing HTTPS listener,
+# this second listener can be created without modifying or deleting port 443.
+resource "aws_lb_listener" "api_ecs_public_http" {
+  count = local.separate_http_listener ? 1 : 0
+
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.braintrust_api.arn
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener" "api_ecs_https" {
+  count = local.alb_https_enabled && var.prepare_private_dataplane ? 1 : 0
+
+  load_balancer_arn = aws_lb.api_ecs.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.alb_certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.braintrust_api.arn
+  }
+
+  tags = local.common_tags
 }
 
 resource "aws_lb_listener" "api_ecs_internal" {
@@ -249,7 +285,7 @@ resource "aws_ssm_parameter" "api_url" {
 }
 
 resource "aws_lb_target_group" "private_gateway" {
-  count = var.enable_private_dataplane ? 1 : 0
+  count = local.customer_https_routes ? 1 : 0
 
   name        = "${var.deployment_name}-api-gateway"
   port        = 8080
@@ -274,7 +310,7 @@ resource "aws_lb_target_group" "private_gateway" {
 }
 
 resource "aws_lb_target_group" "private_loop_runtime" {
-  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+  count = local.customer_https_routes && var.enable_loop_runtime ? 1 : 0
 
   name        = "${var.deployment_name}-api-loop"
   port        = 4001

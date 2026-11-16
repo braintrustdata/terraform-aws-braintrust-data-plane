@@ -131,7 +131,7 @@ run "private_api_listener_and_admission" {
   }
 
   assert {
-    condition     = aws_lb.api_ecs.internal && aws_lb_listener.api_ecs_http.port == 443 && aws_lb_listener.api_ecs_http.protocol == "HTTPS"
+    condition     = aws_lb.api_ecs.internal && aws_lb_listener.api_ecs_http[0].port == 443 && aws_lb_listener.api_ecs_http[0].protocol == "HTTPS"
     error_message = "The customer listener must serve HTTPS on an internal ALB."
   }
 
@@ -208,11 +208,94 @@ run "public_api_has_no_private_callback_listener" {
   }
 }
 
+run "staged_private_listener_preserves_public_http" {
+  command = plan
+
+  module {
+    source = "./modules/api-ecs"
+  }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    prepare_private_dataplane         = true
+    alb_custom_domain                 = "api.example.internal"
+    alb_certificate_arn               = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+    authorized_cidr_blocks            = ["10.20.0.0/16"]
+    enable_loop_runtime               = true
+  }
+
+  assert {
+    condition = (
+      aws_lb_listener.api_ecs_http[0].port == 80 && aws_lb_listener.api_ecs_http[0].protocol == "HTTP" &&
+      length(aws_lb_listener.api_ecs_public_http) == 0 &&
+      aws_lb_listener.api_ecs_https[0].port == 443 && aws_lb_listener.api_ecs_https[0].protocol == "HTTPS" &&
+      length(aws_lb_listener.api_ecs_internal) == 0 &&
+      aws_vpc_security_group_ingress_rule.alb_ingress_http_from_cloudfront[0].from_port == 80 &&
+      alltrue([for rule in aws_security_group_rule.alb_ingress_http_from_authorized_cidr_blocks : rule.from_port == 443])
+    )
+    error_message = "Staging must add HTTPS 443 without changing the public HTTP 80 listener or opening the private callback listener."
+  }
+
+  assert {
+    condition = (
+      length(aws_lb_target_group.private_gateway) == 1 &&
+      length(aws_lb_target_group.private_loop_runtime) == 1 &&
+      length(aws_lb_listener_rule.private_gateway) == 1 &&
+      length(aws_lb_listener_rule.private_loop_runtime) == 1 &&
+      length(aws_lb_listener_rule.alb_customer_https_path_routes) == length(local.alb_customer_path_listener_rules) &&
+      contains(keys(aws_lb_listener_rule.alb_path_routes), "ANY:/v1/proxy/responses") &&
+      length(aws_lb_listener_rule.alb_internal_path_routes) == 0
+    )
+    error_message = "Staged HTTPS must exercise direct Gateway and Loop routes while HTTP retains its public API routes."
+  }
+}
+
+run "legacy_https_listener_gains_independent_public_http" {
+  command = plan
+
+  module {
+    source = "./modules/api-ecs"
+  }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    alb_custom_domain                 = "api.example.internal"
+    alb_certificate_arn               = "arn:aws:acm:us-east-1:123456789012:certificate/11111111-1111-1111-1111-111111111111"
+  }
+
+  assert {
+    condition = (
+      aws_lb_listener.api_ecs_http[0].port == 443 && aws_lb_listener.api_ecs_http[0].protocol == "HTTPS" &&
+      aws_lb_listener.api_ecs_public_http[0].port == 80 && aws_lb_listener.api_ecs_public_http[0].protocol == "HTTP" &&
+      length(aws_lb_listener_rule.alb_public_http_path_routes) == length(local.alb_public_http_path_listener_rules)
+    )
+    error_message = "An existing HTTPS listener must remain in place while a complete HTTP 80 path is added for CloudFront."
+  }
+}
+
+run "retiring_legacy_https_keeps_http_listener" {
+  command = plan
+
+  module {
+    source = "./modules/api-ecs"
+  }
+
+  variables {
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    retire_legacy_https_listener      = true
+  }
+
+  assert {
+    condition     = length(aws_lb_listener.api_ecs_http) == 0 && aws_lb_listener.api_ecs_public_http[0].port == 80 && aws_lb_listener.api_ecs_public_http[0].protocol == "HTTP" && length(aws_lb_listener_rule.alb_public_http_path_routes) > 0
+    error_message = "Retiring the legacy HTTPS listener must leave a complete HTTP 80 request path."
+  }
+}
+
 run "private_ssm_url_uses_aws_dns_without_customer_dns" {
   command = apply
 
   plan_options {
-    target = [aws_ssm_parameter.api_url, aws_lb_listener.api_ecs_http, aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway]
+    target = [aws_ssm_parameter.api_url, aws_lb_listener.api_ecs_http, aws_lb_listener.api_ecs_public_http, aws_vpc_security_group_ingress_rule.alb_ingress_from_gateway]
   }
 
   module {

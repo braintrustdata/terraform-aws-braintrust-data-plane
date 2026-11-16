@@ -61,6 +61,86 @@ run "private_dataplane_preserves_services_without_cloudfront" {
   }
 }
 
+run "stage_private_access_without_cutting_over_cloudfront" {
+  command = plan
+
+  variables {
+    enable_private_dataplane  = false
+    prepare_private_dataplane = true
+    enable_loop_runtime       = true
+  }
+
+  assert {
+    condition     = length(module.ingress) == 1 && length(module.api_ecs) == 1 && length(module.gateway_ecs) == 1 && length(module.loop_runtime_ecs) == 1 && local.create_ingress
+    error_message = "Staging must retain the public distribution and provision the API, Gateway, and Loop services."
+  }
+
+  assert {
+    condition     = !local.create_private_quarantine_api_access
+    error_message = "Staging must not turn on private-mode quarantine access."
+  }
+}
+
+run "rejects_staging_without_customer_tls" {
+  command = plan
+
+  variables {
+    enable_private_dataplane           = false
+    prepare_private_dataplane          = true
+    braintrust_api_alb_custom_domain   = null
+    braintrust_api_alb_certificate_arn = null
+  }
+
+  expect_failures = [var.prepare_private_dataplane]
+}
+
+run "rejects_public_certificate_without_staging" {
+  command = plan
+
+  variables {
+    enable_private_dataplane = false
+  }
+
+  expect_failures = [var.allow_legacy_public_https_listener]
+}
+
+run "rejects_staging_with_reserved_service_security_group_key" {
+  command = plan
+
+  variables {
+    enable_private_dataplane  = false
+    prepare_private_dataplane = true
+    braintrust_api_authorized_security_groups = {
+      API = "sg-11111111111111111"
+    }
+  }
+
+  expect_failures = [var.prepare_private_dataplane]
+}
+
+run "rejects_retiring_legacy_listener_in_private_mode" {
+  command = plan
+
+  variables {
+    retire_legacy_api_https_listener = true
+  }
+
+  expect_failures = [var.retire_legacy_api_https_listener]
+}
+
+run "rejects_retiring_original_http_listener" {
+  command = plan
+
+  variables {
+    enable_private_dataplane           = false
+    braintrust_api_alb_custom_domain   = null
+    braintrust_api_alb_certificate_arn = null
+    retire_legacy_api_https_listener   = true
+  }
+
+  expect_failures = [var.retire_legacy_api_https_listener]
+}
+
 run "private_dataplane_with_loop" {
   command = plan
 
