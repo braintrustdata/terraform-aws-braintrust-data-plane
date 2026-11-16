@@ -90,9 +90,10 @@ module "braintrust-data-plane" {
   brainstore_license_key                 = var.brainstore_license_key
   existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
 
+  brainstore_legacy_filesystem_tuning = true
+
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
-  # brainstore_legacy_filesystem_tuning = true
   brainstore_instance_count = 2
   brainstore_instance_type  = "m8gd.4xlarge"
 

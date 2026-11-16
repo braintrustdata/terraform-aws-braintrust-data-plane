@@ -83,13 +83,14 @@ module "braintrust-data-plane" {
   brainstore_license_key                 = var.brainstore_license_key
   existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
 
+  brainstore_legacy_filesystem_tuning = true
+
   # Single reader and writer, downsized for sandbox.
   # IMPORTANT: Brainstore requires instance types with local NVMe storage.
   # Compatibility for Graviton5 instances is being validated.
   # Graviton NVMe families include: m8gd, c8gd, r8gd, m7gd, c7gd, r7gd.
   # Other compatible families include: c5d, m5d, i3, i4i.
   # Families without local storage (e.g., m8g, c8g, r8g, t3, m5, c5) will fail.
-  # brainstore_legacy_filesystem_tuning = true
   brainstore_instance_count = 1
   brainstore_instance_type  = "m8gd.xlarge"
 
