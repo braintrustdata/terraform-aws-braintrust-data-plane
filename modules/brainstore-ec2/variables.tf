@@ -3,6 +3,12 @@ variable "deployment_name" {
   description = "The name of the deployment"
 }
 
+variable "legacy_filesystem_tuning" {
+  type        = bool
+  description = "Preserve legacy ext4 formatting, mount options, and kernel settings. Set to false to enable XFS and tuned writeback and reclaim settings for Brainstore EC2 nodes."
+  default     = true
+}
+
 variable "instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."

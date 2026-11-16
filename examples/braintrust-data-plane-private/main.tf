@@ -122,6 +122,7 @@ module "braintrust-data-plane" {
 
   # The number of Brainstore reader instances to provision
   # Recommended Graviton instance type with 16GB of memory
+  # brainstore_legacy_filesystem_tuning = true
   brainstore_instance_count = 2
   brainstore_instance_type  = "c8gd.4xlarge"
 

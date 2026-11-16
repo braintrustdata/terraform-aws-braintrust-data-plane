@@ -11,7 +11,7 @@ apt-get clean
 apt-get update
 
 # Mount the local SSD if it exists
-apt-get install -y nvme-cli mdadm${deployment_name == "observability-prod" ? " xfsprogs" : ""}
+apt-get install -y nvme-cli mdadm${!legacy_filesystem_tuning ? " xfsprogs" : ""}
 MOUNT_DIR="/mnt/tmp/brainstore"
 mkdir -p "$MOUNT_DIR"
 
@@ -28,7 +28,7 @@ else
 fi
 if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
-%{ if deployment_name == "observability-prod" ~}
+%{ if !legacy_filesystem_tuning ~}
   blkid "$DEVICE" >/dev/null || mkfs.xfs -f -d agcount=32 -l size=512m,version=2,su=256k -i size=512 "$DEVICE"
   FS_TYPE=$(blkid -s TYPE -o value "$DEVICE")
   MOUNT_OPTIONS="noatime,nodiratime,discard"
@@ -43,7 +43,7 @@ if [ -n "$DEVICE" ]; then
   chmod -R 0777 "$MOUNT_DIR"
   # Add to fstab using UUID rather than device name
   UUID=$(blkid -s UUID -o value "$DEVICE")
-%{ if deployment_name == "observability-prod" ~}
+%{ if !legacy_filesystem_tuning ~}
   echo "UUID=$UUID $MOUNT_DIR $FS_TYPE $MOUNT_OPTIONS 0 0" >> /etc/fstab
 %{ else ~}
   echo "UUID=$UUID $MOUNT_DIR ext4 defaults 0 2" >> /etc/fstab
@@ -53,7 +53,7 @@ else
   exit 1
 fi
 
-%{ if deployment_name == "observability-prod" ~}
+%{ if !legacy_filesystem_tuning ~}
 cat <<EOF > /etc/sysctl.d/99-brainstore.conf
 # Start background writeback early (128 MB) to keep the NVMe queue steadily fed
 vm.dirty_background_bytes=134217728

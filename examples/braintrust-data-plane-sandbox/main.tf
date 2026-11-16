@@ -89,6 +89,7 @@ module "braintrust-data-plane" {
   # Graviton NVMe families include: m8gd, c8gd, r8gd, m7gd, c7gd, r7gd.
   # Other compatible families include: c5d, m5d, i3, i4i.
   # Families without local storage (e.g., m8g, c8g, r8g, t3, m5, c5) will fail.
+  # brainstore_legacy_filesystem_tuning = true
   brainstore_instance_count = 1
   brainstore_instance_type  = "m8gd.xlarge"
 
