@@ -27,7 +27,7 @@ module "braintrust-data-plane" {
   # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
   allowed_org_ids = ""
 
-  # To test private API access before cutover, see MIGRATION_V8.md in the module.
+  # To test private API access before cutover, see docs/api-alb-listener-transitions.md in the module.
   # braintrust_api_alb_custom_domain   = "api.example.internal"
   # braintrust_api_alb_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
   # Retire a legacy HTTPS listener only after its external NLB targets drain.

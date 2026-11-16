@@ -28,7 +28,7 @@ module "braintrust-data-plane" {
   # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
   allowed_org_ids = ""
 
-  # Optional staged private API path; see MIGRATION_V8.md before use.
+  # Optional staged private API path; see docs/api-alb-listener-transitions.md before use.
   # braintrust_api_alb_custom_domain   = "api.example.internal"
   # braintrust_api_alb_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
   # retire_legacy_api_https_listener   = true # Only after a legacy HTTPS listener's external targets drain.

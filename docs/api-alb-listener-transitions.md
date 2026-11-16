@@ -1,8 +1,8 @@
-# Migrating from v7 to v8: API ALB listeners and CloudFront origin
+# API ALB listener and CloudFront origin transitions
 
-This migration separates the public CloudFront path from customer HTTPS access to the internal API ALB. Upgrade one major version at a time. Review the plan against the listener that is already in your state before applying.
+This module change separates the public CloudFront path from customer HTTPS access to the internal API ALB. Review the plan against the listener that is already in your state before applying.
 
-## What changes on upgrade
+## What changes when adopting this layout
 
 - The existing `module.api_ecs[0].aws_lb_listener.api_ecs_http` state address moves to `module.api_ecs[0].aws_lb_listener.api_ecs_http[0]`. Terraform's `moved` block preserves the live listener.
 - Existing public HTTP deployments keep their attached, HTTP-only API VPC origin. A deployment with a legacy HTTPS listener uses a new HTTP-only API VPC origin on ALB port 80; its old HTTPS origin remains in state, unattached, because CloudFront cannot update an origin while a distribution uses it. The distribution keeps its public hostname during this upgrade.
@@ -13,11 +13,11 @@ New private installations and existing public HTTP deployments use the same layo
 
 Legacy HTTPS deployments need one additional VPC origin, which counts against the account's [CloudFront VPC origin quota](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html). Check available quota before upgrading accounts with many such distributions.
 
-The listener state move, and for legacy HTTPS deployments the CloudFront origin attachment, make a downgrade to v7 unsafe: v7 can plan listener replacement or an in-use VPC origin update. Do not roll back the module code after applying v8 without a reviewed migration plan.
+The listener state move, and for legacy HTTPS deployments the CloudFront origin attachment, make a rollback to the previous listener layout unsafe: older code can plan listener replacement or an in-use VPC origin update. Review any rollback plan before applying it.
 
 ## Stage private access from a public HTTP deployment
 
-First upgrade to v8 with your current public configuration and inspect the plan. The existing listener should remain HTTP:80. Then set:
+First update the module with your current public configuration and inspect the plan. The existing listener should remain HTTP:80. Then set:
 
 ```hcl
 enable_private_dataplane           = false
@@ -44,7 +44,7 @@ After public access is healthy, remove the ALB hostname and certificate to delet
 
 ## Existing private or public HTTPS listener
 
-For a v7 deployment whose existing `api_ecs_http` listener is HTTPS:443, set `legacy_api_https_listener = true` and **keep the ALB hostname and certificate during the v8 upgrade**. This is the only migration-specific listener setting. The upgrade leaves it at 443 and adds HTTP:80 independently. Public mode uses the new HTTP path; private mode keeps it closed by security group. Confirm the original listener protocol in Terraform state before setting this flag. Leave it false for existing public HTTP deployments and new installations.
+For a deployment whose existing `api_ecs_http` listener is HTTPS:443, set `legacy_api_https_listener = true` and **keep the ALB hostname and certificate during the module update**. This is the only migration-specific listener setting. The update leaves it at 443 and adds HTTP:80 independently. Public mode uses the new HTTP path; private mode keeps it closed by security group. Confirm the original listener protocol in Terraform state before setting this flag. Leave it false for existing public HTTP deployments and new installations.
 
 If that deployment is already public, the same `legacy_api_https_listener = true` setting preserves its existing 443 listener while CloudFront moves to HTTP:80. Do not use this flag for an original HTTP:80 listener: that would request the unsafe in-place protocol change.
 

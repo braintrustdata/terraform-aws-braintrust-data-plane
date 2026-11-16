@@ -40,7 +40,7 @@ create_ai_gateway        = true
 enable_ai_gateway        = true
 ```
 
-For an existing public deployment, follow [the v8 migration guide](../../MIGRATION_V8.md) if you want to test the HTTPS path while CloudFront remains live. Supply the ALB hostname and certificate while staying in public mode. An existing deployment whose original listener is already HTTPS:443 must set `legacy_api_https_listener = true` during upgrade and follow the legacy-listener sequence in that guide.
+For an existing public deployment, follow [the API ALB listener transition guide](../../docs/api-alb-listener-transitions.md) if you want to test the HTTPS path while CloudFront remains live. Supply the ALB hostname and certificate while staying in public mode. An existing deployment whose original listener is already HTTPS:443 must set `legacy_api_https_listener = true` during the module update and follow the legacy-listener sequence in that guide.
 
 ## Deploy and configure DNS
 
