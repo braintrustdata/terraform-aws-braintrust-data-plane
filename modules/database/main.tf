@@ -4,8 +4,6 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
-  # Marks IAM this module owns. Merged last so callers can't override it.
-  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
 
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
   rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
@@ -35,7 +33,7 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids = local.rds_security_group_ids
 
   monitoring_interval = 60
-  monitoring_role_arn = aws_iam_role.db_monitoring.arn
+  monitoring_role_arn = var.monitoring_role_arn
 
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.deployment_name}-main-final-snapshot-${random_id.snapshot_suffix.hex}"
@@ -125,36 +123,6 @@ resource "aws_db_subnet_group" "main" {
   }
 
   tags = local.common_tags
-}
-
-resource "aws_iam_role" "db_monitoring" {
-  name = "${var.deployment_name}-db-monitoring"
-
-  assume_role_policy = jsonencode({ # nosemgrep
-    Version = "2008-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "monitoring.rds.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  permissions_boundary = var.permissions_boundary_arn
-
-  lifecycle {
-    ignore_changes = [name]
-  }
-
-  tags = local.iam_tags
-}
-
-resource "aws_iam_role_policy_attachment" "db_monitoring" {
-  role       = aws_iam_role.db_monitoring.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }
 
 data "aws_secretsmanager_random_password" "database_secret" {

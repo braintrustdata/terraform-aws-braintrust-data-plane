@@ -12,6 +12,10 @@ directory and `modules/` must set `tags` with `local.iam_tags`, and each module
 that does so must define `iam_tags` as the module's common tags plus
 `BraintrustIAMOwner = "braintrust"`, merged last so callers can't override it.
 
+modules/iam also has `iam_tags_deployment_name_wins`, for resources that came
+from modules where the deployment name tag overrides a caller's. It must be
+defined the same way from `common_tags_deployment_name_wins`.
+
 It never runs Terraform and never calls AWS.
 """
 
@@ -26,10 +30,22 @@ IAM_RESOURCE_HEADER = re.compile(
 )
 # The tags expression is either `local.iam_tags` or a merge() that ends with it, so no
 # caller tag is merged after the owner tag.
-IAM_TAGS_ARGUMENT = re.compile(r"\s*(local\.iam_tags|merge\(.*,\s*local\.iam_tags\s*,?\s*\))\s*", re.DOTALL)
-IAM_TAGS_DEFINITION = re.compile(
-    r'\biam_tags\s*=\s*merge\(\s*local\.common_tags\s*,\s*\{\s*BraintrustIAMOwner\s*=\s*"braintrust"\s*\}\s*\)'
+IAM_TAGS_ARGUMENT = re.compile(
+    r"\s*(local\.iam_tags(?:_deployment_name_wins)?|merge\(.*,\s*local\.iam_tags(?:_deployment_name_wins)?\s*,?\s*\))\s*",
+    re.DOTALL,
 )
+IAM_TAGS_USED = re.compile(r"local\.(iam_tags(?:_deployment_name_wins)?)\b")
+# Each owner-tag local, and the common tags it extends.
+IAM_TAGS_BASES = {
+    "iam_tags": "common_tags",
+    "iam_tags_deployment_name_wins": "common_tags_deployment_name_wins",
+}
+IAM_TAGS_DEFINITIONS = {
+    name: re.compile(
+        rf'\b{name}\s*=\s*merge\(\s*local\.{base}\s*,\s*\{{\s*BraintrustIAMOwner\s*=\s*"braintrust"\s*\}}\s*\)'
+    )
+    for name, base in IAM_TAGS_BASES.items()
+}
 HEREDOC_START = re.compile(r"<<-?([A-Za-z_]\w*)[ \t]*\n")
 
 
@@ -169,6 +185,7 @@ def check(root):
     errors = []
     checked = 0
     resources_by_directory = {}
+    needed_by_directory = {}
     definitions_by_directory = {}
 
     for path in terraform_files(root):
@@ -177,14 +194,18 @@ def check(root):
         directory = path.parent
         # Strings stay in view here so the definition's `"braintrust"` value can match,
         # but a commented-out definition doesn't count.
-        if IAM_TAGS_DEFINITION.search(mask_strings_and_comments(text, keep_strings=True)):
-            definitions_by_directory[directory] = True
+        visible = mask_strings_and_comments(text, keep_strings=True)
+        for name, definition in IAM_TAGS_DEFINITIONS.items():
+            if definition.search(visible):
+                definitions_by_directory.setdefault(directory, set()).add(name)
         for header in IAM_RESOURCE_HEADER.finditer(text):
             resource_type, name = header.groups()
             block_end = closing_brace(masked, header.end() - 1)
             tags = top_level_tags_expression(masked[header.start() : block_end + 1])
             checked += 1
             resources_by_directory.setdefault(directory, []).append(name)
+            used = IAM_TAGS_USED.findall(tags or "")
+            needed_by_directory.setdefault(directory, set()).add(used[-1] if used else "iam_tags")
             line = text.count("\n", 0, header.start()) + 1
             location = f"{path.relative_to(root)}:{line} {resource_type}.{name}"
             if tags is None:
@@ -192,11 +213,11 @@ def check(root):
             elif not IAM_TAGS_ARGUMENT.fullmatch(tags):
                 errors.append(f"{location} must set tags with local.iam_tags, or a merge() that ends with it.")
 
-    for directory in resources_by_directory:
-        if directory not in definitions_by_directory:
+    for directory, needed in needed_by_directory.items():
+        for name in sorted(needed - definitions_by_directory.get(directory, set())):
             errors.append(
                 f"{directory.relative_to(root)} creates IAM but doesn't define "
-                'iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" }).'
+                f'{name} = merge(local.{IAM_TAGS_BASES[name]}, {{ BraintrustIAMOwner = "braintrust" }}).'
             )
 
     if checked == 0:
@@ -235,6 +256,16 @@ def self_test():
             '# iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })\n'
             'resource "aws_iam_role" "r" {\n  tags = local.iam_tags\n}\n',
             ["doesn't define iam_tags"],
+        ),
+        "deployment name variant": (
+            IAM_TAGS_LOCAL
+            + 'locals {\n  iam_tags_deployment_name_wins = merge(local.common_tags_deployment_name_wins, { BraintrustIAMOwner = "braintrust" })\n}\n'
+            + 'resource "aws_iam_role" "r" {\n  tags = local.iam_tags_deployment_name_wins\n}\n',
+            [],
+        ),
+        "deployment name variant without its definition": (
+            IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" {\n  tags = local.iam_tags_deployment_name_wins\n}\n',
+            ["doesn't define iam_tags_deployment_name_wins"],
         ),
         "owner tag merged first": (
             'locals {\n  iam_tags = merge({ BraintrustIAMOwner = "braintrust" }, local.common_tags)\n}\n'

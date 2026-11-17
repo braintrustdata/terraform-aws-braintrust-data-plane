@@ -8,10 +8,14 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt gateway resources that support customer-managed KMS keys."
 }
 
-variable "permissions_boundary_arn" {
+variable "task_execution_role_arn" {
   type        = string
-  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
-  default     = null
+  description = "ARN of the role ECS uses to start the gateway tasks. Pass the gateway_task_execution_role_arn output of modules/iam so a task definition waits for the role's policies."
+}
+
+variable "task_role_arn" {
+  type        = string
+  description = "ARN of the role the gateway tasks run as. Pass the gateway_task_role_arn output of modules/iam."
 }
 
 variable "vpc_id" {
@@ -52,12 +56,6 @@ variable "container_image" {
 variable "custom_ca_bundle_secret_arn" {
   type        = string
   description = "Optional ARN of the secret containing a PEM-encoded custom CA bundle."
-  default     = null
-}
-
-variable "custom_ca_bundle_kms_key_arn" {
-  type        = string
-  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret."
   default     = null
 }
 
@@ -290,12 +288,6 @@ variable "brainstore_license_key_secret_version" {
   default     = ""
 }
 
-variable "brainstore_license_key_kms_key_arn" {
-  type        = string
-  description = "Customer-managed KMS key ARN for the existing license secret."
-  default     = null
-}
-
 variable "cpu_architecture" {
   type        = string
   description = "CPU architecture for the gateway task definition."
@@ -311,34 +303,6 @@ variable "enable_execute_command" {
   type        = bool
   description = "Enable ECS Exec on the gateway service."
   default     = false
-}
-
-variable "bedrock_assume_role_arns" {
-  type        = list(string)
-  description = <<-EOT
-    Optional allowlist of IAM role ARNs that the gateway task role may assume for Bedrock AssumeRole auth (sts:AssumeRole with ExternalId bt:*).
-    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
-    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted.
-  EOT
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for arn in var.bedrock_assume_role_arns :
-      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
-    ])
-    error_message = "bedrock_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
-  }
-}
-variable "diagnostics_transcript_log_group_name" {
-  description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null preserves existing logging and permissions; session enablement flags remain independent."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
-    error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
-  }
 }
 
 variable "additional_target_group_arns" {

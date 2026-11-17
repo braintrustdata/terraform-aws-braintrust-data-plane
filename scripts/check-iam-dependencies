@@ -1,0 +1,161 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
+"""Check the readiness edges between modules/iam and the modules that use its roles.
+
+Each role ARN output waits only for its own role's policies, and its consumer
+reads that output. A shared edge would form a cycle: the database reads the
+monitoring role ARN, and the Brainstore waiter policy waits on the Brainstore
+fleets, which read the database port. Mocked plans can't see these edges, so
+this reads the dependency graph.
+
+Run after terraform init, or pass a saved `terraform graph -type=plan` DOT file.
+This reads the dependency graph only; it never plans or applies AWS resources.
+"""
+
+import argparse
+from collections import defaultdict, deque
+from pathlib import Path
+import re
+import subprocess
+
+# Output -> the only policy nodes that output may wait for. This deliberately
+# repeats the depends_on lists in modules/iam/outputs.tf, so that editing one
+# without the other fails here.
+OUTPUT_POLICIES = {
+    "db_monitoring_role_arn": ["aws_iam_role_policy_attachment.db_monitoring"],
+    "brainstore_deployment_waiter_role_arn": ["aws_iam_role_policy.brainstore_deployment_waiter"],
+    "api_ecs_task_execution_role_arn": [
+        "aws_iam_role_policy_attachment.api_ecs_task_execution_default",
+        "aws_iam_role_policy.api_ecs_task_execution_secrets",
+    ],
+    "gateway_task_execution_role_arn": [
+        "aws_iam_role_policy_attachment.gateway_task_execution_default",
+        "aws_iam_role_policy.gateway_task_execution_custom_ca_bundle_secret",
+        "aws_iam_role_policy.gateway_task_execution_secrets",
+        "aws_iam_role_policy.gateway_task_execution_redis_secret",
+    ],
+    "gateway_task_role_arn": [
+        "aws_iam_role_policy.gateway_task_customer_assume_role",
+        "aws_iam_role_policy.gateway_task_diagnostics_transcripts",
+        "aws_iam_role_policy.gateway_task_diagnostics_execute_command",
+    ],
+}
+
+# Consumer -> the policies it must still wait for, as it did before the move.
+CONSUMER_POLICIES = {
+    "module.database.aws_db_instance.main": ["aws_iam_role_policy_attachment.db_monitoring"],
+    "module.brainstore_deployment.aws_lambda_function.waiter": ["aws_iam_role_policy.brainstore_deployment_waiter"],
+    "module.api_ecs.aws_ecs_task_definition.braintrust_api": ["aws_iam_role_policy.api_ecs_task_execution_secrets"],
+    "module.api_ecs.aws_ecs_task_definition.braintrust_api_ingest": ["aws_iam_role_policy.api_ecs_task_execution_secrets"],
+    "module.api_ecs.aws_ecs_task_definition.braintrust_api_background": ["aws_iam_role_policy.api_ecs_task_execution_secrets"],
+    "module.api_ecs.aws_ecs_service.braintrust_api": ["aws_iam_role_policy.api_ecs_task_execution_secrets"],
+    "module.api_ecs.aws_ecs_service.braintrust_api_ingest": ["aws_iam_role_policy.api_ecs_task_execution_secrets"],
+    "module.api_ecs.aws_ecs_service.braintrust_api_background": ["aws_iam_role_policy.api_ecs_task_execution_secrets"],
+    "module.gateway_ecs.aws_ecs_task_definition.gateway": [
+        "aws_iam_role_policy.gateway_task_execution_secrets",
+        "aws_iam_role_policy.gateway_task_execution_redis_secret",
+        "aws_iam_role_policy.gateway_task_customer_assume_role",
+    ],
+    "module.gateway_ecs.aws_ecs_service.gateway": ["aws_iam_role_policy.gateway_task_execution_secrets"],
+}
+
+
+def dependency_path(graph, start, target):
+    pending = deque([(start, [start])])
+    visited = {start}
+    while pending:
+        node, path = pending.popleft()
+        if node == target:
+            return path
+        for dependency in graph[node]:
+            if dependency not in visited:
+                visited.add(dependency)
+                pending.append((dependency, path + [dependency]))
+    return None
+
+
+def check_graph(dot):
+    graph = defaultdict(list)
+    for source, target in re.findall(r'"([^"\n]+)" -> "([^"\n]+)"', dot):
+        graph[source].append(target)
+    nodes = set(graph) | {dependency for dependencies in graph.values() for dependency in dependencies}
+
+    def node(suffix):
+        matches = [name for name in nodes if name.endswith(suffix + " (expand)")]
+        if len(matches) != 1:
+            raise ValueError(f"Expected one graph node for {suffix}, found {len(matches)}")
+        return matches[0]
+
+    policy_nodes = {
+        name for name in nodes
+        if re.search(r"module\.iam\.aws_iam_role_policy(_attachment)?\.", name) and name.endswith("(expand)")
+    }
+    errors = []
+
+    for output, policies in OUTPUT_POLICIES.items():
+        output_node = node(f"module.iam.output.{output}")
+        allowed = {node(f"module.iam.{policy}") for policy in policies}
+        direct_policies = {name for name in graph[output_node] if name in policy_nodes}
+        if direct_policies != allowed:
+            errors.append(
+                f"{output} must wait for exactly its own policies.\n"
+                f"  expected: {sorted(allowed)}\n  found:    {sorted(direct_policies)}"
+            )
+
+    for consumer, policies in CONSUMER_POLICIES.items():
+        for policy in policies:
+            if not dependency_path(graph, node(consumer), node(f"module.iam.{policy}")):
+                errors.append(f"{consumer} must wait for {policy}.")
+
+    # The database reads the monitoring ARN and the Brainstore fleets read the
+    # database port, so it must not wait on a policy that depends on the fleets.
+    database = node("module.database.aws_db_instance.main")
+    monitoring_attachment = node("module.iam.aws_iam_role_policy_attachment.db_monitoring")
+    for policy in sorted(policy_nodes - {monitoring_attachment}):
+        path = dependency_path(graph, database, policy)
+        if path:
+            errors.append("The database must wait for no policy but its monitoring attachment:\n  " + "\n  -> ".join(path))
+
+    # The Brainstore fleets read the database port, so a policy that waits for
+    # them would make the monitoring role wait for them too. Only the waiter
+    # policy may, and it gets the ASG names and log group through their own
+    # inputs rather than created_resources.
+    waiter_policy = node("module.iam.aws_iam_role_policy.brainstore_deployment_waiter")
+    fleets = sorted(name for name in nodes if re.fullmatch(r".*module\.brainstore\.aws_autoscaling_group\.\w+ \(expand\)", name))
+    log_group = node("module.brainstore_deployment.aws_cloudwatch_log_group.waiter")
+    # The rollout gate covers only the reader and fast-reader fleets.
+    for gated in [node("module.brainstore.aws_autoscaling_group.brainstore"), node("module.brainstore.aws_autoscaling_group.brainstore_fast_reader")]:
+        if not dependency_path(graph, waiter_policy, gated):
+            errors.append(f"The waiter policy must wait for {gated}.")
+    if not dependency_path(graph, waiter_policy, log_group):
+        errors.append(f"The waiter policy must wait for {log_group}.")
+    for target in [*fleets, log_group]:
+        for policy in sorted(policy_nodes - {waiter_policy}):
+            path = dependency_path(graph, policy, target)
+            if path:
+                errors.append("Only the waiter policy may wait for the Brainstore fleets or the waiter's log group:\n  " + "\n  -> ".join(path))
+
+    if errors:
+        raise ValueError("\n\n".join(errors))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--graph-file", type=Path, help="Read an existing Terraform DOT graph instead of invoking Terraform.")
+    parser.add_argument("--directory", type=Path, default=Path(__file__).resolve().parent.parent)
+    args = parser.parse_args()
+    dot = args.graph_file.read_text() if args.graph_file else subprocess.check_output(
+        ["terraform", "graph", "-type=plan"], cwd=args.directory, text=True
+    )
+    try:
+        check_graph(dot)
+    except ValueError as error:
+        parser.exit(1, f"{error}\n")
+    print("IAM dependencies pass. Each role output waits only for its own policies.")
+
+
+if __name__ == "__main__":
+    main()

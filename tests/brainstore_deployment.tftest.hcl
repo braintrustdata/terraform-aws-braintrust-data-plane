@@ -1,11 +1,5 @@
 mock_provider "aws" {
   source = "./tests/mocks/aws"
-  mock_data "aws_partition" {
-    defaults = { partition = "aws" }
-  }
-  mock_resource "aws_iam_role" {
-    defaults = { arn = "arn:aws:iam::123456789012:role/bt-test-brainstore-deployment" }
-  }
   mock_resource "aws_lambda_invocation" {
     defaults = {
       result = "{\"status\":\"complete\"}"
@@ -19,6 +13,7 @@ mock_provider "http" {
 variables {
   deployment_name = "bt-test"
   version_tag     = "test-api-version"
+  waiter_role_arn = "arn:aws:iam::123456789012:role/bt-test-brainstore-deployment"
   fleets = [{
     role                    = "reader"
     asg_name                = "bt-test-brainstore-123"
@@ -61,10 +56,6 @@ run "complete_rollout" {
   assert {
     condition     = aws_lambda_function.waiter.timeout == 900 && aws_lambda_function.waiter.timeout - 60 == jsondecode(aws_lambda_invocation.rollout.input).wait_seconds
     error_message = "Each invocation must reserve 60 seconds of the 900-second Lambda limit for final AWS reads and reporting."
-  }
-  assert {
-    condition     = jsondecode(aws_iam_role_policy.waiter.policy).Statement[1].Resource[0] == "arn:aws:autoscaling:us-east-1:123456789012:autoScalingGroup:*:autoScalingGroupName/bt-test-brainstore-123" && jsondecode(aws_iam_role_policy.waiter.policy).Statement[1].Condition.StringEquals["autoscaling:ResourceTag/BraintrustDeploymentName"] == "bt-test"
-    error_message = "Refresh permissions must be scoped to this deployment's named and tagged ASGs."
   }
   assert {
     condition     = length(aws_lambda_function.waiter.vpc_config) == 0 && aws_lambda_function.waiter.tags.BraintrustDeploymentName == "bt-test"

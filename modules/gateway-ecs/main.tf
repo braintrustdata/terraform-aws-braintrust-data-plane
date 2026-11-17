@@ -2,8 +2,6 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
-  # Marks IAM this module owns. Merged last so callers can't override it.
-  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
 
   nofile_ulimits = [{
     name      = "nofile"
@@ -205,231 +203,14 @@ locals {
 
 data "aws_region" "current" {}
 
-data "aws_iam_policy_document" "ecs_task_assume_role" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_cloudwatch_log_group" "service" {
-  name              = "/ecs/${var.deployment_name}/gateway"
-  retention_in_days = var.log_retention_days
-  kms_key_id        = var.kms_key_arn
-
-  tags = merge({
-    Name = "${var.deployment_name}-gateway-logs"
-  }, local.common_tags)
-}
-
-resource "aws_security_group" "task" {
-  name        = "${var.deployment_name}-gateway-task"
-  description = "Security group for gateway ECS tasks"
-  vpc_id      = var.vpc_id
-  tags = merge({
-    Name = "${var.deployment_name}-gateway-task"
-  }, local.common_tags)
-}
-
-resource "aws_security_group_rule" "task_ingress_from_alb" {
-  type                     = "ingress"
-  from_port                = local.container_port
-  to_port                  = local.container_port
-  protocol                 = "tcp"
-  source_security_group_id = var.alb_security_group_id
-  description              = "Allow inbound traffic from gateway ALB to gateway tasks"
-  security_group_id        = aws_security_group.task.id
-}
-
-resource "aws_vpc_security_group_ingress_rule" "task_ingress_from_authorized_security_groups" {
-  for_each = var.authorized_security_groups
-
-  security_group_id            = aws_security_group.task.id
-  referenced_security_group_id = each.value
-  from_port                    = local.container_port
-  to_port                      = local.container_port
-  ip_protocol                  = "tcp"
-  description                  = "Allow inbound traffic from ${each.key}."
-  tags                         = local.common_tags
-}
-
-resource "aws_security_group_rule" "task_egress_all" {
-  type              = "egress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "Allow all outbound traffic from gateway ECS tasks"
-  security_group_id = aws_security_group.task.id
-}
-
-resource "aws_vpc_security_group_ingress_rule" "cache_allow_ingress_from_gateway_tasks" {
-  from_port                    = var.redis_port
-  to_port                      = var.redis_port
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.task.id
-  description                  = "Allow inbound traffic from gateway tasks."
-
-  security_group_id = var.redis_security_group_id
-  tags              = local.common_tags
-}
-
-resource "aws_iam_role" "task_execution" {
-  name                 = "${var.deployment_name}-gateway-task-exec"
-  assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
-  permissions_boundary = var.permissions_boundary_arn
-  tags = merge({
-    Name = "${var.deployment_name}-gateway-task-exec"
-  }, local.iam_tags)
-}
-
-resource "aws_iam_role_policy_attachment" "task_execution_default" {
-  role       = aws_iam_role.task_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_iam_role_policy" "task_execution_custom_ca_bundle_secret" {
-  count = var.custom_ca_bundle_secret_arn == null ? 0 : 1
-
-  name = "${var.deployment_name}-gateway-task-exec-custom-ca"
-  role = aws_iam_role.task_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = concat(
-      [
-        {
-          Effect = "Allow"
-          Action = [
-            "secretsmanager:GetSecretValue",
-          ]
-          Resource = var.custom_ca_bundle_secret_arn
-        }
-      ],
-      var.custom_ca_bundle_kms_key_arn == null ? [] : [
-        {
-          Effect = "Allow"
-          Action = [
-            "kms:Decrypt",
-          ]
-          Resource = var.custom_ca_bundle_kms_key_arn
-          Condition = {
-            StringEquals = {
-              "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
-            }
-          }
-        }
-      ],
-    )
-  })
-}
-
-resource "aws_iam_role_policy" "task_execution_secrets" {
-  name = "${var.deployment_name}-gateway-task-exec-secrets"
-  role = aws_iam_role.task_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue",
-        ]
-        Resource = compact([
-          local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
-          var.brainstore_license_key_secret_arn,
-        ])
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt",
-        ]
-        Resource = concat([var.kms_key_arn], var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn])
-        Condition = {
-          StringEquals = {
-            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
-          }
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "task_execution_redis_secret" {
-  name = "${var.deployment_name}-gateway-task-exec-redis-secret"
-  role = aws_iam_role.task_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue",
-        ]
-        Resource = var.redis_url_secret_arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt",
-        ]
-        Resource = var.kms_key_arn
-        Condition = {
-          StringEquals = {
-            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
-          }
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role" "task" {
-  name                 = "${var.deployment_name}-gateway-task"
-  assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
-  permissions_boundary = var.permissions_boundary_arn
-  tags = merge({
-    Name = "${var.deployment_name}-gateway-task"
-  }, local.iam_tags)
-}
-
-resource "aws_iam_role_policy" "customer_assume_role" {
-  name = "${var.deployment_name}-gateway-customer-assume-role"
-  role = aws_iam_role.task.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "AssumeRoleInCustomerAccount"
-        Effect   = "Allow"
-        Action   = "sts:AssumeRole"
-        Resource = length(var.bedrock_assume_role_arns) > 0 ? var.bedrock_assume_role_arns : ["*"]
-        Condition = {
-          StringLike = {
-            "sts:ExternalId" = "bt:*"
-          }
-        }
-      }
-    ]
-  })
-}
-
 resource "aws_ecs_task_definition" "gateway" {
   family                   = "${var.deployment_name}-gateway"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = tostring(var.cpu)
   memory                   = tostring(var.memory)
-  execution_role_arn       = aws_iam_role.task_execution.arn
-  task_role_arn            = aws_iam_role.task.arn
+  execution_role_arn       = var.task_execution_role_arn
+  task_role_arn            = var.task_role_arn
 
   runtime_platform {
     operating_system_family = "LINUX"
@@ -437,9 +218,6 @@ resource "aws_ecs_task_definition" "gateway" {
   }
 
   container_definitions = jsonencode(concat([local.gateway_container_definition], local.observability_sidecars))
-
-  # Ensure GetSecretValue is granted before a revision that references secrets is registered.
-  depends_on = [aws_iam_role_policy.task_execution_secrets]
 
   tags = merge({
     Name = "${var.deployment_name}-gateway"
@@ -504,7 +282,6 @@ resource "aws_ecs_service" "gateway" {
   depends_on = [
     terraform_data.gateway_http_listener,
     aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups,
-    aws_iam_role_policy.task_execution_secrets,
   ]
 
   lifecycle {

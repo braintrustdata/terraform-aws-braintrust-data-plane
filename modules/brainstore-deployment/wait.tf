@@ -34,3 +34,8 @@ output "completion_id" {
   description = "Completion dependency for this exact Brainstore deployment."
   value       = aws_lambda_invocation.retry.id
 }
+
+output "waiter_log_group_arn" {
+  description = "ARN of the waiter function's log group, for the waiter role's policy in modules/iam."
+  value       = aws_cloudwatch_log_group.waiter.arn
+}

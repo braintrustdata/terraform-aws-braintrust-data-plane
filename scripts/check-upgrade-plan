@@ -59,6 +59,7 @@ UPGRADE_TEST = "tests/v7_upgrade.tftest.hcl"
 # Each run that plans the working tree, and the changes it may make.
 ALLOW_LISTS = {
     "plans_working_tree_with_defaults": REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json",
+    "plans_working_tree_with_optional_iam_inputs": REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json",
     "plans_working_tree_from_release": REPOSITORY_ROOT / "tests" / "upgrade-allow-list.release.json",
 }
 # Types whose arn may repeat. Nothing grants permissions on the first four, so a
@@ -75,21 +76,48 @@ SHARED_ARN_TYPES = {
 
 @dataclass
 class Mutation:
-    """A wrong wiring the self-test applies, and the addresses that must reject it."""
+    """A wrong wiring the self-test applies, and the addresses that must reject it.
 
-    file: str
+    The self-test sets `attribute` to `wrong` inside the root module's
+    `module "<module>"` block, wherever `terraform fmt` aligns it.
+    """
+
+    module: str
+    attribute: str
     correct: str
     wrong: str
     rejected_addresses: list[str]
 
+    def pattern(self) -> re.Pattern:
+        return re.compile(rf"^(\s*{self.attribute}\s*=\s*){re.escape(self.correct)}\s*$", re.MULTILINE)
 
-# If one of these lines moves, update it here. The self-test fails rather than
+    def block(self, text: str) -> tuple[int, int] | None:
+        """Start and end offsets of the module block, or None if it's missing."""
+        start = re.search(rf'^module "{self.module}" {{$', text, re.MULTILINE)
+        if not start:
+            return None
+        end = re.compile(r"^}$", re.MULTILINE).search(text, start.end())
+        return (start.start(), end.end()) if end else None
+
+    def matches(self, text: str) -> int:
+        span = self.block(text)
+        return len(self.pattern().findall(text, *span)) if span else 0
+
+    def apply(self, text: str) -> str:
+        start, end = self.block(text)
+        mutated = self.pattern().sub(lambda m: m.group(1) + self.wrong, text[start:end])
+        return text[:start] + mutated + text[end:]
+
+
+# If one of these wirings moves, update it here. The self-test fails rather than
 # passing without a mutation.
+SELF_TEST_FILE = "main.tf"
 SELF_TEST_MUTATIONS = [
     Mutation(
-        file="main.tf",
-        correct="task_role_arn            = module.services_common.api_handler_role_arn",
-        wrong="task_role_arn            = module.services_common.brainstore_iam_role_arn",
+        module="api_ecs",
+        attribute="task_role_arn",
+        correct="module.services_common.api_handler_role_arn",
+        wrong="module.services_common.brainstore_iam_role_arn",
         rejected_addresses=[
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api",
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_background",
@@ -97,9 +125,10 @@ SELF_TEST_MUTATIONS = [
         ],
     ),
     Mutation(
-        file="main.tf",
-        correct="brainstore_s3_bucket_arn                   = module.storage.brainstore_bucket_arn",
-        wrong="brainstore_s3_bucket_arn                   = module.storage.code_bundle_bucket_arn",
+        module="services_common",
+        attribute="brainstore_s3_bucket_arn",
+        correct="module.storage.brainstore_bucket_arn",
+        wrong="module.storage.code_bundle_bucket_arn",
         rejected_addresses=[
             "module.services_common.aws_iam_policy.api_handler_policy",
             "module.services_common.aws_iam_role_policy.brainstore_s3_access",
@@ -315,17 +344,18 @@ def copy_working_tree(destination: Path) -> None:
 def self_test(allow_lists: dict[str, list[dict]]) -> list[str]:
     """Return errors. Empty means every plan run rejected every wrong wiring."""
     for mutation in SELF_TEST_MUTATIONS:
-        if (REPOSITORY_ROOT / mutation.file).read_text().count(mutation.correct) != 1:
+        if mutation.matches((REPOSITORY_ROOT / SELF_TEST_FILE).read_text()) != 1:
             return [
-                f"Expected exactly one `{mutation.correct}` in {mutation.file}. "
+                f"Expected exactly one `{mutation.attribute} = {mutation.correct}` in the "
+                f'module "{mutation.module}" block of {SELF_TEST_FILE}. '
                 "If that wiring moved, update SELF_TEST_MUTATIONS in this script."
             ]
     with tempfile.TemporaryDirectory(prefix="check-upgrade-plan-") as temporary:
         copy = Path(temporary)
         copy_working_tree(copy)
         for mutation in SELF_TEST_MUTATIONS:
-            mutated = copy / mutation.file
-            mutated.write_text(mutated.read_text().replace(mutation.correct, mutation.wrong))
+            mutated = copy / SELF_TEST_FILE
+            mutated.write_text(mutation.apply(mutated.read_text()))
         # Install providers from this checkout's init rather than downloading them again.
         init = subprocess.run(
             ["terraform", "init", "-backend=false", f"-plugin-dir={REPOSITORY_ROOT / '.terraform' / 'providers'}"],
@@ -340,7 +370,7 @@ def self_test(allow_lists: dict[str, list[dict]]) -> list[str]:
         result = check(run_upgrade_test(copy), allow_lists, plan_runs)
 
     missing = [
-        f"{run_name}: {address} ({mutation.wrong})"
+        f"{run_name}: {address} ({mutation.module}.{mutation.attribute} = {mutation.wrong})"
         for mutation in SELF_TEST_MUTATIONS
         for address in mutation.rejected_addresses
         for run_name in sorted(plan_runs)

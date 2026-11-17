@@ -1,11 +1,5 @@
 mock_provider "aws" {
   source = "./tests/mocks/aws"
-  mock_data "aws_partition" {
-    defaults = { partition = "aws" }
-  }
-  mock_resource "aws_iam_role" {
-    defaults = { arn = "arn:aws:iam::123456789012:role/bt-test-brainstore-deployment" }
-  }
   mock_resource "aws_lambda_function" {
     defaults = { version = "1" }
   }
@@ -22,6 +16,7 @@ mock_provider "http" {
 variables {
   deployment_name = "bt-test"
   version_tag     = "test-api-version"
+  waiter_role_arn = "arn:aws:iam::123456789012:role/bt-test-brainstore-deployment"
   fleets = [{
     role                    = "reader"
     asg_name                = "bt-test-brainstore-123"

@@ -18,9 +18,9 @@ variable "fleets" {
   }))
 }
 
-variable "permissions_boundary_arn" {
-  type    = string
-  default = null
+variable "waiter_role_arn" {
+  description = "ARN of the waiter function's execution role. Pass the brainstore_deployment_waiter_role_arn output of modules/iam so the function waits for the role's policy."
+  type        = string
 }
 
 variable "custom_tags" {

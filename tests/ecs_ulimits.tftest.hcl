@@ -39,6 +39,7 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     billing_telemetry_log_level           = "info"
     quarantine_proxy_url                  = ""
     task_role_arn                         = "arn:aws:iam::123456789012:role/api-task"
+    task_execution_role_arn               = "arn:aws:iam::123456789012:role/bt-test-api-ecs-task-exec"
     task_security_group_id                = "sg-0123456789abcdef0"
 
     braintrust_api_cpu_autoscaling = {
@@ -152,6 +153,8 @@ run "gateway_containers_have_one_million_nofile_limit" {
 
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
+    task_execution_role_arn                   = "arn:aws:iam::123456789012:role/bt-test-gateway-task-exec"
+    task_role_arn                             = "arn:aws:iam::123456789012:role/bt-test-gateway-task"
     vpc_id                                    = "vpc-0123456789abcdef0"
     private_subnet_ids                        = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
     ecs_cluster_arn                           = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"
@@ -213,6 +216,8 @@ run "gateway_skips_redis_secrets_when_extra_env_overrides" {
 
     deployment_name                = "bt-test"
     kms_key_arn                    = "arn:aws:kms:us-east-1:123456789012:key/test"
+    task_execution_role_arn        = "arn:aws:iam::123456789012:role/bt-test-gateway-task-exec"
+    task_role_arn                  = "arn:aws:iam::123456789012:role/bt-test-gateway-task"
     vpc_id                         = "vpc-0123456789abcdef0"
     private_subnet_ids             = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
     ecs_cluster_arn                = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"

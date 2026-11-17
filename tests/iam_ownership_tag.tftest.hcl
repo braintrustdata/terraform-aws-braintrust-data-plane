@@ -5,9 +5,8 @@
 # tag plus an unrelated one: the module has no validation of its own, so this
 # shows the merge order, and the unrelated tag must survive.
 #
-# The database module can't be planned on its own because its outputs are
-# sensitive. scripts/check-iam-ownership-tags covers it, and every other IAM
-# resource, from the source.
+# scripts/check-iam-ownership-tags covers every IAM resource from the source,
+# including the ones these runs can't plan on their own.
 #
 # The root runs at the bottom cover the custom_tags validation.
 
@@ -253,40 +252,50 @@ run "tags_brainstore_instance_profile_with_braintrust_owner" {
   }
 }
 
-run "tags_brainstore_deployment_role_with_braintrust_owner" {
+run "tags_iam_module_resources_with_braintrust_owner" {
   command = plan
-  module { source = "./modules/brainstore-deployment" }
+  module { source = "./modules/iam" }
 
   variables {
     deployment_name = "bt-test"
-    version_tag     = "test-api-version"
-    fleets = [{
-      role                    = "reader"
-      asg_name                = "bt-test-brainstore-123"
-      launch_template_id      = "lt-abc123"
-      launch_template_version = "2"
-      desired_capacity        = 2
-      target_group_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/reader/abc123"
-    }]
-    custom_tags = { Environment = "test", BraintrustIAMOwner = "customer" }
+    custom_tags     = { Environment = "test", BraintrustIAMOwner = "customer" }
+
+    created_resources = {
+      kms_key_arn                       = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
+      database_url_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/DatabaseUrl-AbCdEf"
+      function_tools_secret_arn         = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/FunctionToolsSecret-AbCdEf"
+      redis_url_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/RedisUrl-AbCdEf"
+      brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/brainstore/license-key-AbCdEf"
+    }
+    brainstore_deployment_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:/braintrust/bt-test/bt-test-BrainstoreDeployment"
+    brainstore_asg_names                = ["bt-test-brainstore-reader-123"]
   }
 
+  # Add each IAM role, policy and instance profile that modules/iam creates.
   assert {
     condition = alltrue([
       for tags in [
-        aws_iam_role.waiter.tags,
+        aws_iam_role.db_monitoring[0].tags,
+        aws_iam_role.brainstore_deployment_waiter[0].tags,
+        aws_iam_role.api_ecs_task_execution[0].tags,
+        aws_iam_role.gateway_task_execution[0].tags,
+        aws_iam_role.gateway_task[0].tags,
       ] : tags.BraintrustIAMOwner == "braintrust"
     ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the Brainstore deployment role."
+    error_message = "A caller tag must not override BraintrustIAMOwner on a role in modules/iam."
   }
 
   assert {
     condition = alltrue([
       for tags in [
-        aws_iam_role.waiter.tags,
+        aws_iam_role.db_monitoring[0].tags,
+        aws_iam_role.brainstore_deployment_waiter[0].tags,
+        aws_iam_role.api_ecs_task_execution[0].tags,
+        aws_iam_role.gateway_task_execution[0].tags,
+        aws_iam_role.gateway_task[0].tags,
       ] : tags.Environment == "test"
     ])
-    error_message = "The Brainstore deployment role must keep unrelated caller tags."
+    error_message = "A role in modules/iam must keep unrelated caller tags."
   }
 }
 
@@ -371,169 +380,6 @@ run "tags_remote_support_role_and_instance_profile_with_braintrust_owner" {
       ] : tags.Environment == "test"
     ])
     error_message = "The support role, bastion role and bastion instance profile must keep unrelated caller tags."
-  }
-}
-
-run "tags_api_ecs_execution_role_with_braintrust_owner" {
-  command = plan
-  module { source = "./modules/api-ecs" }
-
-  variables {
-    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
-
-    deployment_name                       = "bt-test"
-    kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/test"
-    vpc_id                                = "vpc-0123456789abcdef0"
-    private_subnet_ids                    = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
-    ecs_cluster_arn                       = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"
-    ecs_cluster_name                      = "bt-test"
-    braintrust_org_name                   = "test-org"
-    database_url_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
-    redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
-    redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    brainstore_hostname                   = "brainstore.example.internal"
-    brainstore_port                       = 9000
-    response_bucket                       = "bt-test-responses"
-    code_bundle_bucket                    = "bt-test-code"
-    function_tools_secret_arn             = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
-    whitelisted_origins                   = ["https://example.com"]
-    outbound_rate_limit_window_minutes    = 1
-    outbound_rate_limit_max_requests      = 100
-    monitoring_telemetry                  = "true"
-    disable_billing_telemetry_aggregation = false
-    billing_telemetry_log_level           = "info"
-    quarantine_proxy_url                  = ""
-    task_role_arn                         = "arn:aws:iam::123456789012:role/api-task"
-    task_security_group_id                = "sg-0123456789abcdef0"
-
-    braintrust_api_cpu_autoscaling = {
-      target_value       = 70
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_memory_autoscaling = {
-      target_value       = 75
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_event_loop_utilization_autoscaling = {
-      target_value       = 70
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_event_loop_delay_autoscaling = {
-      evaluation_periods = 1
-      period             = 60
-      cooldown           = 60
-      steps              = [{ threshold_ms = 100, scaling_adjustment = 1 }]
-    }
-    braintrust_api_ingest_cpu_autoscaling = {
-      target_value       = 70
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_ingest_memory_autoscaling = {
-      target_value       = 75
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_ingest_event_loop_utilization_autoscaling = {
-      target_value       = 70
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_ingest_event_loop_delay_autoscaling = {
-      evaluation_periods = 1
-      period             = 60
-      cooldown           = 60
-      steps              = [{ threshold_ms = 100, scaling_adjustment = 1 }]
-    }
-    braintrust_api_background_cpu_autoscaling = {
-      target_value       = 70
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_background_memory_autoscaling = {
-      target_value       = 75
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_background_event_loop_utilization_autoscaling = {
-      target_value       = 70
-      scale_in_cooldown  = 60
-      scale_out_cooldown = 60
-    }
-    braintrust_api_background_event_loop_delay_autoscaling = {
-      evaluation_periods = 1
-      period             = 60
-      cooldown           = 60
-      steps              = [{ threshold_ms = 100, scaling_adjustment = 1 }]
-    }
-    custom_tags = { Environment = "test", BraintrustIAMOwner = "customer" }
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.task_execution.tags,
-      ] : tags.BraintrustIAMOwner == "braintrust"
-    ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the API ECS execution role."
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.task_execution.tags,
-      ] : tags.Environment == "test"
-    ])
-    error_message = "The API ECS execution role must keep unrelated caller tags."
-  }
-}
-
-run "tags_gateway_ecs_roles_with_braintrust_owner" {
-  command = plan
-  module { source = "./modules/gateway-ecs" }
-
-  variables {
-    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
-    deployment_name                   = "bt-test"
-    kms_key_arn                       = "arn:aws:kms:us-east-1:123456789012:key/test"
-    vpc_id                            = "vpc-0123456789abcdef0"
-    private_subnet_ids                = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
-    ecs_cluster_arn                   = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"
-    ecs_cluster_name                  = "bt-test"
-    container_image                   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/gateway:test"
-    target_group_arn                  = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/gateway/1234567890123456"
-    alb_security_group_id             = "sg-0123456789abcdef2"
-    gateway_http_listener_arn         = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
-    gateway_url                       = "http://gateway.internal"
-    redis_url_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
-    redis_url_secret_version_id       = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    redis_port                        = 6379
-    redis_security_group_id           = "sg-0123456789abcdef1"
-    internal_observability_enabled    = false
-    custom_tags                       = { Environment = "test", BraintrustIAMOwner = "customer" }
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.task_execution.tags,
-        aws_iam_role.task.tags,
-      ] : tags.BraintrustIAMOwner == "braintrust"
-    ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the Gateway task roles."
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.task_execution.tags,
-        aws_iam_role.task.tags,
-      ] : tags.Environment == "test"
-    ])
-    error_message = "The Gateway task roles must keep unrelated caller tags."
   }
 }
 

@@ -377,3 +377,90 @@ moved {
   from = module.gateway_ecs[0].aws_iam_role_policy.task_execution_observability_secrets[0]
   to   = module.gateway_ecs[0].aws_iam_role_policy.task_execution_secrets
 }
+
+# IAM moved into modules/iam. Each move keeps the live role or policy, so an
+# upgrade changes state only. The gateway custom CA and diagnostics policies
+# already had a count, so their blocks name the whole resource on both sides and
+# Terraform moves every instance.
+#
+# Rolling back to a module version without these blocks plans to destroy and
+# recreate the roles, which changes their unique IDs. See MIGRATION_V8.md.
+moved {
+  from = module.database.aws_iam_role.db_monitoring
+  to   = module.iam.aws_iam_role.db_monitoring[0]
+}
+
+moved {
+  from = module.database.aws_iam_role_policy_attachment.db_monitoring
+  to   = module.iam.aws_iam_role_policy_attachment.db_monitoring[0]
+}
+
+moved {
+  from = module.brainstore_deployment[0].aws_iam_role.waiter
+  to   = module.iam.aws_iam_role.brainstore_deployment_waiter[0]
+}
+
+moved {
+  from = module.brainstore_deployment[0].aws_iam_role_policy.waiter
+  to   = module.iam.aws_iam_role_policy.brainstore_deployment_waiter[0]
+}
+
+moved {
+  from = module.api_ecs[0].aws_iam_role.task_execution
+  to   = module.iam.aws_iam_role.api_ecs_task_execution[0]
+}
+
+moved {
+  from = module.api_ecs[0].aws_iam_role_policy_attachment.task_execution_default
+  to   = module.iam.aws_iam_role_policy_attachment.api_ecs_task_execution_default[0]
+}
+
+moved {
+  from = module.api_ecs[0].aws_iam_role_policy.task_execution_secrets
+  to   = module.iam.aws_iam_role_policy.api_ecs_task_execution_secrets[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role.task_execution
+  to   = module.iam.aws_iam_role.gateway_task_execution[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy_attachment.task_execution_default
+  to   = module.iam.aws_iam_role_policy_attachment.gateway_task_execution_default[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.task_execution_custom_ca_bundle_secret
+  to   = module.iam.aws_iam_role_policy.gateway_task_execution_custom_ca_bundle_secret
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.task_execution_secrets
+  to   = module.iam.aws_iam_role_policy.gateway_task_execution_secrets[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.task_execution_redis_secret
+  to   = module.iam.aws_iam_role_policy.gateway_task_execution_redis_secret[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role.task
+  to   = module.iam.aws_iam_role.gateway_task[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.customer_assume_role
+  to   = module.iam.aws_iam_role_policy.gateway_task_customer_assume_role[0]
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.diagnostics_transcripts
+  to   = module.iam.aws_iam_role_policy.gateway_task_diagnostics_transcripts
+}
+
+moved {
+  from = module.gateway_ecs[0].aws_iam_role_policy.diagnostics_execute_command
+  to   = module.iam.aws_iam_role_policy.gateway_task_diagnostics_execute_command
+}
