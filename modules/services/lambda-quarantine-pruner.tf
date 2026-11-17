@@ -9,16 +9,12 @@ locals {
 resource "aws_lambda_function" "quarantine_pruner" {
   count = var.enable_quarantine_pruner ? 1 : 0
 
-  depends_on = [
-    aws_lambda_invocation.invoke_database_migration,
-    # VPC ENI permissions must be attached before the function config is updated.
-    aws_iam_role_policy_attachment.quarantine_pruner_vpc_access,
-  ]
+  depends_on = [aws_lambda_invocation.invoke_database_migration]
 
   function_name = local.quarantine_pruner_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions[local.quarantine_pruner_base_function_name]
-  role          = aws_iam_role.quarantine_pruner_role[0].arn
+  role          = var.quarantine_pruner_role_arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.quarantine_pruner_original_handler
   runtime       = "nodejs22.x"
   memory_size   = 1024

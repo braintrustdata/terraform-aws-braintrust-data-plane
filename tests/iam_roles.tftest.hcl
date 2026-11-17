@@ -1,6 +1,6 @@
 # Plan-mode tests for the roles that modules/iam owns: database monitoring, the
 # Brainstore deployment waiter, API ECS execution, the gateway roles, the shared
-# API, quarantine and Brainstore roles.
+# API, quarantine and Brainstore roles, and the Lambda function roles.
 #
 # The upgrade test (v7_upgrade.tftest.hcl) proves these roles move without a
 # change. These runs pin the names, trust and policy documents it can't see,
@@ -44,7 +44,9 @@ run "creates_every_role_with_its_released_name" {
   module { source = "./modules/iam" }
 
   variables {
-    enable_quarantine_vpc = true
+    enable_quarantine_vpc    = true
+    enable_quarantine_pruner = true
+    enable_ecs_api           = false
   }
 
   # Add each new role and policy to the lists below.
@@ -71,10 +73,25 @@ run "creates_every_role_with_its_released_name" {
 
   assert {
     condition = (
+      aws_iam_role.automation_cron[0].name == "bt-test-AutomationCronRole"
+      && aws_iam_role.billing_cron[0].name == "bt-test-BillingCronRole"
+      && aws_iam_role.catchup_etl[0].name == "bt-test-CatchupETLRole"
+      && aws_iam_role.migrate_database[0].name == "bt-test-MigrateDatabaseFunctionRole"
+      && aws_iam_role.default[0].name == "bt-test-DefaultRole"
+      && aws_iam_role.quarantine_pruner[0].name == "bt-test-QuarantinePrunerRole"
+      && aws_iam_role.quarantine_warmup[0].name == "bt-test-QuarantineWarmupRole"
+      && aws_iam_role.ai_proxy_invoke[0].name == "bt-test-AIProxyInvokeRole"
+    )
+    error_message = "The Lambda function roles must keep the physical name that existing stacks have."
+  }
+
+  assert {
+    condition = (
       output.role_names == local.role_names
       && output.role_names.gateway_task == "bt-test-gateway-task"
       && output.role_names.api_handler == aws_iam_role.api_handler[0].name
       && output.role_names.brainstore == aws_iam_role.brainstore[0].name
+      && output.role_names.ai_proxy_invoke == aws_iam_role.ai_proxy_invoke[0].name
     )
     error_message = "role_names must publish the same names that the roles use."
   }
@@ -101,6 +118,18 @@ run "creates_every_role_with_its_released_name" {
       && aws_iam_role_policy.brainstore_redis_secret_access[0].name == "redis-secret-access"
     )
     error_message = "The shared API, quarantine and Brainstore policies and the instance profile must keep the name that existing stacks have."
+  }
+
+  assert {
+    condition = (
+      aws_iam_policy.api_handler_lambda_policies[0].name == "bt-test-APIHandler-Lambdas"
+      && aws_iam_role_policy.quarantine_warmup[0].name == "bt-test-QuarantineWarmupPolicy"
+      && aws_iam_role_policy.quarantine_pruner_delete_versions[0].name == "bt-test-QuarantinePrunerDeleteVersions"
+      && aws_iam_role_policy.default[0].name == "bt-test-DefaultRolePolicy"
+      && aws_iam_role_policy.automation_cron_topic_map_report_read[0].name == "bt-test-AutomationCronTopicMapReportRead"
+      && aws_iam_role_policy.ai_proxy_invoke[0].name == "AIProxyInvokeRolePolicy"
+    )
+    error_message = "The Lambda policies must keep the name that existing stacks have."
   }
 }
 
@@ -363,6 +392,8 @@ run "roles_keep_the_permissions_boundary" {
   variables {
     permissions_boundary_arn = "arn:aws:iam::123456789012:policy/boundary"
     enable_quarantine_vpc    = true
+    enable_quarantine_pruner = true
+    enable_ecs_api           = false
   }
 
   # Add each new role to the lists below.
@@ -378,9 +409,11 @@ run "roles_keep_the_permissions_boundary" {
     condition = alltrue([
       for role in [
         aws_iam_role.api_handler[0], aws_iam_role.brainstore[0], aws_iam_role.quarantine_invoke[0], aws_iam_role.quarantine_function[0],
+        aws_iam_role.automation_cron[0], aws_iam_role.billing_cron[0], aws_iam_role.catchup_etl[0], aws_iam_role.migrate_database[0],
+        aws_iam_role.default[0], aws_iam_role.quarantine_pruner[0], aws_iam_role.quarantine_warmup[0], aws_iam_role.ai_proxy_invoke[0],
       ] : role.permissions_boundary == "arn:aws:iam::123456789012:policy/boundary"
     ])
-    error_message = "The shared, quarantine and Brainstore roles must carry the permissions boundary too."
+    error_message = "The shared, quarantine, Brainstore and Lambda roles must carry the permissions boundary too."
   }
 }
 
@@ -419,9 +452,10 @@ run "roles_keep_the_tag_order_of_their_source_modules" {
     condition = (
       aws_iam_role.api_handler[0].tags.BraintrustDeploymentName == "caller"
       && aws_iam_role.brainstore[0].tags.BraintrustDeploymentName == "caller"
+      && aws_iam_role.catchup_etl[0].tags.BraintrustDeploymentName == "caller"
       && aws_iam_policy.api_handler[0].tags.BraintrustDeploymentName == "caller"
     )
-    error_message = "The shared and Brainstore roles must keep the caller's deployment name tag, as before they moved."
+    error_message = "The shared, Brainstore and Lambda roles must keep the caller's deployment name tag, as before they moved."
   }
 
   assert {
@@ -462,6 +496,15 @@ run "creates_no_roles_when_create_iam_is_false" {
       && length(aws_iam_role_policy.brainstore_redis_secret_access) == 0
       && length(aws_iam_role.quarantine_invoke) == 0
       && length(aws_iam_role.quarantine_function) == 0
+      && length(aws_iam_role.automation_cron) == 0
+      && length(aws_iam_role.billing_cron) == 0
+      && length(aws_iam_role.catchup_etl) == 0
+      && length(aws_iam_role.migrate_database) == 0
+      && length(aws_iam_role.default) == 0
+      && length(aws_iam_role.quarantine_pruner) == 0
+      && length(aws_iam_role.quarantine_warmup) == 0
+      && length(aws_iam_role.ai_proxy_invoke) == 0
+      && length(aws_iam_policy.api_handler_lambda_policies) == 0
     )
     error_message = "create_iam = false must create no roles or policies."
   }
@@ -472,8 +515,8 @@ run "creates_no_roles_when_create_iam_is_false" {
   }
 
   assert {
-    condition     = output.role_names.api_handler == "bt-test-APIHandlerRole" && output.api_handler_role_arn == null && output.brainstore_instance_profile_arn == null
-    error_message = "The shared and Brainstore role names must stay available, and their ARNs must be null."
+    condition     = output.role_names.api_handler == "bt-test-APIHandlerRole" && output.api_handler_role_arn == null && output.brainstore_instance_profile_arn == null && output.catchup_etl_role_arn == null
+    error_message = "The shared, Brainstore and Lambda role names must stay available, and their ARNs must be null."
   }
 }
 
@@ -519,12 +562,20 @@ run "external_eks_keeps_only_the_roles_that_helm_workloads_use" {
     condition = (
       length(aws_iam_instance_profile.brainstore) == 0
       && length(aws_iam_role_policy.brainstore_redis_secret_access) == 0
+      && length(aws_iam_role.automation_cron) == 0
+      && length(aws_iam_role.billing_cron) == 0
+      && length(aws_iam_role.catchup_etl) == 0
+      && length(aws_iam_role.migrate_database) == 0
+      && length(aws_iam_role.default) == 0
+      && length(aws_iam_role.quarantine_warmup) == 0
+      && length(aws_iam_policy.api_handler_lambda_policies) == 0
+      && length(aws_iam_role_policy_attachment.api_handler_vpc_access) == 0
     )
-    error_message = "External EKS has no Brainstore EC2 fleets, so it needs no instance profile or Redis policy."
+    error_message = "External EKS has no Brainstore EC2 fleets or Lambda services, so it needs no instance profile or Lambda roles."
   }
 
   assert {
-    condition     = output.brainstore_instance_profile_arn == null
+    condition     = output.brainstore_instance_profile_arn == null && output.catchup_etl_role_arn == null
     error_message = "ARN outputs for roles that don't exist must be null."
   }
 }
@@ -932,6 +983,97 @@ run "brainstore_instance_profile_wraps_the_brainstore_role" {
   }
 }
 
+run "lambda_roles_trust_lambda_and_get_managed_vpc_access" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  variables {
+    enable_quarantine_vpc    = true
+    enable_quarantine_pruner = true
+  }
+
+  assert {
+    condition = alltrue([
+      for role in [
+        aws_iam_role.automation_cron[0], aws_iam_role.billing_cron[0], aws_iam_role.catchup_etl[0], aws_iam_role.migrate_database[0],
+        aws_iam_role.default[0], aws_iam_role.quarantine_pruner[0], aws_iam_role.quarantine_warmup[0], aws_iam_role.quarantine_function[0],
+      ] : [for statement in jsondecode(role.assume_role_policy).Statement : statement.Principal.Service] == ["lambda.amazonaws.com"]
+    ])
+    error_message = "Only Lambda may assume a Lambda function role."
+  }
+
+  assert {
+    condition = alltrue([
+      for attachment in [
+        aws_iam_role_policy_attachment.automation_cron_vpc_access[0], aws_iam_role_policy_attachment.billing_cron_vpc_access[0],
+        aws_iam_role_policy_attachment.catchup_etl_vpc_access[0], aws_iam_role_policy_attachment.migrate_database_vpc_access[0],
+        aws_iam_role_policy_attachment.default_vpc_access[0], aws_iam_role_policy_attachment.quarantine_pruner_vpc_access[0],
+        aws_iam_role_policy_attachment.quarantine_warmup_vpc_access[0], aws_iam_role_policy_attachment.api_handler_vpc_access[0],
+      ] : attachment.policy_arn == "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+    ])
+    error_message = "Each Lambda role must attach the AWS-managed VPC access policy."
+  }
+}
+
+run "automation_cron_reads_only_topic_map_reports" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  assert {
+    condition     = jsondecode(aws_iam_role_policy.automation_cron_topic_map_report_read[0].policy).Statement[0].Resource == "arn:aws:s3:::bt-test-code-bundles-1/bundles/topic_maps/*/*.report.json" && jsondecode(aws_iam_role_policy.automation_cron_topic_map_report_read[0].policy).Statement[0].Action == ["s3:GetObject"]
+    error_message = "AutomationCron may read only topic map reports from the code bundle bucket."
+  }
+
+  assert {
+    condition     = jsondecode(aws_iam_role_policy.automation_cron_topic_map_report_read[0].policy).Statement[1].Resource == var.created_resources.kms_key_arn && jsondecode(aws_iam_role_policy.automation_cron_topic_map_report_read[0].policy).Statement[1].Condition.StringEquals["kms:ViaService"] == "s3.us-east-1.amazonaws.com"
+    error_message = "AutomationCron may decrypt with the data plane key through S3 only."
+  }
+}
+
+run "apihandler_lambdas_policy_names_the_catchup_function_by_its_name" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  assert {
+    condition     = jsondecode(aws_iam_policy.api_handler_lambda_policies[0].policy).Statement[1].Resource == "arn:aws:lambda:us-east-1:123456789012:function:bt-test-CatchupETL"
+    error_message = "The policy must name the CatchupETL function by the ARN AWS gives it, without waiting for the function."
+  }
+}
+
+run "ai_proxy_invoke_role_exists_only_in_lambda_mode" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  assert {
+    condition     = length(aws_iam_role.ai_proxy_invoke) == 0 && length(aws_iam_role_policy.ai_proxy_invoke) == 0 && length(aws_iam_role_policies_exclusive.ai_proxy_invoke) == 0
+    error_message = "With API ECS enabled, the AIProxy invoke role and its policies must not exist."
+  }
+
+  assert {
+    condition     = output.ai_proxy_invoke_role_arn == null
+    error_message = "Its ARN output must be null."
+  }
+}
+
+run "ai_proxy_invoke_role_may_only_invoke_the_ai_proxy_function" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  variables {
+    enable_ecs_api = false
+  }
+
+  assert {
+    condition     = jsondecode(aws_iam_role_policy.ai_proxy_invoke[0].policy).Statement[0].Resource == ["arn:aws:lambda:us-east-1:123456789012:function:bt-test-AIProxy"] && jsondecode(aws_iam_role_policy.ai_proxy_invoke[0].policy).Statement[0].Action == "lambda:InvokeFunction"
+    error_message = "The invoke role may only invoke the AIProxy function."
+  }
+
+  assert {
+    condition     = aws_iam_role_policies_exclusive.ai_proxy_invoke[0].policy_names == toset(["AIProxyInvokeRolePolicy"])
+    error_message = "The invoke role may carry only its own inline policy."
+  }
+}
+
 run "quarantine_roles_are_absent_without_a_quarantine_vpc" {
   command = plan
   module { source = "./modules/iam" }
@@ -942,6 +1084,7 @@ run "quarantine_roles_are_absent_without_a_quarantine_vpc" {
       && length(aws_iam_role.quarantine_function) == 0
       && length(aws_iam_policy.api_handler_quarantine) == 0
       && length(aws_iam_role_policy_attachment.api_handler_quarantine) == 0
+      && length(aws_iam_role.quarantine_warmup) == 0
       && output.quarantine_invoke_role_arn == null
       && output.quarantine_function_role_arn == null
     )
@@ -984,7 +1127,7 @@ run "rejects_shared_roles_without_the_kms_key" {
   }
 
   # Every role whose policies name the data plane key needs it.
-  expect_failures = [aws_iam_role.api_handler[0], aws_iam_role.brainstore[0], aws_iam_role.api_ecs_task_execution[0], aws_iam_role.gateway_task_execution[0]]
+  expect_failures = [aws_iam_role.api_handler[0], aws_iam_role.brainstore[0], aws_iam_role.automation_cron[0], aws_iam_role.api_ecs_task_execution[0], aws_iam_role.gateway_task_execution[0]]
 }
 
 run "rejects_the_brainstore_role_without_the_database_secret" {
@@ -1007,5 +1150,5 @@ run "rejects_the_quarantine_policies_without_the_quarantine_vpc" {
     created_resources     = merge(var.created_resources, { quarantine_vpc_id = null })
   }
 
-  expect_failures = [aws_iam_policy.api_handler_quarantine[0]]
+  expect_failures = [aws_iam_policy.api_handler_quarantine[0], aws_iam_role_policy.quarantine_warmup[0]]
 }

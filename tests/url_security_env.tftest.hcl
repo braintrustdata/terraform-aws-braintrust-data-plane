@@ -33,6 +33,11 @@ variables {
   lambda_responses_bucket_arn = "arn:aws:s3:::bt-test-lambda-responses"
   api_security_group_id       = "sg-api"
   api_handler_role_arn        = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
+  ai_proxy_invoke_role_arn    = "arn:aws:iam::123456789012:role/bt-test-AIProxyInvokeRole"
+  automation_cron_role_arn    = "arn:aws:iam::123456789012:role/bt-test-AutomationCronRole"
+  billing_cron_role_arn       = "arn:aws:iam::123456789012:role/bt-test-BillingCronRole"
+  catchup_etl_role_arn        = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
+  migrate_database_role_arn   = "arn:aws:iam::123456789012:role/bt-test-MigrateDatabaseFunctionRole"
   function_tools_secret_key   = "function-tools-secret"
   enable_ecs_api              = false
   use_quarantine_vpc          = false

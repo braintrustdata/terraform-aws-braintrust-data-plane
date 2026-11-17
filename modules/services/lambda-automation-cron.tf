@@ -8,15 +8,12 @@ resource "aws_lambda_function" "automation_cron" {
   depends_on = [
     aws_lambda_invocation.invoke_database_migration,
     terraform_data.brainstore_deployment,
-    # VPC ENI permissions must be attached before the function config is updated.
-    aws_iam_role_policy_attachment.automation_cron_vpc_access,
-    aws_iam_role_policy.automation_cron_topic_map_report_read,
   ]
 
   function_name = local.automation_cron_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions[local.automation_cron_base_function_name]
-  role          = aws_iam_role.automation_cron_role.arn
+  role          = var.automation_cron_role_arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.automation_cron_original_handler
   runtime       = "nodejs22.x"
   timeout       = 300

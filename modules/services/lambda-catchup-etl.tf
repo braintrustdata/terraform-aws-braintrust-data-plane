@@ -6,7 +6,6 @@ locals {
 
 resource "aws_lambda_function" "catchup_etl" {
   depends_on = [
-    aws_iam_role_policy_attachment.catchup_etl_vpc_access,
     aws_lambda_invocation.invoke_database_migration,
     terraform_data.brainstore_deployment,
   ]
@@ -14,7 +13,7 @@ resource "aws_lambda_function" "catchup_etl" {
   function_name = local.catchup_etl_function_name
   s3_bucket     = local.lambda_s3_bucket
   s3_key        = local.lambda_versions[local.catchup_etl_base_function_name]
-  role          = aws_iam_role.catchup_etl.arn
+  role          = var.catchup_etl_role_arn
   handler       = local.observability_enabled ? local.nodejs_datadog_handler : local.catchup_etl_original_handler
   runtime       = "nodejs22.x"
   memory_size   = 1024

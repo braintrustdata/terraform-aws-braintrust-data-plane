@@ -70,8 +70,10 @@ RELEASE_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.release.jso
 ALLOW_LISTS = {
     "plans_working_tree_with_defaults": PARENT_ALLOW_LIST,
     "plans_working_tree_with_optional_iam_inputs": PARENT_ALLOW_LIST,
+    "plans_working_tree_in_lambda_mode": PARENT_ALLOW_LIST,
     "plans_working_tree_with_external_eks": PARENT_ALLOW_LIST,
     "plans_working_tree_from_release": RELEASE_ALLOW_LIST,
+    "plans_working_tree_from_release_in_lambda_mode": RELEASE_ALLOW_LIST,
 }
 # Types whose arn may repeat. Nothing grants permissions on the first four, so a
 # wrong reference is a routing or scaling bug rather than an identity one. An
@@ -128,6 +130,8 @@ STANDARD_PLAN_RUNS = [
     "plans_working_tree_with_defaults",
     "plans_working_tree_from_release",
     "plans_working_tree_with_optional_iam_inputs",
+    "plans_working_tree_in_lambda_mode",
+    "plans_working_tree_from_release_in_lambda_mode",
 ]
 EXTERNAL_EKS_PLAN_RUNS = ["plans_working_tree_with_external_eks"]
 ALL_PLAN_RUNS = STANDARD_PLAN_RUNS + EXTERNAL_EKS_PLAN_RUNS
@@ -147,6 +151,14 @@ SELF_TEST_MUTATIONS = [
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_background",
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_ingest",
         ],
+    ),
+    Mutation(
+        module="services",
+        attribute="catchup_etl_role_arn",
+        correct="module.iam.catchup_etl_role_arn",
+        wrong="module.iam.billing_cron_role_arn",
+        plan_runs=STANDARD_PLAN_RUNS,
+        rejected_addresses=["module.services[0].aws_lambda_function.catchup_etl"],
     ),
     # The code bundle bucket is the one bucket every run takes from created_resources.
     # The Brainstore bucket is a caller-provided one in the optional-inputs run, so

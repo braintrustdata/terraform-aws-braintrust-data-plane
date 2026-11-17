@@ -427,12 +427,6 @@ variable "billing_telemetry_log_level" {
   }
 }
 
-variable "permissions_boundary_arn" {
-  type        = string
-  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
-  default     = null
-}
-
 variable "code_bundle_bucket_arn" {
   type        = string
   description = "The ARN of the code bundle bucket"
@@ -457,6 +451,44 @@ variable "api_security_group_id" {
 variable "api_handler_role_arn" {
   type        = string
   description = "The ARN of the API handler role used by the API handler lambda and various other lambdas"
+  default     = null
+}
+
+variable "automation_cron_role_arn" {
+  type        = string
+  description = "ARN of the AutomationCron execution role. Pass the automation_cron_role_arn output of modules/iam so the function waits for the role's policies."
+}
+
+variable "billing_cron_role_arn" {
+  type        = string
+  description = "ARN of the BillingCron execution role. Pass the billing_cron_role_arn output of modules/iam so the function waits for the role's policies."
+}
+
+variable "catchup_etl_role_arn" {
+  type        = string
+  description = "ARN of the CatchupETL execution role. Pass the catchup_etl_role_arn output of modules/iam so the function waits for the role's policies."
+}
+
+variable "migrate_database_role_arn" {
+  type        = string
+  description = "ARN of the database migration function's execution role. Pass the migrate_database_role_arn output of modules/iam so the function waits for the role's policies."
+}
+
+variable "quarantine_pruner_role_arn" {
+  type        = string
+  description = "ARN of the quarantine pruner's execution role. Required when enable_quarantine_pruner is true. Pass the quarantine_pruner_role_arn output of modules/iam."
+  default     = null
+}
+
+variable "quarantine_warmup_role_arn" {
+  type        = string
+  description = "ARN of the quarantine warmup function's execution role. Required when use_quarantine_vpc is true. Pass the quarantine_warmup_role_arn output of modules/iam."
+  default     = null
+}
+
+variable "ai_proxy_invoke_role_arn" {
+  type        = string
+  description = "ARN of the role the APIHandler Lambda assumes to invoke AIProxy. Required when enable_ecs_api is false. Pass the ai_proxy_invoke_role_arn output of modules/iam."
   default     = null
 }
 

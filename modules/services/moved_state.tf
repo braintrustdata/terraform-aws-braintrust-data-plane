@@ -45,6 +45,10 @@ moved {
   to   = aws_lambda_alias.api_handler_live[0]
 }
 
+# The AIProxy invoke role, policy and reconciler now live in modules/iam. These
+# three blocks stay for v6 state, which has no count here. The count arrived in
+# v7.0.0, so a v6 stack chains through them to the root moved_state.tf blocks
+# that carry the resources on to modules/iam.
 moved {
   from = aws_iam_role.ai_proxy_invoke_role
   to   = aws_iam_role.ai_proxy_invoke_role[0]

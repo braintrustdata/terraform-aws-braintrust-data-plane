@@ -152,10 +152,14 @@ override_resource {
 }
 
 # Roles that are still in services-common, services and the brainstore module in
-# the parent, and in the v7 release.
+# the v7 release, and in a parent from before they moved.
+#
+# The Lambda attachments on this role name it with basename(role ARN) in the
+# parent. modules/iam uses the role's name attribute. AWS returns the same
+# string for both, so the mock ARN ends in the role's name.
 override_resource {
   target = module.services_common.aws_iam_role.api_handler_role
-  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-api-handler" }
+  values = { arn = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole" }
 }
 override_resource {
   target = module.services_common.aws_iam_role.brainstore_role
@@ -210,6 +214,36 @@ override_resource {
   values = { arn = "arn:aws:iam::123456789012:policy/mock-services-api-handler-lambda" }
 }
 
+# The same roles at their modules/iam addresses, for a parent where they have moved.
+override_resource {
+  target = module.iam.aws_iam_role.api_handler[0]
+  values = { arn = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.brainstore[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-brainstore" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.quarantine_function[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-function" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.quarantine_invoke[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-invoke" }
+}
+override_resource {
+  target = module.iam.aws_iam_policy.api_handler[0]
+  values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler" }
+}
+override_resource {
+  target = module.iam.aws_iam_policy.api_handler_quarantine[0]
+  values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler-quarantine" }
+}
+override_resource {
+  target = module.iam.aws_iam_instance_profile.brainstore[0]
+  values = { arn = "arn:aws:iam::123456789012:instance-profile/mock-brainstore" }
+}
+
 # Buckets, functions and rules that a policy or permission names.
 override_resource {
   target = module.storage.aws_s3_bucket.brainstore[0]
@@ -244,11 +278,15 @@ override_resource {
     invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron/invocations"
   }
 }
+
+# The APIHandler-Lambdas policy names this function. modules/iam builds that ARN
+# from the function name, as AWS does, so the mock function gets the same ARN.
+# Otherwise the move would show as a policy change that real AWS wouldn't make.
 override_resource {
   target = module.services[0].aws_lambda_function.catchup_etl
   values = {
-    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl"
-    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl/invocations"
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:bt-test-CatchupETL"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:bt-test-CatchupETL/invocations"
   }
 }
 override_resource {
@@ -276,6 +314,44 @@ override_resource {
 override_resource {
   target = module.services[0].aws_cloudwatch_event_rule.catchup_etl_schedule
   values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-catchup-etl" }
+}
+
+# Resources that exist only with the pruner enabled, or with enable_ecs_api = false.
+override_resource {
+  target = module.services[0].aws_iam_role.quarantine_pruner_role[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-pruner" }
+}
+override_resource {
+  target = module.services[0].aws_lambda_function.quarantine_pruner[0]
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-pruner"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-pruner/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_cloudwatch_event_rule.quarantine_pruner_schedule[0]
+  values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-quarantine-pruner" }
+}
+override_resource {
+  target = module.services[0].aws_iam_role.ai_proxy_invoke_role[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-ai-proxy-invoke" }
+}
+
+# The AIProxy invoke policy names this function, so the mock gets the ARN that
+# modules/iam builds from the function name.
+override_resource {
+  target = module.services[0].aws_lambda_function.ai_proxy[0]
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:bt-test-AIProxy"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:bt-test-AIProxy/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_lambda_function.api_handler[0]
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-api-handler"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-api-handler/invocations"
+  }
 }
 
 run "applies_parent_with_defaults" {
@@ -357,6 +433,9 @@ run "applies_parent_with_optional_iam_inputs" {
     enable_eks_pod_identity                   = true
     enable_eks_irsa                           = true
     override_brainstore_iam_role_trust_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "ec2.amazonaws.com" }, Action = "sts:AssumeRole" }] })
+
+    # The Lambda function role that only exists with the pruner.
+    enable_quarantine_pruner = true
   }
 }
 
@@ -400,6 +479,53 @@ run "plans_working_tree_with_optional_iam_inputs" {
     enable_eks_pod_identity                   = true
     enable_eks_irsa                           = true
     override_brainstore_iam_role_trust_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "ec2.amazonaws.com" }, Action = "sts:AssumeRole" }] })
+
+    # The Lambda function role that only exists with the pruner.
+    enable_quarantine_pruner = true
+  }
+}
+
+# Lambda mode keeps the APIHandler and AIProxy Lambdas, so it also has the
+# AIProxy invoke role and its policies, which the ECS runs above don't create.
+run "applies_parent_in_lambda_mode" {
+  command   = apply
+  state_key = "lambda_mode"
+
+  module {
+    source = "./tests/fixtures/.upgrade-parent"
+  }
+  variables {
+    enable_ecs_api = false
+  }
+}
+
+run "plans_working_tree_in_lambda_mode" {
+  command   = plan
+  state_key = "lambda_mode"
+
+  variables {
+    enable_ecs_api = false
+  }
+}
+
+run "applies_release_in_lambda_mode" {
+  command   = apply
+  state_key = "release_lambda_mode"
+
+  module {
+    source = "./tests/fixtures/.upgrade-release"
+  }
+  variables {
+    enable_ecs_api = false
+  }
+}
+
+run "plans_working_tree_from_release_in_lambda_mode" {
+  command   = plan
+  state_key = "release_lambda_mode"
+
+  variables {
+    enable_ecs_api = false
   }
 }
 
