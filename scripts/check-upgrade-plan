@@ -22,45 +22,114 @@ so the list can't drift from the PR. The allow-list is a JSON file:
 `address` is a regular expression that must match the whole plan address. Output
 changes use the address `output.<name>`.
 
+The check also fails when two resources in the parent state share an ARN, or
+when an override_resource in the test names a target that doesn't exist. The
+upgrade test gives each resource its own mock ARN, and a shared one would hide
+a workload on the wrong role or a policy on the wrong bucket.
+
+--self-test proves that last point. It copies the working tree, points the API
+ECS task role at the Brainstore role and the Brainstore bucket grants at the
+code bundle bucket, runs the same check on the copy, and passes only if every
+plan run rejects each wrongly wired resource.
+
 Run scripts/prepare-upgrade-fixture and `terraform init` first.
 """
 
 import argparse
-from collections import Counter
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 UPGRADE_TEST = "tests/v7_upgrade.tftest.hcl"
 DEFAULT_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json"
+# Types whose arn may repeat. Nothing grants permissions on the first four, so a
+# wrong reference is a routing or scaling bug rather than an identity one. An
+# event target's arn is the function it invokes, not an ARN of its own.
+SHARED_ARN_TYPES = {
+    "aws_appautoscaling_policy",
+    "aws_lb",
+    "aws_lb_listener",
+    "aws_lb_target_group",
+    "aws_cloudwatch_event_target",
+}
 
 
-def read_test_output(plan_json_path: str | None) -> tuple[list[dict], int | None, str]:
-    """Return the JSON messages, terraform's exit code and its stderr.
+@dataclass
+class Mutation:
+    """A wrong wiring the self-test applies, and the addresses that must reject it."""
 
-    The exit code is None when reading saved output, which has none to check.
-    """
-    if plan_json_path:
-        stdout, returncode, stderr = Path(plan_json_path).read_text(), None, ""
-    else:
-        result = subprocess.run(
-            ["terraform", "test", f"-filter={UPGRADE_TEST}", "-json", "-verbose"],
-            cwd=REPOSITORY_ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        stdout, returncode, stderr = result.stdout, result.returncode, result.stderr
-    messages = [json.loads(line) for line in stdout.splitlines() if line.startswith("{")]
-    return messages, returncode, stderr
+    file: str
+    correct: str
+    wrong: str
+    rejected_addresses: list[str]
 
 
-def expected_plan_runs() -> set[str]:
+# If one of these lines moves, update it here. The self-test fails rather than
+# passing without a mutation.
+SELF_TEST_MUTATIONS = [
+    Mutation(
+        file="main.tf",
+        correct="task_role_arn            = module.services_common.api_handler_role_arn",
+        wrong="task_role_arn            = module.services_common.brainstore_iam_role_arn",
+        rejected_addresses=[
+            "module.api_ecs[0].aws_ecs_task_definition.braintrust_api",
+            "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_background",
+            "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_ingest",
+        ],
+    ),
+    Mutation(
+        file="main.tf",
+        correct="brainstore_s3_bucket_arn                   = module.storage.brainstore_bucket_arn",
+        wrong="brainstore_s3_bucket_arn                   = module.storage.code_bundle_bucket_arn",
+        rejected_addresses=[
+            "module.services_common.aws_iam_policy.api_handler_policy",
+            "module.services_common.aws_iam_role_policy.brainstore_s3_access",
+        ],
+    ),
+]
+
+
+@dataclass
+class CheckResult:
+    run_summaries: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    # (run name, address) for every change the check rejected.
+    rejected: set[tuple[str, str]] = field(default_factory=set)
+
+
+@dataclass
+class TestOutput:
+    messages: list[dict]
+    # None when reading saved output, which has no exit code to check.
+    returncode: int | None
+    stderr: str
+
+
+def run_upgrade_test(directory: Path) -> TestOutput:
+    result = subprocess.run(
+        ["terraform", "test", f"-filter={UPGRADE_TEST}", "-json", "-verbose"],
+        cwd=directory,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return TestOutput(parse_messages(result.stdout), result.returncode, result.stderr)
+
+
+def parse_messages(stdout: str) -> list[dict]:
+    return [json.loads(line) for line in stdout.splitlines() if line.startswith("{")]
+
+
+def expected_plan_runs(directory: Path) -> set[str]:
     """Names of the test runs that plan the working tree. Each must emit a plan."""
-    names = re.findall(r'^run\s+"(plans_[^"]+)"', (REPOSITORY_ROOT / UPGRADE_TEST).read_text(), re.MULTILINE)
+    names = re.findall(r'^run\s+"(plans_[^"]+)"', (directory / UPGRADE_TEST).read_text(), re.MULTILINE)
     if not names:
         sys.exit(f'{UPGRADE_TEST} has no run named "plans_*" to check.')
     return set(names)
@@ -88,40 +157,57 @@ def planned_changes(plan: dict) -> list[tuple[str, tuple[str, ...], str | None]]
     return changes
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--allow-list", type=Path, default=DEFAULT_ALLOW_LIST)
-    parser.add_argument(
-        "--plan-json",
-        help="Read saved `terraform test -json -verbose` output instead of running the test.",
-    )
-    arguments = parser.parse_args()
+def shared_arns(plan: dict) -> dict[str, list[str]]:
+    """ARNs that more than one managed resource in the parent state carries."""
+    addresses_by_arn = defaultdict(list)
+    for change in plan.get("resource_changes", []):
+        arn = (change["change"].get("before") or {}).get("arn")
+        if change["mode"] == "managed" and change["type"] not in SHARED_ARN_TYPES and arn:
+            addresses_by_arn[arn].append(change["address"])
+    return {arn: addresses for arn, addresses in addresses_by_arn.items() if len(addresses) > 1}
 
-    allow_list = load_allow_list(arguments.allow_list)
-    messages, returncode, stderr = read_test_output(arguments.plan_json)
 
-    errors = []
+def check(output: TestOutput, allow_list: list[dict], plan_runs: set[str]) -> CheckResult:
+    """Check one upgrade test run."""
+    messages = output.messages
+    result = CheckResult()
+    errors = result.errors
     # In JSON mode terraform reports its errors as messages on stdout.
     reported = "\n".join(m["@message"] for m in messages if m.get("@level") == "error")
-    if returncode:
+    # A mistyped or stale override target is only a warning, and it leaves that
+    # resource on the shared default ARN.
+    for message in messages:
+        diagnostic = message.get("diagnostic") or {}
+        if diagnostic.get("summary") == "Invalid override target":
+            errors.append(f"{UPGRADE_TEST}: {diagnostic.get('detail', '').strip()}")
+    if output.returncode:
         errors.append(
-            f"terraform test exited with {returncode}.\n"
-            f"stderr: {stderr.strip() or '(empty)'}\nerrors reported: {reported or '(none)'}"
+            f"terraform test exited with {output.returncode}.\n"
+            f"stderr: {output.stderr.strip() or '(empty)'}\nerrors reported: {reported or '(none)'}"
         )
-    summaries = [message["test_summary"] for message in messages if message["type"] == "test_summary"]
-    if len(summaries) != 1 or summaries[0]["status"] != "pass" or summaries[0]["failed"] + summaries[0]["errored"] > 0:
-        errors.append(f"Expected exactly one passing test summary, found {summaries}.")
+    test_summaries = [message["test_summary"] for message in messages if message["type"] == "test_summary"]
+    if (
+        len(test_summaries) != 1
+        or test_summaries[0]["status"] != "pass"
+        or test_summaries[0]["failed"] + test_summaries[0]["errored"] > 0
+    ):
+        errors.append(f"Expected exactly one passing test summary, found {test_summaries}.")
     plans = [(m["@testrun"], m["test_plan"]) for m in messages if m["type"] == "test_plan"]
     if not plans:
         errors.append(
             "The test emitted no plan. Run `uv run scripts/prepare-upgrade-fixture` and "
             "`terraform init -backend=false` first."
         )
-    for missing in sorted(expected_plan_runs() - {run_name for run_name, _ in plans}):
+    for missing in sorted(plan_runs - {run_name for run_name, _ in plans}):
         errors.append(f"The run {missing} emitted no plan, so its changes were not checked.")
 
     used_entries = Counter()
     for run_name, plan in plans:
+        for arn, addresses in shared_arns(plan).items():
+            errors.append(
+                f"{run_name}: {', '.join(addresses)} share the mock ARN {arn}. "
+                f"Give each its own ARN with an override_resource in {UPGRADE_TEST}."
+            )
         counts = Counter()
         for address, actions, previous_address in planned_changes(plan):
             if actions == ("no-op",):
@@ -134,18 +220,112 @@ def main() -> None:
             ]
             if not matches:
                 errors.append(f"{run_name}: unexpected {'+'.join(actions)} on {address}")
+                result.rejected.add((run_name, address))
                 continue
             used_entries.update(matches)
             counts["allowed"] += 1
         summary = ", ".join(f"{count} {kind}" for kind, count in sorted(counts.items()))
-        print(f"{run_name}: {summary}")
+        result.run_summaries.append(f"{run_name}: {summary}")
 
     for index, entry in enumerate(allow_list):
         if not used_entries[index]:
             errors.append(f"The allow-list entry for {entry['address']} matched no change.")
+    return result
 
-    if errors:
-        print("\n".join(["", *errors]), file=sys.stderr)
+
+def copy_working_tree(destination: Path) -> None:
+    """Copy tracked and unignored files, the lock file and the upgrade fixtures.
+
+    Ignored local files, such as tfvars and state, stay out of the copy.
+    """
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout.decode()
+    paths = [Path(path) for path in listed.split("\0") if path]
+    paths += [Path(".terraform.lock.hcl")]
+    for path in paths:
+        source = REPOSITORY_ROOT / path
+        if source.is_file():
+            (destination / path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination / path)
+    for fixture in (REPOSITORY_ROOT / "tests" / "fixtures").glob(".upgrade-*"):
+        shutil.copytree(fixture, destination / fixture.relative_to(REPOSITORY_ROOT))
+
+
+def self_test(allow_list: list[dict]) -> list[str]:
+    """Return errors. Empty means every plan run rejected every wrong wiring."""
+    for mutation in SELF_TEST_MUTATIONS:
+        if (REPOSITORY_ROOT / mutation.file).read_text().count(mutation.correct) != 1:
+            return [
+                f"Expected exactly one `{mutation.correct}` in {mutation.file}. "
+                "If that wiring moved, update SELF_TEST_MUTATIONS in this script."
+            ]
+    with tempfile.TemporaryDirectory(prefix="check-upgrade-plan-") as temporary:
+        copy = Path(temporary)
+        copy_working_tree(copy)
+        for mutation in SELF_TEST_MUTATIONS:
+            mutated = copy / mutation.file
+            mutated.write_text(mutated.read_text().replace(mutation.correct, mutation.wrong))
+        # Install providers from this checkout's init rather than downloading them again.
+        init = subprocess.run(
+            ["terraform", "init", "-backend=false", f"-plugin-dir={REPOSITORY_ROOT / '.terraform' / 'providers'}"],
+            cwd=copy,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if init.returncode != 0:
+            return [f"terraform init failed in the self-test copy:\n{init.stderr.strip()}"]
+        plan_runs = expected_plan_runs(copy)
+        result = check(run_upgrade_test(copy), allow_list, plan_runs)
+
+    missing = [
+        f"{run_name}: {address} ({mutation.wrong})"
+        for mutation in SELF_TEST_MUTATIONS
+        for address in mutation.rejected_addresses
+        for run_name in sorted(plan_runs)
+        if (run_name, address) not in result.rejected
+    ]
+    if missing:
+        return ["The check passed wrongly wired resources. It didn't reject:", *missing, "", "Errors it did report:", *result.errors]
+    return []
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--allow-list", type=Path, default=DEFAULT_ALLOW_LIST)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--plan-json",
+        help="Read saved `terraform test -json -verbose` output instead of running the test.",
+    )
+    mode.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Check that a wrong-role wiring change fails, using a mutated copy of the working tree.",
+    )
+    arguments = parser.parse_args()
+    allow_list = load_allow_list(arguments.allow_list)
+
+    if arguments.self_test:
+        errors = self_test(allow_list)
+        if errors:
+            print("\n".join(errors), file=sys.stderr)
+            sys.exit(1)
+        print(f"self-test: every plan run rejected all {len(SELF_TEST_MUTATIONS)} wrong wirings")
+        return
+
+    if arguments.plan_json:
+        output = TestOutput(parse_messages(Path(arguments.plan_json).read_text()), None, "")
+    else:
+        output = run_upgrade_test(REPOSITORY_ROOT)
+    result = check(output, allow_list, expected_plan_runs(REPOSITORY_ROOT))
+    print("\n".join(result.run_summaries))
+    if result.errors:
+        print("\n".join(["", *result.errors]), file=sys.stderr)
         sys.exit(1)
 
 
