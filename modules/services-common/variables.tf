@@ -10,165 +10,7 @@ variable "vpc_id" {
 
 variable "kms_key_arn" {
   type        = string
-  description = "The ARN of the KMS key to use for encrypting the Brainstore disks and S3 bucket. If not provided, AWS managed keys will be used."
-}
-
-variable "brainstore_s3_bucket_arn" {
-  type        = string
-  description = "The ARN of the S3 bucket used by Brainstore"
-}
-
-variable "brainstore_s3_bucket_kms_key_arn" {
-  type        = string
-  description = "Optional ARN of the KMS key encrypting a caller-provided Brainstore bucket. When set, the Brainstore and API roles are granted use of this key in addition to the module-managed key."
-  default     = null
-}
-
-variable "database_secret_arn" {
-  type        = string
-  description = "The ARN of the secret containing database credentials"
-}
-
-variable "brainstore_custom_ca_bundle_secret_arn" {
-  type        = string
-  description = "Optional ARN of the secret containing the PEM-encoded custom CA bundle for Brainstore EC2."
-  default     = null
-}
-
-variable "brainstore_custom_ca_bundle_kms_key_arn" {
-  type        = string
-  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret for Brainstore EC2."
-  default     = null
-}
-
-variable "brainstore_license_key_secret_arn" {
-  type        = string
-  description = "ARN of the Secrets Manager secret containing the Brainstore license key. Empty when unused."
-  default     = ""
-}
-
-variable "internal_observability_api_key_secret_arn" {
-  type        = string
-  description = "ARN of the Secrets Manager secret containing the Datadog API key. Empty when unused."
-  default     = ""
-}
-
-variable "permissions_boundary_arn" {
-  type        = string
-  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
-  default     = null
-}
-
-variable "eks_cluster_arn" {
-  type        = string
-  description = "Optional. If you're using EKS this enables IRSA and EKS Pod Identity for the Braintrust IAM roles. It restricts them to this cluster."
-  default     = null
-}
-
-variable "eks_namespace" {
-  type        = string
-  description = "Optional. If you're using EKS with IRSA or EKS Pod Identity, this restricts the IAM roles to this namespace."
-  default     = null
-}
-
-variable "enable_eks_pod_identity" {
-  type        = bool
-  description = "Optional. If you are using EKS this will enable EKS Pod Identity for the Braintrust IAM roles."
-  default     = false
-}
-
-variable "enable_eks_irsa" {
-  type        = bool
-  description = "Optional. If you are using EKS this will enable IRSA for the Braintrust IAM roles."
-  default     = false
-}
-
-variable "enable_ecs" {
-  type        = bool
-  description = "Whether ECS is a compute type for this deployment. Adds ecs-tasks.amazonaws.com trust to APIHandlerRole and ECS Exec permissions."
-  default     = false
-}
-
-variable "api_ecs_enable_execute_command" {
-  type        = bool
-  description = "Whether API ECS Exec is enabled. Grants opt-in transcript delivery only when ECS and a transcript destination are configured."
-  default     = false
-}
-
-variable "code_bundle_s3_bucket_arn" {
-  type        = string
-  description = "The ARN of the code bundle S3 bucket"
-}
-
-variable "lambda_responses_s3_bucket_arn" {
-  type        = string
-  description = "The ARN of the lambda responses S3 bucket"
-}
-
-variable "attachment_s3_bucket_arn" {
-  type        = string
-  description = "The ARN of the caller-provided attachment S3 bucket. When set, the API role is granted access to the bucket and its objects. Null disables the feature."
-  default     = null
-}
-
-variable "attachment_s3_bucket_kms_key_arn" {
-  type        = string
-  description = "The ARN of the KMS key used to encrypt the caller-provided attachment S3 bucket. When set, the API role is granted KMS permissions on this key. Null when the bucket uses SSE-S3 or no attachment bucket is configured."
-  default     = null
-}
-
-variable "external_attachment_s3_bucket_arns" {
-  type        = list(string)
-  description = "ARNs of caller-owned S3 buckets that traces link to as external attachments. When non-empty, the API role is granted s3:GetObject on their objects."
-  default     = []
-}
-
-variable "external_attachment_s3_bucket_kms_key_arns" {
-  type        = list(string)
-  description = "ARNs of the KMS keys that encrypt the external attachment buckets. When non-empty, the API role is granted kms:Decrypt on them through S3."
-  default     = []
-}
-
-variable "service_additional_policy_arns" {
-  type        = list(string)
-  description = "Additional policy ARNs to attach to the IAM role used by the main braintrust API service"
-  default     = []
-}
-
-variable "brainstore_additional_policy_arns" {
-  type        = list(string)
-  description = "Additional policy ARNs to attach to the IAM role used by Brainstore"
-  default     = []
-}
-
-variable "brainstore_enable_export" {
-  type        = bool
-  description = "Enable Brainstore-based export IAM permissions."
-  default     = false
-}
-
-variable "s3_export_assume_role_arns" {
-  type        = list(string)
-  description = <<-EOT
-    Optional allowlist of IAM role ARNs that the API handler and Brainstore roles may assume for S3 export (sts:AssumeRole with ExternalId bt:*).
-    When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
-    When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted.
-  EOT
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for arn in var.s3_export_assume_role_arns :
-      can(regex("^arn:aws:iam::(\\*|[0-9]{12}):role/.+$", arn))
-    ])
-    error_message = "s3_export_assume_role_arns entries must be IAM role ARNs or ARN patterns of the form arn:aws:iam::<account-id|*>:role/<role-name-or-pattern>."
-  }
-}
-
-variable "enable_brainstore_ec2_ssm" {
-  description = "Optional. true will enable ssm (session manager) for the brainstore EC2s. Helpful for debugging without changing firewall rules"
-  type        = bool
-  default     = false
+  description = "The ARN of the KMS key that encrypts the function tools secret."
 }
 
 variable "custom_tags" {
@@ -177,21 +19,9 @@ variable "custom_tags" {
   default     = {}
 }
 
-variable "override_api_iam_role_trust_policy" {
-  type        = string
-  description = "Advanced: If provided, this will completely replace the trust policy for the API handler IAM role. Must be a valid JSON string representing the IAM trust policy document."
-  default     = null
-}
-
-variable "override_brainstore_iam_role_trust_policy" {
-  type        = string
-  description = "Advanced: If provided, this will completely replace the trust policy for the Brainstore IAM role. Must be a valid JSON string representing the IAM trust policy document."
-  default     = null
-}
-
 variable "enable_quarantine_vpc" {
   type        = bool
-  description = "Whether to enable Quarantine VPC IAM resources. These are needed for running user-defined functions in an isolated environment."
+  description = "Whether to create the quarantine Lambda security group. It is needed for running user-defined functions in an isolated environment."
   default     = false
 }
 
@@ -203,20 +33,4 @@ variable "quarantine_vpc_id" {
     condition     = var.enable_quarantine_vpc ? var.quarantine_vpc_id != null : true
     error_message = "quarantine_vpc_id is required when enable_quarantine_vpc is true."
   }
-}
-variable "diagnostics_transcript_log_group_name" {
-  description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null preserves existing logging and permissions; session enablement flags remain independent."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
-    error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
-  }
-}
-
-variable "brainstore_license_key_kms_key_arn" {
-  type        = string
-  description = "Customer-managed KMS key ARN for the existing license secret."
-  default     = null
 }

@@ -36,9 +36,9 @@ upgrade test gives each resource its own mock ARN, and a shared one would hide
 a workload on the wrong role or a policy on the wrong bucket.
 
 --self-test proves that last point. It copies the working tree, points the API
-ECS task role at the Brainstore role and the Brainstore bucket grants at the
-code bundle bucket, runs the same check on the copy, and passes only if every
-plan run rejects each wrongly wired resource.
+ECS task role at the Brainstore role and the code bundle bucket grants at the
+Lambda responses bucket, runs the same check on the copy, and passes only if
+every plan run rejects each wrongly wired resource.
 
 Run scripts/prepare-upgrade-fixture and `terraform init` first.
 """
@@ -56,11 +56,15 @@ import tempfile
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 UPGRADE_TEST = "tests/v7_upgrade.tftest.hcl"
-# Each run that plans the working tree, and the changes it may make.
+# Each run that plans the working tree, and the changes it may make. Runs that
+# start from the parent commit share one allow-list, and runs that start from the
+# pinned v7 release share another.
+PARENT_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json"
+RELEASE_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.release.json"
 ALLOW_LISTS = {
-    "plans_working_tree_with_defaults": REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json",
-    "plans_working_tree_with_optional_iam_inputs": REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json",
-    "plans_working_tree_from_release": REPOSITORY_ROOT / "tests" / "upgrade-allow-list.release.json",
+    "plans_working_tree_with_defaults": PARENT_ALLOW_LIST,
+    "plans_working_tree_with_optional_iam_inputs": PARENT_ALLOW_LIST,
+    "plans_working_tree_from_release": RELEASE_ALLOW_LIST,
 }
 # Types whose arn may repeat. Nothing grants permissions on the first four, so a
 # wrong reference is a routing or scaling bug rather than an identity one. An
@@ -116,22 +120,25 @@ SELF_TEST_MUTATIONS = [
     Mutation(
         module="api_ecs",
         attribute="task_role_arn",
-        correct="module.services_common.api_handler_role_arn",
-        wrong="module.services_common.brainstore_iam_role_arn",
+        correct="module.iam.api_handler_role_arn",
+        wrong="module.iam.brainstore_role_arn",
         rejected_addresses=[
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api",
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_background",
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_ingest",
         ],
     ),
+    # The code bundle bucket is the one bucket every run takes from created_resources.
+    # The Brainstore bucket is a caller-provided one in the optional-inputs run, so
+    # swapping it there changes nothing.
     Mutation(
-        module="services_common",
-        attribute="brainstore_s3_bucket_arn",
-        correct="module.storage.brainstore_bucket_arn",
-        wrong="module.storage.code_bundle_bucket_arn",
+        module="iam",
+        attribute="code_bundle_s3_bucket_arn",
+        correct="module.storage.code_bundle_bucket_arn",
+        wrong="module.storage.lambda_responses_bucket_arn",
         rejected_addresses=[
-            "module.services_common.aws_iam_policy.api_handler_policy",
-            "module.services_common.aws_iam_role_policy.brainstore_s3_access",
+            "module.iam.aws_iam_policy.api_handler[0]",
+            "module.iam.aws_iam_role_policy.brainstore_s3_access[0]",
         ],
     ),
 ]

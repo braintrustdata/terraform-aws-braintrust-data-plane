@@ -256,8 +256,9 @@ moved {
   to   = module.redis.aws_elasticache_subnet_group.main[0]
 }
 
-# Quarantine IAM resources moved from services -> services-common
-# These IAM roles are no longer in 'services' they are in 'services-common'
+# Quarantine IAM resources moved from services -> services-common in an earlier
+# release. They now live in modules/iam, and the blocks near the end of this
+# file move them on from the services-common addresses below.
 moved {
   from = module.services[0].aws_iam_role.quarantine_invoke_role
   to   = module.services_common.aws_iam_role.quarantine_invoke_role[0]
@@ -463,4 +464,158 @@ moved {
 moved {
   from = module.gateway_ecs[0].aws_iam_role_policy.diagnostics_execute_command
   to   = module.iam.aws_iam_role_policy.gateway_task_diagnostics_execute_command
+}
+
+# The blocks below start from the services-common, brainstore and services
+# addresses that v3.0.0 and later releases use, which is where the older
+# blocks above already move earlier state. Keep both sets: Terraform follows
+# the chain, so dropping the older blocks stops pre-v3 state from reaching
+# modules/iam.
+#
+# The shared API, quarantine and Brainstore roles and their policies moved from
+# services-common into modules/iam. The additional policy attachments, the API
+# CloudWatch, external attachment and diagnostics policies, and the Brainstore
+# export, SSM and diagnostics resources already have a count in
+# modules/services-common, so their blocks name the whole resource on both sides
+# and Terraform moves every instance.
+moved {
+  from = module.services_common.aws_iam_role.api_handler_role
+  to   = module.iam.aws_iam_role.api_handler[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_policy.api_handler_policy
+  to   = module.iam.aws_iam_policy.api_handler[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy_attachment.api_handler_policy
+  to   = module.iam.aws_iam_role_policy_attachment.api_handler[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy_attachment.api_handler_additional_policy
+  to   = module.iam.aws_iam_role_policy_attachment.api_handler_additional_policy
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.api_handler_cloudwatch_metrics
+  to   = module.iam.aws_iam_role_policy.api_handler_cloudwatch_metrics
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.api_handler_external_attachment_read
+  to   = module.iam.aws_iam_role_policy.api_handler_external_attachment_read
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.api_diagnostics_transcripts
+  to   = module.iam.aws_iam_role_policy.api_handler_diagnostics_transcripts
+}
+
+moved {
+  from = module.services_common.aws_iam_role.quarantine_invoke_role[0]
+  to   = module.iam.aws_iam_role.quarantine_invoke[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.quarantine_invoke_policy[0]
+  to   = module.iam.aws_iam_role_policy.quarantine_invoke[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policies_exclusive.quarantine_invoke_role[0]
+  to   = module.iam.aws_iam_role_policies_exclusive.quarantine_invoke[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role.quarantine_function_role[0]
+  to   = module.iam.aws_iam_role.quarantine_function[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy_attachment.quarantine_function_role[0]
+  to   = module.iam.aws_iam_role_policy_attachment.quarantine_function_vpc_access[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.quarantine_function_deny_ec2[0]
+  to   = module.iam.aws_iam_role_policy.quarantine_function_deny_ec2[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_policy.api_handler_quarantine[0]
+  to   = module.iam.aws_iam_policy.api_handler_quarantine[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy_attachment.api_handler_quarantine[0]
+  to   = module.iam.aws_iam_role_policy_attachment.api_handler_quarantine[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role.brainstore_role
+  to   = module.iam.aws_iam_role.brainstore[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_s3_access
+  to   = module.iam.aws_iam_role_policy.brainstore_s3_access[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_secrets_access
+  to   = module.iam.aws_iam_role_policy.brainstore_secrets_access[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_export_assume_role
+  to   = module.iam.aws_iam_role_policy.brainstore_export_assume_role
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_cloudwatch_metrics
+  to   = module.iam.aws_iam_role_policy.brainstore_cloudwatch_metrics[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_cloudwatch_logs_access
+  to   = module.iam.aws_iam_role_policy.brainstore_cloudwatch_logs_access[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy_attachment.brainstore_ssm
+  to   = module.iam.aws_iam_role_policy_attachment.brainstore_ssm
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy_attachment.brainstore_additional_policy
+  to   = module.iam.aws_iam_role_policy_attachment.brainstore_additional_policy
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_kms_policy
+  to   = module.iam.aws_iam_role_policy.brainstore_kms_policy[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_ssm_parameter_access
+  to   = module.iam.aws_iam_role_policy.brainstore_ssm_parameter_access[0]
+}
+
+moved {
+  from = module.services_common.aws_iam_role_policy.brainstore_diagnostics_transcripts
+  to   = module.iam.aws_iam_role_policy.brainstore_diagnostics_transcripts
+}
+
+# The Brainstore instance profile and its Redis secret policy moved out of the
+# brainstore module.
+moved {
+  from = module.brainstore[0].aws_iam_instance_profile.brainstore
+  to   = module.iam.aws_iam_instance_profile.brainstore[0]
+}
+
+moved {
+  from = module.brainstore[0].aws_iam_role_policy.brainstore_redis_secret_access
+  to   = module.iam.aws_iam_role_policy.brainstore_redis_secret_access[0]
 }

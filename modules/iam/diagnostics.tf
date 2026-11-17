@@ -2,6 +2,42 @@
 locals {
   diagnostics_transcript_log_group_arn = var.diagnostics_transcript_log_group_name == null ? null : "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${var.diagnostics_transcript_log_group_name}:*"
   gateway_diagnostics_enabled          = var.diagnostics_transcript_log_group_name != null && var.ai_gateway_enable_execute_command
+  brainstore_diagnostics_enabled       = var.diagnostics_transcript_log_group_name != null && var.enable_brainstore_ec2_ssm
+  api_diagnostics_enabled              = var.diagnostics_transcript_log_group_name != null && local.create_ecs_api && var.api_ecs_enable_execute_command
+}
+
+resource "aws_iam_role_policy" "brainstore_diagnostics_transcripts" {
+  count = var.create_iam && local.brainstore_diagnostics_enabled ? 1 : 0
+  name  = "DiagnosticsTranscriptDelivery"
+  role  = aws_iam_role.brainstore[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
+        Resource = local.diagnostics_transcript_log_group_arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "api_handler_diagnostics_transcripts" {
+  count = var.create_iam && local.api_diagnostics_enabled ? 1 : 0
+  name  = "DiagnosticsTranscriptDelivery"
+  role  = aws_iam_role.api_handler[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
+        Resource = local.diagnostics_transcript_log_group_arn
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role_policy" "gateway_task_diagnostics_transcripts" {

@@ -15,6 +15,9 @@ mock_provider "aws" {
   mock_data "aws_partition" {
     defaults = { partition = "aws", dns_suffix = "amazonaws.com" }
   }
+  mock_data "aws_eks_cluster" {
+    defaults = { identity = [{ oidc = [{ issuer = "https://oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE" }] }] }
+  }
   mock_data "aws_secretsmanager_secret_versions" {
     defaults = {
       versions = [{ version_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", version_stages = ["AWSCURRENT"] }]
@@ -87,162 +90,200 @@ variables {
   enable_quarantine_vpc  = true
 }
 
+# Every IAM role, policy and instance profile, and every bucket, function and
+# rule that a policy or permission names, gets its own ARN. With one shared
+# mock ARN, a workload on the wrong role or a policy on the wrong bucket plans
+# as a no-op, so the upgrade check couldn't catch it. check-upgrade-plan fails
+# when two resources share an ARN, and --self-test proves the wrong wiring is
+# rejected. The plan runs read these ARNs back from state, so only the apply
+# runs use them.
+#
+# These overrides sit at the top of the file and apply to every run. A target
+# that a run's configuration doesn't have, such as a v7 address in a parent run,
+# is skipped. Terraform warns only about a target that no run has, and
+# check-upgrade-plan treats that warning as an error. The parent and the release
+# have different addresses for the roles that have moved, so both sets are here.
+#
+# An apply fills computed strings with random text, and the provider validates
+# some of them as ARNs, so the mock_resource defaults above give each type a
+# valid ARN too.
+
+# Roles that moved into modules/iam in the parent. The parent runs address them
+# there, and the release runs address them at their v7 addresses.
+override_resource {
+  target = module.iam.aws_iam_role.api_ecs_task_execution[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-api-ecs-task-execution" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.brainstore_deployment_waiter[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-brainstore-deployment-waiter" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.db_monitoring[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-database-db-monitoring" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.gateway_task[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.gateway_task_execution[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task-execution" }
+}
+override_resource {
+  target = module.api_ecs[0].aws_iam_role.task_execution
+  values = { arn = "arn:aws:iam::123456789012:role/mock-api-ecs-task-execution" }
+}
+override_resource {
+  target = module.brainstore_deployment[0].aws_iam_role.waiter
+  values = { arn = "arn:aws:iam::123456789012:role/mock-brainstore-deployment-waiter" }
+}
+override_resource {
+  target = module.database.aws_iam_role.db_monitoring
+  values = { arn = "arn:aws:iam::123456789012:role/mock-database-db-monitoring" }
+}
+override_resource {
+  target = module.gateway_ecs[0].aws_iam_role.task
+  values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task" }
+}
+override_resource {
+  target = module.gateway_ecs[0].aws_iam_role.task_execution
+  values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task-execution" }
+}
+
+# Roles that are still in services-common, services and the brainstore module in
+# the parent, and in the v7 release.
+override_resource {
+  target = module.services_common.aws_iam_role.api_handler_role
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-api-handler" }
+}
+override_resource {
+  target = module.services_common.aws_iam_role.brainstore_role
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-brainstore" }
+}
+override_resource {
+  target = module.services_common.aws_iam_role.quarantine_function_role[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-function" }
+}
+override_resource {
+  target = module.services_common.aws_iam_role.quarantine_invoke_role[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-invoke" }
+}
+override_resource {
+  target = module.services_common.aws_iam_policy.api_handler_policy
+  values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler" }
+}
+override_resource {
+  target = module.services_common.aws_iam_policy.api_handler_quarantine[0]
+  values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler-quarantine" }
+}
+override_resource {
+  target = module.brainstore[0].aws_iam_instance_profile.brainstore
+  values = { arn = "arn:aws:iam::123456789012:instance-profile/mock-brainstore" }
+}
+override_resource {
+  target = module.services[0].aws_iam_role.automation_cron_role
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-automation-cron" }
+}
+override_resource {
+  target = module.services[0].aws_iam_role.billing_cron
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-billing-cron" }
+}
+override_resource {
+  target = module.services[0].aws_iam_role.catchup_etl
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-catchup-etl" }
+}
+override_resource {
+  target = module.services[0].aws_iam_role.default_role
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-default" }
+}
+override_resource {
+  target = module.services[0].aws_iam_role.migrate_database
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-migrate-database" }
+}
+override_resource {
+  target = module.services[0].aws_iam_role.quarantine_warmup[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-warmup" }
+}
+override_resource {
+  target = module.services[0].aws_iam_policy.api_handler_lambda_policies
+  values = { arn = "arn:aws:iam::123456789012:policy/mock-services-api-handler-lambda" }
+}
+
+# Buckets, functions and rules that a policy or permission names.
+override_resource {
+  target = module.storage.aws_s3_bucket.brainstore[0]
+  values = { arn = "arn:aws:s3:::mock-storage-brainstore" }
+}
+override_resource {
+  target = module.storage.aws_s3_bucket.code_bundle_bucket
+  values = { arn = "arn:aws:s3:::mock-storage-code-bundle" }
+}
+override_resource {
+  target = module.storage.aws_s3_bucket.lambda_responses_bucket
+  values = { arn = "arn:aws:s3:::mock-storage-lambda-responses" }
+}
+override_resource {
+  target = module.brainstore_deployment[0].aws_lambda_function.waiter
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_lambda_function.automation_cron
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_lambda_function.billing_cron
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_lambda_function.catchup_etl
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_lambda_function.migrate_database
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_lambda_function.quarantine_warmup[0]
+  values = {
+    arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup"
+    invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup/invocations"
+  }
+}
+override_resource {
+  target = module.services[0].aws_cloudwatch_event_rule.automation_cron_schedule
+  values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-automation-cron" }
+}
+override_resource {
+  target = module.services[0].aws_cloudwatch_event_rule.billing_cron_schedule
+  values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-billing-cron" }
+}
+override_resource {
+  target = module.services[0].aws_cloudwatch_event_rule.catchup_etl_schedule
+  values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-catchup-etl" }
+}
+
 run "applies_parent_with_defaults" {
   command   = apply
   state_key = "defaults"
 
   module {
     source = "./tests/fixtures/.upgrade-parent"
-  }
-
-  # Every IAM role, policy and instance profile, and every bucket, function and
-  # rule that a policy or permission names, gets its own ARN. With one shared
-  # mock ARN, a workload on the wrong role or a policy on the wrong bucket plans
-  # as a no-op, so the upgrade check couldn't catch it. check-upgrade-plan fails
-  # when two resources share an ARN, and --self-test proves the wrong wiring is
-  # rejected. The plan run reads these ARNs back from state, so only the parent
-  # apply needs them, under the parent's addresses.
-  override_resource {
-    target = module.api_ecs[0].aws_iam_role.task_execution
-    values = { arn = "arn:aws:iam::123456789012:role/mock-api-ecs-task-execution" }
-  }
-  override_resource {
-    target = module.brainstore_deployment[0].aws_iam_role.waiter
-    values = { arn = "arn:aws:iam::123456789012:role/mock-brainstore-deployment-waiter" }
-  }
-  override_resource {
-    target = module.database.aws_iam_role.db_monitoring
-    values = { arn = "arn:aws:iam::123456789012:role/mock-database-db-monitoring" }
-  }
-  override_resource {
-    target = module.gateway_ecs[0].aws_iam_role.task
-    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task" }
-  }
-  override_resource {
-    target = module.gateway_ecs[0].aws_iam_role.task_execution
-    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task-execution" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.automation_cron_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-automation-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.billing_cron
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-billing-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.catchup_etl
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-catchup-etl" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.default_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-default" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.migrate_database
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-migrate-database" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.quarantine_warmup[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-warmup" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.api_handler_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-api-handler" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.brainstore_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-brainstore" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.quarantine_function_role[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-function" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.quarantine_invoke_role[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-invoke" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_policy.api_handler_lambda_policies
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-api-handler-lambda" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_policy.api_handler_policy
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_policy.api_handler_quarantine[0]
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler-quarantine" }
-  }
-  override_resource {
-    target = module.brainstore[0].aws_iam_instance_profile.brainstore
-    values = { arn = "arn:aws:iam::123456789012:instance-profile/mock-brainstore" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.brainstore[0]
-    values = { arn = "arn:aws:s3:::mock-storage-brainstore" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.code_bundle_bucket
-    values = { arn = "arn:aws:s3:::mock-storage-code-bundle" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.lambda_responses_bucket
-    values = { arn = "arn:aws:s3:::mock-storage-lambda-responses" }
-  }
-  override_resource {
-    target = module.brainstore_deployment[0].aws_lambda_function.waiter
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.automation_cron
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.billing_cron
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.catchup_etl
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.migrate_database
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.quarantine_warmup[0]
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.automation_cron_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-automation-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.billing_cron_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-billing-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.catchup_etl_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-catchup-etl" }
   }
 }
 
@@ -262,151 +303,6 @@ run "applies_release_with_defaults" {
   module {
     source = "./tests/fixtures/.upgrade-release"
   }
-
-  # The same distinct ARNs as the parent run, under the release's addresses. Each
-  # apply run lists its own, because the parent's addresses move with the stack.
-  override_resource {
-    target = module.api_ecs[0].aws_iam_role.task_execution
-    values = { arn = "arn:aws:iam::123456789012:role/mock-api-ecs-task-execution" }
-  }
-  override_resource {
-    target = module.brainstore_deployment[0].aws_iam_role.waiter
-    values = { arn = "arn:aws:iam::123456789012:role/mock-brainstore-deployment-waiter" }
-  }
-  override_resource {
-    target = module.database.aws_iam_role.db_monitoring
-    values = { arn = "arn:aws:iam::123456789012:role/mock-database-db-monitoring" }
-  }
-  override_resource {
-    target = module.gateway_ecs[0].aws_iam_role.task
-    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task" }
-  }
-  override_resource {
-    target = module.gateway_ecs[0].aws_iam_role.task_execution
-    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task-execution" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.automation_cron_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-automation-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.billing_cron
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-billing-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.catchup_etl
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-catchup-etl" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.default_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-default" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.migrate_database
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-migrate-database" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.quarantine_warmup[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-warmup" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.api_handler_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-api-handler" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.brainstore_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-brainstore" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.quarantine_function_role[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-function" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.quarantine_invoke_role[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-invoke" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_policy.api_handler_lambda_policies
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-api-handler-lambda" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_policy.api_handler_policy
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_policy.api_handler_quarantine[0]
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler-quarantine" }
-  }
-  override_resource {
-    target = module.brainstore[0].aws_iam_instance_profile.brainstore
-    values = { arn = "arn:aws:iam::123456789012:instance-profile/mock-brainstore" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.brainstore[0]
-    values = { arn = "arn:aws:s3:::mock-storage-brainstore" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.code_bundle_bucket
-    values = { arn = "arn:aws:s3:::mock-storage-code-bundle" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.lambda_responses_bucket
-    values = { arn = "arn:aws:s3:::mock-storage-lambda-responses" }
-  }
-  override_resource {
-    target = module.brainstore_deployment[0].aws_lambda_function.waiter
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.automation_cron
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.billing_cron
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.catchup_etl
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.migrate_database
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.quarantine_warmup[0]
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.automation_cron_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-automation-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.billing_cron_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-billing-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.catchup_etl_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-catchup-etl" }
-  }
 }
 
 run "plans_working_tree_from_release" {
@@ -425,151 +321,6 @@ run "applies_parent_with_optional_iam_inputs" {
   module {
     source = "./tests/fixtures/.upgrade-parent"
   }
-
-  # The same distinct ARNs as the defaults run, under the parent's addresses.
-  override_resource {
-    target = module.api_ecs[0].aws_iam_role.task_execution
-    values = { arn = "arn:aws:iam::123456789012:role/mock-api-ecs-task-execution" }
-  }
-  override_resource {
-    target = module.brainstore_deployment[0].aws_iam_role.waiter
-    values = { arn = "arn:aws:iam::123456789012:role/mock-brainstore-deployment-waiter" }
-  }
-  override_resource {
-    target = module.database.aws_iam_role.db_monitoring
-    values = { arn = "arn:aws:iam::123456789012:role/mock-database-db-monitoring" }
-  }
-  override_resource {
-    target = module.gateway_ecs[0].aws_iam_role.task
-    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task" }
-  }
-  override_resource {
-    target = module.gateway_ecs[0].aws_iam_role.task_execution
-    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task-execution" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.automation_cron_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-automation-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.billing_cron
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-billing-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.catchup_etl
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-catchup-etl" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.default_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-default" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.migrate_database
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-migrate-database" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_role.quarantine_warmup[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-warmup" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.api_handler_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-api-handler" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.brainstore_role
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-brainstore" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.quarantine_function_role[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-function" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_role.quarantine_invoke_role[0]
-    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-invoke" }
-  }
-  override_resource {
-    target = module.services[0].aws_iam_policy.api_handler_lambda_policies
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-api-handler-lambda" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_policy.api_handler_policy
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler" }
-  }
-  override_resource {
-    target = module.services_common.aws_iam_policy.api_handler_quarantine[0]
-    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler-quarantine" }
-  }
-  override_resource {
-    target = module.brainstore[0].aws_iam_instance_profile.brainstore
-    values = { arn = "arn:aws:iam::123456789012:instance-profile/mock-brainstore" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.brainstore[0]
-    values = { arn = "arn:aws:s3:::mock-storage-brainstore" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.code_bundle_bucket
-    values = { arn = "arn:aws:s3:::mock-storage-code-bundle" }
-  }
-  override_resource {
-    target = module.storage.aws_s3_bucket.lambda_responses_bucket
-    values = { arn = "arn:aws:s3:::mock-storage-lambda-responses" }
-  }
-  override_resource {
-    target = module.brainstore_deployment[0].aws_lambda_function.waiter
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.automation_cron
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.billing_cron
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.catchup_etl
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.migrate_database
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_lambda_function.quarantine_warmup[0]
-    values = {
-      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup"
-      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup/invocations"
-    }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.automation_cron_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-automation-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.billing_cron_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-billing-cron" }
-  }
-  override_resource {
-    target = module.services[0].aws_cloudwatch_event_rule.catchup_etl_schedule
-    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-catchup-etl" }
-  }
-
   variables {
     permissions_boundary_arn               = "arn:aws:iam::123456789012:policy/boundary"
     custom_tags                            = { team = "platform" }
@@ -580,6 +331,32 @@ run "applies_parent_with_optional_iam_inputs" {
     diagnostics_transcript_log_group_name  = "/braintrust-byoc/test/diagnostics"
     ai_gateway_enable_execute_command      = true
     ai_gateway_bedrock_assume_role_arns    = ["arn:aws:iam::210987654321:role/bedrock"]
+
+    # Shared API role.
+    service_additional_policy_arns             = ["arn:aws:iam::123456789012:policy/api-extra"]
+    api_ecs_enable_execute_command             = true
+    external_attachment_s3_bucket_arns         = ["arn:aws:s3:::attachments-a"]
+    external_attachment_s3_bucket_kms_key_arns = ["arn:aws:kms:us-east-1:210987654321:key/33333333-3333-3333-3333-333333333333"]
+    existing_attachment_s3_bucket_arn          = "arn:aws:s3:::attachments-b"
+    existing_attachment_s3_bucket_kms_key_arn  = "arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444"
+    s3_export_assume_role_arns                 = ["arn:aws:iam::210987654321:role/export"]
+
+    # Brainstore role, with a caller-provided bucket.
+    brainstore_additional_policy_arns         = ["arn:aws:iam::123456789012:policy/brainstore-extra"]
+    brainstore_enable_export                  = true
+    enable_brainstore_ec2_ssm                 = true
+    create_brainstore_s3_bucket               = false
+    existing_brainstore_s3_bucket_arn         = "arn:aws:s3:::existing-brainstore"
+    existing_brainstore_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/55555555-5555-5555-5555-555555555555"
+    postgres_connection_override              = { credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf" }
+
+    # Trust documents. The Brainstore trust is replaced outright, and the API
+    # trust takes the EKS branches.
+    existing_eks_cluster_arn                  = "arn:aws:eks:us-east-1:123456789012:cluster/test"
+    eks_namespace                             = "braintrust"
+    enable_eks_pod_identity                   = true
+    enable_eks_irsa                           = true
+    override_brainstore_iam_role_trust_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "ec2.amazonaws.com" }, Action = "sts:AssumeRole" }] })
   }
 }
 
@@ -597,5 +374,34 @@ run "plans_working_tree_with_optional_iam_inputs" {
     diagnostics_transcript_log_group_name  = "/braintrust-byoc/test/diagnostics"
     ai_gateway_enable_execute_command      = true
     ai_gateway_bedrock_assume_role_arns    = ["arn:aws:iam::210987654321:role/bedrock"]
+
+    # Shared API role.
+    service_additional_policy_arns             = ["arn:aws:iam::123456789012:policy/api-extra"]
+    api_ecs_enable_execute_command             = true
+    external_attachment_s3_bucket_arns         = ["arn:aws:s3:::attachments-a"]
+    external_attachment_s3_bucket_kms_key_arns = ["arn:aws:kms:us-east-1:210987654321:key/33333333-3333-3333-3333-333333333333"]
+    existing_attachment_s3_bucket_arn          = "arn:aws:s3:::attachments-b"
+    existing_attachment_s3_bucket_kms_key_arn  = "arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444"
+    s3_export_assume_role_arns                 = ["arn:aws:iam::210987654321:role/export"]
+
+    # Brainstore role, with a caller-provided bucket.
+    brainstore_additional_policy_arns         = ["arn:aws:iam::123456789012:policy/brainstore-extra"]
+    brainstore_enable_export                  = true
+    enable_brainstore_ec2_ssm                 = true
+    create_brainstore_s3_bucket               = false
+    existing_brainstore_s3_bucket_arn         = "arn:aws:s3:::existing-brainstore"
+    existing_brainstore_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/55555555-5555-5555-5555-555555555555"
+    postgres_connection_override              = { credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf" }
+
+    # Trust documents. The Brainstore trust is replaced outright, and the API
+    # trust takes the EKS branches.
+    existing_eks_cluster_arn                  = "arn:aws:eks:us-east-1:123456789012:cluster/test"
+    eks_namespace                             = "braintrust"
+    enable_eks_pod_identity                   = true
+    enable_eks_irsa                           = true
+    override_brainstore_iam_role_trust_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "ec2.amazonaws.com" }, Action = "sts:AssumeRole" }] })
   }
 }
+
+# Lambda mode keeps the APIHandler and AIProxy Lambdas, so it also has the
+# AIProxy invoke role and its policies, which the ECS runs above don't create.

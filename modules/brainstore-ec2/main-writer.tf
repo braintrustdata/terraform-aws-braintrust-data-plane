@@ -8,7 +8,7 @@ resource "aws_launch_template" "brainstore_writer" {
   update_default_version = true
 
   iam_instance_profile {
-    arn = aws_iam_instance_profile.brainstore.arn
+    arn = var.instance_profile_arn
   }
 
   vpc_security_group_ids = [var.brainstore_instance_security_group_id]

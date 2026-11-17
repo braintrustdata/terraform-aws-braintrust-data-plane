@@ -342,12 +342,12 @@ output "kms_key_arn" {
 }
 
 output "quarantine_invoke_role_arn" {
-  value       = module.services_common.quarantine_invoke_role_arn
+  value       = module.iam.quarantine_invoke_role_arn
   description = "ARN of the IAM role used by the API handler to invoke quarantined functions"
 }
 
 output "quarantine_function_role_arn" {
-  value       = module.services_common.quarantine_function_role_arn
+  value       = module.iam.quarantine_function_role_arn
   description = "ARN of the IAM role used by quarantined Lambda functions"
 }
 

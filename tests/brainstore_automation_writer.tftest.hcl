@@ -40,7 +40,7 @@ variables {
   brainstore_s3_bucket_arn              = "arn:aws:s3:::bt-automation-writer-brainstore"
   lambda_responses_s3_bucket_arn        = "arn:aws:s3:::bt-automation-writer-lambda-responses"
   code_bundle_s3_bucket_arn             = "arn:aws:s3:::bt-automation-writer-code-bundles"
-  brainstore_iam_role_name              = "bt-automation-writer-brainstore"
+  instance_profile_arn                  = "arn:aws:iam::123456789012:instance-profile/bt-automation-writer-brainstore"
   brainstore_instance_security_group_id = "sg-12345678"
   ai_proxy_url_ssm_parameter            = "/bt-automation-writer/ai-proxy-url"
   automation_writer_instance_count      = 1
