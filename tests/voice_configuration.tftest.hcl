@@ -37,6 +37,20 @@ run "voice_generated_cloudfront_origin" {
   }
 }
 
+run "rejects_voice_without_gateway" {
+  command = plan
+  variables {
+    enable_ecs_voice_sessions = true
+    enable_ai_gateway         = false
+  }
+  expect_failures = [var.enable_ecs_voice_sessions]
+}
+
+run "voice_disabled_allows_disabled_gateway" {
+  command = plan
+  variables { enable_ai_gateway = false }
+}
+
 run "voice_custom_origin_with_lambda_ingress" {
   command = plan
   variables {

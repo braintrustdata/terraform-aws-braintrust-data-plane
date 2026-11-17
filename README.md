@@ -209,6 +209,7 @@ Hosted voice sessions are disabled by default. Set `enable_ecs_voice_sessions = 
 after deploying an API image containing [braintrustdata/braintrust#25882](https://github.com/braintrustdata/braintrust/pull/25882).
 The existing API image pin is unchanged. Use a released image containing that merge
 or set `braintrust_api_version_override` to a compatible image tag.
+Voice also requires `enable_ai_gateway = true` to supply `GATEWAY_URL` to the API.
 
 Session creation (`POST /v1/project/*/simulated_user/*/session`) and WebSocket
 connections (`GET /v1/voice_session/*/connect`) use the existing background API
@@ -223,6 +224,12 @@ HTTPS domain, with the `wss://` scheme. `WEB_CONCURRENCY` remains configurable.
 The shared pool uses `braintrust_api_background_min_count` and
 `braintrust_api_background_max_count`, a 120-second container stop timeout, and a
 voice occupancy scaling target of 60%, alongside existing resource policies.
+
+Enabling voice accepts that routine scale-in and task rollouts can interrupt
+active calls. Active sessions do not use ECS task scale-in protection. The default
+300-second target deregistration delay is shorter than the 600-second call limit.
+The 120-second container stop timeout allows finalization but does not guarantee
+call completion.
 
 Enabling voice requires a Terraform apply and a compatible API image; a data-plane
 image update alone does not add these routes. The admission kill switch in

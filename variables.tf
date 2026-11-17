@@ -1057,12 +1057,17 @@ variable "enable_private_dataplane" {
 
 variable "enable_ecs_voice_sessions" {
   type        = bool
-  description = "Enable hosted voice session creation and WebSocket connections on the background API ECS pool. Requires an API image containing braintrustdata/braintrust#25882. Not supported with external EKS."
+  description = "Enable hosted voice session creation and WebSocket connections on the background API ECS pool. Requires enable_ai_gateway and an API image containing braintrustdata/braintrust#25882. Not supported with external EKS."
   default     = false
 
   validation {
     condition     = !var.enable_ecs_voice_sessions || !var.use_deployment_mode_external_eks
     error_message = "Hosted ECS voice sessions are not supported with external EKS. Configure voice sessions through the external deployment instead."
+  }
+
+  validation {
+    condition     = !var.enable_ecs_voice_sessions || var.enable_ai_gateway
+    error_message = "enable_ecs_voice_sessions requires enable_ai_gateway to provide GATEWAY_URL."
   }
 }
 
