@@ -942,6 +942,7 @@ module "brainstore" {
   count  = local.create_brainstore_ec2 ? 1 : 0
 
   deployment_name                               = var.deployment_name
+  legacy_filesystem_tuning                      = var.brainstore_legacy_filesystem_tuning
   instance_count                                = var.brainstore_instance_count
   instance_type                                 = var.brainstore_instance_type
   instance_key_pair_name                        = var.brainstore_instance_key_pair_name
