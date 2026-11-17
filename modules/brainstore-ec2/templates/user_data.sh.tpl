@@ -92,7 +92,8 @@ export AWS_DEFAULT_REGION=${aws_region}
 # Install AWS CLI v2 for all users with the AWS-recommended installer.
 (
   set -e
-  apt-get install -y ca-certificates curl unzip gnupg libc6 groff less
+  apt-get install -y ca-certificates curl unzip gnupg libc6 less
+  apt-get install -y --no-install-recommends groff
   aws_cli_install_dir=$(mktemp -d)
   trap 'rm -rf "$aws_cli_install_dir"' EXIT
   curl --fail --silent --show-error --location --retry 5 \
