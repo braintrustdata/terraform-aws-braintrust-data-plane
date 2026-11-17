@@ -11,8 +11,8 @@ content even without a shell.
 
 ## Activation and closure
 
-- Bootstrap attaches inspection and the predefined
-  [Diagnostics policy](policies/README.md#role-attachment-model), with
+- Bootstrap attaches the fixed inspection, Diagnostics and service permission
+  [policies](policies/README.md#role-attachment-model), with
   [closed trust](trust-policies/diagnostics-role-trust-policy.json).
 - Braintrust's deployment service uses the customer Deployment role to replace
   that trust with a [temporary grant](trust-policies/diagnostics-active-trust-policy.json):
@@ -44,7 +44,7 @@ flowchart TB
         D[Deployment role]
         subgraph G[Diagnostics role]
             T["Trust policy<br/>Closed or named engineers + deadline"]
-            P["Fixed permissions<br/>Inspection and Diagnostics"]
+            P["Fixed permissions<br/>Inspection, Diagnostics and service policies"]
             T -->|controls role assumption| P
         end
     end
@@ -136,9 +136,15 @@ two-hour maximum for all ongoing access. Emergency revocation is separate.
 | Application logs | Matching `/braintrust/`, `/ecs/`, `/aws/lambda/`, and Loop MicroVM groups |
 | Workload configuration | Task definitions, user data, and launch configurations |
 | Operational changes | Scoped scaling, task recovery, Lambda concurrency, module schedules, database/cache reboot, and database parameter tuning |
+| Scheduler | Read prefixed schedules; update their timing, state, targets and inputs; pass prefixed bounded execution roles only to Scheduler |
 
 Some configuration and discovery reads apply across the account and Regions;
 the managed prefix is not complete isolation between data planes.
+Scheduler inspection exposes target configuration and input to both Observer
+and Diagnostics. Keep secrets and customer payloads out of schedule input.
+Diagnostics schedule updates are broader than pause/resume; they do not grant
+schedule creation, deletion or OAM source-link management. See
+[service permissions](policies/README.md#scheduler-and-metric-sharing).
 
 We use standard Session Manager shells, not SSH or port forwarding. The role
 does not grant generic Run Command, EC2 Instance Connect, IAM administration,

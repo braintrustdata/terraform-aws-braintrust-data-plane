@@ -21,6 +21,7 @@ command -v rg >/dev/null
 if [[ "$package_dir" == "$source_dir" ]]; then
   command -v shasum >/dev/null
   jq -e '.profile == "customer" and .audience == "customer" and
+    .revision == "aws-customer-2026-11-16-services-preview.1" and
     .status == "design-preview" and .deployment_ready == false and
     .diagnostics_activation_mode == "temporary-trust" and
     .default_deprovision_mode == "retain-data" and
@@ -97,6 +98,7 @@ render_policy() {
   sed \
     -e 's|<AWS_PARTITION>|aws|g' \
     -e 's|<AWS_ACCOUNT_ID>|111122223333|g' \
+    -e 's|<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>|777788889999|g' \
     -e "s|<AWS_REGION>|${sample_region}|g" \
     -e "s|<BOOTSTRAP_NAME>|${sample_bootstrap}|g" \
     -e "s|<BOOTSTRAP_STACK_ARN>|${sample_stack}|g" \
@@ -422,6 +424,65 @@ if [[ "$package_dir" == "$source_dir" ]]; then
       .Condition.Null."eks:username" == "true"] == [true,true]) and
     ([.Statement[].Action | if type == "array" then .[] else . end] |
       all(. != "eks:*" and . != "eks:UpdateAccessEntry" and . != "eks:AssociateAccessPolicy"))'
+
+  # Service additions preserve the managed namespace and human-role split.
+  for file in deployment-services-policy.json inspection-services-policy.json diagnostics-services-policy.json; do
+    assert_policy "$file" '
+      [.Statement[].Action | if type == "array" then .[] else . end] |
+      all(contains("*") | not)'
+  done
+  for file in deployment-services-policy.json diagnostics-services-policy.json; do
+    assert_policy "$file" '
+      [.Statement[] | select(.Action == "iam:PassRole") |
+        .Resource == "arn:aws:iam::111122223333:role/bt-a-*" and
+        .Condition == {"StringEquals":{"iam:PassedToService":"scheduler.amazonaws.com"}}] == [true]'
+  done
+  for file in deployment-services-policy.json inspection-services-policy.json diagnostics-services-policy.json; do
+    assert_policy "$file" '
+      [.Statement[] | select(.Sid == "ManageManagedSchedules" or .Sid == "InspectManagedSchedules" or .Sid == "OperateManagedSchedules") |
+        .Resource == "arn:aws:scheduler:us-east-1:111122223333:schedule/*/bt-a-*"] == [true]'
+  done
+  for file in deployment-services-policy.json inspection-services-policy.json; do
+    assert_policy "$file" '
+      [.Statement[] | select(.Sid == "ManageManagedScheduleGroups" or .Sid == "InspectManagedScheduleGroups") |
+        .Resource == "arn:aws:scheduler:us-east-1:111122223333:schedule-group/bt-a-*"] == [true]'
+  done
+  assert_policy inspection-services-policy.json '
+    [.Statement[].Action | if type == "array" then .[] else . end] |
+    all(test("^(iam:List|scheduler:(Get|List)|oam:(Get|List))"))'
+  assert_policy diagnostics-services-policy.json '
+    ([.Statement[] | select(.Sid == "OperateManagedSchedules") | .Action] == ["scheduler:UpdateSchedule"]) and
+    ([.Statement[].Action | if type == "array" then .[] else . end] |
+      all(. == "scheduler:UpdateSchedule" or . == "iam:PassRole"))'
+  assert_policy deployment-services-policy.json '
+    [.Statement[] | select(.Sid == "MetricSourceLinkCreate" or .Sid == "MetricSourceLinkUpdate") |
+      .Condition == {
+        "ForAllValues:StringEquals":{"oam:ResourceTypes":"AWS::CloudWatch::Metric"},
+        "Null":{"oam:ResourceTypes":"false"}} and
+      (if .Sid == "MetricSourceLinkCreate" then
+        .Action == "oam:CreateLink" and .Resource == "arn:aws:oam:us-east-1:777788889999:sink/*"
+      else
+        .Action == "oam:UpdateLink" and .Resource == "arn:aws:oam:us-east-1:111122223333:link/*"
+      end)] == [true,true]'
+  assert_policy deployment-services-policy.json '
+    [.Statement[] | select(.Sid == "MetricSourceLinkLifecycle") |
+      .Resource == "arn:aws:oam:us-east-1:111122223333:link/*"] == [true]'
+  for file in deployment-services-policy.json inspection-services-policy.json diagnostics-services-policy.json; do
+    assert_policy "$file" '
+      [.Statement[].Action | if type == "array" then .[] else . end] |
+      all(. != "oam:CreateSink" and . != "oam:PutSinkPolicy" and . != "oam:DeleteSink" and
+          . != "logs:Link" and . != "xray:Link")'
+  done
+  # Mirror the generated no-receiver variant: all sharing/lifecycle statements
+  # are omitted, while Scheduler and ownership-tag reads remain.
+  jq '.Statement |= map(select(.Sid | startswith("MetricSourceLink") | not))' \
+    "$temporary_dir/deployment-services-policy.json" >"$temporary_dir/no-metric-receiver-policy.json"
+  assert_policy no-metric-receiver-policy.json '
+    ([.Statement[].Action | if type == "array" then .[] else . end] |
+      all((startswith("oam:") or . == "cloudwatch:Link") | not)) and
+    ([.Statement[] | select(.Sid == "ManageManagedSchedules")] | length == 1) and
+    ([.Statement[] | select(.Sid == "ReadManagedIAMOwnershipTags")] | length == 1)'
+  echo 'Scheduler scope, optional metrics-only receiver and human inspection boundaries passed (static checks only).'
   echo 'Account guardrails, positive role grants, delegation, and diagnostic boundaries passed (static checks only).'
 fi
 

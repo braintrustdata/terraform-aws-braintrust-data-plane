@@ -9,9 +9,9 @@ implementation requirements; placeholders do not need substitution for review.
 
 | Role | Boundary | Attached policies |
 | --- | --- | --- |
-| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | Six deployment policies below; customer-disable inline policy only when activation is disabled |
-| `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None | [inspection-policy.json](inspection-policy.json) |
-| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None | Inspection and [diagnostics-policy.json](diagnostics-policy.json), always attached; trust gates access |
+| `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | Seven deployment policies below; customer-disable inline policy only when activation is disabled |
+| `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None | [inspection-policy.json](inspection-policy.json) and [inspection-services-policy.json](inspection-services-policy.json) |
+| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None | Both inspection policies, [diagnostics-policy.json](diagnostics-policy.json) and [diagnostics-services-policy.json](diagnostics-services-policy.json), always attached; trust gates access |
 | Runtime roles created by Terraform | [runtime-permissions-boundary.json](runtime-permissions-boundary.json) | Module policies for each workload |
 
 Identity policies grant role capabilities. The runtime boundary limits delegated
@@ -30,6 +30,8 @@ Inspection covers the supported data plane, not a general AWS inventory.
 Unused VPN, edge hardware, VM import/export, DynamoDB, and EFS reads are omitted.
 Core networking, capacity, quotas, and EKS metadata remain available to both
 human roles.
+Scheduler inspection includes target configuration and input. Keep secrets and
+customer payloads out of schedule input; metadata access is not a content filter.
 
 Do not grant bootstrap roles or workload role sessions independent permissions
 through resource policies. Such grants can bypass implicit identity or boundary
@@ -43,7 +45,7 @@ access path outside this model.
 
 ## Deployment policy files
 
-Six managed policies attach to one role to stay within AWS document limits.
+Seven managed policies attach to one role to stay within AWS document limits.
 
 | File | Purpose |
 | --- | --- |
@@ -53,11 +55,12 @@ Six managed policies attach to one role to stay within AWS document limits.
 | [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json) | Capability-gated Diagnostics trust updates, logging verification metadata, and protection of the owning bootstrap stack |
 | [deployment-eks-policy.json](deployment-eks-policy.json) | Scoped EKS management |
 | [deployment-service-linked-roles-policy.json](deployment-service-linked-roles-policy.json) | Creation of eleven exact AWS default service-linked roles |
+| [deployment-services-policy.json](deployment-services-policy.json) | IAM ownership-tag reads, bounded Scheduler lifecycle and role passing, optional metrics-only OAM source links |
 
 When `DiagnosticsActivationEnabled=false`, bootstrap also installs
 [customer-disable-policy.json](customer-disable-policy.json) as the
 `CustomerDiagnosticsActivationControl` inline policy on Deployment. It explicitly
-denies updates to this bootstrap's Diagnostics trust. It is not a seventh managed
+denies updates to this bootstrap's Diagnostics trust. It is not an eighth managed
 policy and is absent when activation is enabled.
 
 Deployment remains privileged. Broad EC2, RDS, and SQS lifecycle permissions
@@ -95,6 +98,56 @@ belong to their AWS services, remain outside data-plane teardown, and do not
 expand human access. EKS permissions do not by themselves provide a deployment
 recipe or Kubernetes authorization.
 
+## Scheduler and metric sharing
+
+The service policies extend the fixed role permissions. They do not alter
+Diagnostics activation, the runtime boundary or the account SCP. Earlier issued
+bootstraps keep their original permissions; a module upgrade alone does not
+install these grants.
+
+### Scheduler
+
+Deployment can create, read, update and delete schedules whose names start with
+the managed prefix, in the registered account and Region. Schedule groups are
+managed under that prefix; the schedule ARN permits prefixed jobs in any group,
+including the default group. Both human roles can inspect those schedules.
+
+Activated Diagnostics can update schedules and pass prefixed execution roles
+only to `scheduler.amazonaws.com`. `UpdateSchedule` can change targets, inputs
+and timing as well as enabled state; it is not a pause-only permission. The
+module must restrict execution-role trust to the source account and schedule
+group, and grant invocation only for its intended Lambda targets. The existing
+runtime boundary limits those roles; it grants no permissions by itself.
+
+Deployment and both human roles can read IAM policy and instance-profile tags
+under the managed prefix. Existing IAM tag-write permissions remain unchanged.
+The module's IAM ownership tag is metadata, not a new authorization boundary.
+
+### CloudWatch metric sharing
+
+The reference [Deployment services policy](deployment-services-policy.json)
+includes an optional OAM source-link configuration. The generated bootstrap pins
+one Braintrust receiver account before issuance. When sharing is unconfigured,
+the generated policy omits every statement whose `Sid` starts with
+`MetricSourceLink`, including `cloudwatch:Link`. Do not replace an unused
+receiver with a wildcard. These reference files show the enabled configuration;
+the generated package supplies its final values and permissions.
+
+- New links can target only that receiver's sink in the data-plane Region.
+- Link creation and updates permit only `AWS::CloudWatch::Metric`. There is no
+  log/trace sharing or sink-administration grant.
+- Updates, tagging and deletion cover source links in the registered account
+  and Region. An update cannot change the receiver. This scope assumes the
+  account is dedicated to Braintrust workloads.
+- Namespace filters belong to the monitoring module. IAM restricts the shared
+  resource type, not individual metric namespaces or filter contents.
+- One Terraform owner must manage each account/Region link, even when several
+  data planes share it. Receiver setup and admission are separate from the
+  customer source-link permissions.
+
+Observer and activated Diagnostics can inspect source links without managing
+them. Workload roles gain no Scheduler or OAM administration from these policies.
+
 ## Naming and scope
 
 Reserve one non-overlapping prefix per bootstrap, ending in a hyphen, such as
@@ -105,7 +158,7 @@ that name to 18 characters. One bootstrap may cover multiple data planes.
 | --- | --- |
 | Management roles, under IAM path `/braintrust-byoc/` | `Braintrust{Deployment,Observer,Diagnostics}Role-<BOOTSTRAP_NAME>` |
 | Runtime boundary, under the same path | `BraintrustRuntimeBoundary-<BOOTSTRAP_NAME>` |
-| Human permissions policies, under the same path | `BraintrustInspectionPolicy-<BOOTSTRAP_NAME>` and `BraintrustDiagnosticsPolicy-<BOOTSTRAP_NAME>` |
+| Human permissions policies, under the same path | `Braintrust{Inspection,InspectionServices,Diagnostics,DiagnosticsServices}Policy-<BOOTSTRAP_NAME>` |
 | Other bootstrap managed policies | Same path; names ending in `-<BOOTSTRAP_NAME>` |
 | Runtime roles, policies, and instance profiles | Root path `/`; names beginning with `<MANAGED_RESOURCE_PREFIX>` |
 
@@ -128,7 +181,8 @@ module-created data-plane keys, not externally supplied keys.
 Examples target the `aws` partition and one Region. Some infrastructure grants
 are account-wide; the prefix is not complete isolation between data planes.
 Brainstore operational permissions use module names and deployment tags.
-Schedule controls cover only the module's three named jobs.
+The existing EventBridge rule controls cover the module's three named jobs;
+Scheduler permissions separately cover schedule names under the managed prefix.
 
 ## Inputs
 
@@ -144,6 +198,7 @@ Schedule controls cover only the module's three named jobs.
 | `<STATE_BUCKET_NAME>`, `<OPERATION_LOG_BUCKET_NAME>` | Distinct customer-owned S3 buckets, outside the runtime prefix |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust software bucket for the Region |
 | `<LICENSE_SECRET_ARN>` | Exact same-account, same-Region license secret ARN, at most 128 characters |
+| `<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>` | Exact optional Braintrust receiver account, different from the source account; the generated policy omits sharing grants when no receiver is configured |
 
 [Trust inputs](../trust-policies/README.md) identify the Braintrust principals
 and External ID. All final identifiers must be exact; never substitute `*`
@@ -162,8 +217,8 @@ is a customer control, not a guarantee of this package.
 
 ## Diagnostics constraints
 
-Diagnostics keeps both policies attached. Its inactive trust blocks assumption;
-activation changes only the exact role's trust to allow the designated source
+Diagnostics keeps all four permission policies attached. Its inactive trust blocks
+assumption; activation changes only the exact role's trust to allow the designated source
 role, named engineers, and an absolute deadline. Deployment cannot change
 Diagnostics permissions or attachments. Readback uses its existing `iam:GetRole`
 metadata permission.

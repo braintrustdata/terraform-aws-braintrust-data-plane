@@ -1,8 +1,9 @@
 # AWS managed BYOC access model
 
-Status: design preview. This review package follows the temporary-trust
-implementation; full deployment, access, customer-control, and logging acceptance
-remain required before use.
+Status: design preview. This review package describes revision
+`aws-customer-2026-11-16-services-preview.1`, adding Scheduler and optional metric
+sharing to the temporary-trust model. Full deployment, access, customer-control,
+and logging acceptance remain required before use.
 
 This package describes Braintrust's standard AWS roles and customer controls
 for managed BYOC. It is a security review reference, not an installable bootstrap.
@@ -22,6 +23,7 @@ plane may serve multiple teams. Unrelated workloads belong in other accounts.
 | Principals, session attribution, and trust | [Trust guide](trust-policies/README.md) |
 | Organization controls | [Guardrail guide](guardrails/README.md) |
 | Temporary operational access | [Diagnostics guide](diagnostics.md) |
+| Scheduler and optional cross-account metrics | [Service permissions](policies/README.md#scheduler-and-metric-sharing) |
 | Audit collection and detections | [Monitoring guide](guardrails/cloudtrail-alerting.md) |
 
 No deployment or placeholder substitution is needed to review these files.
@@ -46,7 +48,7 @@ flowchart TD
     subgraph Braintrust
         M[BYOC deployment service]
         O[Observer SSO]
-        E[Diagnostics SSO source role]
+        E[Diagnostics source role]
     end
 
     subgraph Customer AWS account
@@ -57,6 +59,11 @@ flowchart TD
         L[(Operation records)]
         I[Data plane infrastructure]
         A[(Application data)]
+        W[CloudWatch metrics]
+    end
+
+    subgraph Monitoring["Braintrust monitoring account, if configured"]
+        C[Regional CloudWatch receiver]
     end
 
     subgraph External account for enabled feature
@@ -73,6 +80,8 @@ flowchart TD
     G -->|operations and logged sessions| I
     R -->|health, metrics, alarms, metadata| I
     I --> A
+    I -->|metrics| W
+    W -->|optional AWS-managed metric sharing| C
     I -->|feature-required access| X
 ```
 
@@ -89,6 +98,9 @@ flowchart TD
 | Other service content | EC2 console output, RDS logs, and SQS messages under broad lifecycle grants | No | Through permitted configuration, logs, and workloads |
 | Host/container sessions | No interactive grant | No | Managed Brainstore SSM shells and ECS Exec |
 | Infrastructure changes | Lifecycle management | No | Scoped scaling, recovery, concurrency, schedules, and database tuning |
+| Scheduler schedule configuration, including input | Managed schedules | Managed schedules | Managed schedules |
+| Scheduler changes | Create, update, delete | No | Update managed schedules and pass bounded execution roles |
+| Cross-account CloudWatch metric sharing | Optional source-link management for a fixed receiver | Inspect source links | Inspect source links |
 | Runtime IAM management | Prefixed resources with the required boundary and limited `PassRole` | No | No |
 | Bootstrap IAM changes | Exact Diagnostics role trust, with a service-issued activation/close capability and customer activation enabled | No | No |
 | Deletion of SCP-protected buckets, keys, and final snapshots | Blocked for the listed actions | Blocked | Blocked |
@@ -98,6 +110,14 @@ permission reference. Some lifecycle, configuration, and discovery grants apply
 across the account and Regions; a resource prefix is not complete isolation
 between data planes.
 These capabilities assume no additional identity or resource-policy grants.
+Schedule targets and inputs are readable configuration. Keep secrets and customer
+payloads out of schedule input; use the workloads' normal secret stores.
+
+Optional CloudWatch sharing makes selected metrics available to a configured
+Braintrust monitoring account. IAM restricts new links to that receiver in the data-plane
+Region and permits metrics only. The monitoring module selects namespaces and
+filters. This does not grant sharing of logs or traces or administration of the
+receiver. See [service permissions](policies/README.md#scheduler-and-metric-sharing).
 
 ## Temporary Diagnostics
 
@@ -238,6 +258,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-11-16 | Added three service policies for Scheduler lifecycle and inspection, IAM ownership-tag reads, and optional metrics-only OAM links. | Review the updated role attachments, bounded Scheduler role passing, Diagnostics schedule-update scope, receiver selection, and shared-link ownership. The runtime boundary, account SCP, Diagnostics trust and customer disable control are unchanged. |
 | 2026-11-10 | Aligned temporary trust with verified IAM Identity Center UserIds, matching session names, and a customer-owned activation disable switch. Added the dedicated eleven-role service-linked-role policy. | Review the active/disabled trust documents, capability-gated trust updates, exact bootstrap-stack protection, customer-control limits, and IAM propagation versus fixed expiry. Human permission policies, the runtime boundary, and the account SCP are unchanged. |
 | 2026-11-06 | Changed Diagnostics activation to temporary trust for named engineers and a deadline. Permissions stay attached; replaced Deployment's attachment activation and automated session termination grants. | Review inactive and active trust examples, exact Deployment trust-update authority, customer revocation, and the distinction between trust expiry and existing session timeouts. This preview requires implementation and live acceptance before use. |
 | 2026-11-04 | Removed unused VPN, edge hardware, specialized compute, VM import/export, legacy EC2 metadata, DynamoDB, and EFS reads from shared inspection. | Observer and activated Diagnostics retain data-plane inspection, networking, capacity, quotas, and EKS metadata. Deployment and SCP permissions are unchanged by this cleanup. |
