@@ -97,9 +97,9 @@ flowchart TD
 | CloudWatch application log events | No direct grant | No | Matching application groups |
 | Other service content | EC2 console output, RDS logs, and SQS messages under broad lifecycle grants | No | Through permitted configuration, logs, and workloads |
 | Host/container sessions | No interactive grant | No | Managed Brainstore SSM shells and ECS Exec |
-| Infrastructure changes | Lifecycle management | No | Scoped scaling, recovery, concurrency, schedules, and database tuning |
+| Infrastructure changes | Lifecycle management | No | Scoped scaling, recovery, concurrency, legacy EventBridge rule enable/disable, and database tuning |
 | Scheduler schedule configuration, including input | Managed schedules | Managed schedules | Managed schedules |
-| Scheduler changes | Create, update, delete | No | Update managed schedules and pass bounded execution roles |
+| Scheduler changes | Create, update, delete; pass bounded execution roles | No | No |
 | Cross-account CloudWatch metric sharing | Optional source-link management for a fixed receiver | Inspect source links | Inspect source links |
 | Runtime IAM management | Prefixed resources with the required boundary and limited `PassRole` | No | No |
 | Bootstrap IAM changes | Exact Diagnostics role trust, with a service-issued activation/close capability and customer activation enabled | No | No |
@@ -258,7 +258,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
-| 2026-11-16 | Added three service policies for Scheduler lifecycle and inspection, IAM ownership-tag reads, and optional metrics-only OAM links. | Review the updated role attachments, bounded Scheduler role passing, Diagnostics schedule-update scope, receiver selection, and shared-link ownership. The runtime boundary, account SCP, Diagnostics trust and customer disable control are unchanged. |
+| 2026-11-16 | Added two service policies for Scheduler lifecycle and inspection, IAM ownership-tag reads, and optional metrics-only OAM links. | Review the updated role attachments, bounded Scheduler role passing, read-only human Scheduler access, receiver selection, and shared-link ownership. The runtime boundary, account SCP, Diagnostics trust and customer disable control are unchanged. |
 | 2026-11-10 | Aligned temporary trust with verified IAM Identity Center UserIds, matching session names, and a customer-owned activation disable switch. Added the dedicated eleven-role service-linked-role policy. | Review the active/disabled trust documents, capability-gated trust updates, exact bootstrap-stack protection, customer-control limits, and IAM propagation versus fixed expiry. Human permission policies, the runtime boundary, and the account SCP are unchanged. |
 | 2026-11-06 | Changed Diagnostics activation to temporary trust for named engineers and a deadline. Permissions stay attached; replaced Deployment's attachment activation and automated session termination grants. | Review inactive and active trust examples, exact Deployment trust-update authority, customer revocation, and the distinction between trust expiry and existing session timeouts. This preview requires implementation and live acceptance before use. |
 | 2026-11-04 | Removed unused VPN, edge hardware, specialized compute, VM import/export, legacy EC2 metadata, DynamoDB, and EFS reads from shared inspection. | Observer and activated Diagnostics retain data-plane inspection, networking, capacity, quotas, and EKS metadata. Deployment and SCP permissions are unchanged by this cleanup. |

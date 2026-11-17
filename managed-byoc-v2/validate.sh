@@ -426,20 +426,18 @@ if [[ "$package_dir" == "$source_dir" ]]; then
       all(. != "eks:*" and . != "eks:UpdateAccessEntry" and . != "eks:AssociateAccessPolicy"))'
 
   # Service additions preserve the managed namespace and human-role split.
-  for file in deployment-services-policy.json inspection-services-policy.json diagnostics-services-policy.json; do
+  for file in deployment-services-policy.json inspection-services-policy.json; do
     assert_policy "$file" '
       [.Statement[].Action | if type == "array" then .[] else . end] |
       all(contains("*") | not)'
   done
-  for file in deployment-services-policy.json diagnostics-services-policy.json; do
-    assert_policy "$file" '
+  assert_policy deployment-services-policy.json '
       [.Statement[] | select(.Action == "iam:PassRole") |
         .Resource == "arn:aws:iam::111122223333:role/bt-a-*" and
         .Condition == {"StringEquals":{"iam:PassedToService":"scheduler.amazonaws.com"}}] == [true]'
-  done
-  for file in deployment-services-policy.json inspection-services-policy.json diagnostics-services-policy.json; do
+  for file in deployment-services-policy.json inspection-services-policy.json; do
     assert_policy "$file" '
-      [.Statement[] | select(.Sid == "ManageManagedSchedules" or .Sid == "InspectManagedSchedules" or .Sid == "OperateManagedSchedules") |
+      [.Statement[] | select(.Sid == "ManageManagedSchedules" or .Sid == "InspectManagedSchedules") |
         .Resource == "arn:aws:scheduler:us-east-1:111122223333:schedule/*/bt-a-*"] == [true]'
   done
   for file in deployment-services-policy.json inspection-services-policy.json; do
@@ -450,10 +448,19 @@ if [[ "$package_dir" == "$source_dir" ]]; then
   assert_policy inspection-services-policy.json '
     [.Statement[].Action | if type == "array" then .[] else . end] |
     all(test("^(iam:List|scheduler:(Get|List)|oam:(Get|List))"))'
-  assert_policy diagnostics-services-policy.json '
-    ([.Statement[] | select(.Sid == "OperateManagedSchedules") | .Action] == ["scheduler:UpdateSchedule"]) and
-    ([.Statement[].Action | if type == "array" then .[] else . end] |
-      all(. == "scheduler:UpdateSchedule" or . == "iam:PassRole"))'
+  # Validate the complete human role attachment set, not just the new policy.
+  jq -s '{Version:"2012-10-17",Statement:[.[].Statement[]]}' \
+    "$temporary_dir/inspection-policy.json" \
+    "$temporary_dir/inspection-services-policy.json" \
+    "$temporary_dir/diagnostics-policy.json" >"$temporary_dir/combined-diagnostics-policy.json"
+  assert_policy combined-diagnostics-policy.json '
+    [.Statement[] | select(.Effect == "Allow") | .Action |
+      if type == "array" then .[] else . end] |
+    all(. != "iam:PassRole" and
+        ((startswith("scheduler:") | not) or test("^scheduler:(Get|List)")))'
+  assert_policy deployment-services-policy.json '
+    [.Statement[] | select(.Sid == "ManageManagedSchedules") | .Action[]] | sort ==
+    (["scheduler:CreateSchedule","scheduler:GetSchedule","scheduler:UpdateSchedule","scheduler:DeleteSchedule"] | sort)'
   assert_policy deployment-services-policy.json '
     [.Statement[] | select(.Sid == "MetricSourceLinkCreate" or .Sid == "MetricSourceLinkUpdate") |
       .Condition == {
@@ -467,7 +474,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
   assert_policy deployment-services-policy.json '
     [.Statement[] | select(.Sid == "MetricSourceLinkLifecycle") |
       .Resource == "arn:aws:oam:us-east-1:111122223333:link/*"] == [true]'
-  for file in deployment-services-policy.json inspection-services-policy.json diagnostics-services-policy.json; do
+  for file in deployment-services-policy.json inspection-services-policy.json; do
     assert_policy "$file" '
       [.Statement[].Action | if type == "array" then .[] else . end] |
       all(. != "oam:CreateSink" and . != "oam:PutSinkPolicy" and . != "oam:DeleteSink" and

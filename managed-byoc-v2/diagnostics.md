@@ -135,15 +135,16 @@ two-hour maximum for all ongoing access. Emergency revocation is separate.
 | ECS Exec | Clusters and tasks under the managed prefix |
 | Application logs | Matching `/braintrust/`, `/ecs/`, `/aws/lambda/`, and Loop MicroVM groups |
 | Workload configuration | Task definitions, user data, and launch configurations |
-| Operational changes | Scoped scaling, task recovery, Lambda concurrency, module schedules, database/cache reboot, and database parameter tuning |
-| Scheduler | Read prefixed schedules; update their timing, state, targets and inputs; pass prefixed bounded execution roles only to Scheduler |
+| Operational changes | Scoped scaling, task recovery, Lambda concurrency, legacy EventBridge rule enable/disable, database/cache reboot, and database parameter tuning |
+| Scheduler | Inspect managed schedule configuration; no Scheduler mutation or execution-role passing |
 
 Some configuration and discovery reads apply across the account and Regions;
 the managed prefix is not complete isolation between data planes.
 Scheduler inspection exposes target configuration and input to both Observer
 and Diagnostics. Keep secrets and customer payloads out of schedule input.
-Diagnostics schedule updates are broader than pause/resume; they do not grant
-schedule creation, deletion or OAM source-link management. See
+Scheduler changes, including pause/resume, belong to deployment automation.
+Activated Diagnostics cannot edit these jobs or manage OAM source links. The
+existing controls for legacy EventBridge rules are unchanged. See
 [service permissions](policies/README.md#scheduler-and-metric-sharing).
 
 We use standard Session Manager shells, not SSH or port forwarding. The role

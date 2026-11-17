@@ -11,7 +11,7 @@ implementation requirements; placeholders do not need substitution for review.
 | --- | --- | --- |
 | `BraintrustDeploymentRole-<BOOTSTRAP_NAME>` | None | Seven deployment policies below; customer-disable inline policy only when activation is disabled |
 | `BraintrustObserverRole-<BOOTSTRAP_NAME>` | None | [inspection-policy.json](inspection-policy.json) and [inspection-services-policy.json](inspection-services-policy.json) |
-| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None | Both inspection policies, [diagnostics-policy.json](diagnostics-policy.json) and [diagnostics-services-policy.json](diagnostics-services-policy.json), always attached; trust gates access |
+| `BraintrustDiagnosticsRole-<BOOTSTRAP_NAME>` | None | Both inspection policies and [diagnostics-policy.json](diagnostics-policy.json), always attached; trust gates access |
 | Runtime roles created by Terraform | [runtime-permissions-boundary.json](runtime-permissions-boundary.json) | Module policies for each workload |
 
 Identity policies grant role capabilities. The runtime boundary limits delegated
@@ -112,10 +112,12 @@ the managed prefix, in the registered account and Region. Schedule groups are
 managed under that prefix; the schedule ARN permits prefixed jobs in any group,
 including the default group. Both human roles can inspect those schedules.
 
-Activated Diagnostics can update schedules and pass prefixed execution roles
-only to `scheduler.amazonaws.com`. `UpdateSchedule` can change targets, inputs
-and timing as well as enabled state; it is not a pause-only permission. The
-module must restrict execution-role trust to the source account and schedule
+Scheduler mutation and execution-role passing belong to Deployment only.
+`UpdateSchedule` can change targets, inputs and execution roles as well as timing
+and enabled state, so activated Diagnostics has Scheduler inspection only. It
+cannot pause, resume or edit these jobs directly. Braintrust manages schedule
+changes through the deployment workflow using supported module settings.
+The module must restrict execution-role trust to the source account and schedule
 group, and grant invocation only for its intended Lambda targets. The existing
 runtime boundary limits those roles; it grants no permissions by itself.
 
@@ -158,7 +160,7 @@ that name to 18 characters. One bootstrap may cover multiple data planes.
 | --- | --- |
 | Management roles, under IAM path `/braintrust-byoc/` | `Braintrust{Deployment,Observer,Diagnostics}Role-<BOOTSTRAP_NAME>` |
 | Runtime boundary, under the same path | `BraintrustRuntimeBoundary-<BOOTSTRAP_NAME>` |
-| Human permissions policies, under the same path | `Braintrust{Inspection,InspectionServices,Diagnostics,DiagnosticsServices}Policy-<BOOTSTRAP_NAME>` |
+| Human permissions policies, under the same path | `Braintrust{Inspection,InspectionServices,Diagnostics}Policy-<BOOTSTRAP_NAME>` |
 | Other bootstrap managed policies | Same path; names ending in `-<BOOTSTRAP_NAME>` |
 | Runtime roles, policies, and instance profiles | Root path `/`; names beginning with `<MANAGED_RESOURCE_PREFIX>` |
 
