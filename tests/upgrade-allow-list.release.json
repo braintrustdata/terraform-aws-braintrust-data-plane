@@ -1,0 +1,50 @@
+{
+  "base_ref": "v7.2.1",
+  "allowed_changes": [
+    {
+      "address": "aws_secretsmanager_secret\\.brainstore_license_key\\[0\\]",
+      "actions": ["create"],
+      "reason": "#307 stores the Brainstore license key in a module-created Secrets Manager secret."
+    },
+    {
+      "address": "aws_secretsmanager_secret_version\\.brainstore_license_key\\[0\\]",
+      "actions": ["create"],
+      "reason": "#307 writes the license key into that secret."
+    },
+    {
+      "address": "module\\.api_ecs\\[0\\]\\.aws_ecs_task_definition\\.braintrust_api(_background|_ingest)?",
+      "actions": ["update"],
+      "changed_attributes": ["container_definitions"],
+      "reason": "#307 injects the license key from Secrets Manager instead of a plaintext environment variable."
+    },
+    {
+      "address": "module\\.gateway_ecs\\[0\\]\\.aws_ecs_task_definition\\.gateway",
+      "actions": ["update"],
+      "changed_attributes": ["container_definitions"],
+      "reason": "#307 injects the gateway's secrets from Secrets Manager."
+    },
+    {
+      "address": "module\\.brainstore\\[0\\]\\.aws_launch_template\\.brainstore(_fast_reader\\[0\\]|_writer\\[0\\])?",
+      "actions": ["update"],
+      "changed_attributes": ["user_data"],
+      "reason": "#307 has Brainstore read the license key from Secrets Manager at boot."
+    },
+    {
+      "address": "module\\.api_ecs\\[0\\]\\.aws_iam_role_policy\\.task_execution_secrets",
+      "actions": ["update"],
+      "changed_attributes": ["policy"],
+      "reason": "#307 lets the API task execution role read the new license key secret."
+    },
+    {
+      "address": "module\\.services_common\\.aws_iam_role_policy\\.brainstore_secrets_access",
+      "actions": ["update"],
+      "changed_attributes": ["policy"],
+      "reason": "#307 lets the Brainstore role read the new license key secret."
+    },
+    {
+      "address": "module\\.gateway_ecs\\[0\\]\\.aws_iam_role_policy\\.task_execution_secrets",
+      "actions": ["create"],
+      "reason": "#307 gives the gateway task execution role its own policy to read its secrets."
+    }
+  ]
+}

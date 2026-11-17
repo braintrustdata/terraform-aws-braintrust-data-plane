@@ -2,7 +2,11 @@
 
 Upgrade this Terraform module **one major version at a time**. See the [README](README.md#major-versions) for the general upgrade policy, and the [routine upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine) for the standard process of bumping the module version and applying Terraform.
 
-**Note** - This guide is still growing. This section covers the tooling requirement. Later v8 changes add their own sections.
+**Note** - This guide is still growing. These sections cover the starting version and the tooling requirement. Later v8 changes add their own sections.
+
+## Start from v7.3.0 or later
+
+Upgrade to v7.3.0 or a later v7 release, and apply it, before you move to v8. v7.3.0 is the oldest release we support upgrading from. Coming from an older v7 release puts the v7.3.0 changes into the same apply as v8, and we don't support that combination.
 
 ## Terraform 1.17 or newer
 

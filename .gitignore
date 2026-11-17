@@ -54,5 +54,6 @@ scripts/logs*
 scripts/.venv/
 .vscode/*
 
-# Parent of the upgrade test, written by scripts/prepare-upgrade-fixture
+# Starting points of the upgrade test, written by scripts/prepare-upgrade-fixture
 /tests/fixtures/.upgrade-parent/
+/tests/fixtures/.upgrade-release/
