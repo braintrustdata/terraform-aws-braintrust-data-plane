@@ -119,3 +119,19 @@ enable_ecs_api = false
 Terraform ignores `enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin`. Helm owns the gateway. External EKS mode does not create the gateway. `use_private_gateway_quarantine_proxy = true` fails the plan. Terraform does not ignore that flag, so `use_private_gateway_quarantine_proxy` must be `false`. `braintrust_api_url` is a legacy input and is not required.
 
 Stacks that already built a gateway with Terraform must move to the Helm gateway and repoint before upgrading. The upgrade destroys that ALB, ECS service, and ECS cluster.
+
+## v7.3.0 IAM ownership tag
+
+Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. On an existing stack this is an in-place tag update. Nothing is replaced. The module reserves the key, so setting `BraintrustIAMOwner` in `custom_tags` fails at plan time, in any letter case.
+
+Check these before you apply it.
+
+1. The principal that runs `terraform apply` needs `iam:TagRole`, `iam:TagPolicy` and `iam:TagInstanceProfile`, plus `iam:ListRoleTags`, `iam:ListPolicyTags` and `iam:ListInstanceProfileTags` so Terraform can read the tags back.
+1. Look at any SCP or permissions boundary that has a condition on tag keys, such as `aws:RequestTag` or `aws:TagKeys`. This is the most likely thing to block the new tag.
+1. An organization tag policy only matters if it defines `BraintrustIAMOwner` or a differently cased variant of it. Tag policies don't block keys they don't mention.
+1. IAM allows 50 tags per resource. A role that is already close to that limit can't take another tag.
+1. Don't set the key in the AWS provider's `default_tags`. The module can't validate those, and the module's own value has to be the one that applies.
+
+Apply this release on its own, without a Braintrust service version bump in the same apply. That keeps the plan to tag changes only, which is easy to review.
+
+Going back to an earlier version only removes the tag, since the older module doesn't set it. It doesn't replace any IAM.

@@ -5,6 +5,9 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
+
   create_ssm_vpc_endpoints = var.enable_brainstore_ec2_ssm && var.create_ssm_vpc_endpoints
   ssm_vpc_endpoint_services = {
     "ssm" : "com.amazonaws.${data.aws_region.current.region}.ssm",

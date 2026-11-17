@@ -15,7 +15,7 @@ resource "aws_iam_role" "task_execution" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-api-ecs-task-exec"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 resource "aws_iam_role_policy_attachment" "task_execution_default" {
