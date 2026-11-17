@@ -27,7 +27,7 @@ uv run scripts/check-iam-ownership-tags --self-test
 uv run scripts/check-iam-dependencies
 terraform test
 uv run scripts/check-upgrade-plan
-# Proves the check above rejects a workload on the wrong role or a policy on the wrong bucket.
+# Proves the check above rejects a workload on the wrong role or a policy on the wrong bucket in every run that wiring applies to.
 uv run scripts/check-upgrade-plan --self-test
 """
 

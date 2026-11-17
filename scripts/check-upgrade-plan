@@ -7,10 +7,11 @@
 
 tests/v7_upgrade.tftest.hcl applies two starting points and plans this working
 tree against each one's state: the parent commit, and the pinned v7 release that
-MIGRATION_V8.md says to upgrade from. Test assertions can't inspect planned
-actions, so this script runs the test with `terraform test -json -verbose`,
-reads each emitted plan, and checks every resource and output change against
-that run's allow-list (ALLOW_LISTS).
+MIGRATION_V8.md says to upgrade from. It also has a parent run on external EKS,
+which has no API ECS, services or Lambda modules. Test assertions can't inspect
+planned actions, so this script runs the test with `terraform test -json
+-verbose`, reads each emitted plan, and checks every resource and output change
+against that run's allow-list (ALLOW_LISTS).
 
 Only no-op passes by default, and a moved resource is a no-op with a
 previous_address. Anything else needs an entry in the allow-list, including
@@ -35,10 +36,15 @@ when an override_resource in the test names a target that doesn't exist. The
 upgrade test gives each resource its own mock ARN, and a shared one would hide
 a workload on the wrong role or a policy on the wrong bucket.
 
---self-test proves that last point. It copies the working tree, points the API
-ECS task role at the Brainstore role and the code bundle bucket grants at the
-Lambda responses bucket, runs the same check on the copy, and passes only if
-every plan run rejects each wrongly wired resource.
+--self-test proves that last point. It copies the working tree, wires a
+workload to the wrong role and a policy to the wrong bucket, runs the same check
+on the copy, and passes only if each plan run rejects every wrong wiring that
+applies to it. Each mutation lists the plan runs it applies to, because a
+module or address can be absent from a run, such as API ECS on external EKS. It
+fails when a plan run has no mutation that applies to it, when a mutation lists
+a run that the test doesn't have, or when a mutation applies to no run. It also
+fails when a run that a mutation leaves out has the addresses that mutation
+rewires, so a narrowed list can't hide a run that should reject the wiring.
 
 Run scripts/prepare-upgrade-fixture and `terraform init` first.
 """
@@ -64,6 +70,7 @@ RELEASE_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.release.jso
 ALLOW_LISTS = {
     "plans_working_tree_with_defaults": PARENT_ALLOW_LIST,
     "plans_working_tree_with_optional_iam_inputs": PARENT_ALLOW_LIST,
+    "plans_working_tree_with_external_eks": PARENT_ALLOW_LIST,
     "plans_working_tree_from_release": RELEASE_ALLOW_LIST,
 }
 # Types whose arn may repeat. Nothing grants permissions on the first four, so a
@@ -83,13 +90,15 @@ class Mutation:
     """A wrong wiring the self-test applies, and the addresses that must reject it.
 
     The self-test sets `attribute` to `wrong` inside the root module's
-    `module "<module>"` block, wherever `terraform fmt` aligns it.
+    `module "<module>"` block, wherever `terraform fmt` aligns it. Every run in
+    `plan_runs` must reject each of `rejected_addresses`.
     """
 
     module: str
     attribute: str
     correct: str
     wrong: str
+    plan_runs: list[str]
     rejected_addresses: list[str]
 
     def pattern(self) -> re.Pattern:
@@ -113,6 +122,16 @@ class Mutation:
         return text[:start] + mutated + text[end:]
 
 
+# The plan runs in UPGRADE_TEST. External EKS has no API ECS, services or Lambda
+# modules, so the mutations that rewire those apply only to the standard runs.
+STANDARD_PLAN_RUNS = [
+    "plans_working_tree_with_defaults",
+    "plans_working_tree_from_release",
+    "plans_working_tree_with_optional_iam_inputs",
+]
+EXTERNAL_EKS_PLAN_RUNS = ["plans_working_tree_with_external_eks"]
+ALL_PLAN_RUNS = STANDARD_PLAN_RUNS + EXTERNAL_EKS_PLAN_RUNS
+
 # If one of these wirings moves, update it here. The self-test fails rather than
 # passing without a mutation.
 SELF_TEST_FILE = "main.tf"
@@ -122,6 +141,7 @@ SELF_TEST_MUTATIONS = [
         attribute="task_role_arn",
         correct="module.iam.api_handler_role_arn",
         wrong="module.iam.brainstore_role_arn",
+        plan_runs=STANDARD_PLAN_RUNS,
         rejected_addresses=[
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api",
             "module.api_ecs[0].aws_ecs_task_definition.braintrust_api_background",
@@ -130,12 +150,14 @@ SELF_TEST_MUTATIONS = [
     ),
     # The code bundle bucket is the one bucket every run takes from created_resources.
     # The Brainstore bucket is a caller-provided one in the optional-inputs run, so
-    # swapping it there changes nothing.
+    # swapping it there changes nothing. The shared API and Brainstore roles exist
+    # on external EKS too, so this one covers that run.
     Mutation(
         module="iam",
         attribute="code_bundle_s3_bucket_arn",
         correct="module.storage.code_bundle_bucket_arn",
         wrong="module.storage.lambda_responses_bucket_arn",
+        plan_runs=ALL_PLAN_RUNS,
         rejected_addresses=[
             "module.iam.aws_iam_policy.api_handler[0]",
             "module.iam.aws_iam_role_policy.brainstore_s3_access[0]",
@@ -150,6 +172,8 @@ class CheckResult:
     errors: list[str] = field(default_factory=list)
     # (run name, address) for every change the check rejected.
     rejected: set[tuple[str, str]] = field(default_factory=set)
+    # Every resource address in each run's plan, changed or not.
+    planned_addresses: dict[str, set[str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -286,6 +310,7 @@ def check(output: TestOutput, allow_lists: dict[str, list[dict]], plan_runs: set
         errors.append(f"The run {unlisted} has no allow-list. Add it to ALLOW_LISTS.")
 
     for run_name, plan in plans:
+        result.planned_addresses[run_name] = {change["address"] for change in plan.get("resource_changes", [])}
         allow_list = allow_lists.get(run_name, [])
         used_entries = Counter()
         for arn, addresses in shared_arns(plan).items():
@@ -349,7 +374,28 @@ def copy_working_tree(destination: Path) -> None:
 
 
 def self_test(allow_lists: dict[str, list[dict]]) -> list[str]:
-    """Return errors. Empty means every plan run rejected every wrong wiring."""
+    """Return errors. Empty means every plan run rejected every wrong wiring that applies to it."""
+    plan_runs = expected_plan_runs(REPOSITORY_ROOT)
+    covered = {run_name for mutation in SELF_TEST_MUTATIONS for run_name in mutation.plan_runs}
+    coverage_errors = [
+        f"The mutation of {mutation.module}.{mutation.attribute} applies to no known plan run. "
+        f"Its plan_runs are {mutation.plan_runs}. Update SELF_TEST_MUTATIONS."
+        for mutation in SELF_TEST_MUTATIONS
+        if not set(mutation.plan_runs) & plan_runs
+    ]
+    coverage_errors += [
+        f"The mutation of {mutation.module}.{mutation.attribute} names {run_name}, which {UPGRADE_TEST} doesn't have."
+        for mutation in SELF_TEST_MUTATIONS
+        for run_name in mutation.plan_runs
+        if run_name not in plan_runs
+    ]
+    coverage_errors += [
+        f"No mutation applies to {run_name}, so --self-test wouldn't prove it rejects wrong wiring. "
+        "Add it to a mutation's plan_runs, or add a mutation."
+        for run_name in sorted(plan_runs - covered)
+    ]
+    if coverage_errors:
+        return coverage_errors
     for mutation in SELF_TEST_MUTATIONS:
         if mutation.matches((REPOSITORY_ROOT / SELF_TEST_FILE).read_text()) != 1:
             return [
@@ -373,18 +419,33 @@ def self_test(allow_lists: dict[str, list[dict]]) -> list[str]:
         )
         if init.returncode != 0:
             return [f"terraform init failed in the self-test copy:\n{init.stderr.strip()}"]
-        plan_runs = expected_plan_runs(copy)
         result = check(run_upgrade_test(copy), allow_lists, plan_runs)
 
     missing = [
         f"{run_name}: {address} ({mutation.module}.{mutation.attribute} = {mutation.wrong})"
         for mutation in SELF_TEST_MUTATIONS
         for address in mutation.rejected_addresses
-        for run_name in sorted(plan_runs)
+        for run_name in sorted(mutation.plan_runs)
         if (run_name, address) not in result.rejected
     ]
-    if missing:
-        return ["The check passed wrongly wired resources. It didn't reject:", *missing, "", "Errors it did report:", *result.errors]
+    # A run that a mutation doesn't list must not have the wiring it rewires. If
+    # it does, that run isn't proving anything, so it has to be listed.
+    unlisted = [
+        f"{run_name}: {address} exists, so this run must be in plan_runs of the "
+        f"{mutation.module}.{mutation.attribute} mutation"
+        for mutation in SELF_TEST_MUTATIONS
+        for address in mutation.rejected_addresses
+        for run_name in sorted(plan_runs - set(mutation.plan_runs))
+        if address in result.planned_addresses.get(run_name, set())
+    ]
+    if missing or unlisted:
+        return [
+            *(["The check passed wrongly wired resources. It didn't reject:", *missing] if missing else []),
+            *(["A mutation's wiring exists in a run that its plan_runs leave out:", *unlisted] if unlisted else []),
+            "",
+            "Errors it did report:",
+            *result.errors,
+        ]
     return []
 
 
@@ -398,7 +459,7 @@ def main() -> None:
     mode.add_argument(
         "--self-test",
         action="store_true",
-        help="Check that wrong role and bucket wiring fails, using a mutated copy of the working tree.",
+        help="Check that wrong role and bucket wiring fails in every plan run it applies to, using a mutated copy of the working tree.",
     )
     arguments = parser.parse_args()
     allow_lists = load_allow_lists()
@@ -408,7 +469,8 @@ def main() -> None:
         if errors:
             print("\n".join(errors), file=sys.stderr)
             sys.exit(1)
-        print(f"self-test: every plan run rejected all {len(SELF_TEST_MUTATIONS)} wrong wirings")
+        runs = sorted({run_name for mutation in SELF_TEST_MUTATIONS for run_name in mutation.plan_runs})
+        print(f"self-test: each of {len(runs)} plan runs rejected the wrong wirings that apply to it ({len(SELF_TEST_MUTATIONS)} mutations)")
         return
 
     if arguments.plan_json:

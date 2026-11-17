@@ -403,5 +403,66 @@ run "plans_working_tree_with_optional_iam_inputs" {
   }
 }
 
-# Lambda mode keeps the APIHandler and AIProxy Lambdas, so it also has the
-# AIProxy invoke role and its policies, which the ECS runs above don't create.
+# External EKS has no API ECS, gateway, waiter or Lambda services, so only the
+# shared roles, quarantine roles and database monitoring role exist. PR 5 changes
+# its trust, so this proves the moves leave it alone first. It sets the same
+# variables on the apply and the plan.
+run "applies_parent_with_external_eks" {
+  command   = apply
+  state_key = "external_eks"
+
+  module {
+    source = "./tests/fixtures/.upgrade-parent"
+  }
+
+  variables {
+    use_deployment_mode_external_eks = true
+
+    # The shared API and Brainstore role branches that depend on external EKS.
+    # Its Brainstore role takes the EKS trust branches, and an existing license
+    # secret and a CA bundle are ignored there because Helm owns them. The API
+    # Exec transcript policy needs API ECS, so it stays absent on both sides.
+    existing_eks_cluster_arn               = "arn:aws:eks:us-east-1:123456789012:cluster/test"
+    eks_namespace                          = "braintrust"
+    enable_eks_pod_identity                = true
+    enable_eks_irsa                        = true
+    custom_ca_bundle_secret_arn            = "arn:aws:secretsmanager:us-east-1:123456789012:secret:ca-bundle-AbCdEf"
+    custom_ca_bundle_kms_key_arn           = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
+    existing_brainstore_license_key_secret = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license-AbCdEf", kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/22222222-2222-2222-2222-222222222222" }
+    brainstore_enable_export               = true
+    s3_export_assume_role_arns             = ["arn:aws:iam::210987654321:role/export"]
+    enable_brainstore_ec2_ssm              = true
+    diagnostics_transcript_log_group_name  = "/braintrust-byoc/test/diagnostics"
+    service_additional_policy_arns         = ["arn:aws:iam::123456789012:policy/api-extra"]
+    brainstore_additional_policy_arns      = ["arn:aws:iam::123456789012:policy/brainstore-extra"]
+    api_ecs_enable_execute_command         = true
+  }
+}
+
+run "plans_working_tree_with_external_eks" {
+  command   = plan
+  state_key = "external_eks"
+
+  variables {
+    use_deployment_mode_external_eks = true
+
+    # The shared API and Brainstore role branches that depend on external EKS.
+    # Its Brainstore role takes the EKS trust branches, and an existing license
+    # secret and a CA bundle are ignored there because Helm owns them. The API
+    # Exec transcript policy needs API ECS, so it stays absent on both sides.
+    existing_eks_cluster_arn               = "arn:aws:eks:us-east-1:123456789012:cluster/test"
+    eks_namespace                          = "braintrust"
+    enable_eks_pod_identity                = true
+    enable_eks_irsa                        = true
+    custom_ca_bundle_secret_arn            = "arn:aws:secretsmanager:us-east-1:123456789012:secret:ca-bundle-AbCdEf"
+    custom_ca_bundle_kms_key_arn           = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
+    existing_brainstore_license_key_secret = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license-AbCdEf", kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/22222222-2222-2222-2222-222222222222" }
+    brainstore_enable_export               = true
+    s3_export_assume_role_arns             = ["arn:aws:iam::210987654321:role/export"]
+    enable_brainstore_ec2_ssm              = true
+    diagnostics_transcript_log_group_name  = "/braintrust-byoc/test/diagnostics"
+    service_additional_policy_arns         = ["arn:aws:iam::123456789012:policy/api-extra"]
+    brainstore_additional_policy_arns      = ["arn:aws:iam::123456789012:policy/brainstore-extra"]
+    api_ecs_enable_execute_command         = true
+  }
+}
