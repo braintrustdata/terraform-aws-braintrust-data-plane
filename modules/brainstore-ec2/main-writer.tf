@@ -38,6 +38,7 @@ resource "aws_launch_template" "brainstore_writer" {
   user_data = base64gzip(templatefile("${path.module}/templates/user_data.sh.tpl", {
     aws_region                      = data.aws_region.current.region
     deployment_name                 = var.deployment_name
+    legacy_filesystem_tuning        = var.legacy_filesystem_tuning
     database_secret_arn             = var.database_secret_arn
     database_host                   = var.database_host
     database_port                   = var.database_port

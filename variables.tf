@@ -1728,6 +1728,12 @@ variable "brainstore_instance_type" {
   default     = "m8gd.4xlarge"
 }
 
+variable "brainstore_legacy_filesystem_tuning" {
+  type        = bool
+  description = "Preserve legacy ext4 formatting, mount options, and kernel settings. Set to false to enable XFS and tuned writeback and reclaim settings for Brainstore EC2 nodes."
+  default     = true
+}
+
 variable "brainstore_instance_count" {
   type        = number
   description = "The number of Brainstore reader instances to provision"
