@@ -109,9 +109,10 @@ resource "aws_cloudfront_distribution" "dataplane" {
   dynamic "origin" {
     for_each = var.enable_ecs_api ? [] : [1]
     content {
-      origin_id   = local.cloudfront_APIGatewayOrigin
-      origin_path = "/api"
-      domain_name = "${aws_api_gateway_rest_api.api[0].id}.execute-api.${data.aws_region.current.region}.amazonaws.com"
+      origin_id           = local.cloudfront_APIGatewayOrigin
+      origin_path         = "/api"
+      domain_name         = "${aws_api_gateway_rest_api.api[0].id}.execute-api.${data.aws_region.current.region}.amazonaws.com"
+      connection_attempts = var.cloudfront_origin_connection_attempts
 
       custom_origin_config {
         origin_protocol_policy   = "https-only"
@@ -136,8 +137,9 @@ resource "aws_cloudfront_distribution" "dataplane" {
   dynamic "origin" {
     for_each = var.enable_ecs_api ? [] : [1]
     content {
-      domain_name = trimsuffix(trimprefix(var.ai_proxy_function_url, "https://"), "/")
-      origin_id   = local.cloudfront_AIProxyOrigin
+      domain_name         = trimsuffix(trimprefix(var.ai_proxy_function_url, "https://"), "/")
+      origin_id           = local.cloudfront_AIProxyOrigin
+      connection_attempts = var.cloudfront_origin_connection_attempts
 
       custom_origin_config {
         origin_protocol_policy   = "https-only"
@@ -151,8 +153,9 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   origin {
-    domain_name = "braintrustproxy.com"
-    origin_id   = local.cloudfront_CloudflareProxy
+    domain_name         = "braintrustproxy.com"
+    origin_id           = local.cloudfront_CloudflareProxy
+    connection_attempts = var.cloudfront_origin_connection_attempts
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
@@ -165,8 +168,9 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   origin {
-    domain_name = trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")
-    origin_id   = local.cloudfront_GatewayOrigin
+    domain_name         = trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")
+    origin_id           = local.cloudfront_GatewayOrigin
+    connection_attempts = var.cloudfront_origin_connection_attempts
 
     custom_origin_config {
       origin_protocol_policy   = "https-only"
@@ -179,8 +183,9 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   origin {
-    origin_id   = local.cloudfront_ApiEcsOrigin
-    domain_name = var.api_ecs_alb_domain
+    origin_id           = local.cloudfront_ApiEcsOrigin
+    domain_name         = var.api_ecs_alb_domain
+    connection_attempts = var.cloudfront_origin_connection_attempts
 
     vpc_origin_config {
       vpc_origin_id            = aws_cloudfront_vpc_origin.api_ecs.id
@@ -200,8 +205,9 @@ resource "aws_cloudfront_distribution" "dataplane" {
   dynamic "origin" {
     for_each = local.enable_private_gateway_cloudfront_origin ? [1] : []
     content {
-      domain_name = var.gateway_alb_dns_name
-      origin_id   = local.cloudfront_PrivateGatewayOrigin
+      domain_name         = var.gateway_alb_dns_name
+      origin_id           = local.cloudfront_PrivateGatewayOrigin
+      connection_attempts = var.cloudfront_origin_connection_attempts
 
       vpc_origin_config {
         vpc_origin_id            = aws_cloudfront_vpc_origin.gateway[0].id
@@ -214,8 +220,9 @@ resource "aws_cloudfront_distribution" "dataplane" {
   dynamic "origin" {
     for_each = var.enable_loop_runtime ? [1] : []
     content {
-      domain_name = var.loop_runtime_alb_dns_name
-      origin_id   = local.cloudfront_LoopRuntimeOrigin
+      domain_name         = var.loop_runtime_alb_dns_name
+      origin_id           = local.cloudfront_LoopRuntimeOrigin
+      connection_attempts = var.cloudfront_origin_connection_attempts
 
       vpc_origin_config {
         vpc_origin_id            = aws_cloudfront_vpc_origin.loop_runtime[0].id
