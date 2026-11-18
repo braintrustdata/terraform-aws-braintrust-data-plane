@@ -73,7 +73,10 @@
       "Sid": "MetricSourceLinkCreate",
       "Effect": "Allow",
       "Action": "oam:CreateLink",
-      "Resource": "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>:sink/*",
+      "Resource": [
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<AWS_ACCOUNT_ID>:link/*",
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>:sink/*"
+      ],
       "Condition": {
         "ForAllValues:StringEquals": {
           "oam:ResourceTypes": "AWS::CloudWatch::Metric"
@@ -87,7 +90,10 @@
       "Sid": "MetricSourceLinkUpdate",
       "Effect": "Allow",
       "Action": "oam:UpdateLink",
-      "Resource": "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<AWS_ACCOUNT_ID>:link/*",
+      "Resource": [
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<AWS_ACCOUNT_ID>:link/*",
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>:sink/*"
+      ],
       "Condition": {
         "ForAllValues:StringEquals": {
           "oam:ResourceTypes": "AWS::CloudWatch::Metric"

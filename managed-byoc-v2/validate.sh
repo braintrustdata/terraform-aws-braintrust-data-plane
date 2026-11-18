@@ -21,7 +21,7 @@ command -v rg >/dev/null
 if [[ "$package_dir" == "$source_dir" ]]; then
   command -v shasum >/dev/null
   jq -e '.profile == "customer" and .audience == "customer" and
-    .revision == "aws-customer-2026-11-18-session-tags-preview.1" and
+    .revision == "aws-customer-2026-11-18-oam-links-preview.1" and
     .status == "design-preview" and .deployment_ready == false and
     .diagnostics_activation_mode == "temporary-trust" and
     .default_deprovision_mode == "retain-data" and
@@ -484,9 +484,9 @@ if [[ "$package_dir" == "$source_dir" ]]; then
         "ForAllValues:StringEquals":{"oam:ResourceTypes":"AWS::CloudWatch::Metric"},
         "Null":{"oam:ResourceTypes":"false"}} and
       (if .Sid == "MetricSourceLinkCreate" then
-        .Action == "oam:CreateLink" and .Resource == "arn:aws:oam:us-east-1:777788889999:sink/*"
+        .Action == "oam:CreateLink" and .Resource == ["arn:aws:oam:us-east-1:111122223333:link/*", "arn:aws:oam:us-east-1:777788889999:sink/*"]
       else
-        .Action == "oam:UpdateLink" and .Resource == "arn:aws:oam:us-east-1:111122223333:link/*"
+        .Action == "oam:UpdateLink" and .Resource == ["arn:aws:oam:us-east-1:111122223333:link/*", "arn:aws:oam:us-east-1:777788889999:sink/*"]
       end)] == [true,true]'
   assert_policy deployment-services-policy.json '
     [.Statement[] | select(.Sid == "MetricSourceLinkLifecycle") |

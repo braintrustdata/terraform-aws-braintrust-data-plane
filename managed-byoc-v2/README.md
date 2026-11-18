@@ -1,8 +1,9 @@
 # AWS managed BYOC access model
 
 Status: design preview. This review package describes revision
-`aws-customer-2026-11-18-session-tags-preview.1`, correcting Deployment session-tag
-trust while retaining Scheduler and optional metric sharing. Full deployment, access, customer-control,
+`aws-customer-2026-11-18-oam-links-preview.1`, correcting OAM source-link and
+receiver-sink authorization while retaining Deployment session-tag trust, Scheduler
+and optional metric sharing. Full deployment, access, customer-control,
 and logging acceptance remain required before use.
 
 This package describes Braintrust's standard AWS roles and customer controls
@@ -258,6 +259,7 @@ deployed to any AWS account. New entries appear first.
 
 | Date | Change | What to review |
 | --- | --- | --- |
+| 2026-11-18 | Corrected OAM create/update grants to include both source-link and receiver-sink resources. | Metrics-only conditions, the receiver account, source account and Region remain bounded. Existing issued bootstraps are unchanged. |
 | 2026-11-18 | Separated Deployment session-tag trust from source-identity conditions. | Review the three STS statements. Role assumption still requires the exact principal, External ID and operation identity; old issued bootstraps remain unchanged. |
 | 2026-11-16 | Added two service policies for Scheduler lifecycle and inspection, IAM ownership-tag reads, and optional metrics-only OAM links. | Review the updated role attachments, bounded Scheduler role passing, read-only human Scheduler access, receiver selection, and shared-link ownership. The runtime boundary, account SCP, Diagnostics trust and customer disable control are unchanged. |
 | 2026-11-10 | Aligned temporary trust with verified IAM Identity Center UserIds, matching session names, and a customer-owned activation disable switch. Added the dedicated eleven-role service-linked-role policy. | Review the active/disabled trust documents, capability-gated trust updates, exact bootstrap-stack protection, customer-control limits, and IAM propagation versus fixed expiry. Human permission policies, the runtime boundary, and the account SCP are unchanged. |

@@ -1,7 +1,7 @@
 {
   "schema_version": "braintrust.byoc.aws-bootstrap-contract/v1",
   "profile": "customer",
-  "revision": "aws-customer-2026-11-18-session-tags-preview.1",
+  "revision": "aws-customer-2026-11-18-oam-links-preview.1",
   "audience": "customer",
   "status": "design-preview",
   "deployment_ready": false,
@@ -46,7 +46,7 @@
     "policies/deployment-eks-policy.json": "9f5658ddb16c24f92a90739b75a56a33170bef347a14334d19a2fc8a6922b3fa",
     "policies/deployment-infrastructure-policy.json": "6da5c260118358cb1179d9f6182209ca56c6ecee747d730745c54efef4dedf94",
     "policies/deployment-service-linked-roles-policy.json": "d60523c6d33035de3ca4ad913e18d1dee68f0b21ee2a9dab068e1715eea94061",
-    "policies/deployment-services-policy.json": "b27c48720b62a954fbf8f4b3e486779693585c032a7ab83651eb09ed3a9deeac",
+    "policies/deployment-services-policy.json": "2575dc98c0f186761bd4c65621b73329bc4943194571fc1991b460828f0d19aa",
     "policies/deployment-workload-policy.json": "cbb7ebc372216ee64ec022466b1b711bdcd6b47aaa781608902d4cffeec40778",
     "policies/diagnostics-policy.json": "6ac7bf28ca9f05c3f8221055858b71fc33aa4514000b2a0cdbf1f494890d9a60",
     "policies/inspection-policy.json": "23840a696148890897cf6c222be3358dc42009bd43b57b0dd0e356d98db78d07",

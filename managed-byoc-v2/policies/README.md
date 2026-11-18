@@ -135,7 +135,9 @@ the generated policy omits every statement whose `Sid` starts with
 receiver with a wildcard. These reference files show the enabled configuration;
 the generated package supplies its final values and permissions.
 
-- New links can target only that receiver's sink in the data-plane Region.
+- Creation and updates require permission on both the customer source link
+  and the pinned receiver sink, in the data-plane Region. New links can target
+  only that receiver.
 - Link creation and updates permit only `AWS::CloudWatch::Metric`. There is no
   log/trace sharing or sink-administration grant.
 - Updates, tagging and deletion cover source links in the registered account
