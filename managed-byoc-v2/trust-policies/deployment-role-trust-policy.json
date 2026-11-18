@@ -18,20 +18,25 @@
       }
     },
     {
-      "Sid": "AllowExactDeploymentSessionAttributes",
+      "Sid": "AllowExactDeploymentSourceIdentity",
       "Effect": "Allow",
       "Principal": {
         "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
       },
-      "Action": [
-        "sts:SetSourceIdentity",
-        "sts:TagSession"
-      ],
+      "Action": "sts:SetSourceIdentity",
       "Condition": {
         "StringLike": {
           "sts:SourceIdentity": "byoc-operation-*"
         }
       }
+    },
+    {
+      "Sid": "AllowExactDeploymentSessionTags",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
+      },
+      "Action": "sts:TagSession"
     }
   ]
 }

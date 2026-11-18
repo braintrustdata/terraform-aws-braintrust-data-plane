@@ -21,7 +21,7 @@ command -v rg >/dev/null
 if [[ "$package_dir" == "$source_dir" ]]; then
   command -v shasum >/dev/null
   jq -e '.profile == "customer" and .audience == "customer" and
-    .revision == "aws-customer-2026-11-16-services-preview.1" and
+    .revision == "aws-customer-2026-11-18-session-tags-preview.1" and
     .status == "design-preview" and .deployment_ready == false and
     .diagnostics_activation_mode == "temporary-trust" and
     .default_deprovision_mode == "retain-data" and
@@ -62,6 +62,23 @@ measure_policy() {
   fi
   printf '%-44s %5s / %s\n' "$label" "$size" "$limit"
 }
+
+if [[ "$package_dir" == "$source_dir" ]]; then
+  # STS evaluates each action with different context keys. In particular,
+  # TagSession has no sts:SourceIdentity or sts:ExternalId context.
+  jq -e '
+    .Statement as $s |
+    ($s | length) == 3 and
+    all($s[]; .Effect == "Allow" and
+      .Principal == {"AWS":"<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"}) and
+    $s[0].Action == "sts:AssumeRole" and
+    $s[0].Condition == {"StringEquals":{"sts:ExternalId":"<UNIQUE_EXTERNAL_ID>"},
+      "StringLike":{"sts:SourceIdentity":"byoc-operation-*"}} and
+    $s[1].Action == "sts:SetSourceIdentity" and
+    $s[1].Condition == {"StringLike":{"sts:SourceIdentity":"byoc-operation-*"}} and
+    $s[2].Action == "sts:TagSession" and ($s[2] | has("Condition") | not)
+  ' "$trust_dir/deployment-role-trust-policy.json" >/dev/null
+fi
 
 # Placeholder text is not an AWS policy. Enforce size limits after rendering,
 # not against the longer placeholder names in the source templates.

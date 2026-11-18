@@ -75,9 +75,19 @@ review its [enforcement limits](../diagnostics.md#customer-owned-disable-control
 - Maximum AWS session duration is one hour. The two-hour Diagnostics window is
   separate; engineers may obtain fresh credentials while it remains active.
 
-Keep the deployment trust's STS statements separate. `sts:AssumeRole` requires
-External ID; `sts:SetSourceIdentity` and `sts:TagSession` require the same
-principal and source identity, but not External ID.
+Deployment trust uses three separate STS statements, all restricted to the
+exact bootstrap execution principal:
+
+- `sts:AssumeRole` requires External ID and the operation SourceIdentity.
+- `sts:SetSourceIdentity` requires that SourceIdentity, without External ID.
+- `sts:TagSession` does not require either key, because AWS does not supply
+  them for that permission check.
+
+All required permissions must pass for the same role-assumption request.
+This separation allows the broker's required Diagnostics capability tag without
+loosening role assumption or allowing another principal. Existing bootstraps
+retain their issued trust; publishing this reference does not update IAM.
+See the [AWS STS action reference](https://docs.aws.amazon.com/service-authorization/latest/reference/list_sts.html).
 
 AWS console Switch Role cannot supply External ID or establish the required
 source identity. Human console access needs a tested federated session carrying
