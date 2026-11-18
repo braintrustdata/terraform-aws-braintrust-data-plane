@@ -139,7 +139,7 @@ variable "cloudfront_price_class" {
 variable "cloudfront_origin_read_timeout" {
   description = "The read timeout (in seconds) for CloudFront origins. AWS CloudFront supports up to 180s; values above 60s may require an AWS Support ticket to raise the quota."
   type        = number
-  default     = 60
+  default     = 120
 
   validation {
     condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 600
