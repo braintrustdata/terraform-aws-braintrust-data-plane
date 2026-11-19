@@ -114,6 +114,22 @@ variable "braintrust_api_max_count" {
   }
 }
 
+variable "braintrust_api_deployment_maximum_percent" {
+  type        = number
+  description = "Upper limit, as a percentage of desired count, on running braintrust-api ECS tasks during a rolling deployment. Lower values reduce the extra Fargate capacity a deployment launches but slow the rollout. Must be between 101 and 200, and must allow at least one extra task at the minimum task count."
+  default     = 200
+
+  validation {
+    condition     = var.braintrust_api_deployment_maximum_percent > 100 && var.braintrust_api_deployment_maximum_percent <= 200
+    error_message = "braintrust_api_deployment_maximum_percent must be greater than 100 and at most 200."
+  }
+
+  validation {
+    condition     = floor(var.braintrust_api_min_count * var.braintrust_api_deployment_maximum_percent / 100) > var.braintrust_api_min_count
+    error_message = "braintrust_api_deployment_maximum_percent must allow at least one extra braintrust-api task during a deployment at braintrust_api_min_count. Raise the percentage or the minimum count."
+  }
+}
+
 variable "braintrust_api_cpu_autoscaling" {
   type = object({
     target_value       = number
@@ -224,6 +240,22 @@ variable "braintrust_api_ingest_max_count" {
   }
 }
 
+variable "braintrust_api_ingest_deployment_maximum_percent" {
+  type        = number
+  description = "Upper limit, as a percentage of desired count, on running braintrust-api-ingest ECS tasks during a rolling deployment. Lower values reduce the extra Fargate capacity a deployment launches but slow the rollout. Must be between 101 and 200, and must allow at least one extra task at the minimum task count."
+  default     = 200
+
+  validation {
+    condition     = var.braintrust_api_ingest_deployment_maximum_percent > 100 && var.braintrust_api_ingest_deployment_maximum_percent <= 200
+    error_message = "braintrust_api_ingest_deployment_maximum_percent must be greater than 100 and at most 200."
+  }
+
+  validation {
+    condition     = floor(var.braintrust_api_ingest_min_count * var.braintrust_api_ingest_deployment_maximum_percent / 100) > var.braintrust_api_ingest_min_count
+    error_message = "braintrust_api_ingest_deployment_maximum_percent must allow at least one extra braintrust-api-ingest task during a deployment at braintrust_api_ingest_min_count. Raise the percentage or the minimum count."
+  }
+}
+
 variable "braintrust_api_ingest_cpu_autoscaling" {
   type = object({
     target_value       = number
@@ -331,6 +363,22 @@ variable "braintrust_api_background_max_count" {
   validation {
     condition     = var.braintrust_api_background_max_count >= var.braintrust_api_background_min_count
     error_message = "braintrust_api_background_max_count must be greater than or equal to braintrust_api_background_min_count."
+  }
+}
+
+variable "braintrust_api_background_deployment_maximum_percent" {
+  type        = number
+  description = "Upper limit, as a percentage of desired count, on running braintrust-api-background ECS tasks during a rolling deployment. Lower values reduce the extra Fargate capacity a deployment launches but slow the rollout. Must be between 101 and 200, and must allow at least one extra task at the minimum task count."
+  default     = 200
+
+  validation {
+    condition     = var.braintrust_api_background_deployment_maximum_percent > 100 && var.braintrust_api_background_deployment_maximum_percent <= 200
+    error_message = "braintrust_api_background_deployment_maximum_percent must be greater than 100 and at most 200."
+  }
+
+  validation {
+    condition     = floor(var.braintrust_api_background_min_count * var.braintrust_api_background_deployment_maximum_percent / 100) > var.braintrust_api_background_min_count
+    error_message = "braintrust_api_background_deployment_maximum_percent must allow at least one extra braintrust-api-background task during a deployment at braintrust_api_background_min_count. Raise the percentage or the minimum count."
   }
 }
 
