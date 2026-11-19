@@ -517,7 +517,7 @@ variable "postgres_backup_window" {
   default     = "00:00-00:30"
 }
 
-variable "rds_apply_immediately" {
+variable "postgres_apply_immediately" {
   description = "When true, RDS applies eligible changes immediately instead of during the next maintenance window. This includes queued modifications and can cause downtime."
   type        = bool
   default     = false
