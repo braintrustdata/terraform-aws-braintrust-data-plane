@@ -72,6 +72,7 @@ output "sandbox_private_subnet_ids" {
   description = "Dedicated Sandbox Service subnets, empty when disabled."
   value       = concat(aws_subnet.sandbox_private_subnet_1[*].id, aws_subnet.sandbox_private_subnet_2[*].id, aws_subnet.sandbox_private_subnet_3[*].id)
   depends_on = [
+    aws_vpc_endpoint.s3,
     aws_route.private_route,
     aws_route_table_association.sandbox_private_subnet_1,
     aws_route_table_association.sandbox_private_subnet_2,

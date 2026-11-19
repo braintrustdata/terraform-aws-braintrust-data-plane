@@ -33,6 +33,11 @@ output "sandbox_image" {
   value       = local.versions["sandbox-image"]
 }
 
+output "chart_object_arn" {
+  description = "Pinned chart object for S3 endpoint policies, available before the cluster is created."
+  value       = "arn:${data.aws_partition.current.partition}:s3:::${local.artifact_bucket}/${local.versions["chart-key"]}"
+}
+
 output "private_subnet_ids" {
   description = "Dedicated Sandbox Service subnet IDs."
   value       = var.private_subnet_ids

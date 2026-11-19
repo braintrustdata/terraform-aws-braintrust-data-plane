@@ -18,7 +18,8 @@ locals {
   apn_partner_tags = {
     "aws-apn-id" = "pc:8ebp76p17b7i08cjqrxaoj0y8"
   }
-  all_custom_tags = merge(var.custom_tags, local.apn_partner_tags)
+  all_custom_tags            = merge(var.custom_tags, local.apn_partner_tags)
+  sandbox_service_stack_name = "${var.deployment_name}-sandbox-service"
 
   kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
   bastion_security_group = var.enable_braintrust_support_shell_access ? {
@@ -274,10 +275,13 @@ module "main_vpc" {
   enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
-  custom_tags                          = local.all_custom_tags
-  permissions_boundary_arn             = var.permissions_boundary_arn
-  flow_log                             = local.main_vpc_flow_log
-  manage_s3_public_access_block        = var.manage_s3_public_access_block
+  sandbox_service_chart_object_arn     = var.enable_sandbox_service ? module.sandbox_service[0].chart_object_arn : null
+  # Keep the callback path available while a disabled service's stack is deleted.
+  sandbox_service_stack_name    = local.sandbox_service_stack_name
+  custom_tags                   = local.all_custom_tags
+  permissions_boundary_arn      = var.permissions_boundary_arn
+  flow_log                      = local.main_vpc_flow_log
+  manage_s3_public_access_block = var.manage_s3_public_access_block
 }
 
 module "quarantine_vpc" {
@@ -640,6 +644,8 @@ module "loop_runtime_sandbox_aws_microvm" {
 module "sandbox_service" {
   source = "./modules/sandbox-service"
   count  = var.enable_sandbox_service ? 1 : 0
+
+  stack_name = local.sandbox_service_stack_name
 
   deployment_name = var.deployment_name
   vpc_id          = local.main_vpc_id

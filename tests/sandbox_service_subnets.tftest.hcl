@@ -60,6 +60,8 @@ run "dedicated_subnets_and_allowlisted_connections" {
       aws_network_acl_rule.sandbox_private_egress["0"].rule_number < aws_network_acl_rule.sandbox_public_https[0].rule_number &&
       aws_network_acl_rule.sandbox_private_ingress["0"].rule_number < aws_network_acl_rule.sandbox_public_return[0].rule_number &&
       aws_network_acl_rule.sandbox_public_https[0].from_port == 443 &&
+      aws_network_acl_rule.sandbox_public_return[0].from_port == 1024 &&
+      aws_network_acl_rule.sandbox_public_return[0].to_port == 65535 &&
       aws_network_acl.sandbox[0].tags.BraintrustDeploymentName == var.deployment_name
     )
     error_message = "ACL ordering must admit runtime, discovery, proxy and return traffic before denying other private access."

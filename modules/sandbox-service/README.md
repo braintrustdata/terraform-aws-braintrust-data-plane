@@ -31,16 +31,21 @@ on TCP 4002. The root authorizes that NLB to reach Loop; the Loop module owns it
 inbound rule. This path uses no Lambda sandbox resources.
 
 Managed subnets have a separate ACL allowing cluster traffic, runtime access,
-proxy access and public HTTPS. Linux return ports 32768–65535 are permitted for
-the runtime and public HTTPS connections. A caller-provided subnet policy must
+proxy access and public HTTPS. Return ports 32768–65535 are permitted for
+runtime connections, and 1024–65535 for public HTTPS replies to the release Lambda
+and nodes. A caller-provided subnet policy must
 permit those paths. Security groups and guest network policy remain necessary;
 the return-port allowances are stateless, and AWS subnet ACLs do not filter
 Amazon-provided DNS or instance metadata. Use dedicated subnet ranges with
 enough free addresses for worker nodes and CNI allocations.
 
 Existing VPCs must provide DNS support and outbound connectivity to image
-registries, AWS APIs and the regional `braintrust-cf-*` artifact bucket. S3
-endpoint policies must admit that bucket. If caller-managed private AWS API
+registries, AWS APIs and the regional `braintrust-cf-*` artifact bucket. A restricted
+module-managed S3 endpoint permits reads of the pinned chart and response uploads
+to CloudFormation's regional response bucket for this stack automatically.
+The stack's response permission remains until VPC removal so disabling Sandbox
+Service can complete its CloudFormation deletion callbacks.
+Caller-managed S3 endpoint policies must permit those same requests. If caller-managed private AWS API
 endpoints override public DNS, authorize their required traffic in both the
 endpoint and node security groups and the subnet ACLs. The root exposes worker
 and system security group IDs for those caller-owned rules. Worker types must be

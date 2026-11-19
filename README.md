@@ -288,7 +288,7 @@ the main VPC, using address blocks 4, 5 and 6 of its eight equal CIDR divisions.
 They share the existing NAT route and have a separate network ACL. Existing
 application subnets keep their addresses. The ACL permits cluster traffic,
 Loop's worker API and Kubernetes discovery, the private egress proxy, public
-HTTPS and the required Linux ephemeral return ports. Security groups further
+HTTPS and the required runtime and Lambda ephemeral return ports. Security groups further
 restrict individual callers. Guest DNS, metadata and network policy are enforced
 by the worker; subnet ACLs do not provide those controls.
 

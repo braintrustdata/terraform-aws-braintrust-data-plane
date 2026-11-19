@@ -3,6 +3,12 @@ variable "deployment_name" {
   description = "Deployment name used for resource names and tags."
 }
 
+variable "stack_name" {
+  type        = string
+  default     = null
+  description = "Release stack name shared with its network policy. Null uses the deployment-name sandbox-service suffix."
+}
+
 variable "vpc_id" {
   type        = string
   description = "Main data-plane VPC, managed by the root module or supplied by the caller."

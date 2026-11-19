@@ -8,7 +8,7 @@ locals {
   namespace         = "braintrust-sandbox"
   hostname          = "nodes.${var.deployment_name}.sandbox.internal"
   artifact_bucket   = "braintrust-cf-${data.aws_region.current.region}"
-  stack_name        = "${var.deployment_name}-sandbox-service"
+  stack_name        = coalesce(var.stack_name, "${var.deployment_name}-sandbox-service")
   stack_arn_pattern = "arn:${data.aws_partition.current.partition}:cloudformation:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:stack/${local.stack_name}/*"
   worker_revision   = "${aws_launch_template.workers.id}-${aws_launch_template.workers.latest_version}-${substr(sha256(jsonencode({ version = aws_eks_cluster.sandbox.version, instance_types = var.instance_types, subnet_ids = var.private_subnet_ids, ami_type = "AL2023_x86_64_STANDARD" })), 0, 12)}"
   helm_values = {

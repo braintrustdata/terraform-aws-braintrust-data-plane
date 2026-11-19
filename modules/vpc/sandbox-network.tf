@@ -150,6 +150,7 @@ resource "aws_network_acl_rule" "sandbox_public_return" {
   protocol       = "tcp"
   rule_action    = "allow"
   cidr_block     = "0.0.0.0/0"
-  from_port      = 32768
-  to_port        = 65535
+  # The release Lambda uses the full Hyperplane ENI ephemeral port range.
+  from_port = 1024
+  to_port   = 65535
 }

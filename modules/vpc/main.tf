@@ -118,6 +118,38 @@ data "aws_iam_policy_document" "s3_vpc_endpoint" {
       }
     }
   }
+
+  dynamic "statement" {
+    for_each = local.s3_vpc_endpoint_restricted && var.sandbox_service_chart_object_arn != null ? [var.sandbox_service_chart_object_arn] : []
+    content {
+      sid       = "AllowSandboxServiceChart"
+      effect    = "Allow"
+      actions   = ["s3:GetObject"]
+      resources = [statement.value]
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    # This permission must survive disabling Sandbox Service so its custom
+    # resource can finish reporting deletion to CloudFormation.
+    for_each = local.s3_vpc_endpoint_restricted && var.sandbox_service_stack_name != null ? [var.sandbox_service_stack_name] : []
+    content {
+      sid       = "AllowSandboxServiceResponses"
+      effect    = "Allow"
+      actions   = ["s3:PutObject"]
+      resources = ["arn:${data.aws_partition.current.partition}:s3:::cloudformation-custom-resource-response-${replace(data.aws_region.current.region, "-", "")}/arn:${data.aws_partition.current.partition}:cloudformation:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:stack/${statement.value}/*"]
+
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
 }
 
 resource "aws_vpc" "vpc" {

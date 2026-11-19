@@ -37,7 +37,8 @@ run "lambda_only_by_default" {
 run "service_replaces_lambda_in_managed_vpc" {
   command = plan
   variables {
-    enable_sandbox_service = true
+    s3_vpc_endpoint_resource_org_ids = ["o-1234567890"]
+    enable_sandbox_service           = true
   }
   assert {
     condition = (
