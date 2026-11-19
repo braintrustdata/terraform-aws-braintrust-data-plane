@@ -1656,6 +1656,12 @@ variable "brainstore_instance_type" {
   default     = "m8gd.4xlarge"
 }
 
+variable "brainstore_legacy_filesystem_tuning" {
+  type        = bool
+  description = "Preserve legacy ext4 formatting, mount options, and kernel settings. Set to false to enable XFS and tuned writeback and reclaim settings for Brainstore EC2 nodes."
+  default     = true
+}
+
 variable "brainstore_instance_count" {
   type        = number
   description = "The number of Brainstore reader instances to provision"
@@ -1676,8 +1682,67 @@ variable "brainstore_writer_instance_type" {
 
 variable "brainstore_automation_writer_instance_count" {
   type        = number
-  description = "The number of dedicated automation writer nodes to create"
+  description = "Legacy automation writer minimum. Used when brainstore_automation_writer_min_capacity is unset."
   default     = 0
+
+  validation {
+    condition     = var.brainstore_automation_writer_instance_count >= 0 && floor(var.brainstore_automation_writer_instance_count) == var.brainstore_automation_writer_instance_count
+    error_message = "brainstore_automation_writer_instance_count must be a non-negative integer."
+  }
+}
+
+variable "brainstore_automation_writer_min_capacity" {
+  type        = number
+  description = "Minimum automation writer count (at least 1). Set with brainstore_automation_writer_max_capacity, or omit both to use brainstore_automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = var.brainstore_automation_writer_min_capacity == null ? true : (var.brainstore_automation_writer_min_capacity >= 1 && floor(var.brainstore_automation_writer_min_capacity) == var.brainstore_automation_writer_min_capacity)
+    error_message = "brainstore_automation_writer_min_capacity must be a positive integer."
+  }
+}
+
+variable "brainstore_automation_writer_max_capacity" {
+  type        = number
+  description = "Maximum automation writer count (at least 1). Set with brainstore_automation_writer_min_capacity, or omit both to use twice brainstore_automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = (var.brainstore_automation_writer_min_capacity == null) == (var.brainstore_automation_writer_max_capacity == null)
+    error_message = "brainstore_automation_writer_min_capacity and brainstore_automation_writer_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.brainstore_automation_writer_max_capacity == null ? true : (var.brainstore_automation_writer_max_capacity >= 1 && floor(var.brainstore_automation_writer_max_capacity) == var.brainstore_automation_writer_max_capacity)
+    error_message = "brainstore_automation_writer_max_capacity must be a positive integer."
+  }
+
+  validation {
+    condition     = var.brainstore_automation_writer_max_capacity == null ? true : var.brainstore_automation_writer_max_capacity >= coalesce(var.brainstore_automation_writer_min_capacity, var.brainstore_automation_writer_instance_count)
+    error_message = "brainstore_automation_writer_max_capacity must be greater than or equal to the effective automation writer minimum capacity."
+  }
+}
+
+variable "brainstore_automation_writer_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.brainstore_automation_writer_target_cpu_utilization >= 1 && var.brainstore_automation_writer_target_cpu_utilization <= 100
+    error_message = "brainstore_automation_writer_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "brainstore_automation_writer_target_memory_utilization" {
+  type        = number
+  description = "Target average memory utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.brainstore_automation_writer_target_memory_utilization >= 1 && var.brainstore_automation_writer_target_memory_utilization <= 100
+    error_message = "brainstore_automation_writer_target_memory_utilization must be between 1 and 100."
+  }
 }
 
 variable "brainstore_automation_writer_instance_type" {
@@ -2090,9 +2155,16 @@ variable "enable_brainstore_ec2_ssm" {
 }
 
 variable "custom_tags" {
-  description = "Custom tags to apply to all created resources"
+  description = "Custom tags to apply to all created resources. The BraintrustIAMOwner key (in any letter case) is reserved for the module and can't be set."
   type        = map(string)
   default     = {}
+  nullable    = false
+
+  validation {
+    # Tag keys on IAM roles and users are case-insensitive, so a differently cased key would collide with the owner tag.
+    condition     = !contains([for key in keys(var.custom_tags) : lower(key)], "braintrustiamowner")
+    error_message = "custom_tags must not contain the BraintrustIAMOwner key, in any letter case. It's reserved for module-managed IAM ownership and is set to \"braintrust\" on every IAM role, managed policy and instance profile the module creates."
+  }
 }
 
 variable "brainstore_custom_post_install_script" {

@@ -17,7 +17,7 @@ resource "aws_iam_role" "automation_cron_role" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "automation_cron_vpc_access" {
@@ -78,7 +78,7 @@ resource "aws_iam_role" "quarantine_pruner_role" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "quarantine_pruner_vpc_access" {
@@ -148,7 +148,7 @@ resource "aws_iam_role" "default_role" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
@@ -174,7 +174,7 @@ resource "aws_iam_role" "billing_cron" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "billing_cron_vpc_access" {
@@ -200,7 +200,7 @@ resource "aws_iam_role" "catchup_etl" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "catchup_etl_vpc_access" {
@@ -226,7 +226,7 @@ resource "aws_iam_role" "migrate_database" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "migrate_database_vpc_access" {
@@ -287,7 +287,7 @@ resource "aws_iam_role" "quarantine_warmup" {
   })
 
   permissions_boundary = var.permissions_boundary_arn
-  tags                 = local.common_tags
+  tags                 = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "quarantine_warmup_vpc_access" {

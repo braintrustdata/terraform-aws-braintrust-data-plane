@@ -27,7 +27,7 @@ resource "aws_launch_template" "brainstore_writer" {
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2
+    http_put_response_hop_limit = 1
     instance_metadata_tags      = "enabled"
   }
 
@@ -38,6 +38,7 @@ resource "aws_launch_template" "brainstore_writer" {
   user_data = base64gzip(templatefile("${path.module}/templates/user_data.sh.tpl", {
     aws_region                                    = data.aws_region.current.region
     deployment_name                               = var.deployment_name
+    legacy_filesystem_tuning                      = var.legacy_filesystem_tuning
     database_secret_arn                           = var.database_secret_arn
     database_host                                 = var.database_host
     database_port                                 = var.database_port
@@ -50,6 +51,7 @@ resource "aws_launch_template" "brainstore_writer" {
     license_key_secret_version                    = var.license_key_secret_version
     brainstore_version_override                   = var.version_override == null ? "" : var.version_override
     brainstore_release_version                    = local.brainstore_release_version
+    cloudwatch_asg_metrics                        = false
     monitoring_telemetry                          = var.monitoring_telemetry
     is_dedicated_reader_node                      = "false"
     is_dedicated_writer_node                      = "true"

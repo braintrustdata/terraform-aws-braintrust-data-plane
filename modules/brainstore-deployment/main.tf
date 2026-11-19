@@ -6,6 +6,8 @@ locals {
   function_name = "${var.deployment_name}-BrainstoreDeployment"
   asset_bucket  = "braintrust-assets-${data.aws_region.current.region}"
   common_tags   = merge(var.custom_tags, { BraintrustDeploymentName = var.deployment_name })
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
   deployment = {
     schema_version  = 1
     deployment_name = var.deployment_name
@@ -47,7 +49,7 @@ resource "aws_iam_role" "waiter" {
       Action    = "sts:AssumeRole"
     }]
   })
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy" "waiter" {

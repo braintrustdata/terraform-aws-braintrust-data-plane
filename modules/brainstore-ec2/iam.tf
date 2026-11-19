@@ -4,7 +4,7 @@ resource "aws_iam_instance_profile" "brainstore" {
 
   depends_on = [aws_iam_role_policy.brainstore_redis_secret_access]
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 # Create policy here to avoid dependency cycle with services-common

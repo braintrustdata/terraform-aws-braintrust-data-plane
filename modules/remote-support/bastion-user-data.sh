@@ -11,8 +11,19 @@ rm -rf /var/lib/apt/lists/*
 apt-get clean
 apt-get update
 
-apt-get install -y jq unzip earlyoom postgresql-client
-snap install aws-cli --classic
+apt-get install -y jq earlyoom postgresql-client
+# Install AWS CLI v2 for all users with the AWS-recommended installer.
+(
+  set -e
+  apt-get install -y ca-certificates curl unzip gnupg libc6 groff less
+  aws_cli_install_dir=$(mktemp -d)
+  trap 'rm -rf "$aws_cli_install_dir"' EXIT
+  curl --fail --silent --show-error --location --retry 5 \
+    https://awscli.amazonaws.com/v2/install.sh -o "$aws_cli_install_dir/install.sh"
+  bash "$aws_cli_install_dir/install.sh" --system
+  /usr/local/bin/aws --version
+)
+[ "$?" -eq 0 ] || exit 1
 
 TPL_REGION="${region}"
 TPL_DATABASE_SECRET_ARN="${database_secret_arn}"

@@ -89,6 +89,27 @@ Private mode serves the data plane through an internal API ALB instead of CloudF
 See the [private data plane example](examples/braintrust-data-plane-private/) for requirements, configuration, and deployment steps.
 We still recommend a public dataplane for ease of deployment however a private one is fully supported as long as all prerequisites are met. 
 
+### Automation writers
+
+Set `brainstore_automation_writer_min_capacity` and `brainstore_automation_writer_max_capacity` to size the dedicated automation writer pool. Both must be positive integers. Enabled pools use a private NLB; otherwise, automation queries use the normal writer endpoint.
+
+Set both capacity inputs or neither. When both are unset, the minimum uses `brainstore_automation_writer_instance_count` (default 0), and the maximum uses twice that count. A legacy count of 0 disables the pool when both capacity inputs are unset.
+
+`brainstore_automation_writer_target_cpu_utilization` and `brainstore_automation_writer_target_memory_utilization` both default to 50%, with a 900-second warmup. Both targets can be overridden. Either policy can scale out; both must agree to scale in. Autoscaling owns desired capacity after creation.
+
+#### Upgrade impact
+
+Existing enabled automation writer pools begin autoscaling on upgrade without configuration changes. For example, a legacy `brainstore_automation_writer_instance_count = 2` allows the pool to grow from 2 to 4 instances, potentially increasing EC2 costs. A legacy count of 0 remains disabled when both capacity inputs are unset.
+
+To retain a fixed-size pool of 2 instances, set both bounds in your upgrade configuration:
+
+```hcl
+brainstore_automation_writer_min_capacity = 2
+brainstore_automation_writer_max_capacity = 2
+```
+
+Upgrading an enabled pool also triggers a rolling instance refresh to publish ASG-level memory metrics. Equal bounds prevent autoscaling growth, but the existing rolling refresh preferences can still temporarily double capacity to preserve availability, incurring additional EC2 costs during the rollout.
+
 ### Organization access configuration
 
 Prefer ID-based organization access for new deployments:
@@ -329,7 +350,7 @@ NLB and interface endpoint charges apply. Other outbound connectivity remains ne
 | Deployment mode | PrivateLink selection |
 | --- | --- |
 | Public | `use_private_gateway_quarantine_proxy = true`, with quarantine enabled and the global gateway origin disabled. |
-| Private | Automatic when quarantine is enabled, even with the flag at its default `false`. |
+| Private | `create_quarantine_api_access = true`, with quarantine enabled. |
 
 The [private example](examples/braintrust-data-plane-private/README.md#existing-vpcs) lists existing VPC inputs and network requirements.
 
@@ -385,6 +406,10 @@ provider "aws" {
 ```
 
 The `deployment_name` variable is also used to prefix the names of the resources created by the module wherever possible. It will also be applied as a tag named `BraintrustDeploymentName` to all resources created by the module.
+
+#### IAM ownership tag
+
+Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. We use it to tell module-managed IAM apart from IAM that you create yourself. The module reserves the key, so it rejects `BraintrustIAMOwner` in `custom_tags` at plan time in any letter case. Don't change the tag by hand. See [Migrating to v7](MIGRATION_V7.md#v730-iam-ownership-tag) for the upgrade steps.
 
 ### CloudFront Access Logging
 

@@ -538,6 +538,8 @@ module "gateway_ecs" {
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
   brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
   enable_execute_command                = var.ai_gateway_enable_execute_command
+  org_name                              = var.braintrust_org_name
+  allowed_org_ids                       = var.allowed_org_ids
   braintrust_app_url                    = var.ai_gateway_braintrust_app_url
   braintrust_api_url                    = local.internal_api_url
   unsafe_url_request_mode               = var.unsafe_url_request_mode
@@ -722,7 +724,7 @@ module "api_ecs" {
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
   brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
 
-  brainstore_automation_writer_hostname = var.brainstore_automation_writer_instance_count > 0 ? module.brainstore[0].automation_writer_dns_name : null
+  brainstore_automation_writer_hostname = module.brainstore[0].automation_writer_dns_name
 
   # Storage
   code_bundle_bucket     = module.storage.code_bundle_bucket_id
@@ -900,6 +902,7 @@ module "brainstore" {
   count  = local.create_brainstore_ec2 ? 1 : 0
 
   deployment_name                               = var.deployment_name
+  legacy_filesystem_tuning                      = var.brainstore_legacy_filesystem_tuning
   instance_count                                = var.brainstore_instance_count
   instance_type                                 = var.brainstore_instance_type
   instance_key_pair_name                        = var.brainstore_instance_key_pair_name
@@ -913,6 +916,10 @@ module "brainstore" {
   writer_instance_count                         = var.brainstore_writer_instance_count
   writer_instance_type                          = var.brainstore_writer_instance_type
   automation_writer_instance_count              = var.brainstore_automation_writer_instance_count
+  automation_writer_min_capacity                = var.brainstore_automation_writer_min_capacity
+  automation_writer_max_capacity                = var.brainstore_automation_writer_max_capacity
+  automation_writer_target_cpu_utilization      = var.brainstore_automation_writer_target_cpu_utilization
+  automation_writer_target_memory_utilization   = var.brainstore_automation_writer_target_memory_utilization
   automation_writer_instance_type               = var.brainstore_automation_writer_instance_type
   extra_env_vars_automation_writer              = var.brainstore_extra_env_vars_automation_writer
   cache_file_size_automation_writer             = var.brainstore_cache_file_size_automation_writer
@@ -920,6 +927,7 @@ module "brainstore" {
   fast_reader_instance_type                     = var.brainstore_fast_reader_instance_type
   extra_env_vars_fast_reader                    = var.brainstore_extra_env_vars_fast_reader
   cache_file_size_fast_reader                   = var.brainstore_cache_file_size_fast_reader
+  braintrust_api_url                            = local.internal_api_url
   ai_proxy_url_ssm_parameter                    = local.brainstore_ai_proxy_url_ssm_parameter
   monitoring_telemetry                          = var.monitoring_telemetry
   database_host                                 = local.postgres_host
