@@ -139,7 +139,7 @@ The module pins Braintrust service versions, so changing the module version also
 - API and gateway ECS task definitions are replaced, so those services roll.
 - Brainstore launch templates change, so Brainstore instances refresh. This includes an IMDS hop limit of 1, so containers on a Docker bridge network on those instances can no longer get credentials from IMDS.
 
-To keep the service upgrade out of this apply, pin each service to the version you run now, for example `v2.22.0` on v7.2.1:
+To keep the service upgrade out of this apply, pin each service to the version v7.2.1 pins, `v2.22.0`. v7.3.0 has only been tested with services back to `v2.22.0`, and it requires at least `v2.17.0`, because the Brainstore rollout depends on a deployment helper added in that version. Add these to the module block:
 
 ```hcl
   lambda_version_tag_override     = "v2.22.0"
