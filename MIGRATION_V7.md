@@ -132,6 +132,23 @@ Check these before you apply it.
 1. IAM allows 50 tags per resource. A role that is already close to that limit can't take another tag.
 1. Don't set the key in the AWS provider's `default_tags`. The module can't validate those, and the module's own value has to be the one that applies.
 
-Apply this release on its own, without a Braintrust service version bump in the same apply. That keeps the plan to tag changes only, which is easy to review.
+The module pins Braintrust service versions, so changing the module version also moves your services. Coming from v7.2.1, the upgrade plan includes more than the tags:
 
-Going back to an earlier version only removes the tag, since the older module doesn't set it. It doesn't replace any IAM.
+- Services move to the version this release pins, and the database migrations for that version run.
+- A new Secrets Manager secret holds the Brainstore license key, unless you supply one with `existing_brainstore_license_key_secret`.
+- API and gateway ECS task definitions are replaced, so those services roll.
+- Brainstore launch templates change, so Brainstore instances refresh. This includes an IMDS hop limit of 1, so containers on a Docker bridge network on those instances can no longer get credentials from IMDS.
+
+To keep the service upgrade out of this apply, pin each service to the version v7.2.1 pins, `v2.22.0`. v7.3.0 has only been tested with services back to `v2.22.0`, and it requires at least `v2.17.0`, because the Brainstore rollout depends on a deployment helper added in that version. Add these to the module block:
+
+```hcl
+  lambda_version_tag_override     = "v2.22.0"
+  braintrust_api_version_override = "v2.22.0"
+  ai_gateway_version_override     = "v2.22.0"
+  loop_runtime_version_override   = "v2.22.0"
+  brainstore_version_override     = "v2.22.0"
+```
+
+Apply, confirm the stack is healthy, then remove the overrides in a later apply. That one moves services to the pinned version and runs its migrations. We tested this path from v7.2.1 to v7.3.0, except for `loop_runtime_version_override`. If you run Loop, check its version after the first apply.
+
+For IAM, going back to an earlier version only removes the tag, since the older module doesn't set it. It doesn't replace any IAM. Going back to v7.2.1 also returns the license key to plaintext task definitions and user data, deletes the module-created license secret, and moves services back to v7.2.1's pinned version after the newer migrations have run.
