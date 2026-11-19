@@ -29,6 +29,8 @@ Confirm with a v7 `terraform plan` that shows no changes before you bump the mod
 
 Do **not** upgrade a stack that still sets `enable_ecs_api = false`. Cut over on v7 using [MIGRATION_V7.md](MIGRATION_V7.md), confirm traffic is healthy, then upgrade.
 
+Before that cutover, move any `APIHandler` and `AIProxy` entries in `service_extra_env_vars` to `braintrust_api_extra_env_vars` (API ECS) or `ai_gateway_extra_env_vars` (gateway). API ECS and the gateway don't read the Lambda keys, so settings left there stop applying when traffic moves to ECS.
+
 A stack with no gateway, or a private gateway that is built but not enabled, should first move to one of the two setups above on v7. Otherwise v8 builds and enables the private gateway in the upgrade apply, which also moves CloudFront `/v1/proxy` onto it.
 
 ## Remove these inputs
@@ -50,7 +52,7 @@ v8 no longer accepts these inputs. Delete them from your module block or the pla
 
 `use_global_ai_gateway_origin` is now the only gateway choice.
 
-`service_extra_env_vars` no longer has `APIHandler` or `AIProxy` keys. Move any values you set there to `braintrust_api_extra_env_vars` (API ECS) or `ai_gateway_extra_env_vars` (gateway) if you still need them.
+`service_extra_env_vars` no longer has `APIHandler` or `AIProxy` keys. Remove them. On an ECS-mode v7 stack they already had no effect on API ECS or the gateway; any value you still need belongs in `braintrust_api_extra_env_vars` or `ai_gateway_extra_env_vars` (see [Before you upgrade](#before-you-upgrade)).
 
 ## What changes on apply
 
@@ -66,7 +68,7 @@ CloudFront `/v1/proxy` always routes to the selected gateway, never to the API E
 
 Hosted-gateway stacks also see:
 
-- `GATEWAY_URL = https://<global_ai_gateway_origin_domain>` on API ECS, so in-process API model calls use the hosted gateway. On v7 these had no `GATEWAY_URL`.
+- `GATEWAY_URL = https://<global_ai_gateway_origin_domain>` on API ECS. On v7 these stacks had no `GATEWAY_URL`, so the API made its own model calls (playground and function invocations, scorers) from your VPC. On v8 those calls, including their prompts and any data they carry, go through the hosted gateway, the same as CloudFront `/v1/proxy` traffic already does. v8 has no setting to keep them in your VPC: if model traffic must stay there, switch to the private gateway on v7 before you upgrade.
 - If you also had `create_ai_gateway = true`, the gateway ECS service and its internal ALB are destroyed. Nothing routed to them: CloudFront `/v1/proxy` already used the hosted gateway.
 
 ## Quarantine proxy URL
