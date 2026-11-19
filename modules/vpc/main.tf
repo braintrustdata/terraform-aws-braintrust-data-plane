@@ -335,3 +335,45 @@ resource "aws_vpc_endpoint" "secrets_manager" {
     Name = "${var.deployment_name}-${var.vpc_name}-secretsmanager-endpoint"
   }, local.common_tags)
 }
+
+resource "aws_subnet" "sandbox_private_subnet_1" {
+  count             = var.create_sandbox_subnets ? 1 : 0
+  vpc_id            = aws_vpc.vpc.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 3, 4)
+  availability_zone = var.private_subnet_1_az
+  tags              = merge(local.common_tags, { Name = "${var.deployment_name}-${var.vpc_name}-sandbox-private-subnet-1" })
+}
+
+resource "aws_route_table_association" "sandbox_private_subnet_1" {
+  count          = var.create_sandbox_subnets ? 1 : 0
+  subnet_id      = aws_subnet.sandbox_private_subnet_1[0].id
+  route_table_id = aws_route_table.private_route_table.id
+}
+
+resource "aws_subnet" "sandbox_private_subnet_2" {
+  count             = var.create_sandbox_subnets ? 1 : 0
+  vpc_id            = aws_vpc.vpc.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 3, 5)
+  availability_zone = var.private_subnet_2_az
+  tags              = merge(local.common_tags, { Name = "${var.deployment_name}-${var.vpc_name}-sandbox-private-subnet-2" })
+}
+
+resource "aws_route_table_association" "sandbox_private_subnet_2" {
+  count          = var.create_sandbox_subnets ? 1 : 0
+  subnet_id      = aws_subnet.sandbox_private_subnet_2[0].id
+  route_table_id = aws_route_table.private_route_table.id
+}
+
+resource "aws_subnet" "sandbox_private_subnet_3" {
+  count             = var.create_sandbox_subnets ? 1 : 0
+  vpc_id            = aws_vpc.vpc.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 3, 6)
+  availability_zone = var.private_subnet_3_az
+  tags              = merge(local.common_tags, { Name = "${var.deployment_name}-${var.vpc_name}-sandbox-private-subnet-3" })
+}
+
+resource "aws_route_table_association" "sandbox_private_subnet_3" {
+  count          = var.create_sandbox_subnets ? 1 : 0
+  subnet_id      = aws_subnet.sandbox_private_subnet_3[0].id
+  route_table_id = aws_route_table.private_route_table.id
+}

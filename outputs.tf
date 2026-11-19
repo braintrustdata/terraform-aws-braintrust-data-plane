@@ -219,13 +219,13 @@ output "loop_runtime_ai_proxy_url" {
 }
 
 output "loop_runtime_sandbox_egress_gateway_dns_name" {
-  value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_dns_name : null
-  description = "Loop sandbox egress gateway endpoint DNS name. A supplied sandbox VPC must let sandboxes resolve it."
+  value       = local.create_loop_runtime ? (var.enable_sandbox_service ? module.sandbox_service[0].egress_gateway_dns_name : module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_dns_name) : null
+  description = "Private DNS name of the selected Loop sandbox forward-proxy endpoint."
 }
 
 output "loop_runtime_microvm_image_arn" {
-  value       = local.create_loop_runtime ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
-  description = "ARN of the Loop runtime sandbox MicroVM image"
+  value       = local.create_loop_runtime && !var.enable_sandbox_service ? module.loop_runtime_sandbox_aws_microvm[0].image_arn : null
+  description = "Legacy Lambda sandbox image ARN. Null when Loop is disabled or Sandbox Service is enabled."
 }
 
 output "postgres_database_identifier" {
@@ -330,7 +330,7 @@ output "monitoring_contract" {
         local.create_ecs_api ? { api-ecs = module.api_ecs[0].cloudwatch_log_groups } : {},
         local.create_ai_gateway ? { gateway = module.gateway_ecs[0].cloudwatch_log_groups } : {},
         local.create_loop_runtime ? { loop-runtime = module.loop_runtime_ecs[0].cloudwatch_log_groups } : {},
-        local.create_loop_runtime ? { loop-runtime-sandbox = { group = module.loop_runtime_sandbox_aws_microvm[0].microvm_log_group_name } } : {},
+        local.create_loop_runtime && !var.enable_sandbox_service ? { loop-runtime-sandbox = { group = module.loop_runtime_sandbox_aws_microvm[0].microvm_log_group_name } } : {},
       )
     }
   }
@@ -374,4 +374,39 @@ output "quarantine_lambda_security_group_id" {
 output "quarantine_api_url" {
   description = "Private API base URL for quarantine. Null when private quarantine API access is disabled or the deployment is public."
   value       = local.quarantine_api_url
+}
+
+output "sandbox_service_endpoint" {
+  description = "Private Sandbox Service mTLS discovery URL."
+  value       = var.enable_sandbox_service ? module.sandbox_service[0].endpoint : null
+}
+
+output "sandbox_service_client_tls_secret_arn" {
+  description = "Client TLS secret ARN for the private Sandbox Service."
+  value       = var.enable_sandbox_service ? module.sandbox_service[0].client_tls_secret_arn : null
+}
+
+output "sandbox_service_cluster_name" {
+  description = "Dedicated private Sandbox Service EKS cluster."
+  value       = var.enable_sandbox_service ? module.sandbox_service[0].cluster_name : null
+}
+
+output "sandbox_service_private_subnet_ids" {
+  description = "Dedicated Sandbox Service subnets, empty when disabled."
+  value       = var.enable_sandbox_service ? module.sandbox_service[0].private_subnet_ids : []
+}
+
+output "sandbox_service_checkpoint_store" {
+  description = "Sandbox filesystem checkpoint URI. Preserve its bucket until checkpoints are no longer needed."
+  value       = var.enable_sandbox_service ? module.sandbox_service[0].checkpoint_store : null
+}
+
+output "sandbox_service_worker_security_group_id" {
+  description = "Worker security group for caller-managed private endpoint authorizations."
+  value       = var.enable_sandbox_service ? module.sandbox_service[0].worker_security_group_id : null
+}
+
+output "sandbox_service_system_security_group_id" {
+  description = "System node and installer security group for caller-managed private endpoint authorizations."
+  value       = var.enable_sandbox_service ? module.sandbox_service[0].system_security_group_id : null
 }

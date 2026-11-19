@@ -179,3 +179,9 @@ variable "create_secrets_manager_vpc_endpoint" {
   type    = bool
   default = false
 }
+
+variable "create_sandbox_subnets" {
+  type        = bool
+  default     = false
+  description = "Create three dedicated Sandbox Service subnets in the unused half of the VPC address range."
+}
