@@ -802,6 +802,38 @@ variable "sandbox_service_instance_types" {
   description = "Sandbox worker instance types with local NVMe and nested virtualization. Availability depends on region and AZ."
 }
 
+variable "sandbox_service_server_tls_secret_arn" {
+  type        = string
+  default     = null
+  description = "Existing Secrets Manager server mTLS bundle. JSON cert and key contain the server identity; ca_cert contains the trusted client CA. Required for Sandbox Service."
+  validation {
+    condition     = !var.enable_sandbox_service || try(trimspace(var.sandbox_service_server_tls_secret_arn) != "", false)
+    error_message = "Sandbox Service requires an existing server TLS bundle in Secrets Manager."
+  }
+}
+
+variable "sandbox_service_client_tls_secret_arn" {
+  type        = string
+  default     = null
+  description = "Existing Secrets Manager client mTLS bundle. JSON cert and key contain the client identity; ca_cert contains the trusted server CA. Required for Sandbox Service."
+  validation {
+    condition     = !var.enable_sandbox_service || try(trimspace(var.sandbox_service_client_tls_secret_arn) != "", false)
+    error_message = "Sandbox Service requires an existing client TLS bundle in Secrets Manager."
+  }
+}
+
+variable "sandbox_service_tls_kms_key_arn" {
+  type        = string
+  default     = null
+  description = "Optional customer-managed KMS key encrypting both existing Sandbox Service TLS bundles."
+}
+
+variable "sandbox_service_kubernetes_api_authorized_security_groups" {
+  type        = map(string)
+  default     = {}
+  description = "Named Terraform runner security groups allowed to access the private Sandbox Service Kubernetes API on TCP 443. The runner must have a network path to the dedicated subnets."
+}
+
 variable "sandbox_service_vcpu_count" {
   type        = number
   default     = 1

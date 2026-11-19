@@ -1,6 +1,6 @@
 resource "aws_security_group" "system" {
   name        = "${var.deployment_name}-sandbox-system"
-  description = "Sandbox Service system nodes and release installer"
+  description = "Sandbox Service system nodes"
   vpc_id      = var.vpc_id
   tags        = local.common_tags
 }
@@ -21,7 +21,7 @@ resource "aws_security_group" "public_egress" {
 
 resource "aws_security_group" "secrets_manager" {
   name        = "${var.deployment_name}-sandbox-secrets-endpoint"
-  description = "Private TLS bundle access for the Sandbox Service installer"
+  description = "Private TLS bundle access for the sandbox secrets controller"
   vpc_id      = var.vpc_id
   tags        = local.common_tags
 }
@@ -32,7 +32,7 @@ resource "aws_vpc_security_group_ingress_rule" "secrets_manager_from_system" {
   from_port                    = 443
   to_port                      = 443
   ip_protocol                  = "tcp"
-  description                  = "TLS bundle reads from the release installer"
+  description                  = "TLS bundle reads from the sandbox secrets controller"
   tags                         = local.common_tags
 }
 
@@ -57,9 +57,9 @@ resource "aws_vpc_endpoint" "secrets_manager" {
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { AWS = aws_iam_role.release.arn }
-      Action    = "secretsmanager:GetSecretValue"
-      Resource  = [aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn]
+      Principal = { AWS = aws_iam_role.tls.arn }
+      Action    = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+      Resource  = [var.server_tls_secret_arn, var.client_tls_secret_arn]
     }]
   })
   tags = local.common_tags
@@ -225,5 +225,16 @@ resource "aws_vpc_security_group_ingress_rule" "cluster_from_authorized_security
   to_port                      = 443
   ip_protocol                  = "tcp"
   description                  = "Private worker discovery from ${each.key}"
+  tags                         = local.common_tags
+}
+
+resource "aws_vpc_security_group_ingress_rule" "cluster_from_installers" {
+  for_each                     = var.kubernetes_api_authorized_security_groups
+  security_group_id            = aws_eks_cluster.sandbox.vpc_config[0].cluster_security_group_id
+  referenced_security_group_id = each.value
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+  description                  = "Private Kubernetes API from ${each.key}"
   tags                         = local.common_tags
 }

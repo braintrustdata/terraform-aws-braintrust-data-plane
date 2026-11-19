@@ -74,10 +74,14 @@ module "braintrust-data-plane" {
   # The optional Loop runtime is disabled by default.
   enable_loop_runtime = false
   # Hard cutover: existing chats start fresh sandboxes on Sandbox Service.
-  enable_sandbox_service         = false
-  sandbox_service_instance_types = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge"]
-  sandbox_service_vcpu_count     = 1
-  sandbox_service_memory_mib     = 2048
+  enable_sandbox_service                                    = false
+  sandbox_service_server_tls_secret_arn                     = null # Required when enabling Sandbox Service.
+  sandbox_service_client_tls_secret_arn                     = null
+  sandbox_service_tls_kms_key_arn                           = null
+  sandbox_service_kubernetes_api_authorized_security_groups = {} # Terraform runner SGs; private API access only.
+  sandbox_service_instance_types                            = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge"]
+  sandbox_service_vcpu_count                                = 1
+  sandbox_service_memory_mib                                = 2048
   # With create_vpc = false, supply three dedicated worker subnets.
   sandbox_service_existing_private_subnet_1_id = null
   sandbox_service_existing_private_subnet_2_id = null

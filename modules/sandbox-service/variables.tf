@@ -28,6 +28,28 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "kubernetes_api_authorized_security_groups" {
+  type        = map(string)
+  description = "Named Terraform runner security groups allowed to reach the private Kubernetes API on TCP 443."
+  default     = {}
+}
+
+variable "server_tls_secret_arn" {
+  type        = string
+  description = "Existing Secrets Manager server bundle with cert, key and ca_cert PEM strings."
+}
+
+variable "client_tls_secret_arn" {
+  type        = string
+  description = "Existing Secrets Manager client bundle with cert, key and ca_cert PEM strings."
+}
+
+variable "tls_kms_key_arn" {
+  type        = string
+  description = "Optional customer-managed KMS key used by both existing TLS secrets."
+  default     = null
+}
+
 variable "instance_types" {
   type        = list(string)
   description = "Worker instance types with local NVMe storage and nested virtualization support."
@@ -69,7 +91,7 @@ variable "permissions_boundary_arn" {
 
 variable "log_retention_days" {
   type        = number
-  description = "CloudWatch retention for bootstrap function logs."
+  description = "CloudWatch retention for EKS control plane logs."
   default     = 30
 }
 

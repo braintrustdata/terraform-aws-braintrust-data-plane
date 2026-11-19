@@ -3,14 +3,12 @@ locals {
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
-  versions          = jsondecode(file("${path.module}/VERSIONS.json"))
-  cluster_name      = "${var.deployment_name}-sandbox"
-  namespace         = "braintrust-sandbox"
-  hostname          = "nodes.${var.deployment_name}.sandbox.internal"
-  artifact_bucket   = "braintrust-cf-${data.aws_region.current.region}"
-  stack_name        = "${var.deployment_name}-sandbox-service"
-  stack_arn_pattern = "arn:${data.aws_partition.current.partition}:cloudformation:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:stack/${local.stack_name}/*"
-  worker_revision   = "${aws_launch_template.workers.id}-${aws_launch_template.workers.latest_version}-${substr(sha256(jsonencode({ version = aws_eks_cluster.sandbox.version, instance_types = var.instance_types, subnet_ids = var.private_subnet_ids, ami_type = "AL2023_x86_64_STANDARD" })), 0, 12)}"
+  versions        = jsondecode(file("${path.module}/VERSIONS.json"))
+  cluster_name    = "${var.deployment_name}-sandbox"
+  namespace       = "braintrust-sandbox"
+  hostname        = "nodes.${var.deployment_name}.sandbox.internal"
+  artifact_bucket = "braintrust-cf-${data.aws_region.current.region}"
+  worker_revision = "${aws_launch_template.workers.id}-${aws_launch_template.workers.latest_version}-${substr(sha256(jsonencode({ version = aws_eks_cluster.sandbox.version, instance_types = var.instance_types, subnet_ids = var.private_subnet_ids, ami_type = "AL2023_x86_64_STANDARD" })), 0, 12)}"
   helm_values = {
     hostname              = local.hostname
     image                 = local.versions["sandbox-service"]
@@ -216,6 +214,55 @@ resource "aws_eks_node_group" "system" {
     aws_vpc_security_group_ingress_rule.cluster_from_nodes,
     aws_vpc_security_group_ingress_rule.system_dns,
     aws_vpc_security_group_egress_rule.system_dns,
+  ]
+}
+
+# Terraform owns the complete fleet. Replacing a pool can reset its sandboxes;
+# there are no retained node groups outside Terraform state.
+resource "aws_eks_node_group" "workers" {
+  cluster_name    = aws_eks_cluster.sandbox.name
+  node_group_name = "sandbox-${local.worker_revision}"
+  node_role_arn   = aws_iam_role.nodes.arn
+  subnet_ids      = var.private_subnet_ids
+  ami_type        = "AL2023_x86_64_STANDARD"
+  instance_types  = var.instance_types
+  launch_template {
+    id      = aws_launch_template.workers.id
+    version = aws_launch_template.workers.latest_version
+  }
+  labels = {
+    "braintrust.io/workload"        = "sandbox-service"
+    "braintrust.io/worker-revision" = local.worker_revision
+  }
+  taint {
+    key    = "braintrust.io/sandbox"
+    value  = "true"
+    effect = "NO_SCHEDULE"
+  }
+  scaling_config {
+    min_size     = 1
+    max_size     = 401
+    desired_size = 1
+  }
+  update_config {
+    max_unavailable = 1
+  }
+  tags = local.common_tags
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [scaling_config[0].desired_size]
+  }
+  depends_on = [
+    aws_iam_role_policy_attachment.nodes,
+    aws_iam_role_policy.cni,
+    aws_iam_role_policy.public_registry,
+    aws_eks_addon.vpc_cni,
+    aws_vpc_security_group_ingress_rule.cluster_from_nodes,
+    aws_vpc_security_group_egress_rule.nodes_to_cluster,
+    aws_vpc_security_group_ingress_rule.system_dns,
+    aws_vpc_security_group_egress_rule.worker_dns,
+    aws_vpc_security_group_egress_rule.workers_public,
+    aws_vpc_security_group_egress_rule.additional_public,
   ]
 }
 
