@@ -241,18 +241,18 @@ check_rendered_names() {
   done
   jq -e '
     .Statement[0].Condition as $conditions |
-    ($conditions.StringEquals."identitystore:UserId" | type == "array" and length > 0 and length <= 10 and
+    ($conditions.StringEquals."aws:SourceIdentity" | type == "array" and length > 0 and length <= 10 and
       (unique | length) == length and
       all(test("^[A-Za-z0-9_+=,.@-]{2,64}$") and (startswith("aws:") | not))) and
-    $conditions.Null == {"identitystore:UserId":"false"} and
-    $conditions.StringEquals."sts:SourceIdentity" == "${identitystore:UserId}" and
+    $conditions.Null == {"aws:SourceIdentity":"false"} and
+    $conditions.StringEquals."sts:SourceIdentity" == "${aws:SourceIdentity}" and
     ($conditions.DateLessThan."aws:CurrentTime" | fromdateiso8601 | type == "number") and
     ($conditions | has("DateGreaterThanEquals") | not) and
     (.Statement[0] | .Effect == "Allow" and
       (.Action | sort) == (["sts:AssumeRole", "sts:SetSourceIdentity"] | sort)) and
     .Statement[1] == {"Sid":"DenyMismatchedDiagnosticsSessionName", "Effect":"Deny",
       "Principal":.Statement[0].Principal, "Action":"sts:AssumeRole",
-      "Condition":{"StringNotEquals":{"sts:RoleSessionName":"${identitystore:UserId}"}}} and
+      "Condition":{"StringNotEquals":{"sts:RoleSessionName":"${aws:SourceIdentity}"}}} and
     (.Statement | length) == 2' \
     "$temporary_dir/${fixture}diagnostics-active-trust-policy.json" >/dev/null
   external_id="$(jq -er '.Statement[0].Condition.StringEquals."sts:ExternalId"' "$temporary_dir/${fixture}deployment-role-trust-policy.json")"
@@ -274,20 +274,21 @@ fi
 echo 'Bootstrap naming, protected IAM paths, input lengths, and Diagnostics trust checks passed.'
 
 # Evaluate the active template's identity, action-specific name, and deadline
-# requirements. This is a local regression check, not AWS policy simulation.
+# requirements using the inherited SourceIdentity seen on a real chained request.
+# No directory context is supplied at this hop. These are local checks, not AWS policy simulation.
 jq -e '
-  def permits($principal; $user_id; $source_identity; $session_name; $action; $at):
+  def permits($principal; $inherited_identity; $requested_identity; $session_name; $action; $at):
     .Statement[0] as $grant |
     ($principal == $grant.Principal.AWS) and
-    ($user_id != null) and ($source_identity != null) and
-    (($grant.Condition.StringEquals."identitystore:UserId" | index($user_id)) != null) and
-    ($source_identity == $user_id) and
+    ($inherited_identity != null) and ($requested_identity != null) and
+    (($grant.Condition.StringEquals."aws:SourceIdentity" | index($inherited_identity)) != null) and
+    ($requested_identity == $inherited_identity) and
     (($grant.Action | index($action)) != null) and
-    ($action != "sts:AssumeRole" or $session_name == $user_id) and
+    ($action != "sts:AssumeRole" or $session_name == $inherited_identity) and
     (($at | fromdateiso8601) <
       ($grant.Condition.DateLessThan."aws:CurrentTime" | fromdateiso8601));
   .Statement[0].Principal.AWS as $source |
-  .Statement[0].Condition.StringEquals."identitystore:UserId"[0] as $engineer |
+  .Statement[0].Condition.StringEquals."aws:SourceIdentity"[0] as $engineer |
   .Statement[0].Condition.DateLessThan."aws:CurrentTime" as $end |
   ($end | fromdateiso8601 | . - 1 | todateiso8601) as $within |
   ($end | fromdateiso8601 | . + 1 | todateiso8601) as $after |
@@ -306,7 +307,7 @@ jq -e '
   "$temporary_dir/diagnostics-active-trust-policy.json" >/dev/null
 if [[ "$package_dir" == "$source_dir" ]]; then
   # Exercise ten distinct 64-character identities and a 256-character principal.
-  jq '.Statement[0].Condition.StringEquals."identitystore:UserId" =
+  jq '.Statement[0].Condition.StringEquals."aws:SourceIdentity" =
     [range(0; 10) | tostring + ("i" * 63)]' \
     "$temporary_dir/maximum-diagnostics-active-trust-policy.json" \
     >"$temporary_dir/ten-engineers-trust-policy.json"
@@ -403,9 +404,9 @@ if [[ "$package_dir" == "$source_dir" ]]; then
       .Effect == "Allow" and .Principal.AWS == "arn:aws:iam::444455556666:role/braintrust-human" and
       (.Action | sort) == (["sts:AssumeRole", "sts:SetSourceIdentity"] | sort) and
       .Condition == {
-        "Null":{"identitystore:UserId":"false"},
-        "StringEquals":{"identitystore:UserId":["11111111-2222-3333-4444-555555555555"],
-          "sts:SourceIdentity":"${identitystore:UserId}"},
+        "Null":{"aws:SourceIdentity":"false"},
+        "StringEquals":{"aws:SourceIdentity":["11111111-2222-3333-4444-555555555555"],
+          "sts:SourceIdentity":"${aws:SourceIdentity}"},
         "DateLessThan":{"aws:CurrentTime":"2026-11-10T17:00:00Z"}})'
   assert_policy deployment-service-linked-roles-policy.json '
     {"CreateServiceLinkedRoles": {

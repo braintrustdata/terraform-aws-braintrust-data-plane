@@ -39,10 +39,12 @@ restoration. Reading the changed policy does not prove STS has observed it.
 List source identities exactly, without wildcards or `IfExists` conditions.
 Values must be 2–64 characters supported by AWS SourceIdentity, not start with
 `aws:`, and identify distinct authenticated employees. A caller-supplied name or
-email is not proof of identity. Active trust requires AWS's signed
-`identitystore:UserId`, membership in the approved list, and requested
-`sts:SourceIdentity` equal to that verified UserId. The login path need not
-prepopulate SourceIdentity. It must provide the signed identity context.
+email is not proof of identity. Braintrust source-role entry verifies signed
+AAM `identitystore:UserId` and sets SourceIdentity to that UserId. AWS preserves
+it across role chaining, while the directory claim is absent on the customer hop.
+Active customer trust requires inherited `aws:SourceIdentity` in the approved
+list and requested `sts:SourceIdentity` equal to that value. The source entry
+verification is required; the customer does not trust a caller-chosen string.
 Keep the final participant list within the role's configured trust policy limit
 (2,048 characters by default); the validator exercises ten maximum-length IDs.
 

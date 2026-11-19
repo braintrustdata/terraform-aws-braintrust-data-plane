@@ -236,7 +236,8 @@ independent customer approval. The customer-disable inline deny overrides it.
 `iam:UpdateAssumeRolePolicy` replaces the trust document. IAM limits the target
 role, not the policy contents. The activation workflow must preserve the exact
 principal, verified UserIds, and deadline. Customer trust binds both requested
-SourceIdentity and role-session name to the signed `identitystore:UserId`. See the
+SourceIdentity and role-session name to the inherited `aws:SourceIdentity`,
+which Braintrust verifies against signed AAM UserId at source-role entry. See the
 [trust examples](../trust-policies/README.md#diagnostics-trust-states).
 
 Deployment is explicitly denied updates, deletion, change-set creation/execution,

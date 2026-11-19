@@ -10,13 +10,13 @@
           "aws:CurrentTime": "<DIAGNOSTICS_ACCESS_EXPIRES_AT>"
         },
         "Null": {
-          "identitystore:UserId": "false"
+          "aws:SourceIdentity": "false"
         },
         "StringEquals": {
-          "identitystore:UserId": [
+          "aws:SourceIdentity": [
             "<ENGINEER_SOURCE_IDENTITY>"
           ],
-          "sts:SourceIdentity": "${identitystore:UserId}"
+          "sts:SourceIdentity": "${aws:SourceIdentity}"
         }
       },
       "Effect": "Allow",
@@ -29,7 +29,7 @@
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringNotEquals": {
-          "sts:RoleSessionName": "${identitystore:UserId}"
+          "sts:RoleSessionName": "${aws:SourceIdentity}"
         }
       },
       "Effect": "Deny",

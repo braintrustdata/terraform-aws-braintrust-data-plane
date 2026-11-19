@@ -37,7 +37,9 @@ content even without a shell.
 ```mermaid
 flowchart TB
     subgraph BT[Braintrust]
-        S["Diagnostics source role<br/>Standing SSO eligibility"]
+        A["AAM account role<br/>Signed directory UserId"]
+        S["Diagnostics source role<br/>Verified SourceIdentity"]
+        A -->|verify UserId; set SourceIdentity| S
         B[BYOC deployment service]
     end
     subgraph CUSTOMER[Customer AWS account]
@@ -50,7 +52,7 @@ flowchart TB
     end
     B -.->|temporary operation credentials| D
     D -.->|replace trust for the access window| T
-    S -->|signed UserId binds SourceIdentity and session name| T
+    S -->|inherited SourceIdentity binds recipient and session name| T
 ```
 
 The customer can inspect the source role, permitted UserIds, and
@@ -69,11 +71,11 @@ the replacement document to the example's participants or deadline. Braintrust's
 activation workflow must enforce those rules. Fixed permissions and customer
 guardrails still limit the assumed role.
 
-Trust requires the signed `identitystore:UserId` and binds both requested
-SourceIdentity and the customer role-session name to that value. The engineer
-cannot choose another participant's identity or session name. An inherited
-SourceIdentity is not required from the login path; a caller-selected string
-without the signed identity context is insufficient. See the
+Source-role entry binds SourceIdentity to signed AAM `identitystore:UserId`.
+Customer trust checks that immutable inherited `aws:SourceIdentity` against the
+approved list and binds the requested identity and role-session name to it.
+The directory claim need not survive the customer hop. The engineer cannot choose
+another participant's identity or session name. See the
 [trust guide](trust-policies/README.md) for the exact conditions.
 
 Do not add alternative assumption grants or independent session permissions

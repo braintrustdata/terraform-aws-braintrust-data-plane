@@ -53,7 +53,7 @@
     "policies/inspection-services-policy.json": "a6d07f1f5202a477df4856af5e9dc931f74993e71dca6b25189e774d7e6863f3",
     "policies/runtime-permissions-boundary.json": "685d49b745b973ad114538ee10a7de00b59e5eb063652353a6735b0a5e71e597",
     "trust-policies/deployment-role-trust-policy.json": "60174dd1b7ca61292ff0fafdc45910b3d4dc0406150546294e66c17b45e74baf",
-    "trust-policies/diagnostics-active-trust-policy.json": "831897b317229f01dae6d8353abe7f87b65c29c15de6f0bd4a62912b7c628141",
+    "trust-policies/diagnostics-active-trust-policy.json": "2b3ee213ab8876dfa040c079999b8686aafa457dbc85071ff01346eb55924314",
     "trust-policies/diagnostics-disabled-trust-policy.json": "aeb374ab64cd7499aec3d5a0a8a81ca028f45a9082ef2025a1b476d5378ea696",
     "trust-policies/diagnostics-role-trust-policy.json": "d8b97aa21cf36c3b6af94db62fc1f94eb0c04d3886d207acb82c7cab7c24ebc6",
     "trust-policies/human-role-trust-policy.json": "962297c0ac356b6210b4e203b7c1c7990dac4f32fc4c6af1120e322871db241f"
