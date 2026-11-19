@@ -22,7 +22,7 @@ OpenTofu is still supported. The root module and each example have a `versions.t
 
 ## What changes on apply
 
-The upgrade plan from v7.2.1 shows two kinds of change. Treat anything outside these lists as a reason to stop.
+The upgrade plan from v7.3.0 or later shows two kinds of change. Treat anything outside these lists as a reason to stop.
 
 ### IAM moves into `modules/iam`
 
@@ -40,15 +40,9 @@ This release moves these roles and the policies and attachments that belong to t
 
 The gateway Terraform files also split into `security-groups.tf` and `cloudwatch.tf` inside `modules/gateway-ecs`. That's a file move only, and no addresses change.
 
-### Changes from #307 in the same release
+### Braintrust service versions
 
-The step from v7.2.1 to the v8 branch also carries #307, which moves the Brainstore license out of plaintext task definitions and user data and into Secrets Manager. Those changes are real changes to AWS, and they are not part of the IAM moves. Expect these in the plan:
-
-- A Secrets Manager secret and version for the Brainstore license key, created from `brainstore_license_key`. If you set `existing_brainstore_license_key_secret`, the module uses that secret and creates none. Standard deployments now need one or the other.
-- New task definition revisions for the API ECS services, the gateway and, if enabled, Loop. The license moves from an environment variable to an ECS secret, so each service rolls.
-- Updated launch templates for the Brainstore fleets. Their user data now fetches the license at startup, so the fleets run an instance refresh. The deployment waiter holds the API rollout until the reader and fast-reader fleets finish.
-- In-place policy updates. The API ECS and gateway execution roles, and the Brainstore role, gain access to the license secret and its KMS key. The execution role policies sit at their new `module.iam` addresses.
-- On most stacks, a create of the gateway execution secrets policy, `module.iam.aws_iam_role_policy.gateway_task_execution_secrets[0]`. v7.2.1 only had this policy under an optional setting that most stacks leave off, so there is nothing to move into that address. The policy now always exists and grants the gateway read access to the license secret.
+The module pins Braintrust service versions, so if your v7 release pins an older version than this one, the upgrade also moves your services. Expect new task definition revisions for the API ECS services and the gateway, new Lambda versions, a Brainstore instance refresh and that version's database migrations. These aren't part of the IAM moves. To keep them out of the v8 apply, set the `*_version_override` inputs to the version you run now, as [MIGRATION_V7.md](MIGRATION_V7.md#v730-iam-ownership-tag) describes, and remove them in a later apply.
 
 ## Rollback
 
