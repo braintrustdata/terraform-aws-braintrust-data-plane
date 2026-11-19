@@ -151,6 +151,10 @@ run "voice_disabled_by_default" {
     )
     error_message = "The default must omit voice routes, configuration, and occupancy scaling."
   }
+  assert {
+    condition     = alltrue([for container in jsondecode(aws_ecs_task_definition.braintrust_api_background.container_definitions) : !contains(keys(container), "stopTimeout") if container.name == "api"])
+    error_message = "The default must preserve the background container's existing stop behavior."
+  }
 }
 
 run "voice_uses_background_pool" {
@@ -184,9 +188,9 @@ run "voice_uses_background_pool" {
   assert {
     condition = alltrue([
       for definition in [aws_ecs_task_definition.braintrust_api.container_definitions, aws_ecs_task_definition.braintrust_api_ingest.container_definitions] :
-      alltrue([for container in jsondecode(definition) : !contains([for env in container.environment : env.name], "VOICE_SESSION_WS_BASE_URL") if container.name == "api"])
+      alltrue([for container in jsondecode(definition) : !contains([for env in container.environment : env.name], "VOICE_SESSION_WS_BASE_URL") && !contains(keys(container), "stopTimeout") if container.name == "api"])
     ])
-    error_message = "Other API pools must not enable hosted voice sessions."
+    error_message = "Other API pools must not enable hosted voice sessions or change their stop behavior."
   }
   assert {
     condition = (
@@ -241,6 +245,10 @@ run "disabling_voice_removes_routes_and_configuration" {
       && alltrue([for container in jsondecode(aws_ecs_task_definition.braintrust_api_background.container_definitions) : !contains([for env in container.environment : env.name], "VOICE_SESSION_WS_BASE_URL") if container.name == "api"])
     )
     error_message = "Disabling voice must remove its routing, admission configuration, and scaling policy in one apply."
+  }
+  assert {
+    condition     = alltrue([for container in jsondecode(aws_ecs_task_definition.braintrust_api_background.container_definitions) : !contains(keys(container), "stopTimeout") if container.name == "api"])
+    error_message = "Disabling voice must restore the background container's previous stop behavior."
   }
 }
 

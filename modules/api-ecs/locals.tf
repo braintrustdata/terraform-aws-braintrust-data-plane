@@ -376,7 +376,7 @@ locals {
             value = local.api_service_env_vars[service_name][key]
           }
         ]
-      }, service_name == "braintrust-api-background" ? { stopTimeout = 120 } : {})
+      }, service_name == "braintrust-api-background" && var.enable_ecs_voice_sessions ? { stopTimeout = 120 } : {})
     ], local.observability_sidecars[service_name]))
   }
 

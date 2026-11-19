@@ -216,14 +216,16 @@ connections (`GET /v1/voice_session/*/connect`) use the existing background API
 pool alongside evals. Public deployments route these paths through CloudFront to
 the API ALB, including when `enable_ecs_api = false`. Private deployments route
 them through both API ALB listeners. Existing client connectivity and network
-authorization still apply. External EKS deployments configure voice separately.
+authorization still apply. This module does not configure hosted voice for
+external EKS.
 
 Only background workers receive `VOICE_SESSION_WS_BASE_URL`, derived from the
 public API domain (custom or generated CloudFront hostname), or the private API
 HTTPS domain, with the `wss://` scheme. `WEB_CONCURRENCY` remains configurable.
 The shared pool uses `braintrust_api_background_min_count` and
-`braintrust_api_background_max_count`, a 120-second container stop timeout, and a
-voice occupancy scaling target of 60%, alongside existing resource policies.
+`braintrust_api_background_max_count`. When voice is enabled, it also receives a
+120-second container stop timeout and a voice occupancy scaling target of 60%,
+alongside existing resource policies.
 
 Enabling voice accepts that routine scale-in and task rollouts can interrupt
 active calls. Active sessions do not use ECS task scale-in protection. The default

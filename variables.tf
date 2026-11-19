@@ -1062,7 +1062,7 @@ variable "enable_ecs_voice_sessions" {
 
   validation {
     condition     = !var.enable_ecs_voice_sessions || !var.use_deployment_mode_external_eks
-    error_message = "Hosted ECS voice sessions are not supported with external EKS. Configure voice sessions through the external deployment instead."
+    error_message = "This module does not configure hosted voice for external EKS."
   }
 
   validation {
