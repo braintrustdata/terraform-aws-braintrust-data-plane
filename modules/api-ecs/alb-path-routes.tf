@@ -43,6 +43,8 @@ locals {
     { path = "/function/eval", method = "POST", priority = 220, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/sandbox", method = "POST", priority = 230, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/use", method = "POST", priority = 240, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/function/invoke", method = "POST", priority = 243, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/v1/function/*/invoke", method = "POST", priority = 246, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/invoke-async-batch", method = "POST", priority = 250, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/insert-functions", method = "POST", priority = 260, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/automation/logs/trigger", method = "POST", priority = 270, target_group = aws_lb_target_group.braintrust_api_background.arn },
