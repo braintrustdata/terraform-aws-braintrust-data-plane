@@ -3,10 +3,6 @@ terraform {
   # v1.2 is needed for precondition checks
   required_version = ">= 1.10.0"
   required_providers {
-    helm = {
-      source  = "hashicorp/helm"
-      version = ">= 3.0.0, < 4.0.0"
-    }
     http = {
       source  = "hashicorp/http"
       version = "~> 3.3"

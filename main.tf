@@ -652,16 +652,12 @@ module "sandbox_service" {
   authorized_security_groups = {
     "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
   }
-  kubernetes_api_authorized_security_groups = var.sandbox_service_kubernetes_api_authorized_security_groups
-  server_tls_secret_arn                     = var.sandbox_service_server_tls_secret_arn
-  client_tls_secret_arn                     = var.sandbox_service_client_tls_secret_arn
-  tls_kms_key_arn                           = var.sandbox_service_tls_kms_key_arn
-  instance_types                            = var.sandbox_service_instance_types
-  sandbox_vcpu_count                        = var.sandbox_service_vcpu_count
-  sandbox_memory_mib                        = var.sandbox_service_memory_mib
-  permissions_boundary_arn                  = var.permissions_boundary_arn
-  log_retention_days                        = var.loop_runtime_log_retention_days
-  custom_tags                               = local.all_custom_tags
+  instance_types           = var.sandbox_service_instance_types
+  sandbox_vcpu_count       = var.sandbox_service_vcpu_count
+  sandbox_memory_mib       = var.sandbox_service_memory_mib
+  permissions_boundary_arn = var.permissions_boundary_arn
+  log_retention_days       = var.loop_runtime_log_retention_days
+  custom_tags              = local.all_custom_tags
 }
 
 module "loop_runtime_ecs" {
@@ -707,17 +703,15 @@ module "loop_runtime_ecs" {
   }
 
   sandbox_service = var.enable_sandbox_service ? {
-    endpoint                  = module.sandbox_service[0].endpoint
-    image                     = module.sandbox_service[0].sandbox_image
-    egress_gateway_url        = "http://${module.sandbox_service[0].egress_gateway_dns_name}:4002"
-    client_tls_secret_arn     = module.sandbox_service[0].client_tls_secret_arn
-    client_tls_secret_version = module.sandbox_service[0].client_tls_secret_version
-    client_tls_kms_key_arn    = var.sandbox_service_tls_kms_key_arn
-    cluster_name              = module.sandbox_service[0].cluster_name
-    kubernetes_api_url        = module.sandbox_service[0].kubernetes_api_url
-    kubernetes_ca             = module.sandbox_service[0].kubernetes_ca
-    vcpu_count                = var.sandbox_service_vcpu_count
-    memory_mib                = var.sandbox_service_memory_mib
+    endpoint              = module.sandbox_service[0].endpoint
+    image                 = module.sandbox_service[0].sandbox_image
+    egress_gateway_url    = "http://${module.sandbox_service[0].egress_gateway_dns_name}:4002"
+    client_tls_secret_arn = module.sandbox_service[0].client_tls_secret_arn
+    cluster_name          = module.sandbox_service[0].cluster_name
+    kubernetes_api_url    = module.sandbox_service[0].kubernetes_api_url
+    kubernetes_ca         = module.sandbox_service[0].kubernetes_ca
+    vcpu_count            = var.sandbox_service_vcpu_count
+    memory_mib            = var.sandbox_service_memory_mib
   } : null
   sandbox_env_vars                 = var.enable_sandbox_service ? {} : module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
   additional_task_role_policy_json = var.enable_sandbox_service ? jsonencode({ Version = "2012-10-17", Statement = [] }) : module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json

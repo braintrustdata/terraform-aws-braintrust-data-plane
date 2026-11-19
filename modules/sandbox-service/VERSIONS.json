@@ -2,5 +2,7 @@
   "sandbox-service": "public.ecr.aws/braintrust/sandbox-service:d14f052edd22413ce3d18a083867aca5731da447",
   "sandbox-image": "public.ecr.aws/braintrust/codex-runtime@sha256:2a429ee9ddbcd3f71da635c2a23145bd5aafae91331480e2929499a82160fa8e",
   "chart-key": "sandbox-service/1c9bba1ab4311bbb49752ba0cbd3b63b7daa16dd06ab2ba42cc8d9c3af783d3a/sandbox-service-0.1.0.tgz",
-  "external-secrets-chart": "2.15.0"
+  "bootstrap-key": "492aae9ada5d03c78a8c6984d8518477",
+  "bootstrap-sha256": "308c586b9a35ae6aa8a54827ee7fd1389f87dbf0b5495f1b8f2f332e33d936a7",
+  "bootstrap-code-hash": "MIxYa5o1rmqopUgn7n/ROJ+H2/C1SV8bjy8zLjPZNqc="
 }

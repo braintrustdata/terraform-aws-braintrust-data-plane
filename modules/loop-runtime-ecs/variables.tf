@@ -424,17 +424,15 @@ variable "authorized_security_groups" {
 
 variable "sandbox_service" {
   type = object({
-    endpoint                  = string
-    image                     = string
-    egress_gateway_url        = string
-    client_tls_secret_arn     = string
-    client_tls_secret_version = optional(string)
-    client_tls_kms_key_arn    = optional(string)
-    cluster_name              = string
-    kubernetes_api_url        = string
-    kubernetes_ca             = string
-    vcpu_count                = number
-    memory_mib                = number
+    endpoint              = string
+    image                 = string
+    egress_gateway_url    = string
+    client_tls_secret_arn = string
+    cluster_name          = string
+    kubernetes_api_url    = string
+    kubernetes_ca         = string
+    vcpu_count            = number
+    memory_mib            = number
   })
   default     = null
   description = "Optional Sandbox Service connection. Null keeps the Lambda backend; TLS is injected only into the ECS initialization container."

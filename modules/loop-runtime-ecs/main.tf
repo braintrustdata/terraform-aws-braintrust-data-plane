@@ -161,10 +161,7 @@ locals {
       }
     JS
     ]
-    secrets = [{
-      name      = "TLS_BUNDLE"
-      valueFrom = var.sandbox_service.client_tls_secret_version == null ? var.sandbox_service.client_tls_secret_arn : "${var.sandbox_service.client_tls_secret_arn}:::${var.sandbox_service.client_tls_secret_version}"
-    }]
+    secrets = [{ name = "TLS_BUNDLE", valueFrom = var.sandbox_service.client_tls_secret_arn }]
     mountPoints = [{
       sourceVolume = "sandbox-tls", containerPath = "/tls", readOnly = false
     }]
@@ -460,13 +457,9 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         )
       },
       {
-        Effect = "Allow"
-        Action = ["kms:Decrypt"]
-        Resource = concat(
-          [var.kms_key_arn],
-          var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn],
-          try(var.sandbox_service.client_tls_kms_key_arn, null) == null ? [] : [var.sandbox_service.client_tls_kms_key_arn],
-        )
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = concat([var.kms_key_arn], var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn])
         Condition = {
           StringEquals = {
             "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"

@@ -1,13 +1,5 @@
-mock_provider "helm" {}
-
 mock_provider "aws" {
   source = "./tests/mocks/aws"
-  mock_data "aws_iam_session_context" {
-    defaults = { issuer_arn = "arn:aws:iam::123456789012:role/terraform-installer" }
-  }
-  mock_data "aws_secretsmanager_secret_versions" {
-    defaults = { versions = [{ version_id = "tls-version-one", version_stages = ["AWSCURRENT"] }] }
-  }
   mock_data "aws_partition" {
     defaults = { partition = "aws" }
   }
@@ -21,13 +13,11 @@ mock_provider "http" {
 }
 
 variables {
-  braintrust_org_name                   = "test-org"
-  primary_org_name                      = "test-org"
-  deployment_name                       = "bt-test"
-  brainstore_license_key                = "test-license"
-  enable_loop_runtime                   = true
-  sandbox_service_server_tls_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-server"
-  sandbox_service_client_tls_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-client"
+  braintrust_org_name    = "test-org"
+  primary_org_name       = "test-org"
+  deployment_name        = "bt-test"
+  brainstore_license_key = "test-license"
+  enable_loop_runtime    = true
 }
 
 run "lambda_only_by_default" {
@@ -70,7 +60,6 @@ run "exposes_client_tls_secret_arn" {
     outputs = {
       endpoint                         = "https://nodes.bt-test.sandbox.internal:9400"
       cluster_name                     = "bt-test-sandbox-service"
-      client_tls_secret_version        = "tls-version-one"
       client_tls_secret_arn            = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-sandbox-service-client-tls"
       worker_security_group_id         = "sg-0123456789abcdef0"
       egress_gateway_security_group_id = "sg-0123456789abcdef1"
@@ -118,22 +107,4 @@ run "rejects_service_without_loop" {
     enable_loop_runtime    = false
   }
   expect_failures = [var.enable_sandbox_service]
-}
-
-run "rejects_missing_server_tls" {
-  command = plan
-  variables {
-    enable_sandbox_service                = true
-    sandbox_service_server_tls_secret_arn = null
-  }
-  expect_failures = [var.sandbox_service_server_tls_secret_arn]
-}
-
-run "rejects_missing_client_tls" {
-  command = plan
-  variables {
-    enable_sandbox_service                = true
-    sandbox_service_client_tls_secret_arn = ""
-  }
-  expect_failures = [var.sandbox_service_client_tls_secret_arn]
 }

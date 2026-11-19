@@ -1,5 +1,3 @@
-mock_provider "helm" {}
-
 mock_provider "aws" {
   source = "./tests/mocks/aws"
   mock_data "aws_partition" {
@@ -32,23 +30,21 @@ mock_provider "aws" {
       dns_entry = [{ dns_name = "vpce-secrets.example.internal", hosted_zone_id = "ZEXAMPLE" }]
     }
   }
-  mock_data "aws_iam_session_context" {
-    defaults = { issuer_arn = "arn:aws:iam::123456789012:role/terraform-installer" }
-  }
-  mock_data "aws_secretsmanager_secret_versions" {
-    defaults = { versions = [{ version_id = "tls-version-one", version_stages = ["AWSCURRENT"] }] }
+  mock_resource "aws_cloudformation_stack" {
+    defaults = {
+      outputs = {
+        ClientTlsSecretArn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-client"
+        NodeGroupName      = "sandbox-test-workers"
+      }
+    }
   }
 }
 
 variables {
-  deployment_name                           = "bt-test"
-  server_tls_secret_arn                     = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-server"
-  client_tls_secret_arn                     = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-client"
-  tls_kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/tls-key"
-  kubernetes_api_authorized_security_groups = { "Terraform runner" = "sg-installer" }
-  vpc_id                                    = "vpc-0123456789abcdef0"
-  private_subnet_ids                        = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
-  data_plane_subnet_ids                     = ["subnet-main-one", "subnet-main-two", "subnet-main-three"]
+  deployment_name       = "bt-test"
+  vpc_id                = "vpc-0123456789abcdef0"
+  private_subnet_ids    = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
+  data_plane_subnet_ids = ["subnet-main-one", "subnet-main-two", "subnet-main-three"]
   authorized_security_groups = {
     "Loop Runtime" = "sg-0123456789abcdef0"
   }
@@ -56,7 +52,7 @@ variables {
   custom_tags              = { Example = "sandbox" }
 }
 
-run "private_cluster_and_native_worker_release" {
+run "private_cluster_and_safe_worker_release" {
   command = apply
   module {
     source = "./modules/sandbox-service"
@@ -78,11 +74,11 @@ run "private_cluster_and_native_worker_release" {
       !aws_vpc_endpoint.secrets_manager.private_dns_enabled &&
       aws_vpc_security_group_ingress_rule.secrets_manager_from_system.referenced_security_group_id == aws_security_group.system.id &&
       aws_vpc_security_group_egress_rule.system_to_secrets_manager.referenced_security_group_id == aws_security_group.secrets_manager.id &&
-      yamldecode(helm_release.external_secrets.values[0]).extraEnv[0].value == "https://vpce-secrets.example.internal" &&
-      jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Principal.AWS == aws_iam_role.tls.arn &&
-      toset(jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Resource) == toset([var.server_tls_secret_arn, var.client_tls_secret_arn])
+      aws_lambda_function.release.environment[0].variables.AWS_ENDPOINT_URL_SECRETS_MANAGER == "https://vpce-secrets.example.internal" &&
+      jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Principal.AWS == aws_iam_role.release.arn &&
+      toset(jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Resource) == toset([aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn])
     )
-    error_message = "The secrets controller must reach only its TLS secrets through a private endpoint without changing existing VPC DNS."
+    error_message = "The installer must reach only its TLS secrets through a private endpoint without changing existing VPC DNS."
   }
   assert {
     condition = (
@@ -94,16 +90,13 @@ run "private_cluster_and_native_worker_release" {
   }
   assert {
     condition = (
-      aws_eks_node_group.workers.node_group_name == "sandbox-${local.worker_revision}" &&
-      aws_eks_node_group.workers.launch_template[0].id == aws_launch_template.workers.id &&
-      aws_eks_node_group.workers.labels["braintrust.io/worker-revision"] == local.worker_revision &&
-      aws_eks_node_group.workers.scaling_config[0].min_size == 1 &&
-      aws_eks_node_group.workers.scaling_config[0].max_size == 401 &&
-      aws_eks_access_entry.installer.principal_arn == "arn:aws:iam::123456789012:role/terraform-installer" &&
-      aws_vpc_security_group_ingress_rule.cluster_from_installers["Terraform runner"].from_port == 443 &&
-      !contains(keys(aws_vpc_security_group_ingress_rule.workers_from_authorized_security_groups), "Terraform runner")
+      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.DeletionPolicy == "RetainExceptOnCreate" &&
+      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.UpdateReplacePolicy == "Retain" &&
+      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.Properties.NodegroupName["Fn::Sub"] == "sandbox-$${WorkerRevision}" &&
+      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Release.Properties.NodeGroupName["Fn::GetAtt"] == ["Workers", "NodegroupName"] &&
+      yamldecode(aws_cloudformation_stack.release.template_body).Outputs.NodeGroupName.Value["Fn::GetAtt"] == ["Workers", "NodegroupName"]
     )
-    error_message = "Terraform must own the worker pool and grant the deployment runner only private API network access."
+    error_message = "Worker replacement must create a new pool and retain occupied pools for controller draining."
   }
   assert {
     condition = (
@@ -130,8 +123,9 @@ run "private_cluster_and_native_worker_release" {
       length(aws_ec2_managed_prefix_list.public_ipv4["first"].entry) == 52 &&
       length(aws_ec2_managed_prefix_list.public_ipv4["second"].entry) == 51 &&
       aws_iam_role.nodes.permissions_boundary == var.permissions_boundary_arn &&
+      aws_iam_role.release.permissions_boundary == var.permissions_boundary_arn &&
       aws_iam_role.tls.permissions_boundary == var.permissions_boundary_arn &&
-      aws_eks_node_group.workers.tags.BraintrustDeploymentName == var.deployment_name &&
+      aws_lambda_function.release.tags.BraintrustDeploymentName == var.deployment_name &&
       aws_cloudwatch_log_group.cluster.tags.BraintrustDeploymentName == var.deployment_name &&
       one([for spec in aws_launch_template.workers.tag_specifications : spec.tags if spec.resource_type == "volume"]).BraintrustDeploymentName == var.deployment_name &&
       aws_route53_zone.sandbox.tags.Example == "sandbox"
@@ -141,33 +135,29 @@ run "private_cluster_and_native_worker_release" {
   assert {
     condition = (
       toset(jsondecode(aws_iam_role_policy.tls.policy).Statement[0].Resource) == toset([
-        var.server_tls_secret_arn,
-        var.client_tls_secret_arn,
+        aws_secretsmanager_secret.tls_seed.arn,
+        aws_secretsmanager_secret.server_tls.arn,
+        aws_secretsmanager_secret.client_tls.arn,
       ]) &&
       aws_eks_pod_identity_association.filesystems.service_account == "sandbox-service" &&
       jsondecode(aws_iam_role_policy.filesystems.policy).Statement[1].Resource == "${aws_s3_bucket.filesystems.arn}/sandbox-filesystems/*" &&
       aws_s3_bucket_public_access_block.filesystems.block_public_policy &&
       !aws_s3_bucket.filesystems.force_destroy &&
-      !contains(jsondecode(aws_iam_role_policy.tls.policy).Statement[0].Action, "secretsmanager:PutSecretValue") &&
-      jsondecode(aws_iam_role_policy.tls.policy).Statement[1].Resource == var.tls_kms_key_arn &&
-      aws_eks_pod_identity_association.tls.service_account == "sandbox-external-secrets"
+      jsondecode(aws_iam_role_policy.release.policy).Statement[2].Condition.StringLike["aws:ResourceTag/braintrust:sandbox-stack"] == "arn:aws:cloudformation:us-east-1:123456789012:stack/bt-test-sandbox-service/*"
     )
-    error_message = "The secrets controller must read only the two supplied TLS bundles and their encryption key."
+    error_message = "TLS access, Loop service reads and node-pool updates must be scoped to this deployment."
   }
   assert {
     condition = (
-      yamldecode(helm_release.sandbox.values[0]).workerNodeSelector["braintrust.io/worker-revision"] == local.worker_revision &&
-      yamldecode(helm_release.sandbox.values[0]).filesystemRetention &&
-      yamldecode(helm_release.sandbox.values[0]).checkpointStore == output.checkpoint_store &&
-      yamldecode(helm_release.sandbox.values[0]).workerNodeReaderGroup == "braintrust:sandbox-worker-node-readers" &&
-      yamldecode(helm_release.sandbox.values[0]).prewarmTemplates[0].policy.networking.type == "disabled" &&
-      yamldecode(helm_release.tls.values[0]).bundles.client.version == "tls-version-one" &&
-      yamldecode(helm_release.external_secrets.values[0]).scopedRBAC &&
-      helm_release.sandbox.disable_webhooks &&
-      output.client_tls_secret_arn == var.client_tls_secret_arn &&
+      jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).workerNodeSelector["braintrust.io/worker-revision"] == aws_cloudformation_stack.release.parameters.WorkerRevision &&
+      jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).filesystemRetention &&
+      jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).checkpointStore == output.checkpoint_store &&
+      jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).workerNodeReaderGroup == "braintrust:sandbox-worker-node-readers" &&
+      jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).prewarmTemplates[0].policy.networking.type == "disabled" &&
+      aws_lambda_function.tls.handler == "handler.tls_handler" &&
       output.endpoint == "https://nodes.bt-test.sandbox.internal:9400"
     )
-    error_message = "Native Helm must target the current pool and consume pinned, existing TLS bundles without private key values."
+    error_message = "The installed chart must target the current pool and provision restricted sandboxes with automatic TLS."
   }
 }
 
@@ -225,36 +215,4 @@ run "rejects_shared_application_subnet" {
     private_subnet_ids = ["subnet-main-one", "subnet-two", "subnet-three"]
   }
   expect_failures = [var.private_subnet_ids]
-}
-
-run "tls_rotation_updates_only_bundle_revisions" {
-  command = apply
-  module {
-    source = "./modules/sandbox-service"
-  }
-  override_data {
-    target = data.aws_secretsmanager_secret_versions.tls["client"]
-    values = { versions = [{ version_id = "tls-version-two", version_stages = ["AWSCURRENT"] }] }
-  }
-  assert {
-    condition = (
-      output.client_tls_secret_version == "tls-version-two" &&
-      yamldecode(helm_release.tls.values[0]).bundles.client.version == "tls-version-two" &&
-      yamldecode(helm_release.sandbox.values[0]).tlsRevision == sha256(jsonencode({ client = "tls-version-two", server = "tls-version-one" })) &&
-      aws_eks_node_group.workers.labels["braintrust.io/worker-revision"] == local.worker_revision
-    )
-    error_message = "TLS rotation must pin the new bundle and update the chart revision without including private key values."
-  }
-}
-
-run "rejects_empty_tls_secret" {
-  command = plan
-  module {
-    source = "./modules/sandbox-service"
-  }
-  override_data {
-    target = data.aws_secretsmanager_secret_versions.tls["server"]
-    values = { versions = [] }
-  }
-  expect_failures = [data.aws_secretsmanager_secret_versions.tls["server"]]
 }

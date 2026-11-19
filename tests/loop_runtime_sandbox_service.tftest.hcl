@@ -54,33 +54,23 @@ run "service_uses_tls_private_egress_and_scoped_discovery" {
   }
   variables {
     sandbox_service = {
-      endpoint                  = "https://nodes.bt-test.sandbox.internal:9400"
-      image                     = "public.ecr.aws/braintrust/codex-runtime:test"
-      egress_gateway_url        = "http://loop-egress.example.internal:4002"
-      client_tls_secret_version = "tls-version-one"
-      client_tls_kms_key_arn    = "arn:aws:kms:us-east-1:123456789012:key/tls-key"
-      client_tls_secret_arn     = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-client"
-      cluster_name              = "bt-test-sandbox"
-      kubernetes_api_url        = "https://eks.example.internal"
-      kubernetes_ca             = "test-ca"
-      vcpu_count                = 1
-      memory_mib                = 2048
+      endpoint              = "https://nodes.bt-test.sandbox.internal:9400"
+      image                 = "public.ecr.aws/braintrust/codex-runtime:test"
+      egress_gateway_url    = "http://loop-egress.example.internal:4002"
+      client_tls_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-client"
+      cluster_name          = "bt-test-sandbox"
+      kubernetes_api_url    = "https://eks.example.internal"
+      kubernetes_ca         = "test-ca"
+      vcpu_count            = 1
+      memory_mib            = 2048
     }
   }
-  assert {
-    condition = (
-      contains(jsondecode(aws_iam_role_policy.task_execution_secrets.policy).Statement[1].Resource, var.sandbox_service.client_tls_kms_key_arn) &&
-      jsondecode(aws_iam_role_policy.task_execution_secrets.policy).Statement[1].Condition.StringEquals["kms:ViaService"] == "secretsmanager.us-east-1.amazonaws.com"
-    )
-    error_message = "The ECS execution role must decrypt the supplied TLS key only through Secrets Manager."
-  }
-
   assert {
     condition     = local.merged_env_vars.EXO_SANDBOX_SERVICE_IMAGE == var.sandbox_service.image && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_SERVICE_EGRESS_GATEWAY_URL == var.sandbox_service.egress_gateway_url && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_KUBERNETES_API_URL == var.sandbox_service.kubernetes_api_url && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_EKS_CLUSTER == var.sandbox_service.cluster_name && local.merged_env_vars.EXO_SANDBOX_PROVIDER == "sandbox_service" && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN == "0.0.0.0:4002" && length(aws_iam_role_policy.sandbox) == 0
     error_message = "Service connections must use private discovery and egress with explicit backend selection."
   }
   assert {
-    condition     = length(aws_ecs_task_definition.loop_runtime.volume) == 1 && one(local.loop_runtime_container_definition.mountPoints).readOnly && contains(local.loop_runtime_container_definition.dependsOn, { containerName = "sandbox-tls-init", condition = "SUCCESS" }) && local.sandbox_tls_init_containers[0].secrets == [{ name = "TLS_BUNDLE", valueFrom = "${var.sandbox_service.client_tls_secret_arn}:::tls-version-one" }] && !contains(keys(local.merged_env_vars), "TLS_BUNDLE") && contains(jsondecode(aws_iam_role_policy.task_execution_secrets.policy).Statement[0].Resource, var.sandbox_service.client_tls_secret_arn)
+    condition     = length(aws_ecs_task_definition.loop_runtime.volume) == 1 && one(local.loop_runtime_container_definition.mountPoints).readOnly && contains(local.loop_runtime_container_definition.dependsOn, { containerName = "sandbox-tls-init", condition = "SUCCESS" }) && local.sandbox_tls_init_containers[0].secrets == [{ name = "TLS_BUNDLE", valueFrom = var.sandbox_service.client_tls_secret_arn }] && !contains(keys(local.merged_env_vars), "TLS_BUNDLE") && contains(jsondecode(aws_iam_role_policy.task_execution_secrets.policy).Statement[0].Resource, var.sandbox_service.client_tls_secret_arn)
     error_message = "The runtime must wait for secret-backed TLS files without storing the TLS bundle in the environment."
   }
   assert {

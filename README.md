@@ -268,17 +268,11 @@ The caller controls routes and, when DNS Firewall management is disabled, must r
 
 Sandbox Service is an optional private EKS worker fleet. Loop Runtime stays on
 ECS. This module requires AWS provider 6.37.0 or later; run `terraform init -upgrade`
-when upgrading an older provider lock. Configure a Helm provider with access to the
-private cluster, then supply existing TLS bundles and enable the service in one apply:
+when upgrading an older provider lock. Enable the service in one apply:
 
 ```hcl
 enable_loop_runtime    = true
 enable_sandbox_service = true
-sandbox_service_server_tls_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-server-abcdef"
-sandbox_service_client_tls_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sandbox-client-abcdef"
-sandbox_service_kubernetes_api_authorized_security_groups = {
-  "Terraform runner" = "sg-0123456789abcdef0"
-}
 ```
 
 `enable_sandbox_service` defaults to false. Setting it to true deploys the EKS
@@ -315,18 +309,10 @@ unchanged in existing VPCs.
 The default workers use `c8id` instances with nested virtualization and local
 NVMe storage. This adds EKS, EC2 and interface endpoint costs. Filesystem
 checkpoints use a dedicated private S3 bucket; its contents prevent bucket
-deletion until explicitly removed. Terraform owns both node groups and installs
-the chart directly with Helm; this path creates no CloudFormation stack or
-installer Lambda. Pool replacements and backend changes can reset sandboxes.
-
-The deployer supplies two Secrets Manager JSON bundles, each containing PEM
-`cert`, `key` and `ca_cert` strings. The server certificate must cover
-`nodes.<deployment_name>.sandbox.internal`; each bundle's `ca_cert` trusts the
-opposite side. Certificate generation and rotation belong to the deployer's PKI
-process. A namespace-scoped External Secrets controller delivers the bundles to
-Kubernetes, and ECS injects the client bundle into Loop. Terraform reads only
-secret ARNs and version metadata. Apply after rotating bundles to deploy their
-new versions. See [Sandbox Service](modules/sandbox-service/README.md) for Helm configuration, ownership,
+deletion until explicitly removed. Drain workers before removing the fleet.
+The module uses the published release installer through a small CloudFormation
+stack to reach the private cluster and preserve occupied worker pools during
+replacement. See [Sandbox Service](modules/sandbox-service/README.md) for ownership,
 upgrade and deletion behavior.
 
 ## Useful scripts

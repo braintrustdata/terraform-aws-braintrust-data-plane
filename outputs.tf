@@ -391,16 +391,6 @@ output "sandbox_service_cluster_name" {
   value       = var.enable_sandbox_service ? module.sandbox_service[0].cluster_name : null
 }
 
-output "sandbox_service_kubernetes_api_url" {
-  description = "Private EKS endpoint for configuring the caller's Helm provider. Available independently of Helm installation."
-  value       = var.enable_sandbox_service ? module.sandbox_service[0].kubernetes_api_url : null
-}
-
-output "sandbox_service_kubernetes_ca" {
-  description = "Base64-encoded EKS CA for configuring the caller's Helm provider. Available independently of Helm installation."
-  value       = var.enable_sandbox_service ? module.sandbox_service[0].kubernetes_ca : null
-}
-
 output "sandbox_service_private_subnet_ids" {
   description = "Dedicated Sandbox Service subnets, empty when disabled."
   value       = var.enable_sandbox_service ? module.sandbox_service[0].private_subnet_ids : []

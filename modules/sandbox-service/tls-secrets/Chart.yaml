@@ -1,5 +1,0 @@
-apiVersion: v2
-name: sandbox-tls
-description: Deliver existing Sandbox Service TLS bundles from AWS Secrets Manager
-type: application
-version: 0.1.0

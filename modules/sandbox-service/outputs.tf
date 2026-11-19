@@ -1,19 +1,11 @@
 output "endpoint" {
   description = "Private mTLS Sandbox Service discovery URL."
   value       = "https://${local.hostname}:9400"
-  depends_on  = [helm_release.sandbox]
 }
 
 output "client_tls_secret_arn" {
   description = "Client TLS bundle ARN, available after the release has been installed."
-  value       = var.client_tls_secret_arn
-  depends_on  = [helm_release.sandbox]
-}
-
-output "client_tls_secret_version" {
-  description = "Installed client bundle version, used to redeploy consumers on rotation."
-  value       = local.tls_versions.client
-  depends_on  = [helm_release.sandbox]
+  value       = aws_cloudformation_stack.release.outputs["ClientTlsSecretArn"]
 }
 
 output "worker_security_group_id" {
@@ -22,7 +14,7 @@ output "worker_security_group_id" {
 }
 
 output "system_security_group_id" {
-  description = "System node security group for caller-managed private endpoint authorizations."
+  description = "System node and installer security group for caller-managed private endpoint authorizations."
   value       = aws_security_group.system.id
 }
 
@@ -32,8 +24,8 @@ output "cluster_name" {
 }
 
 output "worker_node_group_name" {
-  description = "Current Terraform-managed worker pool."
-  value       = aws_eks_node_group.workers.node_group_name
+  description = "Current worker pool managed by the release stack."
+  value       = aws_cloudformation_stack.release.outputs["NodeGroupName"]
 }
 
 output "sandbox_image" {
