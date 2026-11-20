@@ -14,7 +14,8 @@ module "braintrust-data-plane" {
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime = false
+  enable_ecs_voice_sessions = false
+  enable_loop_runtime       = false
 
   # For new deployments, manage_s3_public_access_block = false delegates bucket
   # public-access protection to AWS defaults and customer controls (see README).

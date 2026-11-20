@@ -115,6 +115,12 @@ variable "enable_ecs_api" {
   default     = false
 }
 
+variable "enable_ecs_voice_sessions" {
+  description = "Route hosted voice session creation and WebSocket connections to the API ECS ALB, including with Lambda ingress."
+  type        = bool
+  default     = false
+}
+
 variable "api_ecs_alb_arn" {
   description = "ARN of the API ECS ALB. The CloudFront VPC origin always points here; enable_ecs_api controls whether traffic is routed there."
   type        = string

@@ -203,6 +203,46 @@ Terraform waits for gateway ECS steady state before caller updates.
 The startup check does not test authenticated inference across the complete request path.
 The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
 
+## Hosted voice sessions
+
+Hosted voice sessions are disabled by default. Set `enable_ecs_voice_sessions = true`
+after deploying an API image containing [braintrustdata/braintrust#25882](https://github.com/braintrustdata/braintrust/pull/25882).
+The existing API image pin is unchanged. Use a released image containing that merge
+or set `braintrust_api_version_override` to a compatible image tag.
+Voice also requires `enable_ai_gateway = true` to supply `GATEWAY_URL` to the API.
+
+Session creation (`POST /v1/project/*/simulated_user/*/session`) and WebSocket
+connections (`GET /v1/voice_session/*/connect`) use the existing background API
+pool alongside evals. Public deployments route these paths through CloudFront to
+the API ALB, including when `enable_ecs_api = false`. Private deployments route
+them through both API ALB listeners. Existing client connectivity and network
+authorization still apply. This module does not configure hosted voice for
+external EKS.
+
+Only background workers receive `VOICE_SESSION_WS_BASE_URL`, derived from the
+public API domain (custom or generated CloudFront hostname), or the private API
+HTTPS domain, with the `wss://` scheme. `WEB_CONCURRENCY` remains configurable.
+The shared pool uses `braintrust_api_background_min_count` and
+`braintrust_api_background_max_count`. When voice is enabled, it also receives a
+120-second container stop timeout and a voice occupancy scaling target of 60%,
+alongside existing resource policies.
+
+Enabling voice accepts that routine scale-in and task rollouts can interrupt
+active calls. Active sessions do not use ECS task scale-in protection. The default
+300-second target deregistration delay is shorter than the 600-second call limit.
+The 120-second container stop timeout allows finalization but does not guarantee
+call completion.
+
+Enabling voice requires a Terraform apply and a compatible API image; a data-plane
+image update alone does not add these routes. The admission kill switch in
+[braintrustdata/braintrust#26004](https://github.com/braintrustdata/braintrust/pull/26004)
+is a separate API rollout and requires LaunchDarkly configuration. It does not
+enable infrastructure or change this module's default.
+
+Before enabling a deployment, verify session creation, WebSocket connection,
+recordings, and call finalization during a background-task rollout while evals
+continue to run. Live rollout and autoscaling validation are still required.
+
 ## Loop runtime
 
 Loop runtime is optional. Enable it with this input:
