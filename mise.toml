@@ -25,7 +25,10 @@ uv run scripts/check-brainstore-autoscaling
 uv run scripts/check-iam-ownership-tags
 uv run scripts/check-iam-ownership-tags --self-test
 uv run scripts/check-iam-dependencies
+uv run scripts/check-external-mode-plan --self-test
 terraform test
+# Reads the plan JSON that the external mode test emits. Assertions can't list a plan's resources.
+uv run scripts/check-external-mode-plan
 uv run scripts/check-upgrade-plan
 # Proves the check above rejects a workload on the wrong role or a policy on the wrong bucket in every run that wiring applies to.
 uv run scripts/check-upgrade-plan --self-test
@@ -66,6 +69,7 @@ terraform validate
 validate_example "examples/braintrust-data-plane" "production example"
 validate_example "examples/braintrust-data-plane-sandbox" "sandbox example"
 validate_example "examples/braintrust-data-plane-private" "private example"
+validate_example "examples/braintrust-data-plane-external-iam" "external IAM example"
 # The external-EKS example needs no license. Tests cover this path at plan time.
 validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
 """
@@ -102,6 +106,7 @@ tofu validate -no-tests
 validate_example "examples/braintrust-data-plane" "production example"
 validate_example "examples/braintrust-data-plane-sandbox" "sandbox example"
 validate_example "examples/braintrust-data-plane-private" "private example"
+validate_example "examples/braintrust-data-plane-external-iam" "external IAM example"
 # The external-EKS example needs no license. Tests cover this path at plan time.
 validate_example "examples/braintrust-data-plane-external-eks-quarantine" "external-EKS example (license key unset)"
 """

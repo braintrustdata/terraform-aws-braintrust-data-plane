@@ -15,6 +15,8 @@ module "iam" {
   source = "../../../modules/iam"
 
   deployment_name                = "bt-test"
+  region                         = "us-east-1"
+  account_id                     = "123456789012"
   service_additional_policy_arns = var.service_additional_policy_arns
 
   created_resources = {

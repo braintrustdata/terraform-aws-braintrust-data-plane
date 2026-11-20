@@ -13,6 +13,7 @@ resource "aws_iam_role" "brainstore" {
 
   # This is improperly named with "ec2" but changing it would cause a downtime for current customers
   name = local.role_names.brainstore
+  path = local.role_paths.brainstore
 
   assume_role_policy = var.override_brainstore_iam_role_trust_policy != null ? var.override_brainstore_iam_role_trust_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -87,7 +88,7 @@ resource "aws_iam_role" "brainstore" {
     ignore_changes = [name]
 
     precondition {
-      condition = alltrue([
+      condition = !local.is_managed_call || alltrue([
         for arn in [
           local.kms_key_arn,
           var.created_resources.database_secret_arn,
@@ -108,7 +109,9 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
   name = "brainstore-s3-bucket"
   role = aws_iam_role.brainstore[0].id
 
-  policy = jsonencode({ # nosemgrep
+  # Keep the actions in step with local.customer_brainstore_s3_access_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_brainstore_s3_access_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -148,7 +151,9 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
   name = "secrets-access"
   role = aws_iam_role.brainstore[0].id
 
-  policy = jsonencode({ # nosemgrep
+  # Keep the actions in step with local.customer_brainstore_secrets_access_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_brainstore_secrets_access_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = concat(
       [
@@ -287,7 +292,9 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
   name = "${var.deployment_name}-brainstore-kms-policy"
   role = aws_iam_role.brainstore[0].id
 
-  policy = jsonencode({ # nosemgrep
+  # Keep the actions in step with local.customer_brainstore_kms_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_brainstore_kms_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -339,6 +346,7 @@ resource "aws_iam_instance_profile" "brainstore" {
   count = var.create_iam && local.create_brainstore_ec2 ? 1 : 0
 
   name = local.instance_profile_names.brainstore
+  path = local.instance_profile_paths.brainstore
   role = aws_iam_role.brainstore[0].name
 
   tags = local.iam_tags_deployment_name_wins
@@ -350,7 +358,9 @@ resource "aws_iam_role_policy" "brainstore_redis_secret_access" {
   name = "redis-secret-access"
   role = aws_iam_role.brainstore[0].name
 
-  policy = jsonencode({
+  # Keep the actions in step with local.customer_brainstore_redis_secret_access_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_brainstore_redis_secret_access_policy : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -363,7 +373,7 @@ resource "aws_iam_role_policy" "brainstore_redis_secret_access" {
 
   lifecycle {
     precondition {
-      condition     = var.created_resources.redis_url_secret_arn != null
+      condition     = !local.is_managed_call || var.created_resources.redis_url_secret_arn != null
       error_message = "The Brainstore Redis secret policy needs redis_url_secret_arn in created_resources."
     }
   }

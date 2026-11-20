@@ -132,6 +132,13 @@ module "braintrust-data-plane" {
   #  }
   #
 
+  ### IAM ownership
+  # New deployments only: set create_iam = false when your security team creates
+  # the IAM roles and the Brainstore instance profile. The module then looks them
+  # up and writes no IAM, no S3 bucket policy and no Lambda permission. It can't be
+  # changed on an existing stack. See examples/braintrust-data-plane-external-iam.
+  # create_iam = false
+
   ### S3 Block Public Access
   # New deployments only: skip bucket Block Public Access configuration when
   # customer controls own protection. Do not change this on an existing stack.

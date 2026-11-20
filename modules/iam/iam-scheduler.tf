@@ -6,7 +6,7 @@
 locals {
   # The schedules sit in one group, which modules/services creates under this
   # name. The trust policy names it by ARN, so the roles don't wait for the group.
-  schedule_group_arn = "arn:${data.aws_partition.current.partition}:scheduler:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:schedule-group/${var.deployment_name}-scheduled-jobs"
+  schedule_group_arn = "arn:${local.partition}:scheduler:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:schedule-group/${var.deployment_name}-scheduled-jobs"
 
   # Scheduler may assume a role only for a schedule in this account's group. This
   # is the confused-deputy protection that the Scheduler documentation describes.
@@ -34,6 +34,7 @@ resource "aws_iam_role" "automation_cron_schedule" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 
   name               = local.role_names.automation_cron_schedule
+  path               = local.role_paths.automation_cron_schedule
   assume_role_policy = local.scheduler_assume_role_policy
 
   permissions_boundary = var.permissions_boundary_arn
@@ -63,6 +64,7 @@ resource "aws_iam_role" "billing_cron_schedule" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 
   name               = local.role_names.billing_cron_schedule
+  path               = local.role_paths.billing_cron_schedule
   assume_role_policy = local.scheduler_assume_role_policy
 
   permissions_boundary = var.permissions_boundary_arn
@@ -92,6 +94,7 @@ resource "aws_iam_role" "catchup_etl_schedule" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 
   name               = local.role_names.catchup_etl_schedule
+  path               = local.role_paths.catchup_etl_schedule
   assume_role_policy = local.scheduler_assume_role_policy
 
   permissions_boundary = var.permissions_boundary_arn
@@ -121,6 +124,7 @@ resource "aws_iam_role" "quarantine_pruner_schedule" {
   count = var.create_iam && local.create_lambda_services && var.enable_quarantine_pruner ? 1 : 0
 
   name               = local.role_names.quarantine_pruner_schedule
+  path               = local.role_paths.quarantine_pruner_schedule
   assume_role_policy = local.scheduler_assume_role_policy
 
   permissions_boundary = var.permissions_boundary_arn

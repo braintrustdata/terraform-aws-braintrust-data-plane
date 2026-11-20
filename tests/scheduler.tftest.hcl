@@ -10,6 +10,23 @@
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
+
+  # External IAM mode looks roles up. This is a role and instance profile that
+  # security created, for the runs below with create_iam = false.
+  mock_data "aws_iam_role" {
+    defaults = {
+      arn  = "arn:aws:iam::123456789012:role/mock"
+      path = "/"
+      tags = { BraintrustIAMOwner = "customer" }
+    }
+  }
+  mock_data "aws_iam_instance_profile" {
+    defaults = {
+      arn      = "arn:aws:iam::123456789012:instance-profile/mock"
+      path     = "/"
+      role_arn = "arn:aws:iam::123456789012:role/mock"
+    }
+  }
 }
 
 mock_provider "random" {}
@@ -19,6 +36,8 @@ mock_provider "http" {
 }
 
 variables {
+  region          = "us-east-1"
+  account_id      = "123456789012"
   deployment_name = "bt-test"
 
   # modules/services inputs.

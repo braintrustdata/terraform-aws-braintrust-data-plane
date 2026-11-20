@@ -386,6 +386,7 @@ module "storage" {
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
   enable_s3_bucket_abac                          = var.enable_s3_bucket_abac
   manage_s3_public_access_block                  = var.manage_s3_public_access_block
+  manage_s3_bucket_policies                      = var.create_iam
   s3_server_access_logging                       = var.s3_server_access_logging
   custom_tags                                    = local.all_custom_tags
 }
@@ -913,8 +914,20 @@ module "services_common" {
   quarantine_vpc_id     = local.quarantine_vpc_id
 }
 
+# create_iam = false is external IAM mode: this call creates no IAM and looks up
+# the roles and instance profile that the customer's security team created by
+# running modules/iam on its own. The root never passes iam_owner, so the child
+# keeps its default, "braintrust". The managed call has empty name overrides and
+# no existing_iam references, because the variables reject both when create_iam
+# is true.
 module "iam" {
   source = "./modules/iam"
+
+  create_iam         = var.create_iam
+  override_iam_names = var.override_iam_names
+  existing_iam       = var.existing_iam
+  region             = data.aws_region.current.region
+  account_id         = data.aws_caller_identity.current.account_id
 
   deployment_name                   = var.deployment_name
   permissions_boundary_arn          = var.permissions_boundary_arn
@@ -956,6 +969,11 @@ module "iam" {
   diagnostics_transcript_log_group_name      = var.diagnostics_transcript_log_group_name
   ai_gateway_bedrock_assume_role_arns        = var.ai_gateway_bedrock_assume_role_arns
 
+  # A standalone run has no created_resources, so the child needs to know whether
+  # the override is set and which credentials secret it names.
+  use_postgres_connection_override                    = local.use_postgres_connection_override
+  postgres_connection_override_credentials_secret_arn = try(var.postgres_connection_override.credentials_secret_arn, null)
+
   # Exact ARNs of the KMS key, secrets, buckets and quarantine VPC this module
   # creates. Terraform tracks this object as one value, so every policy that
   # reads it waits for all of them. Keep fleet values out of it, as explained
@@ -982,6 +1000,32 @@ module "iam" {
   # port, so the monitoring policy must not wait for the fleets.
   brainstore_asg_names                = local.create_brainstore_ec2 ? [for fleet in module.brainstore[0].deployment_fleets : fleet.asg_name] : []
   brainstore_deployment_log_group_arn = !var.use_deployment_mode_external_eks ? module.brainstore_deployment[0].waiter_log_group_arn : null
+}
+
+# Stores the create_iam value this stack first applied with, and checks it on
+# every later plan. ignore_changes keeps the planned output equal to the stored
+# value, so the postcondition compares the first applied value with the current
+# one, and a change in either direction fails at plan time. A flip to false would
+# plan to destroy every role the stack created, and a flip to true would try to
+# create roles that security already owns. A precondition can't read self, and
+# without ignore_changes the planned output would be the new value, which is why
+# this is a postcondition on an ignored input.
+#
+# Destroy plans don't evaluate it, so a plain terraform destroy works. It lives at
+# the root, not in modules/iam, because it describes this stack and must not exist
+# in security's own state. It can't stop a manual state edit, -replace or taint on
+# the marker, a -target run that skips it, or a stale saved plan. See MIGRATION_V8.md.
+resource "terraform_data" "iam_ownership_mode" {
+  input = var.create_iam
+
+  lifecycle {
+    ignore_changes = [input]
+
+    postcondition {
+      condition     = self.output == var.create_iam
+      error_message = "create_iam can't change on a stack that has already applied this module. See MIGRATION_V8.md."
+    }
+  }
 }
 
 module "brainstore" {

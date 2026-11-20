@@ -1,6 +1,6 @@
 # This destination is customer bootstrap-owned; the data plane never creates it.
 locals {
-  diagnostics_transcript_log_group_arn = var.diagnostics_transcript_log_group_name == null ? null : "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${var.diagnostics_transcript_log_group_name}:*"
+  diagnostics_transcript_log_group_arn = var.diagnostics_transcript_log_group_name == null ? null : "arn:${local.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${var.diagnostics_transcript_log_group_name}:*"
   gateway_diagnostics_enabled          = var.diagnostics_transcript_log_group_name != null && var.ai_gateway_enable_execute_command
   brainstore_diagnostics_enabled       = var.diagnostics_transcript_log_group_name != null && var.enable_brainstore_ec2_ssm
   api_diagnostics_enabled              = var.diagnostics_transcript_log_group_name != null && local.create_ecs_api && var.api_ecs_enable_execute_command

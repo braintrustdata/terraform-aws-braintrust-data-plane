@@ -2,6 +2,7 @@ resource "aws_iam_role" "api_ecs_task_execution" {
   count = var.create_iam && local.create_ecs_api ? 1 : 0
 
   name                 = local.role_names.api_ecs_task_execution
+  path                 = local.role_paths.api_ecs_task_execution
   assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
@@ -10,7 +11,7 @@ resource "aws_iam_role" "api_ecs_task_execution" {
 
   lifecycle {
     precondition {
-      condition = alltrue([
+      condition = !local.is_managed_call || alltrue([
         for arn in [
           local.kms_key_arn,
           var.created_resources.database_url_secret_arn,
@@ -38,7 +39,9 @@ resource "aws_iam_role_policy" "api_ecs_task_execution_secrets" {
   name = "${var.deployment_name}-api-ecs-task-exec-secrets"
   role = aws_iam_role.api_ecs_task_execution[0].id
 
-  policy = jsonencode({
+  # Keep the actions in step with local.customer_api_ecs_task_execution_secrets_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_api_ecs_task_execution_secrets_policy : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {

@@ -57,6 +57,13 @@ variable "manage_s3_public_access_block" {
   nullable    = false
 }
 
+variable "manage_s3_bucket_policies" {
+  description = "Write the TLS-only bucket policy on each module-created bucket. Set false when another owner writes the complete bucket policy. The root module sets it from create_iam. The module also doesn't write the policy on a Brainstore bucket it doesn't create."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "enable_s3_bucket_abac" {
   description = "Enable attribute-based access control (ABAC) on S3 buckets managed by this module."
   type        = bool

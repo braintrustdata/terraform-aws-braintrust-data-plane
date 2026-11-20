@@ -7,3 +7,5 @@ data "aws_secretsmanager_secret_version" "postgres_credentials" {
 }
 
 data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}

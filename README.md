@@ -37,6 +37,18 @@ The default configuration is a large production-sized deployment. Please conside
 
 Before the first deployment in a new AWS account, run `./scripts/create-service-linked-roles.sh` with credentials for that account. When creating a KMS key, the module reads `AWSServiceRoleForAutoScaling` during planning and fails if it is missing; the Terraform identity needs `iam:GetRole` for that role. The role remains account-owned and is not created or deleted by this module. Supplying an existing `kms_key_arn` skips this module-managed KMS check; the key owner remains responsible for its Auto Scaling permissions.
 
+## Who creates the IAM roles?
+
+By default the module creates every IAM role, policy and instance profile through `modules/iam`. If your security team creates IAM separately, set `create_iam = false` on a **new** stack. The module then looks the roles up by name, or by an ARN in `existing_iam`, and creates no IAM, no S3 bucket policy and no Lambda permission. Your security team runs `modules/iam` on its own with `iam_owner = "customer"`, in the same account and region, to create them.
+
+```hcl
+create_iam = false
+```
+
+The plan fails unless every role it looks up carries `BraintrustIAMOwner = customer`. `terraform_data.iam_ownership_mode` then fails any later plan that changes `create_iam`, because a flip would plan to destroy every role. External mode rejects several features and inputs, which [MIGRATION_V8.md](MIGRATION_V8.md#what-external-mode-rejects) lists in full.
+
+The [external IAM example](examples/braintrust-data-plane-external-iam) shows the configuration, and [MIGRATION_V8.md](MIGRATION_V8.md#external-iam-mode-create_iam--false) covers the checks, names, security's standalone call, teardown and what goes wrong if you retag a module-managed role.
+
 ## Brainstore license secret
 
 The module uses one license secret for Brainstore EC2, API ECS, Gateway ECS, and Loop runtime.

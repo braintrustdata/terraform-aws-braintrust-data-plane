@@ -8,6 +8,7 @@ resource "aws_iam_role" "quarantine_invoke" {
   count = var.create_iam && var.enable_quarantine_vpc ? 1 : 0
 
   name = local.role_names.quarantine_invoke
+  path = local.role_paths.quarantine_invoke
   assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
       {
@@ -62,6 +63,7 @@ resource "aws_iam_role" "quarantine_function" {
   count = var.create_iam && var.enable_quarantine_vpc ? 1 : 0
 
   name = local.role_names.quarantine_function
+  path = local.role_paths.quarantine_function
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"

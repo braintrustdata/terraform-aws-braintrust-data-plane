@@ -2,6 +2,7 @@ resource "aws_iam_role" "brainstore_deployment_waiter" {
   count = var.create_iam && local.create_brainstore_deployment_waiter ? 1 : 0
 
   name                 = local.role_names.brainstore_deployment_waiter
+  path                 = local.role_paths.brainstore_deployment_waiter
   permissions_boundary = var.permissions_boundary_arn
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -15,7 +16,7 @@ resource "aws_iam_role" "brainstore_deployment_waiter" {
 
   lifecycle {
     precondition {
-      condition     = var.brainstore_deployment_log_group_arn != null && length(var.brainstore_asg_names) > 0
+      condition     = !local.is_managed_call || (var.brainstore_deployment_log_group_arn != null && length(var.brainstore_asg_names) > 0)
       error_message = "The Brainstore deployment waiter role needs brainstore_deployment_log_group_arn and at least one name in brainstore_asg_names. IAM rejects a policy with an empty Resource list."
     }
   }
@@ -27,7 +28,8 @@ resource "aws_iam_role_policy" "brainstore_deployment_waiter" {
   count = var.create_iam && local.create_brainstore_deployment_waiter ? 1 : 0
 
   role = aws_iam_role.brainstore_deployment_waiter[0].id
-  policy = jsonencode({
+  # Keep the actions in step with local.customer_brainstore_deployment_waiter_policy in scopes.tf.
+  policy = local.is_standalone_call ? local.customer_brainstore_deployment_waiter_policy : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -43,7 +45,7 @@ resource "aws_iam_role_policy" "brainstore_deployment_waiter" {
       {
         Effect   = "Allow"
         Action   = "autoscaling:StartInstanceRefresh"
-        Resource = [for asg_name in var.brainstore_asg_names : "arn:${data.aws_partition.current.partition}:autoscaling:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:autoScalingGroup:*:autoScalingGroupName/${asg_name}"]
+        Resource = [for asg_name in var.brainstore_asg_names : "arn:${local.partition}:autoscaling:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:autoScalingGroup:*:autoScalingGroupName/${asg_name}"]
         Condition = {
           StringEquals = { "autoscaling:ResourceTag/BraintrustDeploymentName" = var.deployment_name }
         }

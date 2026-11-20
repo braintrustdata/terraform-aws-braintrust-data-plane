@@ -2,7 +2,7 @@
 
 Upgrade this Terraform module **one major version at a time**. See the [README](README.md#major-versions) for the general upgrade policy, and the [routine upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine) for the standard process of bumping the module version and applying Terraform.
 
-**Note** - This guide is still growing. These sections cover the starting version, the tooling requirement, the IAM move, the move to EventBridge Scheduler and what the upgrade plan shows so far. Later v8 changes add their own sections.
+**Note** - This guide is still growing. These sections cover the starting version, the tooling requirement, the IAM move, the move to EventBridge Scheduler, external IAM mode and what the upgrade plan shows so far. Later v8 changes add their own sections.
 
 ## Start from v7.3.0 or later
 
@@ -22,7 +22,7 @@ OpenTofu is still supported. The root module and each example have a `versions.t
 
 ## What changes on apply
 
-The upgrade plan from v7.3.0 or later shows three kinds of change. Treat anything outside these lists as a reason to stop, and stop on any destroy or replacement that isn't listed.
+The upgrade plan from v7.3.0 or later shows these kinds of change. Treat anything outside these lists as a reason to stop, and stop on any destroy or replacement that isn't listed.
 
 ### IAM moves into `modules/iam`
 
@@ -122,6 +122,19 @@ We traced all four jobs, and running one twice is safe:
 - A permissions boundary on the invocation roles can block the call. `permissions_boundary_arn` applies to the new roles like every other role the module creates.
 
 **Managed-BYOC accounts need BYOC v2 first.** The deploy role for a managed-BYOC account gets its Scheduler permissions from BYOC v2 ([#407](https://github.com/braintrustdata/terraform-aws-braintrust-data-plane/pull/407)). That has to be live on the account before you apply v8. If it isn't, the apply can destroy some or all of the rules before the Scheduler calls fail. Any job whose rule is gone stops until a v8 apply succeeds.
+
+### The ownership marker and the bucket policy moves
+
+Every stack gets a new `terraform_data.iam_ownership_mode` resource. It has no AWS object, so creating it changes nothing in AWS. See [External IAM mode](#external-iam-mode-create_iam--false) for what it does.
+
+The TLS-only bucket policies on the code bundle and Lambda responses buckets can now be turned off, so their resources gain an index. The `moved` blocks in `moved_state.tf` keep the policies in place. The plan shows them as moves with no change.
+
+| Resource | Old address | New address |
+| --- | --- | --- |
+| Code bundle bucket policy | `module.storage.aws_s3_bucket_policy.code_bundle_bucket` | `module.storage.aws_s3_bucket_policy.code_bundle_bucket[0]` |
+| Lambda responses bucket policy | `module.storage.aws_s3_bucket_policy.lambda_responses_bucket` | `module.storage.aws_s3_bucket_policy.lambda_responses_bucket[0]` |
+
+A rollback to v7 doesn't recreate these policies. Terraform treats the single-instance address as the same resource as `[0]`, so a v7 plan has nothing to do for them. Rollback is still unsupported, because of the [IAM moves](#rollback).
 
 ### Braintrust service versions
 
@@ -224,6 +237,178 @@ If an apply fails partway, fix the cause and apply v8 again. Don't pin v7. Befor
 
 Restoring a v7 state backup doesn't get you back either. The v8 apply creates the Brainstore license secret, `${deployment_name}/brainstore/license-key`, and newer task definition and launch template versions. A restored v7 state doesn't know about them, so they stay in AWS outside state. It also leaves the schedules, the schedule group and the invocation roles in AWS but outside state. They keep firing next to the recreated rules, so every scheduled job runs twice. Cleaning that up needs separately reviewed manual work. Don't treat a state restore as a rollback procedure.
 
+## External IAM mode (`create_iam = false`)
+
+By default the module creates every IAM role, policy and instance profile it needs, and `create_iam` is `true`. Set it to `false` when your security team creates that IAM separately. Your security team runs `modules/iam` on its own with `iam_owner = "customer"`, and this module looks the roles up by name and uses them. In this mode the module creates no IAM, writes no S3 bucket policy and declares no Lambda permission.
+
+**This is for new stacks only.** Don't set `create_iam = false` in the same apply as the v8 upgrade, and don't set it on a stack that already ran this module with `create_iam = true`. Converting a stack isn't supported.
+
+### What stops you from converting a stack
+
+The module catches honest mistakes at plan time where the check is cheap. It documents deliberate bypasses and doesn't defend against them. Two checks work together.
+
+1. **The ownership tag.** `modules/iam` tags every role, managed policy and instance profile it creates with `BraintrustIAMOwner`. A stack that created its own IAM uses `braintrust`, and your security team's roles use `customer`. With `create_iam = false` the plan fails unless every role the module looks up, and the role in the Brainstore instance profile, carries `customer`. A `braintrust` tag fails with a message that a module-managed stack owns the role. A missing tag fails too, which catches a stack that skipped v7.3.0.
+2. **The ownership marker.** `terraform_data.iam_ownership_mode` stores the `create_iam` value that the stack first applied with and checks it on every later plan. Changing `create_iam` in either direction fails at plan time with `Resource postcondition failed` and the message `create_iam can't change on a stack that has already applied this module`. It fails regardless of name overrides, `existing_iam` references or legacy role names. It doesn't run on destroy plans, so a plain `terraform destroy` works on every stack.
+
+On a stack that has applied v8, any plan that changes `create_iam` fails. On a stack that hasn't, typically a v7 stack on its first v8 apply, the tag check is the only guard. These are out of reach, and each leads to the same result on a stack without the marker: a `create_iam = false` plan that destroys every managed role, policy and instance profile.
+
+- A manual state edit, including removing the marker.
+- `-replace` or `taint` on the marker, which resets the stored value.
+- Removing the whole configuration.
+- A `-target` run that excludes the marker, and a stale saved plan.
+- Tagging a module-managed role `customer`, or removing or changing its `braintrust` tag, on a stack without the marker.
+- On a stack without the marker, name overrides, `existing_iam` references or legacy role names that point the lookups at roles your security team tagged `customer`, while the module-managed roles are still in state.
+
+The result is a production outage, because ECS tasks, Brainstore and the Lambda functions lose their credentials, and it lasts until the IAM is rebuilt. Don't retag module-managed roles, and don't try to convert a stack with any of the above.
+
+### What the module checks
+
+Each lookup is a postcondition, so a failure stops the plan.
+
+| Check | Fails when |
+| --- | --- |
+| Ownership tag | The role is tagged `braintrust`, has no `BraintrustIAMOwner` tag, or has any other value. |
+| Account and partition | The role's ARN isn't in this account and partition. |
+| Path | The path doesn't match the `override_iam_names` path, or `/` by default. An `existing_iam` ARN must match the lookup's ARN. |
+| Distinct names | Two roles resolve to the same name, ignoring case. The Scheduler roles must differ from each other and from the Lambda execution roles. |
+| Instance profile | The profile has no role, or its role isn't the Brainstore role. |
+
+### Names
+
+Every role and the Brainstore instance profile has a default name from `deployment_name`. The [role keys](#role-keys) table below lists them. Both maps default to `{}`, and both are rejected when `create_iam` is `true`.
+
+```hcl
+create_iam = false
+
+override_iam_names = {
+  "role.api_handler" = { name = "example-api", path = "/security/" }
+}
+
+existing_iam = {
+  "role.gateway_task" = { arn = "arn:aws:iam::123456789012:role/security/example-gateway" }
+}
+```
+
+`override_iam_names` changes only the fields you list. Pass the same map to `modules/iam` when your security team runs it, so the names it creates are the names this module looks up. `existing_iam` takes an exact reference when a lookup by name isn't right. Each reference is read back and checked like a name. The keys are `role.<key>`, using the keys in [Role keys](#role-keys), and `instance_profile.brainstore`. `role.default` and `role.ai_proxy_invoke` aren't keys, because a standalone run creates neither role.
+
+### Role keys
+
+| Key | Role | Needed when |
+| --- | --- | --- |
+| `api_handler` | `<deployment_name>-APIHandlerRole` | Always |
+| `api_ecs_task_execution` | `<deployment_name>-api-ecs-task-exec` | Always, with ECS |
+| `brainstore` | `<deployment_name>-brainstore-ec2-role` | Always. The instance profile `<deployment_name>-brainstore-instance-profile` is `instance_profile.brainstore`. |
+| `quarantine_invoke`, `quarantine_function` | `<deployment_name>-QuarantineInvokeRole`, `<deployment_name>-QuarantineFunctionRole` | Quarantine on |
+| `gateway_task_execution`, `gateway_task` | `<deployment_name>-gateway-task-exec`, `<deployment_name>-gateway-task` | `create_ai_gateway` |
+| `db_monitoring` | `<deployment_name>-db-monitoring` | Always |
+| `brainstore_deployment_waiter` | `<deployment_name>-brainstore-deployment` | Always |
+| `automation_cron`, `billing_cron`, `catchup_etl`, `migrate_database` | `<deployment_name>-AutomationCronRole`, `-BillingCronRole`, `-CatchupETLRole`, `-MigrateDatabaseFunctionRole` | Always |
+| `quarantine_pruner` | `<deployment_name>-QuarantinePrunerRole` | `enable_quarantine_pruner` |
+| `quarantine_warmup` | `<deployment_name>-QuarantineWarmupRole` | Quarantine on |
+| `automation_cron_schedule`, `billing_cron_schedule`, `catchup_etl_schedule` | `<deployment_name>-AutomationCronScheduleRole`, `-BillingCronScheduleRole`, `-CatchupETLScheduleRole` | Always |
+| `quarantine_pruner_schedule` | `<deployment_name>-QuarantinePrunerScheduleRole` | `enable_quarantine_pruner` |
+
+### What external mode rejects
+
+The plan fails, with a message that names the input, for each of these:
+
+- `enable_ecs_api = false`. Lambda ingress writes API Gateway and Function URL Lambda permissions, which are resource policies that your security team can't own yet.
+- External EKS, Loop and MicroVM, remote support and the bastion, and module-managed Flow Logs.
+- A module-managed main VPC or quarantine VPC. Supply `existing_vpc_id`, the existing subnets and, with quarantine, `existing_quarantine_vpc_id` and its three subnets.
+- Quarantine PrivateLink, in public mode through `use_private_gateway_quarantine_proxy` and in private mode through `create_quarantine_api_access`.
+- Inputs that put IAM content on the infrastructure side: `override_api_iam_role_trust_policy`, `override_brainstore_iam_role_trust_policy`, `permissions_boundary_arn`, `service_additional_policy_arns` and `brainstore_additional_policy_arns`. Your security team sets those on the roles it creates.
+- Nonempty `s3_export_assume_role_arns` or `ai_gateway_bedrock_assume_role_arns`. They only set permission scopes, which this module doesn't write in external mode. Your security team passes them on its standalone call instead.
+- `enable_eks_pod_identity = true`, `enable_eks_irsa = true`, and a non-null `existing_eks_cluster_arn` or `eks_namespace`. They only shape the role trust that this module doesn't render in external mode, so they would be silently ignored.
+
+### Security's standalone call
+
+Your security team creates the roles by running `modules/iam` on its own, with the source and version below. This is an example. Use the same values that you set on this module.
+
+```hcl
+module "braintrust_iam" {
+  source = "github.com/braintrustdata/terraform-braintrust-data-plane//modules/iam?ref=<same_version_tag>"
+
+  iam_owner  = "customer"
+  create_iam = true
+
+  deployment_name = "braintrust"
+  region          = "us-east-1"
+  account_id      = "123456789012"
+
+  # The same sparse overrides that you pass to this module.
+  # override_iam_names = {
+  #   "role.api_handler" = { name = "example-api", path = "/security/" }
+  # }
+
+  # Feature gates: the values this stack will use.
+  enable_ecs_api           = true
+  create_ai_gateway        = true
+  enable_quarantine_vpc    = true
+  enable_quarantine_pruner = false
+
+  # Caller-supplied resources: exact ARNs and IDs that exist before either team applies.
+  existing_quarantine_vpc_id = "vpc-22222222222222222"
+  # kms_key_arn                = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
+  # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-ca-bundle-AbCdEf"
+
+  # Set both when this stack sets postgres_connection_override.
+  # use_postgres_connection_override                    = true
+  # postgres_connection_override_credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-credentials-AbCdEf"
+
+  # Standalone only. This stack rejects both lists in external mode.
+  # s3_export_assume_role_arns          = []
+  # ai_gateway_bedrock_assume_role_arns = []
+}
+```
+
+The standalone call sets `iam_owner = "customer"`, so it creates neither the default role nor the AIProxy invoke role. It rejects `enable_ecs_api = false` and `create_iam = false`. It has no `created_resources`, so its policies scope module-created resources by name prefix, KMS alias and tag. `kms_key_arn = ""` means no caller key, as on this module.
+
+Both calls must match on these inputs. A mismatch gives roles that don't fit the stack, or a lookup that can't find them.
+
+| Input | Where it comes from here |
+| --- | --- |
+| `deployment_name`, `region`, `account_id` | The same deployment, and the account and region of this stack's provider. A check fails on a mismatch. |
+| `override_iam_names` | This module's `override_iam_names`. |
+| `enable_ecs_api`, `create_ai_gateway`, `enable_quarantine_vpc`, `enable_quarantine_pruner` | The same inputs on this module. |
+| `enable_brainstore_ec2_ssm`, `brainstore_enable_export`, `api_ecs_enable_execute_command`, `ai_gateway_enable_execute_command`, `diagnostics_transcript_log_group_name` | The same inputs on this module. |
+| `kms_key_arn`, `existing_quarantine_vpc_id` | The same inputs on this module. |
+| `custom_ca_bundle_secret_arn` and `custom_ca_bundle_kms_key_arn`, `existing_brainstore_license_key_secret`, `existing_brainstore_s3_bucket_arn` and `existing_brainstore_s3_bucket_kms_key_arn` | The same inputs on this module. |
+| `existing_attachment_s3_bucket_arn` and its key, `external_attachment_s3_bucket_arns` and `external_attachment_s3_bucket_kms_key_arns` | The same inputs on this module. |
+| `use_postgres_connection_override`, `postgres_connection_override_credentials_secret_arn` | Whether this module's `postgres_connection_override` is set, and its `credentials_secret_arn`. |
+
+Use the same module version on both sides. Pin both `source` lines to the same tag. When a shared input changes, your security team applies first, so this stack's lookups find the updated roles.
+
+### Before you apply
+
+Your security team provides these before the first apply, because this module doesn't create them:
+
+- The roles and the Brainstore instance profile from the standalone call.
+- The service-linked roles for ECS, Application Auto Scaling, RDS, ElastiCache, Elastic Load Balancing and Auto Scaling. `scripts/create-service-linked-roles.sh` creates only the Auto Scaling one. The module doesn't let a service create them through the deployer.
+- For the principal that applies this stack: `iam:GetRole` and `iam:GetInstanceProfile` on the roles and the profile, which the lookups need even though nothing is created, and `iam:PassRole` scoped to each role with the right `iam:PassedToService`.
+- The TLS-only policies on the three module-created buckets, applied after this stack creates them.
+
+### Who owns what
+
+Your security team owns the roles, their policies and the instance profile, and also the TLS-only policies on the three module-created buckets. This module no longer writes them when `create_iam = false`, and it doesn't check that they exist. Applying, enforcing and repairing them is your security team's job. The module keeps its buckets, log groups, functions, compute and KMS key. It creates the KMS key and doesn't change it afterward.
+
+Your security team's policies scope the module's buckets, secrets, KMS key and Brainstore fleets by name prefix, the KMS alias `alias/braintrust/<deployment_name>` and tags, so it can create them before this module creates the resources. A bucket pattern such as `<deployment_name>-brainstore-*` also matches the buckets of a deployment whose name starts with `<deployment_name>-brainstore`. The module can't see other deployments, so pick deployment names that aren't prefixes of each other in one account, or use separate accounts.
+
+That makes your security team the controller of two namespaces in the account: creation of `alias/braintrust/*` KMS aliases, because a role scoped to `alias/braintrust/<deployment_name>` reaches whatever key carries that alias, and the `<deployment_name>-*` bucket names, because a bucket pattern reaches any bucket in the account that matches it.
+
+### The first minutes of a new stack
+
+Alias-based KMS authorization can take a few minutes to apply after the alias exists. On a new external stack you can see `AccessDenied` on KMS or Secrets Manager from the first API deployment, the database migration, the quarantine warmup or Brainstore. Apply again. If the second plan shows no changes, a service that already failed won't retry by itself. Force a new ECS deployment for the API and gateway services, or start an instance refresh on the Brainstore Auto Scaling groups.
+
+### Teardown
+
+A plain `terraform destroy` works on every stack, because the marker's check doesn't run on destroy plans.
+
+On an external stack, destroy this stack before your security team deletes the roles. The lookups and their checks run on destroy plans too, so deleting the roles first makes the destroy plan fail. If your security team already deleted them, it re-runs its apply to create them again, and then you destroy.
+
+### Downgrading
+
+A downgrade to a release before the marker, after the apply, removes the marker's protection. The tag check still fails an external-mode plan before it can destroy module-owned IAM, because a missing tag fails the check. Module-managed stacks keep the unsupported [rollback](#rollback) rules.
+
 ## If you call a child module directly
 
 The database, Brainstore deployment, API ECS, gateway ECS, services and Brainstore EC2 modules no longer create the resources in the table above, and `services-common` no longer creates any IAM. The root module passes each role in to the module that uses it, and you must do the same if you call one of these modules yourself. `services-common` uses no role, so it takes none.
@@ -238,6 +423,8 @@ New required inputs, each taking the matching output of `modules/iam`:
 | `gateway-ecs` | `task_execution_role_arn`, `task_role_arn` |
 | `services` | `automation_cron_role_arn`, `billing_cron_role_arn`, `catchup_etl_role_arn`, `migrate_database_role_arn`, `automation_cron_schedule_role_arn`, `billing_cron_schedule_role_arn` and `catchup_etl_schedule_role_arn`. Also `quarantine_pruner_role_arn`, `quarantine_pruner_schedule_role_arn`, `quarantine_warmup_role_arn` and `ai_proxy_invoke_role_arn`, which default to `null`. Set each when its feature is on. The module refuses to plan without `quarantine_pruner_schedule_role_arn` when `enable_quarantine_pruner` is `true`, and the APIHandler Lambda refuses to plan without `ai_proxy_invoke_role_arn` when `enable_ecs_api` is `false`. |
 | `brainstore-ec2` | `instance_profile_arn`, replacing `brainstore_iam_role_name`. The module no longer creates the instance profile or the Redis secret policy. |
+
+`modules/iam` itself has new required inputs, `region` and `account_id`, and new optional inputs, `iam_owner`, `override_iam_names`, `existing_iam`, `use_postgres_connection_override` and `postgres_connection_override_credentials_secret_arn`. The two required ones keep a standalone run's policy scopes from depending on whose credentials it uses, and a check fails if either differs from the provider's. The `storage` module has a new `manage_s3_bucket_policies` input, which defaults to `true`.
 
 Removed inputs, which now belong to `modules/iam` or are gone:
 

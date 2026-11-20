@@ -49,7 +49,7 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
 }
 
 resource "aws_iam_role" "ai_proxy_invoke" {
-  count = var.create_iam && local.create_lambda_services && !local.enable_ecs_api ? 1 : 0
+  count = var.create_iam && local.create_lambda_services && !local.enable_ecs_api && local.is_managed_call ? 1 : 0
 
   name = local.role_names.ai_proxy_invoke
   assume_role_policy = jsonencode({ # nosemgrep
@@ -71,7 +71,7 @@ resource "aws_iam_role" "ai_proxy_invoke" {
 }
 
 resource "aws_iam_role_policy" "ai_proxy_invoke" {
-  count = var.create_iam && local.create_lambda_services && !local.enable_ecs_api ? 1 : 0
+  count = var.create_iam && local.create_lambda_services && !local.enable_ecs_api && local.is_managed_call ? 1 : 0
 
   name = "AIProxyInvokeRolePolicy"
   role = aws_iam_role.ai_proxy_invoke[0].id
@@ -88,7 +88,7 @@ resource "aws_iam_role_policy" "ai_proxy_invoke" {
 }
 
 resource "aws_iam_role_policies_exclusive" "ai_proxy_invoke" {
-  count = var.create_iam && local.create_lambda_services && !local.enable_ecs_api ? 1 : 0
+  count = var.create_iam && local.create_lambda_services && !local.enable_ecs_api && local.is_managed_call ? 1 : 0
 
   role_name    = aws_iam_role.ai_proxy_invoke[0].name
   policy_names = [aws_iam_role_policy.ai_proxy_invoke[0].name]

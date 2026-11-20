@@ -2,6 +2,7 @@ resource "aws_iam_role" "gateway_task_execution" {
   count = var.create_iam && local.create_ai_gateway ? 1 : 0
 
   name                 = local.role_names.gateway_task_execution
+  path                 = local.role_paths.gateway_task_execution
   assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
@@ -10,7 +11,7 @@ resource "aws_iam_role" "gateway_task_execution" {
 
   lifecycle {
     precondition {
-      condition = alltrue([
+      condition = !local.is_managed_call || alltrue([
         for arn in [
           local.kms_key_arn,
           var.created_resources.redis_url_secret_arn,
@@ -72,7 +73,9 @@ resource "aws_iam_role_policy" "gateway_task_execution_secrets" {
   name = "${var.deployment_name}-gateway-task-exec-secrets"
   role = aws_iam_role.gateway_task_execution[0].id
 
-  policy = jsonencode({
+  # Keep the actions in step with local.customer_gateway_task_execution_secrets_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_gateway_task_execution_secrets_policy : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -107,7 +110,9 @@ resource "aws_iam_role_policy" "gateway_task_execution_redis_secret" {
   name = "${var.deployment_name}-gateway-task-exec-redis-secret"
   role = aws_iam_role.gateway_task_execution[0].id
 
-  policy = jsonencode({
+  # Keep the actions in step with local.customer_gateway_task_execution_redis_secret_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_gateway_task_execution_redis_secret_policy : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -137,6 +142,7 @@ resource "aws_iam_role" "gateway_task" {
   count = var.create_iam && local.create_ai_gateway ? 1 : 0
 
   name                 = local.role_names.gateway_task
+  path                 = local.role_paths.gateway_task
   assume_role_policy   = data.aws_iam_policy_document.ecs_task_assume_role.json
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({

@@ -91,6 +91,8 @@ resource "aws_s3_bucket_public_access_block" "code_bundle_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "code_bundle_bucket" {
+  count = var.manage_s3_bucket_policies ? 1 : 0
+
   bucket = aws_s3_bucket.code_bundle_bucket.id
 
   policy = jsonencode({

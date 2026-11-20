@@ -105,6 +105,8 @@ resource "aws_s3_bucket_public_access_block" "lambda_responses_bucket" {
 }
 
 resource "aws_s3_bucket_policy" "lambda_responses_bucket" {
+  count = var.manage_s3_bucket_policies ? 1 : 0
+
   bucket = aws_s3_bucket.lambda_responses_bucket.id
 
   policy = jsonencode({

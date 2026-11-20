@@ -121,7 +121,7 @@ resource "aws_s3_bucket_public_access_block" "brainstore" {
 }
 
 resource "aws_s3_bucket_policy" "brainstore" {
-  count = var.create_brainstore_s3_bucket ? 1 : 0
+  count = var.create_brainstore_s3_bucket && var.manage_s3_bucket_policies ? 1 : 0
 
   bucket = aws_s3_bucket.brainstore[0].id
 
