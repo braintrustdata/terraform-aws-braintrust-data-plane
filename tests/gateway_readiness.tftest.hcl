@@ -3,6 +3,7 @@ mock_provider "aws" {
 }
 
 variables {
+  brainstore_s3_bucket_arn    = "arn:aws:s3:::bt-test-brainstore"
   deployment_name             = "bt-test"
   kms_key_arn                 = "arn:aws:kms:us-east-1:123456789012:key/test"
   vpc_id                      = "vpc-0123456789abcdef0"

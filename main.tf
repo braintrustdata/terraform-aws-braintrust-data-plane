@@ -572,6 +572,7 @@ module "gateway_ecs" {
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
   custom_tags                           = local.all_custom_tags
+  brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
   brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn

@@ -400,6 +400,20 @@ resource "aws_iam_role" "task" {
   }, local.iam_tags)
 }
 
+resource "aws_iam_role_policy" "usage_event_wal_markers" {
+  name = "UsageEventWalMarkers"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:DeleteObjectVersion"]
+      Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/wal/active-writes/*/usage_events:*/*"]
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "customer_assume_role" {
   name = "${var.deployment_name}-gateway-customer-assume-role"
   role = aws_iam_role.task.id

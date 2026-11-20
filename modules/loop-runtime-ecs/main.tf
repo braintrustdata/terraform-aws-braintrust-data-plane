@@ -437,6 +437,11 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
       [
         {
           Effect   = "Allow"
+          Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:DeleteObjectVersion"]
+          Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/wal/active-writes/*/usage_events:*/*"]
+        },
+        {
+          Effect   = "Allow"
           Action   = ["s3:PutObject"]
           Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/wal/object-store-objects/*"]
         },

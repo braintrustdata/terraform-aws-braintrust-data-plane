@@ -8,6 +8,11 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt gateway resources that support customer-managed KMS keys."
 }
 
+variable "brainstore_s3_bucket_arn" {
+  type        = string
+  description = "ARN of the Brainstore S3 bucket for usage-event WAL markers."
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
