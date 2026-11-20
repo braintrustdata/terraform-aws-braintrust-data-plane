@@ -13,6 +13,12 @@ variable "brainstore_s3_bucket_arn" {
   description = "ARN of the Brainstore S3 bucket for usage-event WAL markers."
 }
 
+variable "brainstore_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional KMS key ARN for a caller-provided Brainstore bucket. Defaults to kms_key_arn for the module-managed bucket."
+  default     = null
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."

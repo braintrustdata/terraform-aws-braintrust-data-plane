@@ -100,3 +100,50 @@ run "gateway_usage_markers" {
     error_message = "Gateway WAL marker access must be restricted to usage-event markers."
   }
 }
+
+run "gateway_managed_bucket_kms" {
+  command = plan
+  module { source = "./modules/gateway-ecs" }
+  variables {
+    redis_port                = 6379
+    gateway_http_listener_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
+    gateway_url               = "http://gateway.internal"
+    redis_security_group_id   = "sg-0123456789abcdef1"
+  }
+
+  assert {
+    condition = jsondecode(aws_iam_role_policy.usage_event_kms_access.policy).Statement == [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = [var.kms_key_arn]
+      Condition = {
+        StringEquals = { "kms:ViaService" = "s3.us-east-1.amazonaws.com" }
+      }
+    }]
+    error_message = "The gateway task role must receive only S3-mediated data-key and decrypt access to the managed bucket key."
+  }
+}
+
+run "gateway_external_bucket_kms" {
+  command = plan
+  module { source = "./modules/gateway-ecs" }
+  variables {
+    redis_port                       = 6379
+    gateway_http_listener_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/gateway/1234567890123456/1234567890123456"
+    gateway_url                      = "http://gateway.internal"
+    redis_security_group_id          = "sg-0123456789abcdef1"
+    brainstore_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/33333333-3333-3333-3333-333333333333"
+  }
+
+  assert {
+    condition = jsondecode(aws_iam_role_policy.usage_event_kms_access.policy).Statement == [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = [var.brainstore_s3_bucket_kms_key_arn]
+      Condition = {
+        StringEquals = { "kms:ViaService" = "s3.us-east-1.amazonaws.com" }
+      }
+    }]
+    error_message = "An external bucket must select its supplied encryption key without granting access to the managed bucket key."
+  }
+}

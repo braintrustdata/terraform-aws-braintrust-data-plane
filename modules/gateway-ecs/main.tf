@@ -414,6 +414,25 @@ resource "aws_iam_role_policy" "usage_event_wal_markers" {
   })
 }
 
+resource "aws_iam_role_policy" "usage_event_kms_access" {
+  name = "GatewayUsageEventKmsAccess"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = [var.brainstore_s3_bucket_kms_key_arn != null ? var.brainstore_s3_bucket_kms_key_arn : var.kms_key_arn]
+      Condition = {
+        StringEquals = {
+          "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "customer_assume_role" {
   name = "${var.deployment_name}-gateway-customer-assume-role"
   role = aws_iam_role.task.id
