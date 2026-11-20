@@ -1,0 +1,56 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadManagedIAMOwnershipTags",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListPolicyTags",
+        "iam:ListInstanceProfileTags"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/<MANAGED_RESOURCE_PREFIX>*",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:instance-profile/<MANAGED_RESOURCE_PREFIX>*"
+      ]
+    },
+    {
+      "Sid": "InspectManagedSchedules",
+      "Effect": "Allow",
+      "Action": "scheduler:GetSchedule",
+      "Resource": "arn:<AWS_PARTITION>:scheduler:<AWS_REGION>:<AWS_ACCOUNT_ID>:schedule/*/<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "InspectManagedScheduleGroups",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:GetScheduleGroup",
+        "scheduler:ListTagsForResource"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:scheduler:<AWS_REGION>:<AWS_ACCOUNT_ID>:schedule-group/<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "DiscoverSchedules",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:ListSchedules",
+        "scheduler:ListScheduleGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "InspectMetricSourceLinks",
+      "Effect": "Allow",
+      "Action": [
+        "oam:GetLink",
+        "oam:ListTagsForResource"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<AWS_ACCOUNT_ID>:link/*"
+    },
+    {
+      "Sid": "DiscoverMetricSourceLinks",
+      "Effect": "Allow",
+      "Action": "oam:ListLinks",
+      "Resource": "*"
+    }
+  ]
+}
