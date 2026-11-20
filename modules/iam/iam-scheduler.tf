@@ -14,6 +14,7 @@ locals {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowSchedulerAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -52,6 +53,7 @@ resource "aws_iam_role_policy" "automation_cron_schedule" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowInvokeAutomationCron"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "${local.lambda_function_arn_prefix}-AutomationCron"
@@ -82,6 +84,7 @@ resource "aws_iam_role_policy" "billing_cron_schedule" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowInvokeBillingCron"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "${local.lambda_function_arn_prefix}-BillingCron"
@@ -112,6 +115,7 @@ resource "aws_iam_role_policy" "catchup_etl_schedule" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowInvokeCatchupETL"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "${local.lambda_function_arn_prefix}-CatchupETL"
@@ -142,6 +146,7 @@ resource "aws_iam_role_policy" "quarantine_pruner_schedule" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowInvokeQuarantinePruner"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "${local.lambda_function_arn_prefix}-QuarantinePrunerFunction"

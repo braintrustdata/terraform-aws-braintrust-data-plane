@@ -8,6 +8,7 @@ resource "aws_iam_role" "db_monitoring" {
     Version = "2008-10-17"
     Statement = [
       {
+        Sid    = "AllowRDSMonitoringAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {

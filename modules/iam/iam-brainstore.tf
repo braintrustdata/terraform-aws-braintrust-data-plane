@@ -21,6 +21,7 @@ resource "aws_iam_role" "brainstore" {
       # EC2 trust relationship
       [
         {
+          Sid    = "AllowEC2AssumeRole"
           Effect = "Allow"
           Principal = {
             Service = "ec2.amazonaws.com"
@@ -31,6 +32,7 @@ resource "aws_iam_role" "brainstore" {
       # IRSA trust relationship (cluster ARN is required)
       var.enable_eks_irsa && var.eks_cluster_arn != null ? [
         {
+          Sid    = "AllowIRSAAssumeRoleWithWebIdentity"
           Effect = "Allow"
           Principal = {
             Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(local.eks_oidc_issuer_url, "https://", "")}"
@@ -50,6 +52,7 @@ resource "aws_iam_role" "brainstore" {
       var.enable_eks_pod_identity ? [
         merge(
           {
+            Sid    = "AllowEKSPodIdentityAssumeRole"
             Effect = "Allow"
             Principal = {
               Service = "pods.eks.amazonaws.com"
@@ -115,6 +118,7 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowReadWriteBuckets"
         Effect = "Allow"
         Action = [
           "s3:AbortMultipartUpload",
@@ -131,6 +135,7 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
         ]
       },
       {
+        Sid    = "AllowReadCodeBundles"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
@@ -158,6 +163,7 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
     Statement = concat(
       [
         {
+          Sid    = "AllowReadSecrets"
           Effect = "Allow"
           Action = "secretsmanager:GetSecretValue"
           Resource = compact(concat(
@@ -172,6 +178,7 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
         }
       ],
       local.brainstore_role_license_key_kms_key_arn == null ? [] : [{
+        Sid      = "AllowKMSDecryptLicenseKeyForSecretsManager"
         Effect   = "Allow"
         Action   = "kms:Decrypt"
         Resource = local.brainstore_role_license_key_kms_key_arn
@@ -183,6 +190,7 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
       }],
       local.brainstore_role_custom_ca_bundle_kms_key == null ? [] : [
         {
+          Sid      = "AllowKMSDecryptCustomCABundleKeyForSecretsManager"
           Effect   = "Allow"
           Action   = "kms:Decrypt"
           Resource = local.brainstore_role_custom_ca_bundle_kms_key
@@ -207,6 +215,7 @@ resource "aws_iam_role_policy" "brainstore_export_assume_role" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowAssumeS3ExportRole"
         Action   = "sts:AssumeRole"
         Effect   = "Allow"
         Resource = length(var.s3_export_assume_role_arns) > 0 ? var.s3_export_assume_role_arns : ["*"]
@@ -230,6 +239,7 @@ resource "aws_iam_role_policy" "brainstore_cloudwatch_metrics" {
     Version = "2012-10-17",
     Statement = [
       {
+        Sid : "AllowPutMetricData",
         Effect : "Allow",
         Action : ["cloudwatch:PutMetricData"],
         Resource : "*",
@@ -238,6 +248,7 @@ resource "aws_iam_role_policy" "brainstore_cloudwatch_metrics" {
         }
       },
       {
+        Sid : "AllowDescribeEC2Tags",
         Effect : "Allow",
         Action : ["ec2:DescribeTags"],
         Resource : "*"
@@ -256,6 +267,7 @@ resource "aws_iam_role_policy" "brainstore_cloudwatch_logs_access" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowWriteBrainstoreLogs"
         Effect = "Allow"
         Action = [
           "logs:CreateLogGroup",
@@ -298,6 +310,7 @@ resource "aws_iam_role_policy" "brainstore_kms_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowUseKMSKeys"
         Effect = "Allow"
         Action = [
           "kms:Encrypt",
@@ -325,6 +338,7 @@ resource "aws_iam_role_policy" "brainstore_ssm_parameter_access" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowReadURLParameters"
         Effect = "Allow"
         Action = "ssm:GetParameter"
         Resource = concat(
@@ -364,6 +378,7 @@ resource "aws_iam_role_policy" "brainstore_redis_secret_access" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowReadRedisURLSecret"
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
         Resource = var.created_resources.redis_url_secret_arn

@@ -18,7 +18,13 @@ locals {
   apn_partner_tags = {
     "aws-apn-id" = "pc:8ebp76p17b7i08cjqrxaoj0y8"
   }
-  all_custom_tags = merge(var.custom_tags, local.apn_partner_tags)
+  # BraintrustDeploymentName is merged last, after the APN tag, so a caller tag
+  # can't change it. IAM conditions and the KMS tag scope rely on it.
+  all_custom_tags = merge(
+    var.custom_tags,
+    local.apn_partner_tags,
+    { BraintrustDeploymentName = var.deployment_name },
+  )
 
   kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
   bastion_security_group = var.enable_braintrust_support_shell_access ? {

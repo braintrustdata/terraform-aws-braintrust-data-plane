@@ -210,6 +210,7 @@ run "rejects_private_mode_with_external_eks" {
   command = plan
   variables {
     use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
     enable_ecs_api                   = false
     braintrust_api_url               = "https://external-api.example.internal"
   }

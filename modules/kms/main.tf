@@ -9,7 +9,7 @@ resource "aws_kms_key" "braintrust" {
     Statement = concat(
       [
         {
-          Sid    = "Enable IAM User Permissions"
+          Sid    = "AllowAccountIAMPermissions"
           Effect = "Allow"
           Principal = {
             AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
@@ -18,7 +18,7 @@ resource "aws_kms_key" "braintrust" {
           Resource = "*"
         },
         {
-          Sid    = "Allow Auto Scaling service to use the key"
+          Sid    = "AllowAutoScalingUseOfKey"
           Effect = "Allow"
           Principal = {
             AWS = [
@@ -35,7 +35,7 @@ resource "aws_kms_key" "braintrust" {
           Resource = "*"
         },
         {
-          Sid    = "Allow EC2 service to use the key"
+          Sid    = "AllowEC2UseOfKey"
           Effect = "Allow"
           Principal = {
             Service = "ec2.amazonaws.com"
@@ -49,7 +49,7 @@ resource "aws_kms_key" "braintrust" {
           Resource = "*"
         },
         {
-          Sid    = "Allow attachment of persistent resources"
+          Sid    = "AllowAttachmentOfPersistentResources"
           Effect = "Allow"
           Principal = {
             AWS = [
@@ -67,7 +67,7 @@ resource "aws_kms_key" "braintrust" {
           }
         },
         {
-          Sid    = "Allow CloudWatch Logs to use the key"
+          Sid    = "AllowCloudWatchLogsUseOfKey"
           Effect = "Allow"
           Principal = {
             Service = "logs.${data.aws_region.current.region}.amazonaws.com"
@@ -87,7 +87,7 @@ resource "aws_kms_key" "braintrust" {
           }
         },
         {
-          Sid    = "Allow VPC Flow Logs S3 delivery to use the key"
+          Sid    = "AllowFlowLogsS3DeliveryUseOfKey"
           Effect = "Allow"
           Principal = {
             Service = "delivery.logs.amazonaws.com"
@@ -110,7 +110,7 @@ resource "aws_kms_key" "braintrust" {
           }
         },
         {
-          Sid    = "Allow generate data key access for Fargate tasks"
+          Sid    = "AllowFargateGenerateDataKey"
           Effect = "Allow"
           Principal = {
             Service = "fargate.amazonaws.com"
@@ -127,7 +127,7 @@ resource "aws_kms_key" "braintrust" {
           }
         },
         {
-          Sid    = "Allow grant creation permission for Fargate tasks"
+          Sid    = "AllowFargateCreateGrant"
           Effect = "Allow"
           Principal = {
             Service = "fargate.amazonaws.com"
@@ -149,7 +149,7 @@ resource "aws_kms_key" "braintrust" {
           }
         },
         {
-          Sid    = "Allow Fargate to describe key"
+          Sid    = "AllowFargateDescribeKey"
           Effect = "Allow"
           Principal = {
             Service = "fargate.amazonaws.com"

@@ -17,6 +17,7 @@ resource "aws_iam_role" "braintrust_support" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowBraintrustSupportAssumeRole"
         Effect = "Allow"
         Principal = {
           AWS = [
@@ -44,6 +45,7 @@ resource "aws_iam_role_policy" "braintrust_support_logs" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowReadLogEvents"
         Effect = "Allow"
         Action = [
           "logs:DescribeLogStreams",
@@ -60,6 +62,7 @@ resource "aws_iam_role_policy" "braintrust_support_logs" {
         ]
       },
       {
+        Sid    = "AllowDescribeLogGroups"
         Effect = "Allow"
         Action = [
           "logs:DescribeLogGroups"

@@ -12,6 +12,7 @@ resource "aws_iam_role" "quarantine_invoke" {
   assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
       {
+        Sid    = "AllowAPIHandlerAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -35,6 +36,7 @@ resource "aws_iam_role_policy" "quarantine_invoke" {
   policy = jsonencode({ # nosemgrep
     Statement = [
       {
+        Sid      = "AllowInvokeQuarantineFunctions"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "*"
@@ -69,6 +71,7 @@ resource "aws_iam_role" "quarantine_function" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -99,6 +102,7 @@ resource "aws_iam_role_policy" "quarantine_function_deny_ec2" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "DenyNetworkInterfaceActionsFromFunctionCode"
         Effect = "Deny"
         Action = [
           "ec2:CreateNetworkInterface",
@@ -129,6 +133,7 @@ resource "aws_iam_policy" "api_handler_quarantine" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowInvokeQuarantineFunctions"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "*"
@@ -139,13 +144,13 @@ resource "aws_iam_policy" "api_handler_quarantine" {
         }
       },
       {
+        Sid = "AllowPublishQuarantineFunctions"
         Action = [
           "lambda:CreateFunction",
           "lambda:PublishVersion"
         ]
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:*"
         Effect   = "Allow"
-        Sid      = "QuarantinePublish"
         Condition = {
           StringEquals = {
             "lambda:VpcIds" = local.quarantine_vpc_id
@@ -153,6 +158,7 @@ resource "aws_iam_policy" "api_handler_quarantine" {
         }
       },
       {
+        Sid      = "AllowTagQuarantineFunctions"
         Action   = ["lambda:TagResource"]
         Effect   = "Allow"
         Resource = "*"
@@ -161,9 +167,9 @@ resource "aws_iam_policy" "api_handler_quarantine" {
             "aws:ResourceTag/BraintrustQuarantine" = "true"
           }
         }
-        Sid = "TagQuarantine"
       },
       {
+        Sid      = "AllowManageQuarantineFunctions"
         Action   = ["lambda:DeleteFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
         Effect   = "Allow"
         Resource = "*"
@@ -174,11 +180,13 @@ resource "aws_iam_policy" "api_handler_quarantine" {
         }
       },
       {
+        Sid      = "AllowPassQuarantineFunctionRole"
         Action   = "iam:PassRole"
         Effect   = "Allow"
         Resource = aws_iam_role.quarantine_function[0].arn
       },
       {
+        Sid      = "AllowDescribeQuarantineNetwork"
         Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
         Effect   = "Allow"
         Resource = "*"

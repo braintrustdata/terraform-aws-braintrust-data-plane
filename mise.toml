@@ -30,7 +30,7 @@ terraform test
 # Reads the plan JSON that the external mode test emits. Assertions can't list a plan's resources.
 uv run scripts/check-external-mode-plan
 uv run scripts/check-upgrade-plan
-# Proves the check above rejects a workload on the wrong role or a policy on the wrong bucket in every run that wiring applies to.
+# Proves the check above rejects a workload or the database on the wrong role in every run that wiring applies to.
 uv run scripts/check-upgrade-plan --self-test
 """
 

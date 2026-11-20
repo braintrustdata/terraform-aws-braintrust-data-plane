@@ -42,6 +42,7 @@ resource "aws_iam_role_policy" "gateway_task_execution_custom_ca_bundle_secret" 
     Statement = concat(
       [
         {
+          Sid    = "AllowReadCustomCABundleSecret"
           Effect = "Allow"
           Action = [
             "secretsmanager:GetSecretValue",
@@ -51,6 +52,7 @@ resource "aws_iam_role_policy" "gateway_task_execution_custom_ca_bundle_secret" 
       ],
       var.custom_ca_bundle_kms_key_arn == null ? [] : [
         {
+          Sid    = "AllowKMSDecryptForSecretsManager"
           Effect = "Allow"
           Action = [
             "kms:Decrypt",
@@ -79,6 +81,7 @@ resource "aws_iam_role_policy" "gateway_task_execution_secrets" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowReadSecrets"
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue",
@@ -89,6 +92,7 @@ resource "aws_iam_role_policy" "gateway_task_execution_secrets" {
         ])
       },
       {
+        Sid    = "AllowKMSDecryptForSecretsManager"
         Effect = "Allow"
         Action = [
           "kms:Decrypt",
@@ -116,6 +120,7 @@ resource "aws_iam_role_policy" "gateway_task_execution_redis_secret" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowReadRedisURLSecret"
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue",
@@ -123,6 +128,7 @@ resource "aws_iam_role_policy" "gateway_task_execution_redis_secret" {
         Resource = var.created_resources.redis_url_secret_arn
       },
       {
+        Sid    = "AllowKMSDecryptForSecretsManager"
         Effect = "Allow"
         Action = [
           "kms:Decrypt",
@@ -160,7 +166,7 @@ resource "aws_iam_role_policy" "gateway_task_customer_assume_role" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AssumeRoleInCustomerAccount"
+        Sid      = "AllowAssumeBedrockRole"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
         Resource = length(var.ai_gateway_bedrock_assume_role_arns) > 0 ? var.ai_gateway_bedrock_assume_role_arns : ["*"]

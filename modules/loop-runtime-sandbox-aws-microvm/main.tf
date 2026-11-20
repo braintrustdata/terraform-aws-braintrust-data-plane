@@ -67,7 +67,7 @@ locals {
     Version = "2012-10-17"
     Statement = concat([
       {
-        Sid    = "LoopRuntimeMicrovmLifecycle"
+        Sid    = "AllowMicroVMLifecycle"
         Effect = "Allow"
         Action = [
           "lambda:RunMicrovm",
@@ -80,14 +80,14 @@ locals {
         Resource = local.image_arn
       },
       {
-        Sid      = "LoopRuntimeMicrovmNetworkConnectors"
+        Sid      = "AllowPassNetworkConnector"
         Effect   = "Allow"
         Action   = ["lambda:PassNetworkConnector"]
         Resource = distinct(concat(local.ingress_connector_arns, local.egress_connector_arns))
       },
       ], var.enable_microvm_runtime_logs ? [
       {
-        Sid      = "LoopRuntimeMicrovmPassExecutionRole"
+        Sid      = "AllowPassMicroVMExecutionRole"
         Effect   = "Allow"
         Action   = ["iam:PassRole"]
         Resource = aws_iam_role.microvm_execution[0].arn
@@ -158,6 +158,7 @@ resource "aws_cloudwatch_log_group" "microvm_image" {
 
 data "aws_iam_policy_document" "microvm_build_assume_role" {
   statement {
+    sid     = "AllowLambdaAssumeRole"
     actions = ["sts:AssumeRole", "sts:TagSession"]
     principals {
       type        = "Service"
@@ -171,6 +172,7 @@ data "aws_iam_policy_document" "network_connector_operator_assume_role" {
   count = 1
 
   statement {
+    sid     = "AllowLambdaAssumeRole"
     actions = ["sts:AssumeRole", "sts:TagSession"]
     principals {
       type        = "Service"
@@ -404,12 +406,12 @@ resource "aws_iam_role" "microvm_image_build" {
 
 data "aws_iam_policy_document" "microvm_image_build" {
   statement {
-    sid       = "ReadMicrovmArtifact"
+    sid       = "AllowReadMicroVMArtifact"
     actions   = ["s3:GetObject"]
     resources = ["arn:${local.partition}:s3:::${local.artifact_bucket_name}/*"]
   }
   statement {
-    sid = "MicrovmBuildLogs"
+    sid = "AllowWriteMicroVMBuildLogs"
     actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
@@ -430,6 +432,7 @@ resource "aws_iam_role_policy" "microvm_image_build" {
 data "aws_iam_policy_document" "microvm_execution_assume_role" {
   count = var.enable_microvm_runtime_logs ? 1 : 0
   statement {
+    sid     = "AllowLambdaAssumeRole"
     actions = ["sts:AssumeRole", "sts:TagSession"]
     principals {
       type        = "Service"
@@ -456,11 +459,13 @@ resource "aws_iam_role_policy" "microvm_execution" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowCreateLogGroup"
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup"]
         Resource = "arn:${local.partition}:logs:${local.region}:*:log-group:${aws_cloudwatch_log_group.microvm_image.name}"
       },
       {
+        Sid    = "AllowWriteLogStreams"
         Effect = "Allow"
         Action = ["logs:CreateLogStream", "logs:PutLogEvents"]
         # Stream actions operate on log-stream ARNs beneath the group. TF's
@@ -584,6 +589,7 @@ resource "aws_vpc_endpoint" "loop_runtime_microvm" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowConnectMicroVM"
       Effect    = "Allow"
       Principal = "*"
       Action    = "lambda:ConnectMicrovm"

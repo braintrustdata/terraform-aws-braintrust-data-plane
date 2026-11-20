@@ -715,6 +715,7 @@ run "treats_empty_kms_key_arn_as_null" {
   assert {
     condition = (
       jsondecode(aws_iam_role_policy.brainstore_kms_policy[0].policy).Statement == [{
+        Sid       = "AllowUseKMSKeys"
         Effect    = "Allow"
         Action    = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
         Resource  = ["arn:aws:kms:us-east-1:123456789012:key/*"]

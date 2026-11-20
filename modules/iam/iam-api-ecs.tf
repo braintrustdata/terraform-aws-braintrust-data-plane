@@ -45,6 +45,7 @@ resource "aws_iam_role_policy" "api_ecs_task_execution_secrets" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowReadSecrets"
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue",
@@ -61,6 +62,7 @@ resource "aws_iam_role_policy" "api_ecs_task_execution_secrets" {
         )
       },
       {
+        Sid    = "AllowKMSDecryptForSecretsManager"
         Effect = "Allow"
         Action = [
           "kms:Decrypt",

@@ -12,8 +12,9 @@ resource "aws_iam_role_policy" "diagnostics_transcripts" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
+      { Sid = "AllowDescribeLogGroups", Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
       {
+        Sid      = "AllowWriteDiagnosticsTranscripts"
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
         Resource = local.diagnostics_transcript_log_group_arn

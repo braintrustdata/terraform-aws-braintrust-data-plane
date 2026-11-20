@@ -55,6 +55,7 @@ run "external_eks_brainstore_role_skips_ec2_only_secrets" {
 
   variables {
     use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
     custom_ca_bundle_secret_arn      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:ca-bundle-AbCdEf"
     custom_ca_bundle_kms_key_arn     = "arn:aws:kms:us-east-1:123456789012:key/22222222-2222-2222-2222-222222222222"
   }

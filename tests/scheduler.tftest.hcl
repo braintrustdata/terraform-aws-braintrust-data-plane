@@ -340,21 +340,25 @@ run "scheduler_roles_invoke_only_their_own_function" {
   assert {
     condition = (
       jsondecode(aws_iam_role_policy.automation_cron_schedule[0].policy).Statement == [{
+        Sid      = "AllowInvokeAutomationCron"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "arn:aws:lambda:us-east-1:123456789012:function:bt-test-AutomationCron"
       }]
       && jsondecode(aws_iam_role_policy.billing_cron_schedule[0].policy).Statement == [{
+        Sid      = "AllowInvokeBillingCron"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "arn:aws:lambda:us-east-1:123456789012:function:bt-test-BillingCron"
       }]
       && jsondecode(aws_iam_role_policy.catchup_etl_schedule[0].policy).Statement == [{
+        Sid      = "AllowInvokeCatchupETL"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "arn:aws:lambda:us-east-1:123456789012:function:bt-test-CatchupETL"
       }]
       && jsondecode(aws_iam_role_policy.quarantine_pruner_schedule[0].policy).Statement == [{
+        Sid      = "AllowInvokeQuarantinePruner"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = "arn:aws:lambda:us-east-1:123456789012:function:bt-test-QuarantinePrunerFunction"
@@ -430,6 +434,7 @@ run "scheduler_roles_are_absent_on_external_eks" {
 
   variables {
     use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
     enable_quarantine_vpc            = true
     enable_quarantine_pruner         = true
   }

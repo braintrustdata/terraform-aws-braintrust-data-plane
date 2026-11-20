@@ -23,7 +23,7 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
   policy = jsonencode({ # nosemgrep
     Statement = [
       {
-        Sid    = "CloudWatchLogs"
+        Sid    = "AllowWriteLambdaLogs"
         Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Effect = "Allow"
         Resource = [
@@ -36,7 +36,7 @@ resource "aws_iam_policy" "api_handler_lambda_policies" {
         ]
       },
       {
-        Sid      = "CatchupETLInvoke"
+        Sid      = "AllowInvokeCatchupETL"
         Action   = ["lambda:InvokeFunction"]
         Effect   = "Allow"
         Resource = "${local.lambda_function_arn_prefix}-CatchupETL"
@@ -55,6 +55,7 @@ resource "aws_iam_role" "ai_proxy_invoke" {
   assume_role_policy = jsonencode({ # nosemgrep
     Statement = [
       {
+        Sid    = "AllowAPIHandlerAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -78,6 +79,7 @@ resource "aws_iam_role_policy" "ai_proxy_invoke" {
   policy = jsonencode({ # nosemgrep
     Statement = [
       {
+        Sid      = "AllowInvokeAIProxy"
         Action   = "lambda:InvokeFunction"
         Effect   = "Allow"
         Resource = ["${local.lambda_function_arn_prefix}-AIProxy"]

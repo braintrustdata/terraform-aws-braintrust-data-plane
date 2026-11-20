@@ -76,6 +76,7 @@ data "aws_iam_policy_document" "flow_log_assume_role" {
   count = local.create_flow_log_role ? 1 : 0
 
   statement {
+    sid     = "AllowVPCFlowLogsAssumeRole"
     effect  = "Allow"
     actions = ["sts:AssumeRole"]
 
@@ -106,12 +107,14 @@ data "aws_iam_policy_document" "flow_log" {
   count = local.create_flow_log_role ? 1 : 0
 
   statement {
+    sid       = "AllowDescribeLogGroups"
     effect    = "Allow"
     actions   = ["logs:DescribeLogGroups"]
     resources = ["*"]
   }
 
   statement {
+    sid     = "AllowDescribeLogStreams"
     effect  = "Allow"
     actions = ["logs:DescribeLogStreams"]
     resources = [
@@ -121,6 +124,7 @@ data "aws_iam_policy_document" "flow_log" {
   }
 
   statement {
+    sid    = "AllowWriteFlowLogs"
     effect = "Allow"
     actions = [
       "logs:CreateLogStream",
@@ -226,7 +230,7 @@ data "aws_iam_policy_document" "flow_log_bucket" {
   count = local.create_flow_log_bucket ? 1 : 0
 
   statement {
-    sid     = "AWSLogDeliveryWrite"
+    sid     = "AllowLogDeliveryWrite"
     effect  = "Allow"
     actions = ["s3:PutObject"]
     resources = [
@@ -251,7 +255,7 @@ data "aws_iam_policy_document" "flow_log_bucket" {
   }
 
   statement {
-    sid       = "AWSLogDeliveryAclCheck"
+    sid       = "AllowLogDeliveryACLCheck"
     effect    = "Allow"
     actions   = ["s3:GetBucketAcl"]
     resources = [aws_s3_bucket.flow_log[0].arn]

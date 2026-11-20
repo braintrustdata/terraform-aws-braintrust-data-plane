@@ -24,9 +24,23 @@ OpenTofu is still supported. The root module and each example have a `versions.t
 
 The upgrade plan from v7.3.0 or later shows these kinds of change. Treat anything outside these lists as a reason to stop, and stop on any destroy or replacement that isn't listed.
 
+### Policy Sids, the API role trust and tags
+
+These are in-place updates. None of them replaces a resource, republishes a Lambda function, reruns the migration or rolls Brainstore.
+
+- **Every module policy statement gets a Sid,** and existing Sids are renamed to the effect-first pattern (for example `S3Access` becomes `AllowReadWriteBuckets`). The plan shows `policy` updates on the module's inline and managed policies (`PutRolePolicy`, or a new default version for a managed policy) and `assume_role_policy` updates on its roles (`UpdateAssumeRolePolicy`). With Loop, quarantine, remote support or Flow Logs on, their roles, bucket policy and VPC endpoint policies update the same way.
+- **The KMS key policy is rewritten once** (`PutKeyPolicy` on `module.kms[0].aws_kms_key.braintrust`). Only the nine Sids change. The account root statement keeps `kms:*` under its new Sid, `AllowAccountIAMPermissions`, so nobody loses access. If a statement in `additional_kms_key_policies` already uses one of the new Sids, rename yours first.
+- **The shared API role stops trusting `lambda.amazonaws.com`** outside the Lambda API path. On ECS stacks, the v7 default, the plan removes that trust statement. In Lambda mode (`enable_ecs_api = false`) the role keeps it.
+- **The API ALB's HTTP listener and its path rules get the module's tags.** The deploying principal needs `elasticloadbalancing:AddTags` on listener and listener rule ARNs.
+- **`BraintrustDeploymentName` is reserved.** It's now merged after `custom_tags`, so a caller tag can't change it. If your `custom_tags` sets `BraintrustDeploymentName` to anything other than `deployment_name`, expect a tag update on nearly every resource. IAM conditions and the KMS tag scope rely on that tag.
+
+### External EKS needs an API role trust
+
+The API role no longer trusts Lambda on external EKS, so an external-EKS stack now fails at plan time unless it sets one of these: `enable_eks_pod_identity = true`, `enable_eks_irsa = true` with `existing_eks_cluster_arn`, or `override_api_iam_role_trust_policy`. Set the one that matches how your pods get credentials. With Pod Identity, also set `existing_eks_cluster_arn` and `eks_namespace` so the trust is limited to your cluster and namespace.
+
 ### IAM moves into `modules/iam`
 
-v8 moves the module's IAM into a child module, `modules/iam`, so that a security team can later run it on its own. Managed stacks keep the same roles, names, trust documents, permissions and physical resources. The root module's `moved_state.tf` has a `moved` block for each resource, so these moves update state and nothing in AWS. The plan shows them as moves with no change. They don't republish a Lambda function, register a task definition revision or rerun the database migration.
+v8 moves the module's IAM into a child module, `modules/iam`, so that a security team can later run it on its own. Apart from the Sid, trust and tag updates above, managed stacks keep the same roles, names, trust documents, permissions and physical resources. The root module's `moved_state.tf` has a `moved` block for each resource, so these moves update state and nothing in AWS. The plan shows them as moves with no change. They don't republish a Lambda function, register a task definition revision or rerun the database migration.
 
 This release moves these roles and the policies and attachments that belong to them. It also moves the Brainstore instance profile and the Lambda-path policy that only the Lambda API path uses.
 

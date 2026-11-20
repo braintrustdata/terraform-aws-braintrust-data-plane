@@ -19,6 +19,7 @@ variables {
   brainstore_license_key           = "test-license"
   use_deployment_mode_external_eks = true
   enable_quarantine_vpc            = true
+  enable_eks_pod_identity          = true
 }
 
 run "external_eks_plans" {
@@ -91,5 +92,19 @@ run "standard_gateway_defaults" {
   assert {
     condition     = length(module.gateway_ecs) == 1 && local.enable_ai_gateway && local.enable_private_ai_gateway_origin && local.enable_ecs_api
     error_message = "Standard deployments must enable API ECS ingress and the private gateway by default."
+  }
+}
+
+run "accepts_external_eks_with_api_trust_override" {
+  command = plan
+
+  variables {
+    enable_eks_pod_identity            = false
+    override_api_iam_role_trust_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"pods.eks.amazonaws.com\"},\"Action\":[\"sts:AssumeRole\",\"sts:TagSession\"]}]}"
+  }
+
+  assert {
+    condition     = length(module.api_ecs) == 0
+    error_message = "A trust override must satisfy the external-EKS trust requirement."
   }
 }
