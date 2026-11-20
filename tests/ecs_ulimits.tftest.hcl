@@ -6,6 +6,10 @@ mock_provider "aws" {
   source = "./tests/mocks/aws"
 }
 
+variables {
+  brainstore_s3_bucket_arn = "arn:aws:s3:::bt-test-brainstore"
+}
+
 run "api_ecs_containers_have_one_million_nofile_limit" {
   command = plan
 
