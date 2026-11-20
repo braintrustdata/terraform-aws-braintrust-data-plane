@@ -1,7 +1,8 @@
 # Guards the CatchupETL IAM boundary: the function must run under its own
 # dedicated CatchupETLRole (not the shared DefaultRole), keep the module
-# permissions boundary, and receive only the AWS-managed VPC-access policy —
+# permissions boundary, and receive only the AWS-managed VPC-access policy,
 # never the broad DefaultRolePolicy grants (elasticache, DatabaseSecret, logs).
+# iam_consumers.tftest.hcl checks that the function runs as this role.
 mock_provider "aws" {
   source = "./tests/mocks/aws"
   # apply mode materializes concrete values; the provider validates many of
@@ -13,99 +14,84 @@ mock_provider "aws" {
   mock_resource "aws_iam_policy" {
     defaults = { arn = "arn:aws:iam::123456789012:policy/bt-test-mock" }
   }
-  mock_resource "aws_lambda_function" {
-    defaults = { arn = "arn:aws:lambda:us-east-1:123456789012:function:bt-test-mock" }
+  mock_resource "aws_iam_instance_profile" {
+    defaults = { arn = "arn:aws:iam::123456789012:instance-profile/bt-test-mock" }
   }
-  mock_resource "aws_lambda_layer_version" {
-    defaults = { arn = "arn:aws:lambda:us-east-1:123456789012:layer:bt-test-mock:1" }
-  }
-  mock_resource "aws_cloudwatch_event_rule" {
-    defaults = { arn = "arn:aws:events:us-east-1:123456789012:rule/bt-test-mock" }
-  }
-}
-mock_provider "http" {
-  source = "./tests/mocks/http"
 }
 
 variables {
-  braintrust_org_name         = "bt-test-org"
-  deployment_name             = "bt-test"
-  vpc_id                      = "vpc-12345678"
-  service_subnet_ids          = ["subnet-11111111", "subnet-22222222"]
-  postgres_username           = "bt"
-  postgres_password           = "bt-password"
-  postgres_host               = "db.example.internal"
-  use_redis_replication_group = false
-  redis_host                  = "redis.example.internal"
-  redis_port                  = "6379"
-  whitelisted_origins         = ["https://example.com"]
-  code_bundle_bucket_arn      = "arn:aws:s3:::bt-test-code-bundles"
-  lambda_responses_bucket_arn = "arn:aws:s3:::bt-test-lambda-responses"
-  api_security_group_id       = "sg-12345678"
-  api_handler_role_arn        = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
-  function_tools_secret_key   = "test-secret-key"
-  permissions_boundary_arn    = "arn:aws:iam::123456789012:policy/bt-test-boundary"
-  use_quarantine_vpc          = false
+  deployment_name   = "bt-test"
+  create_ai_gateway = false
+
+  permissions_boundary_arn = "arn:aws:iam::123456789012:policy/bt-test-boundary"
+
+  created_resources = {
+    kms_key_arn                       = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+    database_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-database"
+    database_url_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-database-url"
+    function_tools_secret_arn         = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
+    redis_url_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    brainstore_s3_bucket_arn          = "arn:aws:s3:::bt-test-brainstore"
+    code_bundle_s3_bucket_arn         = "arn:aws:s3:::bt-test-code-bundles"
+    lambda_responses_s3_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
+  }
+
+  brainstore_deployment_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:/braintrust/bt-test/bt-test-BrainstoreDeployment"
+  brainstore_asg_names                = ["bt-test-brainstore-reader-123"]
 }
 
 run "catchup_etl_uses_its_own_least_privilege_role" {
   command = apply
-  module { source = "./modules/services" }
+  module { source = "./modules/iam" }
 
-  # Distinct, known ARNs/ids for the two roles the assertions compare. The
-  # function still reads its role from aws_iam_role.catchup_etl.arn, so
-  # repointing it at DefaultRole would make the ownership assertions fail.
+  # Distinct, known ARNs/ids for the two roles the assertions compare.
   override_resource {
-    target = aws_iam_role.catchup_etl
+    target = aws_iam_role.catchup_etl[0]
     values = {
       arn = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
       id  = "bt-test-CatchupETLRole"
     }
   }
   override_resource {
-    target = aws_iam_role.default_role
+    target = aws_iam_role.default[0]
     values = {
       arn = "arn:aws:iam::123456789012:role/bt-test-DefaultRole"
       id  = "bt-test-DefaultRole"
     }
   }
 
-  # Ownership: the function runs under CatchupETLRole, not the shared DefaultRole.
   assert {
-    condition     = aws_lambda_function.catchup_etl.role == aws_iam_role.catchup_etl.arn
-    error_message = "CatchupETL must run under its dedicated CatchupETLRole."
+    condition     = output.catchup_etl_role_arn == aws_iam_role.catchup_etl[0].arn && output.catchup_etl_role_arn != aws_iam_role.default[0].arn
+    error_message = "CatchupETL must get its dedicated CatchupETLRole, not the shared DefaultRole."
   }
   assert {
-    condition     = aws_lambda_function.catchup_etl.role != aws_iam_role.default_role.arn
-    error_message = "CatchupETL must not fall back to the shared DefaultRole."
-  }
-  assert {
-    condition     = aws_iam_role.catchup_etl.name == "bt-test-CatchupETLRole"
+    condition     = aws_iam_role.catchup_etl[0].name == "bt-test-CatchupETLRole"
     error_message = "Dedicated role must be named <deployment_name>-CatchupETLRole."
   }
 
   # Trust policy: assumable only by Lambda.
   assert {
     condition = (
-      length(jsondecode(aws_iam_role.catchup_etl.assume_role_policy).Statement) == 1 &&
-      jsondecode(aws_iam_role.catchup_etl.assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
+      length(jsondecode(aws_iam_role.catchup_etl[0].assume_role_policy).Statement) == 1 &&
+      jsondecode(aws_iam_role.catchup_etl[0].assume_role_policy).Statement[0].Principal.Service == "lambda.amazonaws.com"
     )
     error_message = "CatchupETLRole must be assumable only by lambda.amazonaws.com."
   }
 
   # Permissions boundary is preserved on the dedicated role.
   assert {
-    condition     = aws_iam_role.catchup_etl.permissions_boundary == var.permissions_boundary_arn
+    condition     = aws_iam_role.catchup_etl[0].permissions_boundary == var.permissions_boundary_arn
     error_message = "CatchupETLRole must keep the module permissions boundary."
   }
 
   # Only the AWS-managed VPC-access policy is attached, and to this role.
   assert {
-    condition     = aws_iam_role_policy_attachment.catchup_etl_vpc_access.policy_arn == "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+    condition     = aws_iam_role_policy_attachment.catchup_etl_vpc_access[0].policy_arn == "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
     error_message = "CatchupETLRole must receive only AWSLambdaVPCAccessExecutionRole."
   }
   assert {
-    condition     = aws_iam_role_policy_attachment.catchup_etl_vpc_access.role == aws_iam_role.catchup_etl.name
+    condition     = aws_iam_role_policy_attachment.catchup_etl_vpc_access[0].role == aws_iam_role.catchup_etl[0].name
     error_message = "The VPC-access attachment must target CatchupETLRole."
   }
 
@@ -114,11 +100,11 @@ run "catchup_etl_uses_its_own_least_privilege_role" {
   # defines no inline aws_iam_role_policy for CatchupETLRole, so the attachment
   # above is its only policy.
   assert {
-    condition     = aws_iam_role_policy.default_role_policy.role == aws_iam_role.default_role.id
+    condition     = aws_iam_role_policy.default[0].role == aws_iam_role.default[0].id
     error_message = "DefaultRolePolicy must stay on DefaultRole."
   }
   assert {
-    condition     = aws_iam_role_policy.default_role_policy.role != aws_iam_role.catchup_etl.id
+    condition     = aws_iam_role_policy.default[0].role != aws_iam_role.catchup_etl[0].id
     error_message = "The broad DefaultRolePolicy must not be attached to CatchupETLRole."
   }
 }

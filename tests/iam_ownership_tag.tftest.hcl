@@ -51,113 +51,6 @@ mock_provider "http" {
   source = "./tests/mocks/http"
 }
 
-run "tags_services_iam_with_braintrust_owner" {
-  command = plan
-  module { source = "./modules/services" }
-
-  variables {
-    braintrust_org_name         = "bt-test-org"
-    deployment_name             = "bt-test"
-    vpc_id                      = "vpc-12345678"
-    service_subnet_ids          = ["subnet-11111111", "subnet-22222222"]
-    postgres_username           = "bt"
-    postgres_password           = "bt-password"
-    postgres_host               = "db.example.internal"
-    use_redis_replication_group = false
-    redis_host                  = "redis.example.internal"
-    redis_port                  = "6379"
-    whitelisted_origins         = ["https://example.com"]
-    code_bundle_bucket_arn      = "arn:aws:s3:::bt-test-code-bundles"
-    lambda_responses_bucket_arn = "arn:aws:s3:::bt-test-lambda-responses"
-    api_security_group_id       = "sg-12345678"
-    api_handler_role_arn        = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
-    function_tools_secret_key   = "test-secret-key"
-    use_quarantine_vpc          = false
-    custom_tags                 = { Environment = "test", BraintrustIAMOwner = "customer" }
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.default_role.tags,
-        aws_iam_role.automation_cron_role.tags,
-        aws_iam_role.billing_cron.tags,
-        aws_iam_role.catchup_etl.tags,
-        aws_iam_role.migrate_database.tags,
-        aws_iam_policy.api_handler_lambda_policies.tags,
-      ] : tags.BraintrustIAMOwner == "braintrust"
-    ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the services roles and managed policy."
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.default_role.tags,
-        aws_iam_role.automation_cron_role.tags,
-        aws_iam_role.billing_cron.tags,
-        aws_iam_role.catchup_etl.tags,
-        aws_iam_role.migrate_database.tags,
-        aws_iam_policy.api_handler_lambda_policies.tags,
-      ] : tags.Environment == "test"
-    ])
-    error_message = "The services roles and managed policy must keep unrelated caller tags."
-  }
-}
-
-run "tags_services_quarantine_and_lambda_api_iam_with_braintrust_owner" {
-  command = plan
-  module { source = "./modules/services" }
-
-  variables {
-    braintrust_org_name            = "bt-test-org"
-    deployment_name                = "bt-test"
-    vpc_id                         = "vpc-12345678"
-    service_subnet_ids             = ["subnet-11111111", "subnet-22222222"]
-    postgres_username              = "bt"
-    postgres_password              = "bt-password"
-    postgres_host                  = "db.example.internal"
-    use_redis_replication_group    = false
-    redis_host                     = "redis.example.internal"
-    redis_port                     = "6379"
-    whitelisted_origins            = ["https://example.com"]
-    code_bundle_bucket_arn         = "arn:aws:s3:::bt-test-code-bundles"
-    lambda_responses_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
-    api_security_group_id          = "sg-12345678"
-    api_handler_role_arn           = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
-    function_tools_secret_key      = "test-secret-key"
-    use_quarantine_vpc             = true
-    quarantine_vpc_id              = "vpc-87654321"
-    quarantine_vpc_private_subnets = ["subnet-44444444", "subnet-55555555", "subnet-66666666"]
-    quarantine_function_role_arn   = "arn:aws:iam::123456789012:role/bt-test-QuarantineFunctionRole"
-    lambda_version_tag_override    = "test-version"
-    enable_quarantine_pruner       = true
-    enable_ecs_api                 = false
-    custom_tags                    = { Environment = "test", BraintrustIAMOwner = "customer" }
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.quarantine_pruner_role[0].tags,
-        aws_iam_role.quarantine_warmup[0].tags,
-        aws_iam_role.ai_proxy_invoke_role[0].tags,
-      ] : tags.BraintrustIAMOwner == "braintrust"
-    ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the quarantine and AIProxy roles."
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.quarantine_pruner_role[0].tags,
-        aws_iam_role.quarantine_warmup[0].tags,
-        aws_iam_role.ai_proxy_invoke_role[0].tags,
-      ] : tags.Environment == "test"
-    ])
-    error_message = "The quarantine and AIProxy roles must keep unrelated caller tags."
-  }
-}
 run "tags_iam_module_resources_with_braintrust_owner" {
   command = plan
   module { source = "./modules/iam" }
@@ -166,7 +59,9 @@ run "tags_iam_module_resources_with_braintrust_owner" {
     deployment_name = "bt-test"
     custom_tags     = { Environment = "test", BraintrustIAMOwner = "customer" }
 
-    enable_quarantine_vpc = true
+    enable_quarantine_vpc    = true
+    enable_quarantine_pruner = true
+    enable_ecs_api           = false
 
     created_resources = {
       kms_key_arn                       = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
@@ -200,6 +95,15 @@ run "tags_iam_module_resources_with_braintrust_owner" {
         aws_iam_policy.api_handler[0].tags,
         aws_iam_policy.api_handler_quarantine[0].tags,
         aws_iam_instance_profile.brainstore[0].tags,
+        aws_iam_role.default[0].tags,
+        aws_iam_role.automation_cron[0].tags,
+        aws_iam_role.billing_cron[0].tags,
+        aws_iam_role.catchup_etl[0].tags,
+        aws_iam_role.migrate_database[0].tags,
+        aws_iam_role.quarantine_pruner[0].tags,
+        aws_iam_role.quarantine_warmup[0].tags,
+        aws_iam_role.ai_proxy_invoke[0].tags,
+        aws_iam_policy.api_handler_lambda_policies[0].tags,
       ] : tags.BraintrustIAMOwner == "braintrust"
     ])
     error_message = "A caller tag must not override BraintrustIAMOwner on a role in modules/iam."
@@ -220,6 +124,15 @@ run "tags_iam_module_resources_with_braintrust_owner" {
         aws_iam_policy.api_handler[0].tags,
         aws_iam_policy.api_handler_quarantine[0].tags,
         aws_iam_instance_profile.brainstore[0].tags,
+        aws_iam_role.default[0].tags,
+        aws_iam_role.automation_cron[0].tags,
+        aws_iam_role.billing_cron[0].tags,
+        aws_iam_role.catchup_etl[0].tags,
+        aws_iam_role.migrate_database[0].tags,
+        aws_iam_role.quarantine_pruner[0].tags,
+        aws_iam_role.quarantine_warmup[0].tags,
+        aws_iam_role.ai_proxy_invoke[0].tags,
+        aws_iam_policy.api_handler_lambda_policies[0].tags,
       ] : tags.Environment == "test"
     ])
     error_message = "A role in modules/iam must keep unrelated caller tags."

@@ -33,10 +33,33 @@ variables {
   lambda_responses_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
   api_security_group_id          = "sg-api"
   api_handler_role_arn           = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
+  ai_proxy_invoke_role_arn       = "arn:aws:iam::123456789012:role/bt-test-AIProxyInvokeRole"
+  automation_cron_role_arn       = "arn:aws:iam::123456789012:role/bt-test-AutomationCronRole"
+  billing_cron_role_arn          = "arn:aws:iam::123456789012:role/bt-test-BillingCronRole"
+  catchup_etl_role_arn           = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
+  migrate_database_role_arn      = "arn:aws:iam::123456789012:role/bt-test-MigrateDatabaseFunctionRole"
+  quarantine_pruner_role_arn     = "arn:aws:iam::123456789012:role/bt-test-QuarantinePrunerRole"
+  quarantine_warmup_role_arn     = "arn:aws:iam::123456789012:role/bt-test-QuarantineWarmupRole"
   function_tools_secret_key      = "function-tools-secret"
   use_quarantine_vpc             = true
   quarantine_vpc_id              = "vpc-quarantine"
   quarantine_vpc_private_subnets = ["subnet-q1", "subnet-q2", "subnet-q3"]
+
+  # modules/iam inputs.
+  created_resources = {
+    kms_key_arn                       = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+    database_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-database"
+    database_url_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-database-url"
+    function_tools_secret_arn         = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
+    redis_url_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    brainstore_s3_bucket_arn          = "arn:aws:s3:::bt-test-brainstore"
+    code_bundle_s3_bucket_arn         = "arn:aws:s3:::bt-test-code-bundles"
+    lambda_responses_s3_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
+    quarantine_vpc_id                 = "vpc-quarantine"
+  }
+  brainstore_deployment_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:/braintrust/bt-test/bt-test-BrainstoreDeployment"
+  brainstore_asg_names                = ["bt-test-brainstore-reader-123"]
 }
 
 run "disabled_by_default" {
@@ -46,9 +69,6 @@ run "disabled_by_default" {
   assert {
     condition = (
       length(aws_lambda_function.quarantine_pruner) == 0 &&
-      length(aws_iam_role.quarantine_pruner_role) == 0 &&
-      length(aws_iam_role_policy.quarantine_pruner_delete_versions) == 0 &&
-      length(aws_iam_role_policy_attachment.quarantine_pruner_vpc_access) == 0 &&
       length(aws_cloudwatch_event_rule.quarantine_pruner_schedule) == 0 &&
       length(aws_cloudwatch_event_target.quarantine_pruner_target) == 0 &&
       length(aws_lambda_permission.allow_quarantine_pruner_eventbridge) == 0
@@ -137,8 +157,8 @@ run "enabled_defaults_to_off" {
   }
 
   assert {
-    condition     = aws_iam_role_policy_attachment.quarantine_pruner_vpc_access[0].policy_arn == "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-    error_message = "the pruner role should have VPC access for its ENIs"
+    condition     = aws_lambda_function.quarantine_pruner[0].role == var.quarantine_pruner_role_arn
+    error_message = "the pruner should run as the supplied role"
   }
 }
 
@@ -170,15 +190,17 @@ run "observability_adds_datadog_layers_only" {
 
 run "role_is_tag_conditioned" {
   command = plan
-  module { source = "./modules/services" }
+  module { source = "./modules/iam" }
 
   variables {
     enable_quarantine_pruner = true
+    enable_quarantine_vpc    = true
+    create_ai_gateway        = false
     permissions_boundary_arn = "arn:aws:iam::123456789012:policy/boundary"
   }
 
   assert {
-    condition     = aws_iam_role.quarantine_pruner_role[0].permissions_boundary == "arn:aws:iam::123456789012:policy/boundary"
+    condition     = aws_iam_role.quarantine_pruner[0].permissions_boundary == "arn:aws:iam::123456789012:policy/boundary"
     error_message = "the pruner role should respect the permissions boundary"
   }
 
@@ -321,5 +343,39 @@ run "root_service_extra_env_vars_without_pruner_key" {
   assert {
     condition     = length(module.services) == 1
     error_message = "existing callers that list only the existing services should still plan"
+  }
+}
+
+run "pruner_role_is_absent_unless_enabled" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  variables {
+    create_ai_gateway = false
+  }
+
+  assert {
+    condition = (
+      length(aws_iam_role.quarantine_pruner) == 0 &&
+      length(aws_iam_role_policy.quarantine_pruner_delete_versions) == 0 &&
+      length(aws_iam_role_policy_attachment.quarantine_pruner_vpc_access) == 0
+    )
+    error_message = "the pruner role should be created only when enable_quarantine_pruner is set"
+  }
+}
+
+run "pruner_role_has_vpc_access_for_its_enis" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  variables {
+    enable_quarantine_pruner = true
+    enable_quarantine_vpc    = true
+    create_ai_gateway        = false
+  }
+
+  assert {
+    condition     = aws_iam_role_policy_attachment.quarantine_pruner_vpc_access[0].policy_arn == "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+    error_message = "the pruner role should have VPC access for its ENIs"
   }
 }

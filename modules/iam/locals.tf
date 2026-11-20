@@ -26,15 +26,26 @@ locals {
     brainstore                   = "${var.deployment_name}-brainstore-ec2-role"
     quarantine_invoke            = "${var.deployment_name}-QuarantineInvokeRole"
     quarantine_function          = "${var.deployment_name}-QuarantineFunctionRole"
+    automation_cron              = "${var.deployment_name}-AutomationCronRole"
+    billing_cron                 = "${var.deployment_name}-BillingCronRole"
+    catchup_etl                  = "${var.deployment_name}-CatchupETLRole"
+    migrate_database             = "${var.deployment_name}-MigrateDatabaseFunctionRole"
+    quarantine_pruner            = "${var.deployment_name}-QuarantinePrunerRole"
+    quarantine_warmup            = "${var.deployment_name}-QuarantineWarmupRole"
+    default                      = "${var.deployment_name}-DefaultRole"
+    ai_proxy_invoke              = "${var.deployment_name}-AIProxyInvokeRole"
   }
 
   # Derived from the raw root inputs the way the root module derives its
-  # create_ecs_api, create_ai_gateway and create_brainstore_ec2 locals. The
-  # waiter gate matches the count on the root's brainstore_deployment module.
+  # create_ecs_api, enable_ecs_api, create_ai_gateway and create_brainstore_ec2
+  # locals. The waiter and Lambda gates match the count on the root's
+  # brainstore_deployment and services modules.
   create_ecs_api                      = !var.use_deployment_mode_external_eks
+  enable_ecs_api                      = local.create_ecs_api && var.enable_ecs_api
   create_ai_gateway                   = var.create_ai_gateway && !var.use_deployment_mode_external_eks
   create_brainstore_ec2               = !var.use_deployment_mode_external_eks
   create_brainstore_deployment_waiter = !var.use_deployment_mode_external_eks
+  create_lambda_services              = !var.use_deployment_mode_external_eks
 
   # A caller-supplied resource wins over the one the root module created.
   kms_key_arn                        = var.kms_key_arn != null ? var.kms_key_arn : var.created_resources.kms_key_arn

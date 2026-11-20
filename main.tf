@@ -476,8 +476,14 @@ module "services" {
   quarantine_pruner_mode   = var.quarantine_pruner_mode
 
   kms_key_arn                         = local.kms_key_arn
-  permissions_boundary_arn            = var.permissions_boundary_arn
   api_handler_role_arn                = module.iam.api_handler_role_arn
+  automation_cron_role_arn            = module.iam.automation_cron_role_arn
+  billing_cron_role_arn               = module.iam.billing_cron_role_arn
+  catchup_etl_role_arn                = module.iam.catchup_etl_role_arn
+  migrate_database_role_arn           = module.iam.migrate_database_role_arn
+  quarantine_pruner_role_arn          = module.iam.quarantine_pruner_role_arn
+  quarantine_warmup_role_arn          = module.iam.quarantine_warmup_role_arn
+  ai_proxy_invoke_role_arn            = module.iam.ai_proxy_invoke_role_arn
   api_security_group_id               = module.services_common.api_security_group_id
   function_tools_secret_key           = module.services_common.function_tools_secret_key
   quarantine_invoke_role_arn          = module.iam.quarantine_invoke_role_arn
@@ -910,8 +916,10 @@ module "iam" {
   permissions_boundary_arn          = var.permissions_boundary_arn
   custom_tags                       = local.all_custom_tags
   use_deployment_mode_external_eks  = var.use_deployment_mode_external_eks
+  enable_ecs_api                    = var.enable_ecs_api
   create_ai_gateway                 = var.create_ai_gateway
   enable_quarantine_vpc             = var.enable_quarantine_vpc
+  enable_quarantine_pruner          = var.enable_quarantine_pruner
   enable_brainstore_ec2_ssm         = var.enable_brainstore_ec2_ssm
   brainstore_enable_export          = var.brainstore_enable_export
   api_ecs_enable_execute_command    = var.api_ecs_enable_execute_command

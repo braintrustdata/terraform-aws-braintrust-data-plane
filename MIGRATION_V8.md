@@ -28,7 +28,7 @@ The upgrade plan from v7.3.0 or later shows two kinds of change. Treat anything 
 
 v8 moves the module's IAM into a child module, `modules/iam`, so that a security team can later run it on its own. Managed stacks keep the same roles, names, trust documents, permissions and physical resources. The root module's `moved_state.tf` has a `moved` block for each resource, so these moves update state and nothing in AWS. The plan shows them as moves with no change. They don't republish a Lambda function, register a task definition revision or rerun the database migration.
 
-This release moves these roles and the policies and attachments that belong to them. It also moves the Brainstore instance profile.
+This release moves these roles and the policies and attachments that belong to them. It also moves the Brainstore instance profile and the Lambda-path policy that only the Lambda API path uses.
 
 | Resource | Name | Old address | New address |
 | --- | --- | --- | --- |
@@ -42,8 +42,19 @@ This release moves these roles and the policies and attachments that belong to t
 | Brainstore instance profile | `<deployment_name>-brainstore-instance-profile` | `module.brainstore[0].aws_iam_instance_profile.brainstore` | `module.iam.aws_iam_instance_profile.brainstore[0]` |
 | Quarantine invoke role | `<deployment_name>-QuarantineInvokeRole` | `module.services_common.aws_iam_role.quarantine_invoke_role[0]` | `module.iam.aws_iam_role.quarantine_invoke[0]` |
 | Quarantine function role | `<deployment_name>-QuarantineFunctionRole` | `module.services_common.aws_iam_role.quarantine_function_role[0]` | `module.iam.aws_iam_role.quarantine_function[0]` |
+| AutomationCron role | `<deployment_name>-AutomationCronRole` | `module.services[0].aws_iam_role.automation_cron_role` | `module.iam.aws_iam_role.automation_cron[0]` |
+| BillingCron role | `<deployment_name>-BillingCronRole` | `module.services[0].aws_iam_role.billing_cron` | `module.iam.aws_iam_role.billing_cron[0]` |
+| CatchupETL role | `<deployment_name>-CatchupETLRole` | `module.services[0].aws_iam_role.catchup_etl` | `module.iam.aws_iam_role.catchup_etl[0]` |
+| Database migration role | `<deployment_name>-MigrateDatabaseFunctionRole` | `module.services[0].aws_iam_role.migrate_database` | `module.iam.aws_iam_role.migrate_database[0]` |
+| Default role | `<deployment_name>-DefaultRole` | `module.services[0].aws_iam_role.default_role` | `module.iam.aws_iam_role.default[0]` |
+| Quarantine pruner role | `<deployment_name>-QuarantinePrunerRole` | `module.services[0].aws_iam_role.quarantine_pruner_role[0]` | `module.iam.aws_iam_role.quarantine_pruner[0]` |
+| Quarantine warmup role | `<deployment_name>-QuarantineWarmupRole` | `module.services[0].aws_iam_role.quarantine_warmup[0]` | `module.iam.aws_iam_role.quarantine_warmup[0]` |
+| AIProxy invoke role | `<deployment_name>-AIProxyInvokeRole` | `module.services[0].aws_iam_role.ai_proxy_invoke_role[0]` | `module.iam.aws_iam_role.ai_proxy_invoke[0]` |
+| APIHandler Lambda policy | `<deployment_name>-APIHandler-Lambdas` | `module.services[0].aws_iam_policy.api_handler_lambda_policies` | `module.iam.aws_iam_policy.api_handler_lambda_policies[0]` |
 
-The shared API and Brainstore roles keep `ignore_changes = [name]`, so a stack with an older physical role name keeps it.
+The AIProxy invoke role exists only when `enable_ecs_api` is `false`. On a v7 stack that keeps customer traffic on Lambda, it moves with the rest. On a stack that already runs on ECS there is nothing to move.
+
+The shared API and Brainstore roles keep `ignore_changes = [name]`, so a stack with an older physical role name keeps it. The two Lambda attachments on the shared API role used to name the role with `basename` of its ARN. They now use the role's `name` attribute, which holds the same string.
 
 The gateway Terraform files also split into `security-groups.tf` and `cloudwatch.tf` inside `modules/gateway-ecs`. That's a file move only, and no addresses change.
 
@@ -63,6 +74,7 @@ The create runs while the role still exists, because the destroy of the new addr
 - The Brainstore deployment waiter can't start a rollout.
 - The shared API role, which API ECS tasks and the APIHandler and AIProxy Lambdas use, loses its S3, KMS and export permissions until its policies are attached again.
 - Running Brainstore instances lose access to their secrets, buckets and keys. Their instance profile and role are deleted, and the recreated role has a new unique ID, so the credentials they hold stop working. Plan on replacing the instances, because new ones can't start while the role or profile is missing.
+- The Lambda functions that run as a recreated role lose log and VPC access.
 
 A recreated role also breaks policies that you own. A policy that names one of these roles as a principal stores the role's unique ID when you save it, so it stops matching once the role has a new ID. That covers trust policies on roles in your accounts, such as the export roles you list in `s3_export_assume_role_arns`, and bucket and KMS key policies, including the ones on a bucket or key you supply yourself. The second apply doesn't touch them. You have to save each of them again.
 
@@ -74,7 +86,7 @@ Restoring a v7 state backup doesn't get you back either. The v8 apply creates th
 
 ## If you call a child module directly
 
-The database, Brainstore deployment, API ECS, gateway ECS and Brainstore EC2 modules no longer create the resources in the table above, and `services-common` no longer creates any IAM. The root module passes each role in to the module that uses it, and you must do the same if you call one of these modules yourself. `services-common` uses no role, so it takes none.
+The database, Brainstore deployment, API ECS, gateway ECS, services and Brainstore EC2 modules no longer create the resources in the table above, and `services-common` no longer creates any IAM. The root module passes each role in to the module that uses it, and you must do the same if you call one of these modules yourself. `services-common` uses no role, so it takes none.
 
 New required inputs, each taking the matching output of `modules/iam`:
 
@@ -84,6 +96,7 @@ New required inputs, each taking the matching output of `modules/iam`:
 | `brainstore-deployment` | `waiter_role_arn` |
 | `api-ecs` | `task_execution_role_arn` |
 | `gateway-ecs` | `task_execution_role_arn`, `task_role_arn` |
+| `services` | `automation_cron_role_arn`, `billing_cron_role_arn`, `catchup_etl_role_arn`, `migrate_database_role_arn`. Also `quarantine_pruner_role_arn`, `quarantine_warmup_role_arn` and `ai_proxy_invoke_role_arn`, which default to `null`. Set each when its feature is on. The APIHandler Lambda refuses to plan without `ai_proxy_invoke_role_arn` when `enable_ecs_api` is `false`. |
 | `brainstore-ec2` | `instance_profile_arn`, replacing `brainstore_iam_role_name`. The module no longer creates the instance profile or the Redis secret policy. |
 
 Removed inputs, which now belong to `modules/iam` or are gone:
@@ -93,6 +106,7 @@ Removed inputs, which now belong to `modules/iam` or are gone:
 | `database`, `brainstore-deployment`, `api-ecs`, `gateway-ecs` | Permissions boundary | `permissions_boundary_arn` |
 | `api-ecs`, `gateway-ecs` | KMS keys for secrets that a policy reads | `custom_ca_bundle_kms_key_arn`, `brainstore_license_key_kms_key_arn` |
 | `gateway-ecs` | Gateway policy settings | `bedrock_assume_role_arns`, `diagnostics_transcript_log_group_name` |
+| `services` | Permissions boundary | `permissions_boundary_arn` |
 | `services-common` | Permissions boundary | `permissions_boundary_arn` |
 | `services-common` | Role trust settings | `eks_cluster_arn`, `eks_namespace`, `enable_eks_pod_identity`, `enable_eks_irsa`, `enable_ecs`, `override_api_iam_role_trust_policy`, `override_brainstore_iam_role_trust_policy` |
 | `services-common` | Settings that add or change role policies | `api_ecs_enable_execute_command`, `enable_brainstore_ec2_ssm`, `diagnostics_transcript_log_group_name`, `service_additional_policy_arns`, `brainstore_additional_policy_arns`, `brainstore_enable_export`, `s3_export_assume_role_arns` |

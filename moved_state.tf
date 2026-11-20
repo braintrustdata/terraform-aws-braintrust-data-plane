@@ -619,3 +619,127 @@ moved {
   from = module.brainstore[0].aws_iam_role_policy.brainstore_redis_secret_access
   to   = module.iam.aws_iam_role_policy.brainstore_redis_secret_access[0]
 }
+
+# The Lambda function roles moved out of the services module, along with the
+# Lambda-path IAM: the APIHandler-Lambdas policy, its two attachments and the
+# AIProxy invoke role. The AIProxy and quarantine pruner resources already have
+# a count in modules/services, so their blocks keep the index.
+moved {
+  from = module.services[0].aws_iam_role.automation_cron_role
+  to   = module.iam.aws_iam_role.automation_cron[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.automation_cron_vpc_access
+  to   = module.iam.aws_iam_role_policy_attachment.automation_cron_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy.automation_cron_topic_map_report_read
+  to   = module.iam.aws_iam_role_policy.automation_cron_topic_map_report_read[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role.billing_cron
+  to   = module.iam.aws_iam_role.billing_cron[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.billing_cron_vpc_access
+  to   = module.iam.aws_iam_role_policy_attachment.billing_cron_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role.catchup_etl
+  to   = module.iam.aws_iam_role.catchup_etl[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.catchup_etl_vpc_access
+  to   = module.iam.aws_iam_role_policy_attachment.catchup_etl_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role.migrate_database
+  to   = module.iam.aws_iam_role.migrate_database[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.migrate_database_vpc_access
+  to   = module.iam.aws_iam_role_policy_attachment.migrate_database_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role.default_role
+  to   = module.iam.aws_iam_role.default[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.lambda_vpc_access
+  to   = module.iam.aws_iam_role_policy_attachment.default_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy.default_role_policy
+  to   = module.iam.aws_iam_role_policy.default[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role.quarantine_pruner_role[0]
+  to   = module.iam.aws_iam_role.quarantine_pruner[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.quarantine_pruner_vpc_access[0]
+  to   = module.iam.aws_iam_role_policy_attachment.quarantine_pruner_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy.quarantine_pruner_delete_versions[0]
+  to   = module.iam.aws_iam_role_policy.quarantine_pruner_delete_versions[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role.quarantine_warmup[0]
+  to   = module.iam.aws_iam_role.quarantine_warmup[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.quarantine_warmup_vpc_access[0]
+  to   = module.iam.aws_iam_role_policy_attachment.quarantine_warmup_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy.quarantine_warmup[0]
+  to   = module.iam.aws_iam_role_policy.quarantine_warmup[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.vpc_access
+  to   = module.iam.aws_iam_role_policy_attachment.api_handler_vpc_access[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_policy.api_handler_lambda_policies
+  to   = module.iam.aws_iam_policy.api_handler_lambda_policies[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy_attachment.api_handler_lambda_policies
+  to   = module.iam.aws_iam_role_policy_attachment.api_handler_lambda_policies[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role.ai_proxy_invoke_role[0]
+  to   = module.iam.aws_iam_role.ai_proxy_invoke[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policy.ai_proxy_invoke_policy[0]
+  to   = module.iam.aws_iam_role_policy.ai_proxy_invoke[0]
+}
+
+moved {
+  from = module.services[0].aws_iam_role_policies_exclusive.ai_proxy_invoke_role[0]
+  to   = module.iam.aws_iam_role_policies_exclusive.ai_proxy_invoke[0]
+}

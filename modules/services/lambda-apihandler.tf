@@ -81,7 +81,7 @@ locals {
     {
       AI_PROXY_FN_ARN      = one(aws_lambda_function.ai_proxy[*].arn)
       AI_PROXY_FN_URL      = one(aws_lambda_function_url.ai_proxy[*].function_url)
-      AI_PROXY_INVOKE_ROLE = one(aws_iam_role.ai_proxy_invoke_role[*].arn)
+      AI_PROXY_INVOKE_ROLE = var.ai_proxy_invoke_role_arn
       CATCHUP_ETL_ARN      = aws_lambda_function.catchup_etl.arn
       INSERT_LOGS2         = "true"
     },
@@ -108,6 +108,13 @@ resource "aws_lambda_function" "api_handler" {
 
   # Require the DB migrations to be run before the API handler is deployed
   depends_on = [aws_lambda_invocation.invoke_database_migration, terraform_data.brainstore_deployment]
+
+  lifecycle {
+    precondition {
+      condition     = var.enable_ecs_api || var.ai_proxy_invoke_role_arn != null
+      error_message = "The APIHandler Lambda needs ai_proxy_invoke_role_arn when enable_ecs_api is false. Pass the ai_proxy_invoke_role_arn output of modules/iam."
+    }
+  }
 
   function_name                  = local.api_handler_function_name
   s3_bucket                      = local.lambda_s3_bucket
@@ -175,50 +182,4 @@ resource "aws_lambda_alias" "api_handler_live" {
   name             = "live"
   function_name    = aws_lambda_function.api_handler[0].function_name
   function_version = aws_lambda_function.api_handler[0].version
-}
-
-resource "aws_iam_role" "ai_proxy_invoke_role" {
-  count = var.enable_ecs_api ? 0 : 1
-
-  name = "${var.deployment_name}-AIProxyInvokeRole"
-  assume_role_policy = jsonencode({ # nosemgrep
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          AWS = var.api_handler_role_arn
-        }
-      }
-    ]
-    Version = "2012-10-17"
-  })
-
-  permissions_boundary = var.permissions_boundary_arn
-
-  tags = local.iam_tags
-}
-
-resource "aws_iam_role_policy" "ai_proxy_invoke_policy" {
-  count = var.enable_ecs_api ? 0 : 1
-
-  name = "AIProxyInvokeRolePolicy"
-  role = aws_iam_role.ai_proxy_invoke_role[0].id
-  policy = jsonencode({ # nosemgrep
-    Statement = [
-      {
-        Action   = "lambda:InvokeFunction"
-        Effect   = "Allow"
-        Resource = [aws_lambda_function.ai_proxy[0].arn]
-      }
-    ]
-    Version = "2012-10-17"
-  })
-}
-
-resource "aws_iam_role_policies_exclusive" "ai_proxy_invoke_role" {
-  count = var.enable_ecs_api ? 0 : 1
-
-  role_name    = aws_iam_role.ai_proxy_invoke_role[0].name
-  policy_names = [aws_iam_role_policy.ai_proxy_invoke_policy[0].name]
 }

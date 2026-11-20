@@ -29,6 +29,11 @@ variables {
   lambda_responses_bucket_arn = "arn:aws:s3:::bt-test-responses"
   api_security_group_id       = "sg-0123456789abcdef0"
   api_handler_role_arn        = "arn:aws:iam::123456789012:role/bt-test-api-handler"
+  ai_proxy_invoke_role_arn    = "arn:aws:iam::123456789012:role/bt-test-AIProxyInvokeRole"
+  automation_cron_role_arn    = "arn:aws:iam::123456789012:role/bt-test-AutomationCronRole"
+  billing_cron_role_arn       = "arn:aws:iam::123456789012:role/bt-test-BillingCronRole"
+  catchup_etl_role_arn        = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
+  migrate_database_role_arn   = "arn:aws:iam::123456789012:role/bt-test-MigrateDatabaseFunctionRole"
   function_tools_secret_key   = "test-function-tools-secret"
   lambda_version_tag_override = "test-version"
 }

@@ -111,3 +111,63 @@ output "brainstore_instance_profile_arn" {
     aws_iam_role_policy.brainstore_redis_secret_access,
   ]
 }
+
+output "automation_cron_role_arn" {
+  description = "ARN of the AutomationCron execution role."
+  value       = one(aws_iam_role.automation_cron[*].arn)
+
+  # The function's VPC config needs the managed VPC policy before it is created.
+  depends_on = [
+    aws_iam_role_policy_attachment.automation_cron_vpc_access,
+    aws_iam_role_policy.automation_cron_topic_map_report_read,
+  ]
+}
+
+output "billing_cron_role_arn" {
+  description = "ARN of the BillingCron execution role."
+  value       = one(aws_iam_role.billing_cron[*].arn)
+
+  depends_on = [aws_iam_role_policy_attachment.billing_cron_vpc_access]
+}
+
+output "catchup_etl_role_arn" {
+  description = "ARN of the CatchupETL execution role."
+  value       = one(aws_iam_role.catchup_etl[*].arn)
+
+  depends_on = [aws_iam_role_policy_attachment.catchup_etl_vpc_access]
+}
+
+output "migrate_database_role_arn" {
+  description = "ARN of the database migration function's execution role."
+  value       = one(aws_iam_role.migrate_database[*].arn)
+
+  depends_on = [aws_iam_role_policy_attachment.migrate_database_vpc_access]
+}
+
+output "quarantine_pruner_role_arn" {
+  description = "ARN of the quarantine pruner's execution role. Null when the pruner is off."
+  value       = one(aws_iam_role.quarantine_pruner[*].arn)
+
+  # VPC ENI permissions must be attached before the function config is updated.
+  depends_on = [aws_iam_role_policy_attachment.quarantine_pruner_vpc_access]
+}
+
+output "quarantine_warmup_role_arn" {
+  description = "ARN of the quarantine warmup function's execution role. Null when quarantine is off."
+  value       = one(aws_iam_role.quarantine_warmup[*].arn)
+
+  # The function can't create quarantine functions without its policy.
+  depends_on = [
+    aws_iam_role_policy_attachment.quarantine_warmup_vpc_access,
+    aws_iam_role_policy.quarantine_warmup,
+  ]
+}
+
+output "ai_proxy_invoke_role_arn" {
+  description = "ARN of the role the APIHandler Lambda assumes to invoke AIProxy. Null when enable_ecs_api removes the Lambda path."
+  value       = one(aws_iam_role.ai_proxy_invoke[*].arn)
+
+  # The exclusive reconciler already waits for the invoke policy, so this waits
+  # for both.
+  depends_on = [aws_iam_role_policies_exclusive.ai_proxy_invoke]
+}

@@ -75,8 +75,6 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
-  # Marks IAM this module owns. Merged last so callers can't override it.
-  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
 
   default_fast_reader_query_sources = [
     "summaryPaginatedObjectViewer [realtime]",
@@ -120,5 +118,3 @@ data "aws_region" "current" {
     }
   }
 }
-
-data "aws_caller_identity" "current" {}

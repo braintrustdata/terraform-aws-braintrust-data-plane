@@ -47,9 +47,21 @@ variable "ai_gateway_enable_execute_command" {
   default     = false
 }
 
+variable "enable_ecs_api" {
+  type        = bool
+  description = "Send customer traffic to API ECS instead of the APIHandler and AIProxy Lambdas. The AIProxy invoke role exists only when this is false. Ignored when use_deployment_mode_external_eks is true."
+  default     = true
+}
+
 variable "enable_quarantine_vpc" {
   type        = bool
   description = "Whether the deployment has a quarantine VPC. Gates the quarantine roles and the APIHandler quarantine policy."
+  default     = false
+}
+
+variable "enable_quarantine_pruner" {
+  type        = bool
+  description = "Whether the quarantine pruner function is deployed. Gates its role."
   default     = false
 }
 
