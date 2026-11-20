@@ -73,7 +73,7 @@ variable "ephemeral_storage_gib" {
   default     = null
 
   validation {
-    condition     = var.ephemeral_storage_gib == null || (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
+    condition     = var.ephemeral_storage_gib == null ? true : (var.ephemeral_storage_gib >= 21 && var.ephemeral_storage_gib <= 200)
     error_message = "ephemeral_storage_gib must be between 21 and 200 when set."
   }
 }
@@ -87,7 +87,7 @@ variable "min_capacity" {
 variable "max_capacity" {
   type        = number
   description = "Maximum number of Loop runtime ECS tasks."
-  default     = 4
+  default     = 50
 
   validation {
     condition     = var.max_capacity >= var.min_capacity
@@ -114,6 +114,17 @@ variable "target_memory_utilization" {
   validation {
     condition     = var.target_memory_utilization > 0 && var.target_memory_utilization <= 100
     error_message = "target_memory_utilization must be between 1 and 100."
+  }
+}
+
+variable "target_conversation_utilization" {
+  type        = number
+  description = "Target average claimed conversation utilization percentage for Loop runtime ECS service autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.target_conversation_utilization > 0 && var.target_conversation_utilization <= 100
+    error_message = "target_conversation_utilization must be between 1 and 100."
   }
 }
 
@@ -167,6 +178,17 @@ variable "loop_runtime_http_listener_arn" {
   nullable    = true
 }
 
+variable "sandbox_egress_gateway_target_group_arn" {
+  type        = string
+  description = "Egress gateway target group for the runtime's port 4002."
+}
+
+variable "sandbox_egress_gateway_authorized_security_groups" {
+  type        = map(string)
+  description = "Security groups allowed to reach the tasks on port 4002."
+  default     = {}
+}
+
 # --- Sandbox seam (from loop-runtime-sandbox-* module) ---
 variable "sandbox_env_vars" {
   type        = map(string)
@@ -191,9 +213,14 @@ variable "redis_url_secret_arn" {
   description = "Secrets Manager ARN of the Redis connection URL (BRAINSTORE_XACT_MANAGER_URI / BRAINSTORE_REDIS_URI / locks)."
 }
 
+variable "redis_url_secret_version_id" {
+  type        = string
+  description = "Secrets Manager version id for the Redis URL secret. Pinned in ECS valueFrom so secret content changes create a new task definition revision."
+}
+
 variable "function_tools_secret_arn" {
   type        = string
-  description = "Secrets Manager ARN of the function-tools/service-token secret (SERVICE_TOKEN_SECRET_KEY)."
+  description = "Secrets Manager ARN of the function-tools/service-token secret (SERVICE_TOKEN_SECRET_KEY / FUNCTION_SECRET_KEY)."
 }
 
 variable "brainstore_s3_bucket_name" {
@@ -247,12 +274,28 @@ variable "brainstore_reader_url" {
 
 variable "ai_proxy_url" {
   type        = string
-  description = "AI proxy URL used by the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL)."
+  description = "Model proxy URL for the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL). Root module sets this to the private gateway /v1/proxy when enable_ai_gateway; otherwise hosted gateway or CloudFront API /v1/proxy."
 }
 
-variable "brainstore_license_key" {
+variable "brainstore_license_key_secret_arn" {
   type        = string
-  description = "Brainstore license key (plain env)."
+  description = "Secrets Manager secret ARN for the Brainstore license."
+
+  validation {
+    condition     = var.brainstore_license_key_secret_arn == null ? false : trimspace(var.brainstore_license_key_secret_arn) != ""
+    error_message = "Provide brainstore_license_key_secret_arn for the license."
+  }
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "License secret version ID. A version change forces a new task revision and service deployment."
+  default     = ""
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
   default     = null
 }
 
@@ -266,43 +309,6 @@ variable "monitoring_telemetry" {
   type        = string
   description = "Value for BRAINSTORE_CONTROL_PLANE_TELEMETRY."
   default     = "status,metrics,usage,traces,logs"
-}
-
-# --- Service-side SG ingress targets ---
-variable "database_security_group_id" {
-  type        = string
-  description = "Security group ID of Postgres; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "database_port" {
-  type        = number
-  description = "Postgres port."
-  default     = 5432
-}
-
-variable "redis_security_group_id" {
-  type        = string
-  description = "Security group ID of Redis; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "redis_port" {
-  type        = number
-  description = "Redis port."
-  default     = 6379
-}
-
-variable "brainstore_security_group_id" {
-  type        = string
-  description = "Security group ID of Brainstore instances; an ingress rule from the task SG is added when set."
-  default     = null
-}
-
-variable "brainstore_port" {
-  type        = number
-  description = "Brainstore service port."
-  default     = 4000
 }
 
 # --- Runtime config ---
@@ -341,7 +347,19 @@ variable "extra_env_vars" {
 
   validation {
     condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key."
+    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
+  }
+
+  validation {
+    condition = alltrue([
+      for key in [
+        "LOOP_RUNTIME_CAPACITY_METRIC_NAMESPACE",
+        "LOOP_RUNTIME_CAPACITY_METRIC_CLUSTER_NAME",
+        "LOOP_RUNTIME_CAPACITY_METRIC_SERVICE_NAME",
+        "LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS",
+      ] : !contains(keys(var.extra_env_vars), key)
+    ])
+    error_message = "Do not set LOOP_RUNTIME_CAPACITY_METRIC_* or LOOP_RUNTIME_DRAIN_TIMEOUT_SECONDS in extra_env_vars; these values are managed by the module."
   }
 }
 
@@ -355,6 +373,12 @@ variable "internal_observability_enabled" {
 variable "internal_observability_api_key_secret_arn" {
   type        = string
   description = "Secrets Manager secret ARN containing the internal observability API key."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Datadog secret version ID. A version change forces a new task revision and service deployment."
   default     = ""
 }
 
@@ -373,5 +397,27 @@ variable "internal_observability_env_name" {
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)
+  default     = {}
+}
+variable "diagnostics_transcript_log_group_name" {
+  description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null preserves existing logging and permissions; session enablement flags remain independent."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
+    error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
+  }
+}
+
+variable "additional_target_group_arns" {
+  type        = map(string)
+  description = "Additional target groups for the application port, keyed by load balancer name."
+  default     = {}
+}
+
+variable "authorized_security_groups" {
+  type        = map(string)
+  description = "Additional load balancer security groups that can access the application port."
   default     = {}
 }

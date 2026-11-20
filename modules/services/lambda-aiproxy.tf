@@ -4,6 +4,8 @@ locals {
   ai_proxy_original_handler   = "index.handler"
 }
 resource "aws_lambda_function" "ai_proxy" {
+  count = var.enable_ecs_api ? 0 : 1
+
   depends_on = [aws_lambda_invocation.invoke_database_migration]
 
   function_name                  = local.ai_proxy_function_name
@@ -37,6 +39,7 @@ resource "aws_lambda_function" "ai_proxy" {
       local.api_common_env_vars,
       local.api_fast_reader_env_vars,
       var.extra_env_vars.AIProxy,
+      var.gateway_url != null ? { GATEWAY_URL = var.gateway_url } : {},
       local.observability_enabled ? merge(local.datadog_env_vars, {
         DD_SERVICE        = local.ai_proxy_base_function_name
         DD_LAMBDA_HANDLER = local.ai_proxy_original_handler
@@ -57,7 +60,9 @@ resource "aws_lambda_function" "ai_proxy" {
 }
 
 resource "aws_lambda_function_url" "ai_proxy" {
-  function_name      = aws_lambda_function.ai_proxy.function_name
+  count = var.enable_ecs_api ? 0 : 1
+
+  function_name      = aws_lambda_function.ai_proxy[0].function_name
   authorization_type = "NONE"
   invoke_mode        = "RESPONSE_STREAM"
   cors {
@@ -67,6 +72,8 @@ resource "aws_lambda_function_url" "ai_proxy" {
     allow_headers = [
       "authorization",
       "content-type",
+      "traceparent",
+      "tracestate",
       "x-bt-org-name",
       "x-bt-project-id",
       "x-bt-auth-token",
@@ -98,13 +105,17 @@ resource "aws_lambda_function_url" "ai_proxy" {
   }
 }
 resource "aws_lambda_alias" "ai_proxy_live" {
+  count = var.enable_ecs_api ? 0 : 1
+
   name             = "live"
-  function_name    = aws_lambda_function.ai_proxy.function_name
-  function_version = aws_lambda_function.ai_proxy.version
+  function_name    = aws_lambda_function.ai_proxy[0].function_name
+  function_version = aws_lambda_function.ai_proxy[0].version
 }
 
 # Function URL auth model (by Nov 2026) requires both InvokeFunctionUrl and InvokeFunction
 resource "aws_lambda_permission" "ai_proxy" {
+  count = var.enable_ecs_api ? 0 : 1
+
   # authorization_type = "NONE" makes the AWS provider add public URL
   # permissions during aws_lambda_function_url creation. Lambda serializes
   # resource-policy updates, so wait for those writes before adding the
@@ -114,29 +125,33 @@ resource "aws_lambda_permission" "ai_proxy" {
   statement_id = "AllowFunctionURLInvoke"
   action       = "lambda:InvokeFunctionUrl"
 
-  function_name          = aws_lambda_function.ai_proxy.function_name
-  qualifier              = aws_lambda_alias.ai_proxy_live.name
+  function_name          = aws_lambda_function.ai_proxy[0].function_name
+  qualifier              = aws_lambda_alias.ai_proxy_live[0].name
   principal              = "*"
   function_url_auth_type = "NONE"
 }
 
 resource "aws_lambda_permission" "ai_proxy_invoke" {
+  count = var.enable_ecs_api ? 0 : 1
+
   # Keep the two module-managed AddPermission calls serialized as well.
   depends_on = [aws_lambda_permission.ai_proxy]
 
   statement_id = "AllowFunctionInvoke"
   action       = "lambda:InvokeFunction"
 
-  function_name            = aws_lambda_function.ai_proxy.function_name
-  qualifier                = aws_lambda_alias.ai_proxy_live.name
+  function_name            = aws_lambda_function.ai_proxy[0].function_name
+  qualifier                = aws_lambda_alias.ai_proxy_live[0].name
   principal                = "*"
   invoked_via_function_url = true
 }
 
 resource "aws_ssm_parameter" "ai_proxy_url" {
+  count = var.enable_ecs_api ? 0 : 1
+
   name        = "/braintrust/${var.deployment_name}/ai-proxy-url"
   type        = "String"
-  value       = aws_lambda_function_url.ai_proxy.function_url
+  value       = aws_lambda_function_url.ai_proxy[0].function_url
   description = "AIProxy Lambda URL for Brainstore"
 
   tags = local.common_tags

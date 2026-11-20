@@ -1,0 +1,249 @@
+# Verify disabled automation writers skip instance metadata and enabled pools
+# retain their cache sizing, distinct writer-loop configuration, and autoscaling.
+
+mock_provider "aws" {
+  source = "./tests/mocks/aws"
+
+  mock_resource "aws_lb" {
+    defaults = {
+      arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/bt-automation/1234567890123456"
+    }
+  }
+  mock_resource "aws_lb_target_group" {
+    defaults = {
+      arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/bt-automation/1234567890123456"
+    }
+  }
+  mock_resource "aws_iam_instance_profile" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:instance-profile/bt-automation"
+    }
+  }
+  mock_resource "aws_launch_template" {
+    defaults = { id = "lt-0123456789abcdef0" }
+  }
+}
+
+variables {
+  deployment_name                       = "bt-automation-writer"
+  license_key_secret_arn                = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  license_key_secret_version            = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+  kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+  vpc_id                                = "vpc-12345678"
+  private_subnet_ids                    = ["subnet-12345678", "subnet-23456789", "subnet-34567890"]
+  database_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-automation-writer-database"
+  database_host                         = "database.example.internal"
+  database_port                         = "5432"
+  redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-automation-writer-redis-url"
+  redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+  service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-automation-writer-service-token"
+  brainstore_s3_bucket_arn              = "arn:aws:s3:::bt-automation-writer-brainstore"
+  lambda_responses_s3_bucket_arn        = "arn:aws:s3:::bt-automation-writer-lambda-responses"
+  code_bundle_s3_bucket_arn             = "arn:aws:s3:::bt-automation-writer-code-bundles"
+  brainstore_iam_role_name              = "bt-automation-writer-brainstore"
+  brainstore_instance_security_group_id = "sg-12345678"
+  ai_proxy_url_ssm_parameter            = "/bt-automation-writer/ai-proxy-url"
+  automation_writer_instance_count      = 1
+}
+
+run "automation_writer_loop_config_is_rendered" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    fast_reader_instance_count = 1
+  }
+
+  assert {
+    condition = (
+      aws_launch_template.brainstore_writer[0].user_data != aws_launch_template.brainstore_automation_writer[0].user_data &&
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].desired_capacity == 1 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].health_check_type == aws_autoscaling_group.brainstore_writer[0].health_check_type &&
+      aws_autoscaling_group.brainstore_automation_writer[0].health_check_grace_period == aws_autoscaling_group.brainstore_writer[0].health_check_grace_period &&
+      aws_autoscaling_group.brainstore_automation_writer[0].min_elb_capacity == 1 &&
+      coalesce(aws_autoscaling_group.brainstore_automation_writer[0].wait_for_elb_capacity, 0) == 0
+    )
+    error_message = "AutomationWriter ASG must check minimum ELB readiness at creation without requiring exact capacity on scaled-out updates."
+  }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 1 &&
+      local.brainstore_automation_writer_cache_file_size == "712gb" &&
+      aws_launch_template.brainstore_automation_writer[0].instance_type == var.automation_writer_instance_type
+    )
+    error_message = "An enabled automation writer pool must look up its configured instance type and use 75% of its local storage for the cache."
+  }
+
+  assert {
+    condition = (
+      local.brainstore_writer_cache_file_size == "475gb" &&
+      local.brainstore_automation_writer_cache_file_size == "712gb"
+    )
+    error_message = "Writers must receive a cache size of 50% of their local storage and automation writers 75%, rounded down to whole GB."
+  }
+
+  assert {
+    condition = (
+      local.brainstore_cache_file_size == "855gb" &&
+      local.brainstore_fast_reader_cache_file_size == "855gb"
+    )
+    error_message = "Both reader pools must receive a cache size of 90% of their local storage."
+  }
+}
+
+run "automation_writer_nlb_routes_to_its_asg" {
+  command = apply
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  assert {
+    condition = (
+      aws_lb.brainstore_automation_writer[0].internal &&
+      aws_lb.brainstore_automation_writer[0].enable_cross_zone_load_balancing &&
+      aws_lb.brainstore_automation_writer[0].subnets == toset(var.private_subnet_ids) &&
+      aws_lb.brainstore_automation_writer[0].security_groups == toset([aws_security_group.brainstore_elb.id]) &&
+      aws_lb_listener.brainstore_automation_writer[0].load_balancer_arn == aws_lb.brainstore_automation_writer[0].arn &&
+      aws_lb_listener.brainstore_automation_writer[0].default_action[0].target_group_arn == aws_lb_target_group.brainstore_automation_writer[0].arn &&
+      aws_autoscaling_group.brainstore_automation_writer[0].target_group_arns == toset([aws_lb_target_group.brainstore_automation_writer[0].arn]) &&
+      aws_lb_target_group.brainstore_automation_writer[0].health_check == aws_lb_target_group.brainstore_writer[0].health_check &&
+      aws_lb_target_group.brainstore_automation_writer[0].deregistration_delay == aws_lb_target_group.brainstore_writer[0].deregistration_delay &&
+      output.automation_writer_dns_name == aws_lb.brainstore_automation_writer[0].dns_name &&
+      output.monitoring_targets["automation-writer"] == {
+        asg_name      = aws_autoscaling_group.brainstore_automation_writer[0].name
+        lb_arn_suffix = aws_lb.brainstore_automation_writer[0].arn_suffix
+        tg_arn_suffix = aws_lb_target_group.brainstore_automation_writer[0].arn_suffix
+      }
+    )
+    error_message = "Automation queries must reach the dedicated ASG through its private NLB and listener."
+  }
+
+  assert {
+    condition = alltrue([
+      for policy in [
+        aws_autoscaling_policy.brainstore_automation_writer_cpu_target[0],
+        aws_autoscaling_policy.brainstore_automation_writer_memory_target[0]
+      ] :
+      policy.autoscaling_group_name == aws_autoscaling_group.brainstore_automation_writer[0].name &&
+      policy.policy_type == "TargetTrackingScaling" &&
+      policy.estimated_instance_warmup == 900 &&
+      policy.target_tracking_configuration[0].target_value == 50 &&
+      !policy.target_tracking_configuration[0].disable_scale_in
+    ])
+    error_message = "Both policies must track the automation pool at 50%, allow scale-in, and use a 900-second warmup."
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_policy.brainstore_automation_writer_cpu_target[0].target_tracking_configuration[0].predefined_metric_specification[0].predefined_metric_type == "ASGAverageCPUUtilization" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].namespace == "CWAgent" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].metric_name == "MemoryUtilization" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].statistic == "Average" &&
+      aws_autoscaling_policy.brainstore_automation_writer_memory_target[0].target_tracking_configuration[0].customized_metric_specification[0].metric_dimension == tolist([{
+        name  = "AutoScalingGroupName"
+        value = aws_autoscaling_group.brainstore_automation_writer[0].name
+      }])
+    )
+    error_message = "CPU must use the ASG average; memory must match the agent's ASG-only CWAgent/MemoryUtilization series."
+  }
+}
+
+run "automation_writer_equal_bounds_are_valid" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_min_capacity   = 2
+    automation_writer_max_capacity   = 2
+  }
+
+  assert {
+    condition = (
+      aws_autoscaling_group.brainstore_automation_writer[0].min_size == 2 &&
+      aws_autoscaling_group.brainstore_automation_writer[0].max_size == 2
+    )
+    error_message = "Equal minimum and maximum must allow a fixed-size automation writer pool."
+  }
+}
+
+run "disabled_automation_writer_skips_instance_metadata" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    automation_writer_instance_count = 0
+    automation_writer_instance_type  = "unused-instance-type"
+  }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 0 &&
+      local.brainstore_automation_writer_cache_file_size == null &&
+      length(aws_launch_template.brainstore_automation_writer) == 0 &&
+      length(aws_autoscaling_group.brainstore_automation_writer) == 0 &&
+      length(aws_autoscaling_policy.brainstore_automation_writer_cpu_target) == 0 &&
+      length(aws_autoscaling_policy.brainstore_automation_writer_memory_target) == 0 &&
+      length(aws_lb.brainstore_automation_writer) == 0 &&
+      length(aws_lb_target_group.brainstore_automation_writer) == 0 &&
+      length(aws_lb_listener.brainstore_automation_writer) == 0 &&
+      output.automation_writer_dns_name == null &&
+      !contains(keys(output.monitoring_targets), "automation-writer")
+    )
+    error_message = "A disabled automation writer pool must not look up its instance type, calculate its cache, or create nodes."
+  }
+}
+
+run "automation_writer_preserves_cache_override" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    cache_file_size_automation_writer = "100gb"
+  }
+
+  assert {
+    condition = (
+      length(data.aws_ec2_instance_type.brainstore_automation_writer) == 1 &&
+      local.brainstore_automation_writer_cache_file_size == "100gb"
+    )
+    error_message = "An enabled automation writer pool must preserve an explicit cache size while still validating its instance storage."
+  }
+}
+
+run "automation_writer_requires_local_storage_with_cache_override" {
+  command = plan
+
+  module {
+    source = "./modules/brainstore-ec2"
+  }
+
+  variables {
+    cache_file_size_automation_writer = "100gb"
+  }
+
+  override_data {
+    target = data.aws_ec2_instance_type.brainstore_automation_writer[0]
+    values = {
+      total_instance_storage = null
+    }
+  }
+
+  expect_failures = [data.aws_ec2_instance_type.brainstore_automation_writer[0]]
+}

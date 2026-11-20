@@ -36,17 +36,17 @@ resource "aws_instance" "bastion" {
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2
+    http_put_response_hop_limit = 1
   }
 
   user_data = templatefile("${path.module}/bastion-user-data.sh", {
-    deployment_name      = var.deployment_name
-    region               = data.aws_region.current.region
-    database_host        = var.database_host
-    database_secret_arn  = var.database_secret_arn
-    redis_host           = var.redis_host
-    redis_port           = var.redis_port
-    lambda_function_arns = var.lambda_function_arns
+    deployment_name             = var.deployment_name
+    region                      = data.aws_region.current.region
+    database_host               = var.database_host
+    database_secret_arn         = var.database_secret_arn
+    redis_url_secret_arn        = var.redis_url_secret_arn
+    redis_url_secret_version_id = var.redis_url_secret_version_id
+    lambda_function_arns        = var.lambda_function_arns
   })
   user_data_replace_on_change = true
 
@@ -130,7 +130,7 @@ resource "aws_iam_role" "bastion" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_instance_profile" "bastion" {
@@ -138,7 +138,7 @@ resource "aws_iam_instance_profile" "bastion" {
 
   name = "${var.deployment_name}-bastion"
   role = aws_iam_role.bastion[0].name
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy" "bastion" {
@@ -195,7 +195,8 @@ resource "aws_iam_role_policy" "bastion" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [
-          var.database_secret_arn
+          var.database_secret_arn,
+          var.redis_url_secret_arn,
         ]
       },
       {

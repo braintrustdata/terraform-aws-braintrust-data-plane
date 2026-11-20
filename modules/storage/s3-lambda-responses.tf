@@ -94,6 +94,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "lambda_responses_
 }
 
 resource "aws_s3_bucket_public_access_block" "lambda_responses_bucket" {
+  count = var.manage_s3_public_access_block ? 1 : 0
+
   bucket = aws_s3_bucket.lambda_responses_bucket.id
 
   block_public_acls       = true

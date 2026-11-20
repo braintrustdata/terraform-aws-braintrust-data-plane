@@ -2,14 +2,26 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
 
-  container_name           = "gateway"
-  container_port           = 8080
-  observability_enabled    = var.internal_observability_enabled
-  gateway_version_tag      = element(reverse(split(":", var.container_image)), 0)
-  unsafe_url_request_mode  = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
-  url_security_dns_servers = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
-  url_security_allow_cidrs = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
+  nofile_ulimits = [{
+    name      = "nofile"
+    softLimit = 1048576
+    hardLimit = 1048576
+  }]
+
+  container_name        = "gateway"
+  container_port        = 8080
+  observability_enabled = var.internal_observability_enabled
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
+  observability_api_key_value_from = "${var.internal_observability_api_key_secret_arn}:::${var.internal_observability_api_key_secret_version}"
+  gateway_version_tag              = element(reverse(split(":", var.container_image)), 0)
+  unsafe_url_request_mode          = var.unsafe_url_request_mode == null ? "" : trimspace(var.unsafe_url_request_mode)
+  url_security_dns_servers         = var.url_security_dns_servers == null ? "" : trimspace(var.url_security_dns_servers)
+  url_security_allow_cidrs         = var.url_security_allow_cidrs == null ? "" : trimspace(var.url_security_allow_cidrs)
   url_security_env_vars = merge(
     local.unsafe_url_request_mode != "" ? {
       BRAINTRUST_UNSAFE_URL_REQUEST_MODE = local.unsafe_url_request_mode
@@ -21,17 +33,27 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
-  redis_scheme = var.use_redis_replication_group ? "rediss" : "redis"
+  # ECS secrets valueFrom: arn:aws:secretsmanager:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key and version-stage with a version-id pins the full secret string.
+  redis_url_secret_value_from = "${var.redis_url_secret_arn}:::${var.redis_url_secret_version_id}"
+  # Skip default Redis URL secrets when the caller overrides that env via extra_env_vars;
+  # otherwise ECS secrets would clobber the override.
+  gateway_redis_cache_secret_env = [
+    for name in ["COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"] : {
+      name      = name
+      valueFrom = local.redis_url_secret_value_from
+    } if !contains(keys(var.extra_env_vars), name)
+  ]
   base_env_vars = merge({
-    GATEWAY_ENV        = "production"
-    GATEWAY_REGION     = data.aws_region.current.region
-    BRAINTRUST_APP_URL = var.braintrust_app_url
-    BRAINTRUST_API_URL = var.braintrust_api_url
+    ORG_NAME                    = var.org_name
+    ALLOWED_ORG_IDS             = var.allowed_org_ids
+    GATEWAY_ENV                 = "production"
+    GATEWAY_REGION              = data.aws_region.current.region
+    BRAINTRUST_APP_URL          = var.braintrust_app_url
+    OVERRIDE_BRAINTRUST_API_URL = var.braintrust_api_url
 
-    COMPLETIONS_CACHE_REDIS_URL = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
-    AUTH_CACHE_REDIS_URL        = "${local.redis_scheme}://${var.redis_host}:${var.redis_port}"
-    GATEWAY_JSON_LOGS           = "true"
-    OTLP_HTTP_ENDPOINT          = local.observability_enabled ? "http://localhost:4318" : "https://www.braintrust.dev/api/pulse/otel"
+    GATEWAY_JSON_LOGS  = "true"
+    OTLP_HTTP_ENDPOINT = local.observability_enabled ? "http://localhost:4318" : "https://pulse.braintrust.dev/otel"
     },
     local.url_security_env_vars,
     local.observability_enabled ? {
@@ -42,15 +64,20 @@ locals {
       DD_TRACE_DISABLED_PLUGINS = var.internal_observability_trace_disabled_plugins
     } : {},
   )
-  plain_license_env_var = var.brainstore_license_key == null ? {} : {
-    BRAINSTORE_LICENSE_KEY = var.brainstore_license_key
-  }
-  merged_env_vars = merge(local.base_env_vars, local.plain_license_env_var, var.extra_env_vars)
+  merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
+  # Pin the secret version in valueFrom so rotating the key revises the task definition and rolls the service.
+  # Format: arn:...:secret:name:json-key:version-stage:version-id
+  # Empty json-key = full secret string; empty stage pins by version-id only.
+  gateway_secrets = [{
+    name      = "BRAINSTORE_LICENSE_KEY"
+    valueFrom = "${var.brainstore_license_key_secret_arn}:::${var.brainstore_license_key_secret_version}"
+  }]
 
   gateway_container_definition = {
     name      = local.container_name
     image     = var.container_image
     essential = true
+    ulimits   = local.nofile_ulimits
     portMappings = [
       {
         containerPort = local.container_port
@@ -64,12 +91,14 @@ locals {
         value = local.merged_env_vars[key]
       }
     ]
-    secrets = var.custom_ca_bundle_secret_arn == null ? [] : [
-      {
+    secrets = concat(
+      local.gateway_secrets,
+      var.custom_ca_bundle_secret_arn == null ? [] : [{
         name      = "BRAINTRUST_CUSTOM_CA_BUNDLE"
         valueFrom = var.custom_ca_bundle_secret_arn
-      }
-    ]
+      }],
+      local.gateway_redis_cache_secret_env,
+    )
     dependsOn = [
       for dep in [
         {
@@ -140,7 +169,7 @@ locals {
         secrets = [
           {
             name      = "DD_API_KEY"
-            valueFrom = var.internal_observability_api_key_secret_arn
+            valueFrom = local.observability_api_key_value_from
           }
         ]
         healthCheck = {
@@ -216,6 +245,18 @@ resource "aws_security_group_rule" "task_ingress_from_alb" {
   security_group_id        = aws_security_group.task.id
 }
 
+resource "aws_vpc_security_group_ingress_rule" "task_ingress_from_authorized_security_groups" {
+  for_each = var.authorized_security_groups
+
+  security_group_id            = aws_security_group.task.id
+  referenced_security_group_id = each.value
+  from_port                    = local.container_port
+  to_port                      = local.container_port
+  ip_protocol                  = "tcp"
+  description                  = "Allow inbound traffic from ${each.key}."
+  tags                         = local.common_tags
+}
+
 resource "aws_security_group_rule" "task_egress_all" {
   type              = "egress"
   from_port         = 0
@@ -243,7 +284,7 @@ resource "aws_iam_role" "task_execution" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-gateway-task-exec"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 resource "aws_iam_role_policy_attachment" "task_execution_default" {
@@ -287,10 +328,8 @@ resource "aws_iam_role_policy" "task_execution_custom_ca_bundle_secret" {
   })
 }
 
-resource "aws_iam_role_policy" "task_execution_observability_secrets" {
-  count = local.observability_enabled ? 1 : 0
-
-  name = "${var.deployment_name}-gateway-task-exec-observability-secrets"
+resource "aws_iam_role_policy" "task_execution_secrets" {
+  name = "${var.deployment_name}-gateway-task-exec-secrets"
   role = aws_iam_role.task_execution.id
 
   policy = jsonencode({
@@ -301,7 +340,40 @@ resource "aws_iam_role_policy" "task_execution_observability_secrets" {
         Action = [
           "secretsmanager:GetSecretValue",
         ]
-        Resource = var.internal_observability_api_key_secret_arn
+        Resource = compact([
+          local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
+          var.brainstore_license_key_secret_arn,
+        ])
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+        ]
+        Resource = concat([var.kms_key_arn], var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn])
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "task_execution_redis_secret" {
+  name = "${var.deployment_name}-gateway-task-exec-redis-secret"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+        ]
+        Resource = var.redis_url_secret_arn
       },
       {
         Effect = "Allow"
@@ -325,7 +397,7 @@ resource "aws_iam_role" "task" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-gateway-task"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 resource "aws_iam_role_policy" "customer_assume_role" {
@@ -365,6 +437,9 @@ resource "aws_ecs_task_definition" "gateway" {
   }
 
   container_definitions = jsonencode(concat([local.gateway_container_definition], local.observability_sidecars))
+
+  # Ensure GetSecretValue is granted before a revision that references secrets is registered.
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
 
   tags = merge({
     Name = "${var.deployment_name}-gateway"
@@ -410,13 +485,27 @@ resource "aws_ecs_service" "gateway" {
     assign_public_ip = false
   }
 
+  dynamic "load_balancer" {
+    for_each = var.additional_target_group_arns
+
+    content {
+      target_group_arn = load_balancer.value
+      container_name   = local.container_name
+      container_port   = local.container_port
+    }
+  }
+
   load_balancer {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
     container_port   = local.container_port
   }
 
-  depends_on = [terraform_data.gateway_http_listener]
+  depends_on = [
+    terraform_data.gateway_http_listener,
+    aws_vpc_security_group_ingress_rule.task_ingress_from_authorized_security_groups,
+    aws_iam_role_policy.task_execution_secrets,
+  ]
 
   lifecycle {
     ignore_changes = [desired_count]

@@ -2,9 +2,10 @@
 
 For the latest guidance, always refer to the official Braintrust documentation:
 
-- [Self-hosting overview](https://www.braintrust.dev/docs/admin/self-hosting)
-- [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
-- [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
+- [Self-hosting overview](https://docs.braintrust.dev/admin/self-hosting)
+- [Protected Diagnostics transcripts](docs/diagnostics-transcripts.md)
+- [Upgrade your deployment](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine)
+- [Data Plane 2.0 upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/v2)
 
 For Braintrust-managed deployments, review the
 [AWS BYOC access model](managed-byoc/README.md).
@@ -15,9 +16,20 @@ This module is used to create the VPC, Databases, Lambdas, and associated resour
 
 Always upgrade **one major version at a time**. For example, go from v4 → v5 → v6. Do not jump from v4 directly to v6.
 
-Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
+Each major version may include required configuration changes or a multi-step apply sequence. Follow the migration guide for the version you are upgrading to before applying, and review the [routine upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine) for the general process of updating the module version and applying changes.
 
 - [Migrating from v5 to v6](MIGRATION_V6.md)
+- [Migrating from v6 to v7](MIGRATION_V7.md)
+
+### Brainstore and API upgrades
+
+A normal `terraform apply` waits for the reader and, when enabled, fast-reader Brainstore fleets before updating the API ECS services and the API, catchup ETL, automation, and billing Lambda functions. Their launch-template updates keep the existing ASGs and use a deployment Lambda to start and wait for instance refreshes. The writer and AutomationWriter pools use their own asynchronous ASG instance refreshes and do not block API updates.
+
+For the gated reader fleets, the helper checks the exact numbered launch-template version, ASG and target health, and termination of old instances. Healthy instances from the previous version do not satisfy it. Refreshes can temporarily double capacity to preserve availability. API deployments remain blocked if a gated refresh fails, health checks fail, or the final attempt reaches its 14-minute waiting budget. Terraform automatically invokes the controller a second time during the same apply after the first waiting budget expires, resuming the active refresh with another 14-minute budget. The final invocation also rechecks readiness when the first attempt completes. Fix any reported failure and rerun `terraform apply`; the gate rechecks AWS state and resumes an active refresh. Each retry gets a fresh waiting budget and inspects live AWS state.
+
+The module installs the deployment Lambda from a regional Braintrust artifact using the active API release tag: the ECS API version when `enable_ecs_api` is true, or the API Lambda version otherwise. The corresponding `braintrust_api_version_override` or `lambda_version_tag_override` is respected. Customers need only Terraform and its providers; no local scripts, build tools, CloudFormation stack, or additional service credentials are required. The Terraform identity needs `lambda:InvokeFunction` on the deployment function, in addition to its existing resource-management permissions. Lambda logs include fleet progress and refresh IDs under `/braintrust/<deployment>/<deployment>-BrainstoreDeployment`.
+
+This ordering applies only to the module-managed reader and fast-reader Brainstore EC2 fleets. External EKS deployments retain their own rollout process. Bootstrap resources, including database migrations and the AI Proxy Lambda, remain available before Brainstore starts. Existing API versions must remain compatible with the new Brainstore version during the rollout. Manual ASG replacements sharing an existing target group are rejected while old targets remain; they are outside the in-place launch-template rollout path.
 
 ## How to use this module
 
@@ -25,11 +37,80 @@ To use this module, **copy the [`examples/braintrust-data-plane`](examples/brain
 
 The default configuration is a large production-sized deployment. Please consider that when testing and adjust the configuration to use smaller sized resources.
 
-If you're using a brand new AWS account for your Braintrust data plane you will need to run ./scripts/create-service-linked-roles.sh once to ensure IAM service-linked roles are created.
+Before the first deployment in a new AWS account, run `./scripts/create-service-linked-roles.sh` with credentials for that account. When creating a KMS key, the module reads `AWSServiceRoleForAutoScaling` during planning and fails if it is missing; the Terraform identity needs `iam:GetRole` for that role. The role remains account-owned and is not created or deleted by this module. Supplying an existing `kms_key_arn` skips this module-managed KMS check; the key owner remains responsible for its Auto Scaling permissions.
+
+## Brainstore license secret
+
+The module uses one license secret for Brainstore EC2, API ECS, Gateway ECS, and Loop runtime.
+A supplied `existing_brainstore_license_key_secret` object takes precedence over `brainstore_license_key`.
+The caller owns that secret and its value.
+
+```hcl
+existing_brainstore_license_key_secret = {
+  arn         = "arn:aws:secretsmanager:us-east-1:123456789012:secret:brainstore-license-AbCdEf"
+  kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+}
+```
+
+The secret must contain the license as a plain string and have one `AWSCURRENT` version.
+The secret must use the deployment region.
+`kms_key_arn` is optional when the secret uses the default Secrets Manager key.
+
+This example assumes that the version resource uses the secret ARN as its `secret_id`:
+
+```hcl
+existing_brainstore_license_key_secret = {
+  arn = aws_secretsmanager_secret_version.license.secret_id
+}
+```
+
+Terraform reads version metadata with `secretsmanager:ListSecretVersionIds`. It does not read the existing license value.
+
+Runtime roles receive access to the secret and the supplied KMS key.
+For cross-account secrets, the caller controls the secret resource policy and KMS key policy.
+
+Without a secret object, the module stores `brainstore_license_key` in a new secret under the deployment KMS key.
+This path retains the supplied value in Terraform state.
+
+ECS uses native secret injection. Brainstore fetches the value at startup.
+With a caller-owned secret, this module keeps the value outside Terraform state.
+
+A Terraform apply after a license rotation updates the pinned version in each consumer.
+The version change triggers ECS deployments and Brainstore instance refreshes.
+A secret rotation alone does not update tasks or instances before that apply.
+
+External EKS creates no license secret because Helm owns license delivery.
 
 ## Module Configuration
 
 All module input variables and outputs are documented inline in the module's Terraform files (see `variables.tf`, `outputs.tf`, and the submodules for details).
+
+### Private data plane
+
+Private mode serves the data plane through an internal API ALB instead of CloudFront which is public.
+See the [private data plane example](examples/braintrust-data-plane-private/) for requirements, configuration, and deployment steps.
+We still recommend a public dataplane for ease of deployment however a private one is fully supported as long as all prerequisites are met. 
+
+### Automation writers
+
+Set `brainstore_automation_writer_min_capacity` and `brainstore_automation_writer_max_capacity` to size the dedicated automation writer pool. Both must be positive integers. Enabled pools use a private NLB; otherwise, automation queries use the normal writer endpoint.
+
+Set both capacity inputs or neither. When both are unset, the minimum uses `brainstore_automation_writer_instance_count` (default 0), and the maximum uses twice that count. A legacy count of 0 disables the pool when both capacity inputs are unset.
+
+`brainstore_automation_writer_target_cpu_utilization` and `brainstore_automation_writer_target_memory_utilization` both default to 50%, with a 900-second warmup. Both targets can be overridden. Either policy can scale out; both must agree to scale in. Autoscaling owns desired capacity after creation.
+
+#### Upgrade impact
+
+Existing enabled automation writer pools begin autoscaling on upgrade without configuration changes. For example, a legacy `brainstore_automation_writer_instance_count = 2` allows the pool to grow from 2 to 4 instances, potentially increasing EC2 costs. A legacy count of 0 remains disabled when both capacity inputs are unset.
+
+To retain a fixed-size pool of 2 instances, set both bounds in your upgrade configuration:
+
+```hcl
+brainstore_automation_writer_min_capacity = 2
+brainstore_automation_writer_max_capacity = 2
+```
+
+Upgrading an enabled pool also triggers a rolling instance refresh to publish ASG-level memory metrics. Equal bounds prevent autoscaling growth, but the existing rolling refresh preferences can still temporarily double capacity to preserve availability, incurring additional EC2 costs during the rollout.
 
 ### Organization access configuration
 
@@ -41,6 +122,30 @@ allowed_org_ids  = "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000
 ```
 
 `allowed_org_ids` is a comma-separated list of Braintrust Org IDs, not org names. Do not include spaces. You can find an org ID by hovering over the org name in the Braintrust UI. If you keep `braintrust_org_name` set to a specific org name for compatibility, that org is allowed by name today; include its Braintrust Org ID in `allowed_org_ids` for forward compatibility. `braintrust_org_name` remains supported for compatibility, but Braintrust plans to move toward ID-based configuration.
+
+### Elasticache for Redis resources
+
+This module supports both `aws_elasticache_cluster` (legacy) and `aws_elasticache_replication_group` resource for deploying Elasticache for Redis with enhanced security features. The default deploys `aws_elasticache_cluster` to prevent accidental resource replacement on existing deployments. Stronger security defaults are available with `aws_elasticache_replication_group`.
+
+> [!IMPORTANT]
+> Module v6.1.0 introduced support for `aws_elasticache_replication_group`, but it did not enable encryption at rest and used the default KMS key for encryption. If you deployed v6.1.0 **and** enabled `aws_elasticache_replication_group`, the replication group will be destroyed and replaced with a new one.
+
+Encryption in transit and at rest, as well as auth token support, are available by setting `use_redis_replication_group` to `true` in the module invocation. **This is safe for new deployments.** Setting `use_redis_replication_group` to `true` on an existing deployment will replace the `aws_elasticache_cluster` with an `aws_elasticache_replication_group`. This should be considered a downtime event.
+
+#### Redis auth token management
+
+When `use_redis_replication_group` is enabled, Terraform generates a random auth token, configures the replication group with `auth_token_update_strategy = SET`, and stores a fully-rendered `rediss://` URL (including the token) in Secrets Manager. Clients (API ECS, gateway, Loop, Brainstore, and the support bastion) load that URL from Secrets Manager. Lambdas that cannot use Secrets Manager still receive an inline authenticated URL.
+
+**Token rotation is not supported yet.** Leave the generated token in place. The auth-token secret uses `ignore_changes` on `secret_string` (same anti-churn pattern as RDS password secrets), so Terraform will not push a new token on apply. Do not hand-edit the auth-token or Redis URL secrets and expect apply to rotate ElastiCache safely — that path can rewrite clients back to a stale token. Coordinated rotation (ElastiCache `ModifyReplicationGroup` + secret updates + client rollouts) will come in a later module change.
+
+#### Upgrading to this release
+
+Expect apply impact on **every** stack, not only replication-group users. Ship this as a **minor** module bump and put rollback notes in the GitHub release notes:
+
+- New ECS task definitions for API, ingest, background, gateway, and Loop (pinned Redis URL secret version) → rolling service deployments
+- Brainstore launch-template user-data change → autoscaling instance refresh
+- Support bastion replacement when `enable_braintrust_support_shell_access` is enabled (`user_data_replace_on_change = true`)
+- Existing replication-group stacks that predate at-rest encryption / customer-managed KMS: Redis **replace** (`at_rest_encryption_enabled` and `kms_key_id` are ForceNew). Plan for Redis downtime. A downgrade can replace Redis again.
 
 ### BTQL audit logging
 
@@ -55,6 +160,112 @@ btql_audit_logs_best_effort_org_ids = ["00000000-0000-4000-8000-000000000001"]
 ```
 
 Strict mode writes audit rows before returning query results. Best-effort mode writes audit rows asynchronously and logs failures.
+
+### S3 Block Public Access ownership
+
+By default, the module manages all four Block Public Access settings on its
+Brainstore, code bundle, Lambda response, and optional VPC flow-log buckets.
+
+For a **new deployment** where your security controls prohibit these writes, set:
+
+```hcl
+manage_s3_public_access_block = false
+```
+
+This skips the bucket-level configuration resources; it does not set any
+protection to `false`. [AWS enables Block Public Access on new buckets by default](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
+The customer owns maintaining these protections, preferably through protected
+account or organization controls. An SCP denying configuration changes does not
+itself enable Block Public Access. Bucket policies, encryption, versioning, and
+other module-managed settings remain unchanged. Caller-provided buckets remain
+outside this module's ownership.
+
+Leave the default enabled for existing deployments. Changing it from `true` to
+`false` plans deletion of the existing bucket-level configurations and requires
+the same permission the SCP may prohibit; it is not a supported ownership
+handoff for an existing deployment.
+
+## Private AI gateway cutover
+
+New deployments use ECS ingress and a private AI gateway by default.
+Existing deployments require the [v7 migration procedure](MIGRATION_V7.md).
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `enable_ecs_api` | `true` | Selects ECS instead of Lambda ingress. |
+| `create_ai_gateway` | `true` | Creates the gateway ALB and ECS service. |
+| `enable_ai_gateway` | `true` | Selects the gateway for API services and Loop. Requires `create_ai_gateway`. |
+| `use_private_ai_gateway_origin` | `true` | Routes CloudFront `/v1/proxy` traffic through a VPC origin. |
+
+In public mode, `enable_ecs_api = false` retains Lambda ingress with the private gateway.
+All three gateway inputs must be `false` to disable the gateway and its CloudFront origin.
+Private data planes require ECS and the gateway.
+
+An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
+Terraform waits for gateway ECS steady state before caller updates.
+The startup check does not test authenticated inference across the complete request path.
+The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
+
+## Loop runtime
+
+Loop runtime is optional. Enable it with this input:
+
+```hcl
+enable_loop_runtime = true
+```
+
+Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serves the proxy on port 4002.
+The module selects the runtime image and matching MicroVM guest artifact by default.
+Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
+
+When `enable_ai_gateway` is true, Loop sends model requests to the private AI gateway.
+Otherwise, Loop uses the hosted gateway or the CloudFront API proxy.
+
+Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
+The endpoint policy allows connections only to MicroVMs in the deployment account.
+The public MicroVM endpoint remains available because AWS does not support its removal.
+
+### Sandbox isolation
+
+The module creates a dedicated sandbox VPC with no outbound route.
+Sandboxes reach the Loop runtime proxy through a PrivateLink endpoint on port 4002; the proxy authorizes each request, and DNS Firewall allows only the endpoint hostname.
+`loop_runtime_sandbox_egress_mode` is deprecated and only accepts `"restricted"`.
+The original three connector subnets keep their availability zones and CIDRs during upgrades; three additional subnets place the endpoint in the main VPC's availability zones.
+The security group declares TCP/UDP port 53 egress to `169.254.169.253` and the VPC's primary IPv4 CIDR address plus two.
+[AmazonProvidedDNS traffic is not filtered by ordinary VPC security groups](https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html); the managed DNS firewall restricts permitted names.
+
+For a module-managed sandbox VPC, `loop_runtime_sandbox_vpc_cidr` defaults to
+`"10.255.0.0/16"`. You can choose an IPv4 CIDR from `/16` through `/21`, for example:
+
+```hcl
+loop_runtime_sandbox_vpc_cidr = "10.255.0.0/21"
+```
+
+The module creates six `/24` subnets at offsets 1 through 6 within that CIDR:
+three connector subnets followed by three egress gateway endpoint subnets.
+The default preserves the existing VPC and subnet CIDRs. Changing the CIDR on an
+existing deployment replaces the sandbox VPC and subnets and interrupts sandbox
+connectivity. This input is ignored when supplying an existing sandbox VPC.
+
+You can supply a dedicated sandbox VPC with these inputs:
+
+```hcl
+loop_runtime_sandbox_existing_vpc_id                  = "vpc-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_1_id     = "subnet-0123456789abcdef0"
+loop_runtime_sandbox_existing_private_subnet_2_id     = "subnet-0123456789abcdef1"
+loop_runtime_sandbox_existing_private_subnet_3_id     = "subnet-0123456789abcdef2"
+loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true
+```
+
+The module verifies that each subnet belongs to the supplied VPC.
+It creates the sandbox security group and the egress gateway endpoint there.
+At least one supplied subnet must share an availability zone with the main VPC's private subnets.
+With `loop_runtime_sandbox_manage_existing_vpc_dns_firewall = true`, the module allows the created endpoint's hostname and blocks all other names in the supplied VPC during the same apply.
+These restrictions apply to the entire VPC; use a dedicated sandbox VPC.
+The flag defaults to `false`, leaving DNS policy to the caller; port 53 resolver allowances are declared in both cases.
+
+Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
+The caller controls routes and, when DNS Firewall management is disabled, must restrict DNS to `loop_runtime_sandbox_egress_gateway_dns_name` before using the sandboxes.
 
 ## Useful scripts
 
@@ -88,7 +299,7 @@ Required for new AWS accounts to ensure IAM service-linked roles are created.
 
 ### VPCs
 
-This module creates two VPCs by default:
+This module creates two VPCs by default, three if Loop is enabled:
 
 - `main` VPC: This is the main VPC that contains the Braintrust services.
 - `quarantine` VPC: This is a "quarantine" VPC where user defined functions run in an isolated environment. The Braintrust API server spawns lambda functions in this VPC.
@@ -100,13 +311,23 @@ The module creates these AWS service endpoints in VPCs it manages:
 | Service | Type | Created when | Private DNS |
 | --- | --- | --- | --- |
 | S3 | Gateway | Always, in both main and quarantine VPCs when created; attached to their private route tables | Not applicable |
-| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) | Enabled |
+| SSM (`ssm`, `ssmmessages`, `ec2messages`) | Interface | Main VPC with `enable_brainstore_ec2_ssm = true` (default `false`) and `create_ssm_vpc_endpoints = true` (default `true`) | Enabled |
 | Secrets Manager | Interface | Main VPC with `create_secrets_manager_vpc_endpoint = true` (default `true`) | Enabled |
 
 SSM and Secrets Manager endpoints span all three private subnets and share a
 security group allowing HTTPS (TCP 443) from the VPC CIDR. Private DNS lets
 existing SDK and CLI calls use the endpoints without URL overrides. Interface
 endpoint charges apply.
+
+To keep Brainstore SSM access enabled while supplying your own SSM connectivity,
+set `enable_brainstore_ec2_ssm = true` and `create_ssm_vpc_endpoints = false`.
+This opts out of all three module-managed SSM endpoints without changing the
+Brainstore SSM IAM permissions. Provide reachable customer-managed endpoints
+(including DNS and security groups) or outbound HTTPS access to SSM. Disabling
+this option on an existing deployment removes its module-managed SSM endpoints.
+The shared endpoint security group remains while Secrets Manager needs it.
+S3, Secrets Manager, and quarantine endpoints are unaffected. The option has no
+effect when `create_vpc = false`.
 
 Secrets Manager is enabled by default independently of SSM. Upgrading a deployment
 with a module-managed main VPC adds the endpoint and redirects regional Secrets
@@ -117,10 +338,52 @@ The module does not create these AWS service endpoints inside supplied existing
 VPCs. With `create_vpc = false`, it can still create an S3 endpoint in a separate,
 module-managed quarantine VPC.
 
-Separately, `use_private_gateway_quarantine_proxy` can create an interface endpoint
-in quarantine for the private gateway when both VPCs are module-managed and the
-private gateway is enabled for this path. It uses its endpoint-specific DNS name
-with Private DNS disabled; the global gateway origin skips this PrivateLink setup.
+### Quarantine LLM calls through PrivateLink
+
+PrivateLink connects quarantine LLM requests to the gateway through an internal NLB and interface endpoint.
+NLB and interface endpoint charges apply. Other outbound connectivity remains necessary.
+
+| Deployment mode | PrivateLink selection |
+| --- | --- |
+| Public | `use_private_gateway_quarantine_proxy = true`, with quarantine enabled and the global gateway origin disabled. |
+| Private | `create_quarantine_api_access = true`, with quarantine enabled. |
+
+The [private example](examples/braintrust-data-plane-private/README.md#existing-vpcs) lists existing VPC inputs and network requirements.
+
+In public mode, verify that the fallback is reachable before you disable PrivateLink.
+Before a downgrade without existing VPC support, disable PrivateLink on a compatible version in public mode.
+
+### Existing ElastiCache subnet group
+
+By default, the module creates an ElastiCache subnet group from the three main
+VPC private subnets. To reuse a customer-managed group, set:
+
+```hcl
+existing_elasticache_subnet_group_name = "my-redis-subnet-group"
+```
+
+The group must already exist in the deployment region and belong to the data
+plane VPC. The module uses its name without creating or managing the group or
+its subnet membership. This works with both the legacy Redis cluster and
+`use_redis_replication_group = true`.
+
+Leaving `existing_elasticache_subnet_group_name` unset preserves the managed subnet
+group and Redis, moving only the group's Terraform address to
+`module.redis.aws_elasticache_subnet_group.main[0]`. Downgrading the module on
+Terraform 1.10 or newer automatically moves the address back without replacing
+the group.
+
+Setting a different subnet-group name replaces the Redis cluster or replication
+group and causes downtime; review the plan before applying. Terraform updates the
+Redis URL secret with the replacement endpoint. ECS (API, gateway, Loop) pins the
+secret version in task `valueFrom`, and Brainstore/bastion pin it in user data, so
+the new version forces task-definition updates and instance refresh. Lambdas that
+embed `redis_host` update during the apply.
+
+Switching to an external group also removes the old module-managed subnet group.
+Do not set this input to the module's own group name to transfer ownership: that
+would schedule the still-used group for deletion. Keeping the existing managed
+group requires leaving this input unset.
 
 ### Tagging and Naming
 
@@ -139,6 +402,10 @@ provider "aws" {
 ```
 
 The `deployment_name` variable is also used to prefix the names of the resources created by the module wherever possible. It will also be applied as a tag named `BraintrustDeploymentName` to all resources created by the module.
+
+#### IAM ownership tag
+
+Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. We use it to tell module-managed IAM apart from IAM that you create yourself. The module reserves the key, so it rejects `BraintrustIAMOwner` in `custom_tags` at plan time in any letter case. Don't change the tag by hand. See [Migrating to v7](MIGRATION_V7.md#v730-iam-ownership-tag) for the upgrade steps.
 
 ### CloudFront Access Logging
 
@@ -241,33 +508,8 @@ For example, `braintrust/brainstore/<account>/<region>/<bucket>/2026/08/12/...`.
 
 ### Using an Existing VPC
 
-The module supports using an existing VPC instead of creating a new dedicated one for the Braintrust services. This is useful when you want to integrate Braintrust into your existing network infrastructure.
-
-The passed in VPC must have the following resources:
-
-- At least 3 private subnets in different availability zones
-- At least 1 public subnet
-- Internet gateway and NAT gateway with proper route tables configured for private subnets
-
-Important note: The module will still create and manage security groups for the services.
-
-To use an existing VPC, set `create_vpc = false` and provide the required VPC details:
-
-```hcl
-module "braintrust-data-plane" {
-  source = "github.com/braintrustdata/terraform-braintrust-data-plane"
-
-  # ... your existing configuration ...
-
-  # Use existing VPC
-  create_vpc = false
-  existing_vpc_id                        = "vpc-xxxxxxxxx"
-  existing_private_subnet_1_id           = "subnet-xxxxxxxxx"
-  existing_private_subnet_2_id           = "subnet-yyyyyyyyy"
-  existing_private_subnet_3_id           = "subnet-zzzzzzzzz"
-  existing_public_subnet_1_id            = "subnet-aaaaaaaaa"
-}
-```
+Both public and private modes support existing main and quarantine VPCs, including mixed configurations.
+The [existing VPC section](examples/braintrust-data-plane-private/README.md#existing-vpcs) lists inputs, subnet requirements, and customer responsibilities.
 
 ## Development Setup
 

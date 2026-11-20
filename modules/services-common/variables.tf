@@ -41,6 +41,18 @@ variable "brainstore_custom_ca_bundle_kms_key_arn" {
   default     = null
 }
 
+variable "brainstore_license_key_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key. Empty when unused."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the Datadog API key. Empty when unused."
+  default     = ""
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
@@ -77,6 +89,12 @@ variable "enable_ecs" {
   default     = false
 }
 
+variable "api_ecs_enable_execute_command" {
+  type        = bool
+  description = "Whether API ECS Exec is enabled. Grants opt-in transcript delivery only when ECS and a transcript destination are configured."
+  default     = false
+}
+
 variable "code_bundle_s3_bucket_arn" {
   type        = string
   description = "The ARN of the code bundle S3 bucket"
@@ -97,6 +115,18 @@ variable "attachment_s3_bucket_kms_key_arn" {
   type        = string
   description = "The ARN of the KMS key used to encrypt the caller-provided attachment S3 bucket. When set, the API role is granted KMS permissions on this key. Null when the bucket uses SSE-S3 or no attachment bucket is configured."
   default     = null
+}
+
+variable "external_attachment_s3_bucket_arns" {
+  type        = list(string)
+  description = "ARNs of caller-owned S3 buckets that traces link to as external attachments. When non-empty, the API role is granted s3:GetObject on their objects."
+  default     = []
+}
+
+variable "external_attachment_s3_bucket_kms_key_arns" {
+  type        = list(string)
+  description = "ARNs of the KMS keys that encrypt the external attachment buckets. When non-empty, the API role is granted kms:Decrypt on them through S3."
+  default     = []
 }
 
 variable "service_additional_policy_arns" {
@@ -173,4 +203,20 @@ variable "quarantine_vpc_id" {
     condition     = var.enable_quarantine_vpc ? var.quarantine_vpc_id != null : true
     error_message = "quarantine_vpc_id is required when enable_quarantine_vpc is true."
   }
+}
+variable "diagnostics_transcript_log_group_name" {
+  description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null preserves existing logging and permissions; session enablement flags remain independent."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.diagnostics_transcript_log_group_name == null ? true : can(regex("^[A-Za-z0-9_./#-]{1,512}$", var.diagnostics_transcript_log_group_name))
+    error_message = "diagnostics_transcript_log_group_name must be a nonempty exact CloudWatch log group name, without wildcards."
+  }
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  description = "Customer-managed KMS key ARN for the existing license secret."
+  default     = null
 }

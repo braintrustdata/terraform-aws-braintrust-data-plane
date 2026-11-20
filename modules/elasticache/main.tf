@@ -12,14 +12,18 @@ locals {
     null
   )
   replication_group_endpoint = try(
-    "rediss://${aws_elasticache_replication_group.main[0].primary_endpoint_address}:6379",
+    "rediss://:${local.redis_auth_token}@${aws_elasticache_replication_group.main[0].primary_endpoint_address}:${aws_elasticache_replication_group.main[0].port}",
     null
   )
 
-  redis_url = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
+  redis_auth_token              = local.create_redis_replication_group ? aws_secretsmanager_secret_version.auth_token[0].secret_string : null
+  redis_url                     = local.create_legacy_redis_cluster ? local.legacy_redis_endpoint : local.replication_group_endpoint
+  elasticache_subnet_group_name = var.existing_elasticache_subnet_group_name == null ? aws_elasticache_subnet_group.main[0].name : var.existing_elasticache_subnet_group_name
 }
 
 resource "aws_elasticache_subnet_group" "main" {
+  count = var.existing_elasticache_subnet_group_name == null ? 1 : 0
+
   name        = "${var.deployment_name}-elasticache-subnet-group"
   description = "Subnet group for Braintrust elasticache"
   subnet_ids  = var.subnet_ids
@@ -34,7 +38,7 @@ resource "aws_elasticache_cluster" "main" {
   node_type          = var.redis_instance_type
   num_cache_nodes    = 1
   engine_version     = var.redis_version
-  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  subnet_group_name  = local.elasticache_subnet_group_name
   security_group_ids = local.elasticache_security_group_ids
   apply_immediately  = var.apply_immediately
   tags               = local.common_tags
@@ -54,11 +58,48 @@ resource "aws_elasticache_replication_group" "main" {
   num_cache_clusters = 1
   port               = 6379
 
-  subnet_group_name  = aws_elasticache_subnet_group.main.name
+  subnet_group_name  = local.elasticache_subnet_group_name
   security_group_ids = local.elasticache_security_group_ids
 
+  at_rest_encryption_enabled = true
   transit_encryption_enabled = true
   transit_encryption_mode    = "required"
+  kms_key_id                 = var.kms_key_arn
+  auth_token                 = local.redis_auth_token
+  auth_token_update_strategy = "SET"
+
+  tags = local.common_tags
+}
+
+data "aws_secretsmanager_random_password" "auth_token" {
+  count = local.create_redis_replication_group ? 1 : 0
+
+  password_length     = 32
+  exclude_characters  = "\"'@/\\\\"
+  exclude_punctuation = true
+}
+
+resource "aws_secretsmanager_secret_version" "auth_token" {
+  count = local.create_redis_replication_group ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.auth_token[0].id
+  secret_string = data.aws_secretsmanager_random_password.auth_token[0].random_password
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+resource "aws_secretsmanager_secret" "auth_token" {
+  count = local.create_redis_replication_group ? 1 : 0
+
+  name_prefix = "${var.deployment_name}/RedisAuthToken-"
+  description = "Auth token for the Redis Elasticache replication group"
+  kms_key_id  = var.kms_key_arn
+
+  lifecycle {
+    ignore_changes = [name, name_prefix]
+  }
 
   tags = local.common_tags
 }
@@ -87,6 +128,20 @@ resource "aws_security_group" "elasticache" {
 
 resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_ingress_from_authorized_security_groups" {
   for_each = length(var.custom_security_group_ids) == 0 ? var.authorized_security_groups : {}
+
+  from_port                    = 6379
+  to_port                      = 6379
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow TCP/6379 (Redis) inbound to Elasticache from ${each.key}."
+
+  security_group_id = aws_security_group.elasticache[0].id
+  tags              = local.common_tags
+}
+
+# Baseline clients must not wait for the Loop task security group to exist.
+resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_ingress_from_loop_runtime_security_groups" {
+  for_each = length(var.custom_security_group_ids) == 0 ? var.loop_runtime_security_groups : {}
 
   from_port                    = 6379
   to_port                      = 6379

@@ -3,19 +3,30 @@ variable "deployment_name" {
   description = "The name of the deployment"
 }
 
+variable "legacy_filesystem_tuning" {
+  type        = bool
+  description = "Preserve legacy ext4 formatting, mount options, and kernel settings. Set to false to enable XFS and tuned writeback and reclaim settings for Brainstore EC2 nodes."
+  default     = true
+}
+
 variable "instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore reader nodes.  Recommended Graviton instance type with 16GB of memory and a local SSD for cache data."
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
-variable "license_key" {
+variable "license_key_secret_arn" {
   type        = string
-  description = "The license key for the Brainstore"
+  description = "ARN of the Secrets Manager secret containing the Brainstore license key."
   validation {
-    condition     = var.license_key != null && length(var.license_key) > 0
-    error_message = "The license key cannot be empty."
+    condition     = var.license_key_secret_arn != null && length(var.license_key_secret_arn) > 0
+    error_message = "The license key secret ARN cannot be empty."
   }
+}
+
+variable "license_key_secret_version" {
+  type        = string
+  description = "Version ID of the license key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
 }
 
 variable "instance_count" {
@@ -58,6 +69,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop runtime security groups authorized to reach the Brainstore ELB. Kept separate so baseline ingress does not wait for Loop startup."
+  default     = {}
+}
+
 variable "authorized_security_groups_ssh" {
   type        = map(string)
   description = "Map of security group names to their IDs that are authorized to access Brainstore instances via SSH. Format: { name = <security_group_id> }"
@@ -85,19 +102,14 @@ variable "database_port" {
   description = "The port of the database"
 }
 
-variable "use_redis_replication_group" {
-  type        = bool
-  description = "Sets BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI with the appropriate scheme (rediss:// for replication group, redis:// for legacy cluster)"
+variable "redis_url_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL. Fetched at boot to set BRAINSTORE_REDIS_URI and BRAINSTORE_XACT_MANAGER_URI."
 }
 
-variable "redis_host" {
+variable "redis_url_secret_version_id" {
   type        = string
-  description = "The hostname of the Redis instance"
-}
-
-variable "redis_port" {
-  type        = string
-  description = "The port of the Redis instance"
+  description = "Secrets Manager version id for the Redis URL secret. Passed into user data so secret content changes force a launch-template update and instance refresh."
 }
 
 variable "extra_env_vars" {
@@ -121,7 +133,7 @@ variable "writer_instance_count" {
 variable "writer_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore writer nodes"
-  default     = "c8gd.8xlarge"
+  default     = "m8gd.8xlarge"
 }
 
 variable "monitoring_telemetry" {
@@ -148,9 +160,15 @@ variable "monitoring_telemetry" {
   }
 }
 
-variable "internal_observability_api_key" {
+variable "internal_observability_api_key_secret_arn" {
   type        = string
-  description = "Support for internal observability agent. Do not set this unless instructed by support."
+  description = "Secret ARN for the Datadog API key. internal_observability_enabled controls the Datadog agent."
+  default     = ""
+}
+
+variable "internal_observability_api_key_secret_version" {
+  type        = string
+  description = "Version ID of the observability API key secret. Baked into user_data so rotating the key forces a rolling instance refresh."
   default     = ""
 }
 
@@ -174,6 +192,12 @@ variable "service_token_secret_arn" {
 variable "custom_ca_bundle_secret_arn" {
   type        = string
   description = "Optional ARN of the secret containing a PEM-encoded custom CA bundle."
+  default     = null
+}
+
+variable "braintrust_api_url" {
+  type        = string
+  description = "Internal API URL for Brainstore callbacks. Null leaves BRAINTRUST_API_URL unset unless supplied through extra_env_vars."
   default     = null
 }
 
@@ -227,7 +251,90 @@ variable "cache_file_size_reader" {
 
 variable "cache_file_size_writer" {
   type        = string
-  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 90% of the ephemeral storage size."
+  description = "Optional. Override the cache file size for writer nodes (e.g., '100gb'). If not set, automatically calculates 50% of the ephemeral storage size."
+  default     = null
+}
+
+variable "automation_writer_instance_count" {
+  type        = number
+  description = "Legacy automation writer minimum. Used when automation_writer_min_capacity is unset."
+  default     = 0
+
+  validation {
+    condition     = var.automation_writer_instance_count >= 0 && floor(var.automation_writer_instance_count) == var.automation_writer_instance_count
+    error_message = "automation_writer_instance_count must be a non-negative integer."
+  }
+}
+
+variable "automation_writer_min_capacity" {
+  type        = number
+  description = "Minimum automation writer count (at least 1). Set with automation_writer_max_capacity, or omit both to use automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = var.automation_writer_min_capacity == null ? true : (var.automation_writer_min_capacity >= 1 && floor(var.automation_writer_min_capacity) == var.automation_writer_min_capacity)
+    error_message = "automation_writer_min_capacity must be a positive integer."
+  }
+}
+
+variable "automation_writer_max_capacity" {
+  type        = number
+  description = "Maximum automation writer count (at least 1). Set with automation_writer_min_capacity, or omit both to use twice automation_writer_instance_count."
+  default     = null
+
+  validation {
+    condition     = (var.automation_writer_min_capacity == null) == (var.automation_writer_max_capacity == null)
+    error_message = "automation_writer_min_capacity and automation_writer_max_capacity must both be set or both be null."
+  }
+
+  validation {
+    condition     = var.automation_writer_max_capacity == null ? true : (var.automation_writer_max_capacity >= 1 && floor(var.automation_writer_max_capacity) == var.automation_writer_max_capacity)
+    error_message = "automation_writer_max_capacity must be a positive integer."
+  }
+
+  validation {
+    condition     = var.automation_writer_max_capacity == null ? true : var.automation_writer_max_capacity >= coalesce(var.automation_writer_min_capacity, var.automation_writer_instance_count)
+    error_message = "automation_writer_max_capacity must be greater than or equal to the effective automation writer minimum capacity."
+  }
+}
+
+variable "automation_writer_target_cpu_utilization" {
+  type        = number
+  description = "Target average CPU utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.automation_writer_target_cpu_utilization >= 1 && var.automation_writer_target_cpu_utilization <= 100
+    error_message = "automation_writer_target_cpu_utilization must be between 1 and 100."
+  }
+}
+
+variable "automation_writer_target_memory_utilization" {
+  type        = number
+  description = "Target average memory utilization percentage for dedicated Brainstore automation writer autoscaling."
+  default     = 50
+
+  validation {
+    condition     = var.automation_writer_target_memory_utilization >= 1 && var.automation_writer_target_memory_utilization <= 100
+    error_message = "automation_writer_target_memory_utilization must be between 1 and 100."
+  }
+}
+
+variable "automation_writer_instance_type" {
+  type        = string
+  description = "The instance type to use for the Brainstore automation writer nodes"
+  default     = "m8gd.8xlarge"
+}
+
+variable "extra_env_vars_automation_writer" {
+  type        = map(string)
+  description = "Extra environment variables to set for Brainstore automation writer nodes if enabled"
+  default     = {}
+}
+
+variable "cache_file_size_automation_writer" {
+  type        = string
+  description = "Optional. Override the cache file size for automation writer nodes (e.g., '100gb'). If not set, automatically calculates 75% of the ephemeral storage size."
   default     = null
 }
 
@@ -240,7 +347,7 @@ variable "fast_reader_instance_count" {
 variable "fast_reader_instance_type" {
   type        = string
   description = "The instance type to use for the Brainstore fast reader nodes"
-  default     = "c8gd.4xlarge"
+  default     = "m8gd.4xlarge"
 }
 
 variable "extra_env_vars_fast_reader" {
@@ -265,14 +372,14 @@ variable "skip_pg_for_brainstore_objects" {
   }
 }
 
-variable "brainstore_enable_export" {
-  type        = bool
-  description = "If true, sets BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED=true on Brainstore writer nodes."
-  default     = false
-}
-
 variable "locks_s3_path" {
   type        = string
   description = "S3 path prefix under the Brainstore bucket for BRAINSTORE_LOCKS_URI (the path part only, not the bucket)."
   default     = "/locks"
+}
+
+variable "internal_observability_enabled" {
+  type        = bool
+  description = "Enable internal observability with a value known at plan time."
+  default     = false
 }

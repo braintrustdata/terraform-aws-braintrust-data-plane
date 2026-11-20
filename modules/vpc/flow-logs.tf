@@ -99,7 +99,7 @@ resource "aws_iam_role" "flow_log" {
   assume_role_policy   = data.aws_iam_policy_document.flow_log_assume_role[0].json
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 data "aws_iam_policy_document" "flow_log" {
@@ -189,7 +189,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "flow_log" {
 }
 
 resource "aws_s3_bucket_public_access_block" "flow_log" {
-  count = local.create_flow_log_bucket ? 1 : 0
+  count = local.create_flow_log_bucket && var.manage_s3_public_access_block ? 1 : 0
 
   bucket = aws_s3_bucket.flow_log[0].id
 

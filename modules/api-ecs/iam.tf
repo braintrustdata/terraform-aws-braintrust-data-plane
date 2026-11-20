@@ -15,7 +15,7 @@ resource "aws_iam_role" "task_execution" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-api-ecs-task-exec"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 resource "aws_iam_role_policy_attachment" "task_execution_default" {
@@ -43,6 +43,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           ],
           var.custom_ca_bundle_secret_arn == null ? [] : [var.custom_ca_bundle_secret_arn],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
+          [var.brainstore_license_key_secret_arn],
         )
       },
       {
@@ -53,6 +54,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Resource = concat(
           [var.kms_key_arn],
           var.custom_ca_bundle_kms_key_arn == null ? [] : [var.custom_ca_bundle_kms_key_arn],
+          var.brainstore_license_key_kms_key_arn == null ? [] : [var.brainstore_license_key_kms_key_arn],
         )
         Condition = {
           StringEquals = {

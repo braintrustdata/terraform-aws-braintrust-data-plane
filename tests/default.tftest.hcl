@@ -39,8 +39,18 @@ run "default_plans" {
   }
 
   assert {
+    condition     = local.enable_ecs_api && module.services[0].api_handler_arn == null && module.ingress[0].api_gateway_name == null
+    error_message = "A new stack that sets nothing must send customer traffic to the API ECS load balancer."
+  }
+
+  assert {
     condition     = length(module.brainstore) == 1
     error_message = "default mode should create the brainstore module"
+  }
+
+  assert {
+    condition     = length(module.brainstore_deployment) == 1 && toset([for fleet in module.brainstore[0].deployment_fleets : fleet.role]) == toset(["reader", "fast-reader"])
+    error_message = "The default rollout gate must include only the reader and fast-reader fleets."
   }
 
   assert {
@@ -51,5 +61,28 @@ run "default_plans" {
   assert {
     condition     = module.quarantine_vpc[0].flow_log_id == null
     error_message = "quarantine VPC Flow Logs should be disabled by default"
+  }
+}
+
+run "reader_only_plans" {
+  command = plan
+  variables {
+    brainstore_writer_instance_count      = 0
+    brainstore_fast_reader_instance_count = 0
+  }
+  assert {
+    condition     = length(module.brainstore[0].deployment_fleets) == 1 && module.brainstore[0].deployment_fleets[0].role == "reader"
+    error_message = "A disabled fast-reader fleet must leave only reader in the rollout request."
+  }
+}
+
+run "writer_without_fast_reader_plans" {
+  command = plan
+  variables {
+    brainstore_fast_reader_instance_count = 0
+  }
+  assert {
+    condition     = length(module.brainstore[0].deployment_fleets) == 1 && module.brainstore[0].deployment_fleets[0].role == "reader"
+    error_message = "An enabled writer without fast readers must not be included in the rollout gate."
   }
 }

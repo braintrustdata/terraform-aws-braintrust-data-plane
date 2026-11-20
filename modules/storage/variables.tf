@@ -50,6 +50,13 @@ variable "s3_lambda_responses_additional_allowed_origins" {
   default     = []
 }
 
+variable "manage_s3_public_access_block" {
+  description = "Manage all four Block Public Access settings on module-created buckets. Set false only for new deployments with protection managed outside this module; disabling it later deletes existing managed configurations."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "enable_s3_bucket_abac" {
   description = "Enable attribute-based access control (ABAC) on S3 buckets managed by this module."
   type        = bool

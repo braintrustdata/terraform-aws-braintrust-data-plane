@@ -76,9 +76,18 @@ Verify in the UI that the ping to each endpoint is successful.
 
 Brainstore nodes require **local NVMe/ephemeral storage** for caching. The instance user_data script will fail if no NVMe device is found, and the module validates this at plan time.
 
-Compatible instance families include: `c8gd`, `c5d`, `m5d`, `i3`, `i4i`.
+Compatible Graviton families with local NVMe storage include:
 
-Generic families without local storage (`t3`, `m5`, `c5`) will **not** work.
+- Graviton4: `m8gd` (the module default), `c8gd`, `r8gd`.
+- Graviton3: `m7gd`, `c7gd`, `r7gd`.
+
+See AWS's [Graviton4 NVMe instance announcement](https://aws.amazon.com/about-aws/whats-new/2025/04/amazon-ec2-c8gd-m8gd-r8gd-instances/) and [Graviton3 NVMe instance announcement](https://aws.amazon.com/about-aws/whats-new/2023/07/amazon-ec2-c7gd-m7gd-r7gd-instances/) for family details. Availability varies by AWS Region and Availability Zone.
+
+Compatibility for Graviton5 instances is being validated.
+
+Other compatible families include `c5d`, `m5d`, `i3`, and `i4i`.
+
+Instance families without local storage (`m8g`, `c8g`, `r8g`, `m7g`, `c7g`, `r7g`, `t3`, `m5`, `c5`) will **not** work.
 
 ## Tearing down
 

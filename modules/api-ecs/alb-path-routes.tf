@@ -31,6 +31,11 @@ locals {
     { path = "/attachment", method = "POST", priority = 120, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/attachment/status", method = "POST", priority = 130, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/logs3/overflow", method = "POST", priority = 140, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/logs2", method = "POST", priority = 150, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/logs", method = "POST", priority = 160, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/v1/insert", method = "POST", priority = 170, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/v1/*/*/insert", method = "POST", priority = 180, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
+    { path = "/v1/*/*/feedback", method = "POST", priority = 190, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
 
     # braintrust-api-background
     { path = "/v1/eval", method = "POST", priority = 200, target_group = aws_lb_target_group.braintrust_api_background.arn },
@@ -38,6 +43,8 @@ locals {
     { path = "/function/eval", method = "POST", priority = 220, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/sandbox", method = "POST", priority = 230, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/use", method = "POST", priority = 240, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/function/invoke", method = "POST", priority = 243, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/v1/function/*/invoke", method = "POST", priority = 246, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/invoke-async-batch", method = "POST", priority = 250, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/insert-functions", method = "POST", priority = 260, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/automation/logs/trigger", method = "POST", priority = 270, target_group = aws_lb_target_group.braintrust_api_background.arn },
@@ -51,7 +58,7 @@ locals {
     "${try(route.method, "ANY")}:${route.path}" => merge(
       { method = null },
       route,
-    )
+    ) if !var.enable_private_dataplane || !contains(["/v1/proxy/chat/completions", "/v1/proxy/responses"], route.path)
   }
 }
 
@@ -85,4 +92,114 @@ resource "aws_lb_listener_rule" "alb_path_routes" {
       values = [each.value.path]
     }
   }
+}
+
+resource "aws_lb_listener_rule" "alb_internal_path_routes" {
+  for_each = var.enable_private_dataplane ? local.alb_path_listener_rules : {}
+
+  listener_arn = aws_lb_listener.api_ecs_internal[0].arn
+  priority     = each.value.priority
+
+  action {
+    type             = "forward"
+    target_group_arn = each.value.target_group
+  }
+
+  dynamic "condition" {
+    for_each = each.value.method != null ? [each.value.method] : []
+
+    content {
+      http_request_method {
+        values = [condition.value]
+      }
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = [each.value.path]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_gateway" {
+  count = var.enable_private_dataplane ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_http.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_gateway[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/v1/proxy", "/v1/proxy/*"]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_loop_runtime" {
+  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_http.arn
+  priority     = 20
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_loop_runtime[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/loop/runtime", "/loop/runtime/*"]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_internal_gateway" {
+  count = var.enable_private_dataplane ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_internal[0].arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_gateway[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/v1/proxy", "/v1/proxy/*"]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "private_internal_loop_runtime" {
+  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+
+  listener_arn = aws_lb_listener.api_ecs_internal[0].arn
+  priority     = 20
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.private_loop_runtime[0].arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/loop/runtime", "/loop/runtime/*"]
+    }
+  }
+
+  tags = local.common_tags
 }

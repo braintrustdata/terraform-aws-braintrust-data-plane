@@ -27,5 +27,16 @@ output "redis_security_group_id" {
 
 output "redis_url_secret_arn" {
   value       = aws_secretsmanager_secret.redis_url.arn
-  description = "ARN of the secret containing the Redis URL"
+  description = "ARN of the secret containing the fully-rendered Redis URL (rediss:// scheme and auth token when a replication group is used). Safe for IAM and GetSecretValue. Callers that need the value to exist should also reference redis_url_secret_version_id."
+}
+
+output "redis_url_secret_version_id" {
+  value       = aws_secretsmanager_secret_version.redis_url.version_id
+  description = "Secrets Manager version id for the Redis URL secret. Pin ECS secrets valueFrom and Brainstore/bastion fetches to this so secret content changes force rollouts."
+}
+
+output "redis_auth_token" {
+  value       = local.redis_auth_token
+  sensitive   = true
+  description = "Redis auth token, or null when using the legacy cluster. Used to configure Lambdas that must render the URL inline."
 }

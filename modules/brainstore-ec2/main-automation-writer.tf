@@ -1,0 +1,245 @@
+resource "aws_launch_template" "brainstore_automation_writer" {
+  count                  = local.has_automation_writer_nodes ? 1 : 0
+  name                   = "${var.deployment_name}-brainstore-automation-writer"
+  image_id               = data.aws_ami.ubuntu_24_04.id
+  instance_type          = var.automation_writer_instance_type
+  key_name               = var.instance_key_pair_name
+  update_default_version = true
+
+  iam_instance_profile {
+    arn = aws_iam_instance_profile.brainstore.arn
+  }
+
+  vpc_security_group_ids = [var.brainstore_instance_security_group_id]
+
+  block_device_mappings {
+    device_name = "/dev/sda1"
+    ebs {
+      volume_size           = 200
+      volume_type           = "gp3"
+      encrypted             = true
+      kms_key_id            = var.kms_key_arn
+      delete_on_termination = true
+    }
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "enabled"
+  }
+
+  monitoring {
+    enabled = true
+  }
+
+  user_data = base64gzip(templatefile("${path.module}/templates/user_data.sh.tpl", {
+    aws_region                                    = data.aws_region.current.region
+    deployment_name                               = var.deployment_name
+    legacy_filesystem_tuning                      = var.legacy_filesystem_tuning
+    database_secret_arn                           = var.database_secret_arn
+    database_host                                 = var.database_host
+    database_port                                 = var.database_port
+    brainstore_port                               = var.port
+    brainstore_s3_bucket                          = local.brainstore_s3_bucket_id
+    lambda_responses_bucket_id                    = local.lambda_responses_bucket_id
+    code_bundle_bucket_id                         = local.code_bundle_bucket_id
+    brainstore_locks_s3_path                      = trimprefix(var.locks_s3_path, "/")
+    license_key_secret_arn                        = var.license_key_secret_arn
+    license_key_secret_version                    = var.license_key_secret_version
+    brainstore_version_override                   = var.version_override == null ? "" : var.version_override
+    brainstore_release_version                    = local.brainstore_release_version
+    cloudwatch_asg_metrics                        = true
+    monitoring_telemetry                          = var.monitoring_telemetry
+    is_dedicated_reader_node                      = "false"
+    is_dedicated_writer_node                      = "true"
+    extra_env_vars                                = merge(local.brainstore_default_env_vars, local.brainstore_automation_writer_extra_env_vars)
+    internal_observability_api_key_secret_arn     = var.internal_observability_api_key_secret_arn
+    internal_observability_api_key_secret_version = var.internal_observability_api_key_secret_version
+    internal_observability_env_name               = var.internal_observability_env_name
+    internal_observability_region                 = var.internal_observability_region
+    datadog_agent_container_logs                  = module.datadog_agent_telemetry["automation_writer"].container_logs
+    datadog_agent_otlp_env_vars                   = module.datadog_agent_telemetry["automation_writer"].otlp_env_vars
+    service_token_secret_arn                      = var.service_token_secret_arn
+    custom_ca_bundle_secret_arn                   = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
+    custom_post_install_script                    = var.custom_post_install_script
+    brainstore_cache_file_size                    = local.brainstore_automation_writer_cache_file_size
+    skip_pg_for_brainstore_objects                = var.skip_pg_for_brainstore_objects
+    ai_proxy_url_ssm_parameter                    = var.ai_proxy_url_ssm_parameter
+    redis_url_secret_arn                          = var.redis_url_secret_arn
+    redis_url_secret_version_id                   = var.redis_url_secret_version_id
+  }))
+
+  tags = merge({
+    Name = "${var.deployment_name}-brainstore-automation-writer"
+  }, local.common_tags)
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = merge({
+      Name           = "${var.deployment_name}-brainstore-automation-writer"
+      BrainstoreRole = "AutomationWriter"
+    }, local.common_tags)
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+    tags = merge({
+      Name           = "${var.deployment_name}-brainstore-automation-writer"
+      BrainstoreRole = "AutomationWriter"
+    }, local.common_tags)
+  }
+
+  tag_specifications {
+    resource_type = "network-interface"
+    tags = merge({
+      Name           = "${var.deployment_name}-brainstore-automation-writer"
+      BrainstoreRole = "AutomationWriter"
+    }, local.common_tags)
+  }
+}
+
+resource "aws_lb" "brainstore_automation_writer" {
+  count                            = local.has_automation_writer_nodes ? 1 : 0
+  name                             = "${var.deployment_name}-bstr-aw"
+  internal                         = true
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = true
+  subnets                          = var.private_subnet_ids
+  security_groups                  = [aws_security_group.brainstore_elb.id]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_target_group" "brainstore_automation_writer" {
+  count       = local.has_automation_writer_nodes ? 1 : 0
+  name        = "${var.deployment_name}-bstr-aw"
+  port        = var.port
+  protocol    = "TCP"
+  vpc_id      = var.vpc_id
+  target_type = "instance"
+
+  connection_termination = true
+  deregistration_delay   = 30
+  health_check {
+    protocol            = "TCP"
+    matcher             = ""
+    path                = ""
+    port                = var.port
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 10
+    interval            = 10
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener" "brainstore_automation_writer" {
+  count             = local.has_automation_writer_nodes ? 1 : 0
+  load_balancer_arn = aws_lb.brainstore_automation_writer[0].arn
+  port              = var.port
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.brainstore_automation_writer[0].arn
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_autoscaling_group" "brainstore_automation_writer" {
+  count                     = local.has_automation_writer_nodes ? 1 : 0
+  name_prefix               = "${var.deployment_name}-brainstore-automation-writer"
+  min_size                  = local.automation_writer_min_capacity
+  max_size                  = local.automation_writer_max_capacity
+  desired_capacity          = local.automation_writer_min_capacity
+  vpc_zone_identifier       = var.private_subnet_ids
+  health_check_type         = "EBS,ELB"
+  health_check_grace_period = 60
+  target_group_arns         = [aws_lb_target_group.brainstore_automation_writer[0].arn]
+  # Check minimum ELB readiness only at creation; updates may retain a scaled-out pool.
+  min_elb_capacity = local.automation_writer_min_capacity
+  launch_template {
+    id      = aws_launch_template.brainstore_automation_writer[0].id
+    version = aws_launch_template.brainstore_automation_writer[0].latest_version
+  }
+
+  lifecycle {
+    create_before_destroy = true
+    # Target tracking owns capacity after the initial creation.
+    ignore_changes = [desired_capacity]
+  }
+
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 100
+      max_healthy_percentage = 200
+    }
+    triggers = ["tag"]
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "${var.deployment_name}-brainstore-automation-writer"
+    propagate_at_launch = true
+  }
+
+  dynamic "tag" {
+    for_each = local.common_tags
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+  }
+}
+
+resource "aws_autoscaling_policy" "brainstore_automation_writer_cpu_target" {
+  count                     = local.has_automation_writer_nodes ? 1 : 0
+  name                      = "${var.deployment_name}-brainstore-automation-writer-cpu-target"
+  autoscaling_group_name    = aws_autoscaling_group.brainstore_automation_writer[0].name
+  policy_type               = "TargetTrackingScaling"
+  estimated_instance_warmup = 900
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value     = var.automation_writer_target_cpu_utilization
+    disable_scale_in = false
+  }
+}
+
+resource "aws_autoscaling_policy" "brainstore_automation_writer_memory_target" {
+  count                     = local.has_automation_writer_nodes ? 1 : 0
+  name                      = "${var.deployment_name}-brainstore-automation-writer-memory-target"
+  autoscaling_group_name    = aws_autoscaling_group.brainstore_automation_writer[0].name
+  policy_type               = "TargetTrackingScaling"
+  estimated_instance_warmup = 900
+
+  target_tracking_configuration {
+    customized_metric_specification {
+      # Match the existing CloudWatch agent's renamed memory measurement.
+      namespace   = "CWAgent"
+      metric_name = "MemoryUtilization"
+      statistic   = "Average"
+
+      metric_dimension {
+        name  = "AutoScalingGroupName"
+        value = aws_autoscaling_group.brainstore_automation_writer[0].name
+      }
+    }
+
+    target_value     = var.automation_writer_target_memory_utilization
+    disable_scale_in = false
+  }
+}

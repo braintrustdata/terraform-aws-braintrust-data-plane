@@ -1,0 +1,65 @@
+mock_provider "aws" {
+  source = "./tests/mocks/aws"
+}
+
+run "deployment_tag_cannot_be_overridden" {
+  command = plan
+  module { source = "./modules/brainstore-ec2" }
+
+  variables {
+    deployment_name                       = "bt-test"
+    license_key_secret_arn                = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    license_key_secret_version            = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    kms_key_arn                           = null
+    vpc_id                                = "vpc-12345678"
+    private_subnet_ids                    = ["subnet-12345678"]
+    database_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-test"
+    database_host                         = "database.example.com"
+    database_port                         = "5432"
+    redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-redis-url"
+    redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:token-test"
+    braintrust_api_url                    = "http://api.example.internal:8000"
+    ai_proxy_url_ssm_parameter            = "/bt-test/ai-proxy-url"
+    brainstore_s3_bucket_arn              = "arn:aws:s3:::test-brainstore"
+    lambda_responses_s3_bucket_arn        = "arn:aws:s3:::test-responses"
+    code_bundle_s3_bucket_arn             = "arn:aws:s3:::test-code"
+    brainstore_iam_role_name              = "bt-test-brainstore"
+    brainstore_instance_security_group_id = "sg-12345678"
+    writer_instance_count                 = 1
+    fast_reader_instance_count            = 1
+    custom_tags = {
+      BraintrustDeploymentName = "another-deployment"
+      Environment              = "test"
+    }
+  }
+
+  assert {
+    condition     = local.brainstore_default_env_vars.BRAINTRUST_API_URL == var.braintrust_api_url
+    error_message = "Brainstore must default to the deployment's internal API URL."
+  }
+
+  assert {
+    condition = alltrue([
+      for asg in [aws_autoscaling_group.brainstore, aws_autoscaling_group.brainstore_writer[0], aws_autoscaling_group.brainstore_fast_reader[0]] :
+      one([for tag in asg.tag : tag.value if tag.key == "BraintrustDeploymentName"]) == var.deployment_name
+    ])
+    error_message = "Every Brainstore ASG must retain the deployment tag."
+  }
+
+  assert {
+    condition = alltrue([
+      for asg in [aws_autoscaling_group.brainstore, aws_autoscaling_group.brainstore_writer[0], aws_autoscaling_group.brainstore_fast_reader[0]] :
+      one([for tag in asg.tag : tag.value if tag.key == "Environment"]) == "test"
+    ])
+    error_message = "Unrelated custom tags must be preserved on every Brainstore ASG."
+  }
+
+  assert {
+    condition = (
+      length(aws_autoscaling_group.brainstore_writer[0].instance_refresh) == 1 &&
+      aws_autoscaling_group.brainstore_writer[0].instance_refresh[0].strategy == "Rolling"
+    )
+    error_message = "The ungated writer ASG must retain its own rolling instance refresh."
+  }
+}

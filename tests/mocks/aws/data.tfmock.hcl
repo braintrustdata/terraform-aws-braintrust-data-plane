@@ -23,6 +23,12 @@ mock_data "aws_region" {
   }
 }
 
+mock_data "aws_vpc" {
+  defaults = {
+    cidr_block = "172.20.0.0/16"
+  }
+}
+
 mock_data "aws_secretsmanager_random_password" {
   defaults = {
     random_password = "mock-password-16"
@@ -58,5 +64,11 @@ mock_data "aws_ec2_managed_prefix_list" {
 mock_data "aws_iam_policy_document" {
   defaults = {
     json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}]}"
+  }
+}
+
+mock_data "aws_iam_role" {
+  defaults = {
+    arn = "arn:aws:iam::123456789012:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
   }
 }

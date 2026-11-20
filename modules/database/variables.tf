@@ -66,6 +66,12 @@ variable "authorized_security_groups" {
   default     = {}
 }
 
+variable "loop_runtime_security_groups" {
+  type        = map(string)
+  description = "Loop runtime security groups authorized to reach RDS. Kept separate so baseline ingress does not wait for Loop startup."
+  default     = {}
+}
+
 variable "custom_security_group_ids" {
   type        = list(string)
   description = "Advanced: Use existing security group IDs instead of the one created by this module. When non-empty, this module will not create or manage the RDS security group or its ingress/egress rules."
@@ -100,6 +106,12 @@ variable "backup_window" {
   description = "The daily time range (in UTC) during which automated RDS backups are created. Format: hh24:mi-hh24:mi."
   type        = string
   default     = "00:00-00:30"
+}
+
+variable "apply_immediately" {
+  description = "When true, RDS applies eligible changes immediately instead of during the next maintenance window. This includes queued modifications and can cause downtime."
+  type        = bool
+  default     = false
 }
 
 variable "maintenance_window" {

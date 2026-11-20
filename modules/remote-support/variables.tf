@@ -48,14 +48,14 @@ variable "database_secret_arn" {
   type        = string
 }
 
-variable "redis_host" {
-  description = "Hostname of the Redis instance"
+variable "redis_url_secret_arn" {
+  description = "ARN of the Secrets Manager secret containing the fully-rendered Redis URL"
   type        = string
 }
 
-variable "redis_port" {
-  description = "Port of the Redis instance"
-  type        = number
+variable "redis_url_secret_version_id" {
+  description = "Secrets Manager version id for the Redis URL secret. Passed into bastion user data so secret content changes replace the instance."
+  type        = string
 }
 
 variable "kms_key_arn" {

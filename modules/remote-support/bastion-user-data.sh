@@ -11,27 +11,54 @@ rm -rf /var/lib/apt/lists/*
 apt-get clean
 apt-get update
 
-apt-get install -y jq unzip earlyoom postgresql-client
-snap install aws-cli --classic
+apt-get install -y jq earlyoom postgresql-client
+# Install AWS CLI v2 for all users with the AWS-recommended installer.
+(
+  set -e
+  apt-get install -y ca-certificates curl unzip gnupg libc6 groff less
+  aws_cli_install_dir=$(mktemp -d)
+  trap 'rm -rf "$aws_cli_install_dir"' EXIT
+  curl --fail --silent --show-error --location --retry 5 \
+    https://awscli.amazonaws.com/v2/install.sh -o "$aws_cli_install_dir/install.sh"
+  bash "$aws_cli_install_dir/install.sh" --system
+  /usr/local/bin/aws --version
+)
+[ "$?" -eq 0 ] || exit 1
 
 TPL_REGION="${region}"
 TPL_DATABASE_SECRET_ARN="${database_secret_arn}"
-TPL_REDIS_HOST="${redis_host}"
-TPL_REDIS_PORT="${redis_port}"
+TPL_REDIS_URL_SECRET_ARN="${redis_url_secret_arn}"
+TPL_REDIS_URL_SECRET_VERSION_ID="${redis_url_secret_version_id}"
 TPL_DATABASE_HOST="${database_host}"
 
 export AWS_REGION=$TPL_REGION
 export AWS_DEFAULT_REGION=$TPL_REGION
 
-DB_CREDS=$(aws secretsmanager get-secret-value --secret-id "$TPL_DATABASE_SECRET_ARN" --query SecretString --output text)
+if ! DB_CREDS=$(aws secretsmanager get-secret-value --secret-id "$TPL_DATABASE_SECRET_ARN" --query SecretString --output text); then
+  echo "Failed to retrieve database credentials from Secrets Manager. Exiting." >&2
+  exit 1
+fi
 DB_USERNAME=$(echo "$DB_CREDS" | jq -r .username)
 DB_PASSWORD=$(echo "$DB_CREDS" | jq -r .password)
+if [ -z "$DB_CREDS" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ] || [ "$DB_USERNAME" = "null" ] || [ "$DB_PASSWORD" = "null" ]; then
+  echo "Failed to retrieve database credentials from Secrets Manager. Exiting." >&2
+  exit 1
+fi
+
+if ! REDIS_URL=$(aws secretsmanager get-secret-value --secret-id "$TPL_REDIS_URL_SECRET_ARN" --version-id "$TPL_REDIS_URL_SECRET_VERSION_ID" --query SecretString --output text); then
+  echo "Failed to retrieve Redis URL from Secrets Manager. Exiting." >&2
+  exit 1
+fi
+if [ -z "$REDIS_URL" ] || [ "$REDIS_URL" = "None" ]; then
+  echo "Failed to retrieve Redis URL from Secrets Manager. Exiting." >&2
+  exit 1
+fi
 
 # Do NOT use quotes here. Docker will include them as literals.
 cat <<EOF > /etc/braintrust.env
 export AWS_REGION=$TPL_REGION
 export AWS_DEFAULT_REGION=$TPL_REGION
-export REDIS_URL=redis://$TPL_REDIS_HOST:$TPL_REDIS_PORT
+export REDIS_URL=$REDIS_URL
 export PG_URL=postgres://$DB_USERNAME:$DB_PASSWORD@$TPL_DATABASE_HOST/postgres
 EOF
 

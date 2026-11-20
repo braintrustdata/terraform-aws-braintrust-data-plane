@@ -11,7 +11,7 @@ apt-get clean
 apt-get update
 
 # Mount the local SSD if it exists
-apt-get install -y nvme-cli mdadm
+apt-get install -y nvme-cli mdadm${!legacy_filesystem_tuning ? " xfsprogs" : ""}
 MOUNT_DIR="/mnt/tmp/brainstore"
 mkdir -p "$MOUNT_DIR"
 
@@ -28,17 +28,54 @@ else
 fi
 if [ -n "$DEVICE" ]; then
   echo "Ephemeral device: $DEVICE"
+%{ if !legacy_filesystem_tuning ~}
+  blkid "$DEVICE" >/dev/null || mkfs.xfs -f -d agcount=32 -l size=512m,version=2,su=256k -i size=512 "$DEVICE"
+  FS_TYPE=$(blkid -s TYPE -o value "$DEVICE")
+  MOUNT_OPTIONS="noatime,nodiratime,discard"
+  if [ "$FS_TYPE" = "xfs" ]; then
+    MOUNT_OPTIONS="$MOUNT_OPTIONS,logbufs=8,logbsize=256k,allocsize=64m"
+  fi
+  mount -o "$MOUNT_OPTIONS" "$DEVICE" "$MOUNT_DIR"
+%{ else ~}
   blkid "$DEVICE" >/dev/null || mkfs.ext4 -F "$DEVICE"
   mount "$DEVICE" "$MOUNT_DIR"
+%{ endif ~}
   chmod -R 0777 "$MOUNT_DIR"
   # Add to fstab using UUID rather than device name
   UUID=$(blkid -s UUID -o value "$DEVICE")
+%{ if !legacy_filesystem_tuning ~}
+  echo "UUID=$UUID $MOUNT_DIR $FS_TYPE $MOUNT_OPTIONS 0 0" >> /etc/fstab
+%{ else ~}
   echo "UUID=$UUID $MOUNT_DIR ext4 defaults 0 2" >> /etc/fstab
+%{ endif ~}
 else
   echo "No ephemeral device found. Exiting with failure."
   exit 1
 fi
 
+%{ if !legacy_filesystem_tuning ~}
+cat <<EOF > /etc/sysctl.d/99-brainstore.conf
+# Start background writeback early (128 MB) to keep the NVMe queue steadily fed
+vm.dirty_background_bytes=134217728
+
+# Hard throttle application writes if dirty cache hits 512 MB, preventing giant backlogs
+vm.dirty_bytes=536870912
+
+# Age out dirty pages faster (10 seconds instead of 30s) to keep memory turnover active
+vm.dirty_expire_centisecs=1000
+
+# Wake up background flush threads more frequently (every 2 seconds instead of 5s)
+vm.dirty_writeback_centisecs=200
+
+# Provide a larger watermark buffer (1 GB) for kswapd to prevent direct reclaim stalls
+vm.min_free_kbytes=1048576
+
+# Reduce directory/inode cache pressure slightly to keep active path lookups cached
+vm.vfs_cache_pressure=50
+EOF
+sysctl -p /etc/sysctl.d/99-brainstore.conf
+
+%{ endif ~}
 # Raise the file descriptor limit
 cat <<EOF > /etc/security/limits.d/brainstore.conf
 # Root users has to be set explicitly
@@ -52,7 +89,18 @@ EOF
 # Set AWS region for CLI commands
 export AWS_DEFAULT_REGION=${aws_region}
 
-sudo snap install aws-cli --classic
+# Install AWS CLI v2 for all users with the AWS-recommended installer.
+(
+  set -e
+  apt-get install -y ca-certificates curl unzip gnupg libc6 groff less
+  aws_cli_install_dir=$(mktemp -d)
+  trap 'rm -rf "$aws_cli_install_dir"' EXIT
+  curl --fail --silent --show-error --location --retry 5 \
+    https://awscli.amazonaws.com/v2/install.sh -o "$aws_cli_install_dir/install.sh"
+  bash "$aws_cli_install_dir/install.sh" --system
+  /usr/local/bin/aws --version
+)
+[ "$?" -eq 0 ] || exit 1
 # Set up docker log rotation
 mkdir -p /etc/docker
 cat <<EOF > /etc/docker/daemon.json
@@ -100,10 +148,16 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
   },
   "metrics": {
     "append_dimensions": {
+%{ if cloudwatch_asg_metrics ~}
+      "AutoScalingGroupName": "\$${aws:AutoScalingGroupName}",
+%{ endif ~}
       "InstanceId": "\$${aws:InstanceId}"
     },
     "aggregation_dimensions": [
       ["InstanceId"],
+%{ if cloudwatch_asg_metrics ~}
+      ["AutoScalingGroupName"],
+%{ endif ~}
       []
     ],
     "metrics_collected": {
@@ -130,11 +184,16 @@ systemctl enable amazon-cloudwatch-agent
 
 get_secret_value_with_retry() {
   local secret_id="$1"
+  local version_id="$${2:-}"
   local attempt
   local retry_delay
+  local version_args=()
+  if [ -n "$version_id" ]; then
+    version_args=(--version-id "$version_id")
+  fi
 
   for attempt in 1 2 3 4 5; do
-    if aws secretsmanager get-secret-value --secret-id "$secret_id" --query SecretString --output text; then
+    if aws secretsmanager get-secret-value --secret-id "$secret_id" "$${version_args[@]}" --query SecretString --output text; then
       return 0
     fi
 
@@ -167,6 +226,17 @@ if ! BRAINTRUST_CUSTOM_CA_BUNDLE=$(get_secret_value_with_retry "${custom_ca_bund
 fi
 export BRAINTRUST_CUSTOM_CA_BUNDLE
 %{ endif ~}
+# license_key_secret_version is baked into user_data so rotating the secret
+# changes the launch template and triggers a rolling instance refresh.
+if ! BRAINSTORE_LICENSE_KEY=$(get_secret_value_with_retry "${license_key_secret_arn}" "${license_key_secret_version}"); then
+  echo "Failed to retrieve BRAINSTORE_LICENSE_KEY from Secrets Manager. Exiting with failure."
+  exit 1
+fi
+
+# Get the fully-rendered Redis URL from Secrets Manager (version-pinned so the user-data is updated when the version changes to force a refresh)
+if ! REDIS_URL=$(get_secret_value_with_retry "${redis_url_secret_arn}" "${redis_url_secret_version_id}"); then
+  exit 1
+fi
 
 cat <<EOF > /etc/brainstore.env
 # WARNING: Do NOT use quotes around values here. They get passed as literals by docker.
@@ -180,22 +250,19 @@ BRAINSTORE_WAL_URI=postgres://$DB_USERNAME:$DB_PASSWORD@${database_host}:${datab
 BRAINSTORE_CACHE_DIR=/mnt/tmp/brainstore
 BRAINSTORE_RESPONSE_CACHE_URI=s3://${lambda_responses_bucket_id}/brainstore-cache
 BRAINSTORE_CODE_BUNDLE_URI=s3://${code_bundle_bucket_id}
-BRAINSTORE_LICENSE_KEY=${brainstore_license_key}
+BRAINSTORE_LICENSE_KEY=$BRAINSTORE_LICENSE_KEY
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
 SERVICE_TOKEN_SECRET_KEY=$SERVICE_TOKEN_SECRET_KEY
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}
 AWS_REGION=${aws_region}
-BRAINSTORE_REDIS_URI=${redis_scheme}://${redis_host}:${redis_port}
-BRAINSTORE_XACT_MANAGER_URI=${redis_scheme}://${redis_host}:${redis_port}
+BRAINSTORE_REDIS_URI=$REDIS_URL
+BRAINSTORE_XACT_MANAGER_URI=$REDIS_URL
 BRAINSTORE_OBJECT_STORE_CACHE_FILE_SIZE=${brainstore_cache_file_size}
 %{ if skip_pg_for_brainstore_objects != "" ~}
 BRAINSTORE_ASYNC_SCORING_OBJECTS=${skip_pg_for_brainstore_objects}
 BRAINSTORE_LOG_AUTOMATIONS_OBJECTS=${skip_pg_for_brainstore_objects}
-%{ endif ~}
-%{ if is_dedicated_writer_node == "true" && brainstore_enable_export ~}
-BRAINSTORE_EXPORT_SEGMENT_AUTOMATION_CURSORS_ENABLED=true
 %{ endif ~}
 %{ for env_key, env_value in extra_env_vars ~}
 ${env_key}=${env_value}
@@ -226,15 +293,20 @@ else
   exit 1
 fi
 
-if [ -n "${internal_observability_api_key}" ]; then
+if [ -n "${internal_observability_api_key_secret_arn}" ]; then
+  # internal_observability_api_key_secret_version is baked into user_data so
+  # rotating the secret changes the launch template and triggers a rolling
+  # instance refresh.
+  if ! DD_API_KEY=$(get_secret_value_with_retry "${internal_observability_api_key_secret_arn}" "${internal_observability_api_key_secret_version}"); then
+    echo "Failed to retrieve DD_API_KEY from Secrets Manager. Exiting with failure."
+    exit 1
+  fi
   if [ -n "${internal_observability_env_name}" ]; then
     export DD_ENV="${internal_observability_env_name}"
   fi
   # Install Datadog Agent
-  export DD_API_KEY="${internal_observability_api_key}"
+  export DD_API_KEY
   export DD_SITE="${internal_observability_region}.datadoghq.com"
-  export DD_APM_INSTRUMENTATION_ENABLED=host
-  export DD_APM_INSTRUMENTATION_LIBRARIES=java:1,python:3,js:5,php:1,dotnet:3
   bash -c "$(curl -L https://install.datadoghq.com/scripts/install_script_agent7.sh)"
   usermod -a -G docker dd-agent
 
@@ -242,7 +314,10 @@ if [ -n "${internal_observability_api_key}" ]; then
 DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
 DD_COLLECT_EC2_TAGS=true
 DD_COLLECT_EC2_TAGS_USE_IMDS=true
+DD_APM_ENABLED=false
+DD_OTLP_CONFIG_TRACES_ENABLED=false
 EOF
+%{ if datadog_agent_container_logs ~}
   # Configure Datadog Agent to collect Docker logs
   cat <<EOF >> /etc/datadog-agent/datadog.yaml
 logs_enabled: true
@@ -254,6 +329,7 @@ config_providers:
 logs_config:
     container_collect_all: true
 EOF
+%{ endif ~}
 
   # Configure Datadog agent to collect network metrics
   cat <<EOF > /etc/datadog-agent/conf.d/network.d/conf.yaml
@@ -281,9 +357,11 @@ EOF
   systemctl daemon-reload
   systemctl enable datadog-agent
 
-  # Configure Brainstore to send traces to Datadog
+  # Configure Brainstore OTLP export to Datadog
   cat <<EOF >> /etc/brainstore.env
-BRAINSTORE_OTLP_HTTP_ENDPOINT=http://localhost:4318
+%{ for env_key, env_value in datadog_agent_otlp_env_vars ~}
+${env_key}=${env_value}
+%{ endfor ~}
 EOF
 fi
 
@@ -301,9 +379,45 @@ docker run -d \
 %{ endif ~}
   --restart always \
   --ulimit nofile=65535:65535 \
+  --ulimit memlock=-1:-1 \
   -v /mnt/tmp/brainstore:/mnt/tmp/brainstore \
   public.ecr.aws/braintrust/brainstore:$${BRAINSTORE_VERSION} \
   web
+
+# Add an 8 GiB swap file on the root volume to absorb short memory spikes
+# before earlyoom or the kernel OOM killer stops Brainstore. swappiness=1
+# keeps swap for memory pressure only. A swap failure does not fail the boot.
+configure_swap() {
+  local swapfile=/swapfile
+  local swap_size_kib=$((8 * 1024 * 1024))
+  local total_memory_kib
+  local swappiness=1
+
+  total_memory_kib=$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo)
+  if [[ -z "$total_memory_kib" || "$swap_size_kib" -gt "$total_memory_kib" ]]; then
+    echo "Skipping 8 GiB swap because it exceeds total memory ($${total_memory_kib:-unknown} KiB)"
+    return 0
+  fi
+
+  if swapon --show=NAME --noheadings | grep -qx "$swapfile"; then
+    return 0
+  fi
+  if [[ ! -e "$swapfile" ]]; then
+    fallocate -l 8G "$swapfile" || dd if=/dev/zero of="$swapfile" bs=1M count=8192 status=progress
+  fi
+  chmod 600 "$swapfile"
+  mkswap "$swapfile"
+  swapon "$swapfile" || {
+    dd if=/dev/zero of="$swapfile" bs=1M count=8192 conv=notrunc status=progress
+    mkswap "$swapfile"
+    swapon "$swapfile"
+  }
+  grep -q "^$swapfile " /etc/fstab || echo "$swapfile none swap sw 0 0" >> /etc/fstab
+
+  echo "vm.swappiness=$swappiness" | tee /etc/sysctl.d/99-swappiness.conf
+  sysctl -w vm.swappiness=$swappiness
+}
+configure_swap || echo "swap setup failed" >&2
 
 %{ if custom_post_install_script != "" ~}
 echo "Running custom post-install script..."

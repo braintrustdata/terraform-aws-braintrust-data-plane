@@ -31,6 +31,7 @@ or Terraform module to apply directly.
 ## From review to deployment
 
 1. Review this access model and the [organization safeguards](guardrails/README.md).
+   Confirm service quotas support the planned deployment and upgrade capacity.
 2. Braintrust generates a package for your account and Region: a CloudFormation
    template, `parameters.json`, and instructions. CloudFormation creates the
    roles, runtime boundary, state and operation-log buckets, and Diagnostics

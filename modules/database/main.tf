@@ -4,6 +4,9 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
+
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
   rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
 }
@@ -19,7 +22,7 @@ resource "aws_db_instance" "main" {
   allocated_storage     = var.postgres_storage_size
   max_allocated_storage = var.postgres_max_storage_size
   storage_type          = var.postgres_storage_type
-  storage_throughput    = var.postgres_storage_throughput
+  storage_throughput    = var.postgres_storage_type == "gp3" ? var.postgres_storage_throughput : null
   iops                  = var.postgres_storage_iops
   multi_az              = var.multi_az
 
@@ -39,6 +42,7 @@ resource "aws_db_instance" "main" {
   copy_tags_to_snapshot     = true
   backup_retention_period   = var.backup_retention_period
   backup_window             = var.backup_window
+  apply_immediately         = var.apply_immediately
   maintenance_window        = var.maintenance_window
 
   performance_insights_enabled          = true
@@ -79,6 +83,11 @@ resource "aws_db_parameter_group" "main" {
     apply_method = "pending-reboot"
     name         = "rds.force_ssl"
     value        = "1"
+  }
+
+  parameter {
+    name  = "idle_in_transaction_session_timeout"
+    value = "900000"
   }
 
   parameter {
@@ -141,7 +150,7 @@ resource "aws_iam_role" "db_monitoring" {
     ignore_changes = [name]
   }
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "db_monitoring" {
@@ -204,6 +213,21 @@ resource "aws_security_group" "rds" {
 
 resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_authorized_security_groups" {
   for_each = length(var.custom_security_group_ids) == 0 ? var.authorized_security_groups : {}
+
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = each.value
+  description                  = "Allow TCP/5432 (PostgreSQL) inbound to RDS from ${each.key}."
+
+  security_group_id = aws_security_group.rds[0].id
+  tags              = local.common_tags
+}
+
+# Loop starts after Gateway, which depends on database migration. Keep its rule
+# separate so the migration Lambda's baseline ingress can be created first.
+resource "aws_vpc_security_group_ingress_rule" "rds_allow_ingress_from_loop_runtime_security_groups" {
+  for_each = length(var.custom_security_group_ids) == 0 ? var.loop_runtime_security_groups : {}
 
   from_port                    = 5432
   to_port                      = 5432

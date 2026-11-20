@@ -18,11 +18,16 @@ resource "aws_ecs_task_definition" "braintrust_api" {
 
   container_definitions = local.api_container_definitions[local.braintrust_api_name]
 
+  # Ensure GetSecretValue is granted before a revision that references secrets is registered.
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
+
   tags = merge({
     Name = "${var.deployment_name}-${local.braintrust_api_name}"
   }, local.common_tags)
 
   lifecycle {
+    create_before_destroy = true
+
     precondition {
       condition     = contains(keys(local.valid_fargate_memory_by_cpu), tostring(var.braintrust_api_cpu))
       error_message = "braintrust_api_cpu must be a valid Fargate CPU value."
@@ -69,7 +74,12 @@ resource "aws_ecs_service" "braintrust_api" {
 
   # The listener default action associates this target group with the ALB,
   # which ECS requires before CreateService will attach the service.
-  depends_on = [aws_lb_listener.api_ecs_http]
+  # Also wait for task-exec secret IAM before rolling tasks that resolve secrets.
+  depends_on = [
+    terraform_data.brainstore_deployment,
+    aws_lb_listener.api_ecs_http,
+    aws_iam_role_policy.task_execution_secrets,
+  ]
 
   lifecycle {
     create_before_destroy = false
@@ -104,6 +114,24 @@ resource "aws_appautoscaling_policy" "braintrust_api_cpu_target" {
     target_value       = var.braintrust_api_cpu_autoscaling.target_value
     scale_in_cooldown  = var.braintrust_api_cpu_autoscaling.scale_in_cooldown
     scale_out_cooldown = var.braintrust_api_cpu_autoscaling.scale_out_cooldown
+  }
+}
+
+resource "aws_appautoscaling_policy" "braintrust_api_memory_target" {
+  name               = "${var.deployment_name}-braintrust-api-memory-target"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.braintrust_api.resource_id
+  scalable_dimension = aws_appautoscaling_target.braintrust_api.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.braintrust_api.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+
+    target_value       = var.braintrust_api_memory_autoscaling.target_value
+    scale_in_cooldown  = var.braintrust_api_memory_autoscaling.scale_in_cooldown
+    scale_out_cooldown = var.braintrust_api_memory_autoscaling.scale_out_cooldown
   }
 }
 

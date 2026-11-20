@@ -13,6 +13,12 @@ output "fast_reader_dns_name" {
   value       = one(aws_lb.brainstore_fast_reader[*].dns_name)
 }
 
+output "automation_writer_dns_name" {
+  description = "The DNS name of the Brainstore automation writer NLB, if enabled"
+  value       = one(aws_lb.brainstore_automation_writer[*].dns_name)
+  depends_on  = [aws_lb_listener.brainstore_automation_writer]
+}
+
 output "port" {
   description = "The port used by Brainstore"
   value       = var.port
@@ -40,6 +46,13 @@ output "monitoring_targets" {
         tg_arn_suffix = aws_lb_target_group.brainstore_writer[0].arn_suffix
       }
     } : {},
+    local.has_automation_writer_nodes ? {
+      automation-writer = {
+        asg_name      = aws_autoscaling_group.brainstore_automation_writer[0].name
+        lb_arn_suffix = aws_lb.brainstore_automation_writer[0].arn_suffix
+        tg_arn_suffix = aws_lb_target_group.brainstore_automation_writer[0].arn_suffix
+      }
+    } : {},
     local.has_fast_reader_nodes ? {
       fast-reader = {
         asg_name      = aws_autoscaling_group.brainstore_fast_reader[0].name
@@ -48,4 +61,30 @@ output "monitoring_targets" {
       }
     } : {},
   )
+}
+
+output "deployment_fleets" {
+  description = "Exact desired fleets for the deployment controller."
+  value = concat(
+    [{
+      role                    = "reader"
+      asg_name                = aws_autoscaling_group.brainstore.name
+      launch_template_id      = aws_launch_template.brainstore.id
+      launch_template_version = tostring(aws_launch_template.brainstore.latest_version)
+      desired_capacity        = var.instance_count
+      target_group_arn        = aws_lb_target_group.brainstore.arn
+    }],
+    [for group in aws_autoscaling_group.brainstore_fast_reader : {
+      role                    = "fast-reader"
+      asg_name                = group.name
+      launch_template_id      = aws_launch_template.brainstore_fast_reader[0].id
+      launch_template_version = tostring(aws_launch_template.brainstore_fast_reader[0].latest_version)
+      desired_capacity        = var.fast_reader_instance_count
+      target_group_arn        = aws_lb_target_group.brainstore_fast_reader[0].arn
+    }],
+  )
+  depends_on = [
+    aws_autoscaling_group.brainstore,
+    aws_autoscaling_group.brainstore_fast_reader,
+  ]
 }

@@ -4,7 +4,7 @@
 mock_data "http" {
   defaults = {
     status_code   = 200
-    response_body = "lambda/APIHandler/a1b2c3d4e5f6.zip"
+    response_body = "lambda/BrainstoreDeployment/versions/a1b2c3d4e5f6.zip"
     response_headers = {
       "Content-Type" = "text/plain"
     }
