@@ -1,0 +1,23 @@
+{
+  "base_ref": "v7.3.0",
+  "allowed_changes": [
+    {
+      "address": "module\\.api_ecs\\[0\\]\\.aws_ecs_task_definition\\.braintrust_api(_background|_ingest)?",
+      "actions": ["update"],
+      "changed_attributes": ["container_definitions"],
+      "reason": "v7.4.0 pins Braintrust services v2.24.0, so the API image tag changes from v7.3.0's v2.23.0."
+    },
+    {
+      "address": "module\\.gateway_ecs\\[0\\]\\.aws_ecs_task_definition\\.gateway",
+      "actions": ["update"],
+      "changed_attributes": ["container_definitions"],
+      "reason": "v7.4.0 pins Braintrust services v2.24.0, so the gateway image tag changes from v7.3.0's v2.23.0."
+    },
+    {
+      "address": "module\\.brainstore\\[0\\]\\.aws_launch_template\\.brainstore(_fast_reader\\[0\\]|_writer\\[0\\])?",
+      "actions": ["update"],
+      "changed_attributes": ["user_data"],
+      "reason": "v7.4.0 pins Braintrust services v2.24.0, so BRAINSTORE_RELEASE_VERSION in user data changes from v7.3.0's v2.23.0."
+    }
+  ]
+}

@@ -14,6 +14,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # The upgrade test archives the pull request's base commit.
+          fetch-depth: 0
 
       - name: Setup Mise
         uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
@@ -31,4 +34,8 @@ jobs:
         run: mise run validate-tofu
 
       - name: Run tests with Terraform
+        env:
+          # A pull request compares against its base commit, a push to main
+          # against the commit it replaced.
+          UPGRADE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: mise run test
