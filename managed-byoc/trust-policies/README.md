@@ -51,7 +51,7 @@ Active customer trust requires inherited `aws:SourceIdentity` in the approved
 list and requested `sts:SourceIdentity` equal to that value. The source entry
 verification is required; the customer does not trust a caller-chosen string.
 Keep the final participant list within the role's configured trust policy limit
-(2,048 characters by default); the validator exercises ten maximum-length IDs.
+(2,048 characters by default).
 
 The customer role's session name must equal the same verified UserId. This
 preserves the fixed own-session permissions, which use `aws:userid` (role ID
@@ -91,9 +91,9 @@ exact bootstrap execution principal:
   them for that permission check.
 
 All required permissions must pass for the same role-assumption request.
-This separation allows the broker's required Diagnostics capability tag without
-loosening role assumption or allowing another principal. Existing bootstraps
-retain their issued trust; publishing this reference does not update IAM.
+This separation lets the deployment service attach the Diagnostics authorization
+tag while retaining the exact principal, External ID, and operation identity
+requirements for role assumption.
 See the [AWS STS action reference](https://docs.aws.amazon.com/service-authorization/latest/reference/list_sts.html).
 
 AWS console Switch Role cannot supply External ID or establish the required

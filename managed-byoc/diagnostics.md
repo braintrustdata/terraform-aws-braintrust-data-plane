@@ -75,10 +75,10 @@ The workflow does not send notifications or verify customer approval. Any
 additional approval process is agreed with the customer. The customer-owned
 AWS disable control is separate and described below.
 
-Deployment's `iam:UpdateAssumeRolePolicy` is limited to the exact Diagnostics
-role and a service-issued activation/close capability, but AWS does not constrain
-the replacement document to the example's participants or deadline. Braintrust's
-activation workflow must enforce those rules. Fixed permissions and customer
+For Diagnostics activation or closure, Deployment may update only this
+bootstrap's Diagnostics role trust. AWS restricts which role can be updated,
+but does not constrain the replacement document's participants or deadline. Braintrust's
+activation workflow enforces those rules. Fixed permissions and customer
 guardrails still limit the assumed role.
 
 Source-role entry binds SourceIdentity to signed AAM `identitystore:UserId`.
@@ -155,8 +155,7 @@ the managed prefix is not complete isolation between data planes.
 Scheduler inspection exposes target configuration and input to both Observer
 and Diagnostics. Keep secrets and customer payloads out of schedule input.
 Scheduler changes, including pause/resume, belong to deployment automation.
-Activated Diagnostics cannot edit these jobs or manage OAM source links. The
-existing controls for legacy EventBridge rules are unchanged. See
+Activated Diagnostics cannot edit these jobs or manage OAM source links. See
 [service permissions](policies/README.md#scheduler-and-metric-sharing).
 
 We use standard Session Manager shells, not SSH or port forwarding. The role

@@ -1,8 +1,5 @@
 # AWS managed BYOC access model
 
-Access-model revision:
-`aws-customer-2026-11-18-oam-links-preview.1`.
-
 This package describes Braintrust's standard AWS roles and customer controls
 for managed BYOC. It is a security and architecture reference. Installation uses
 the customer-specific CloudFormation package supplied by Braintrust.
@@ -24,10 +21,6 @@ plane may serve multiple teams. Unrelated workloads belong in other accounts.
 | Scheduler and optional cross-account metrics | [Service permissions](policies/README.md#scheduler-and-metric-sharing) |
 | Audit collection and detections | [Monitoring guide](guardrails/cloudtrail-alerting.md) |
 
-No deployment, placeholder substitution, or manual hashing is needed to review
-these files. The JSON is a permission reference, not a CloudFormation template
-or Terraform module to apply directly.
-
 ## From review to deployment
 
 1. Review this access model and the [organization safeguards](guardrails/README.md).
@@ -42,11 +35,8 @@ or Terraform module to apply directly.
 4. Braintrust deploys and operates the data plane using a reviewed Terraform
    module version and the registered Deployment role.
 
-The access-model revision identifies the issued bootstrap permissions. It is
-separate from the Terraform module and application versions. Upgrading the
-data-plane module does not update an existing bootstrap's permissions; a
-bootstrap change requires a reviewed customer stack update. Publishing this
-reference does not change existing roles or migrate older deployments.
+Upgrading the data-plane module does not update the bootstrap's permissions.
+Permission changes require customer review and a CloudFormation stack update.
 
 ## Roles and access
 
@@ -124,7 +114,7 @@ flowchart TD
 | Scheduler changes | Create, update, delete; pass bounded execution roles | No | No |
 | Cross-account CloudWatch metric sharing | Optional source-link management for a fixed receiver | Inspect source links | Inspect source links |
 | Runtime IAM management | Prefixed resources with the required boundary and limited `PassRole` | No | No |
-| Bootstrap IAM changes | Exact Diagnostics role trust, with a service-issued activation/close capability and customer activation enabled | No | No |
+| Bootstrap IAM changes | Exact Diagnostics role trust during authorized activation or closure, when customer activation is enabled | No | No |
 | Deletion of SCP-protected buckets, keys, and final snapshots | Blocked for the listed actions | Blocked | Blocked |
 
 The [JSON policies](policies/README.md#role-attachment-model) are the exact
@@ -204,15 +194,14 @@ Created roles must carry the customer-owned runtime permissions boundary.
 `PassRole` is limited to matching roles and listed AWS services. Module policies
 grant each workload its actual permissions; the boundary grants none by itself.
 Listed service-linked roles are an AWS-managed exception. Deployment can create
-eleven exact default service-linked roles as needed, without a separate account
-preparation script for a new bootstrap. See the
+the permitted default service-linked roles as needed. See the
 [approved role inventory](policies/README.md#approved-service-linked-roles).
 
 Deployment cannot rewrite its own or Observer's bootstrap trust or any bootstrap
 permissions policies. Its only bootstrap IAM change is updating the exact
-Diagnostics role's trust policy, gated by a service-issued activation or closure
-capability. An explicit deny also protects the owning bootstrap stack by its
-exact CloudFormation StackId. IAM scopes the trust-update permission to the role,
+Diagnostics role's trust policy during authorized activation or closure, when
+the customer permits activation. An explicit deny also protects the bootstrap
+CloudFormation stack. IAM scopes the trust-update permission to the role,
 not to the contents of the document; Braintrust's activation workflow enforces
 the named participants and deadline, with customer-visible audit evidence.
 These direct restrictions do not prove that a separate privileged CloudFormation
@@ -235,10 +224,10 @@ requirements. Customers configure that access to use the feature; otherwise it
 remains unavailable. This is a product requirement, not a separate approval for
 each operation.
 
-The base runtime boundary permits only the API handler's internal quarantine
-and AI Proxy role assumptions. External integrations require matching workload,
-boundary, and destination permissions. This package does not provide a universal
-cross-account perimeter. See [external feature requirements](policies/README.md#external-feature-requirements).
+External integrations require matching workload permissions, runtime boundary
+allowances, and destination permissions. This package does not provide a
+universal cross-account perimeter. See
+[external feature requirements](policies/README.md#external-feature-requirements).
 
 ## Data retention and important limits
 
@@ -269,13 +258,3 @@ Understand these boundaries:
 
 These are the trust boundaries of a managed service, not guarantees of complete
 data isolation from its operator.
-
-## Implementation reference
-
-[contract.json](contract.json) records the package revision, export inventory,
-and policy digests. [Policy inputs](policies/README.md#inputs) and
-[trust inputs](trust-policies/README.md) document exact identifiers and limits.
-The validator checks policy digests, naming, document sizes, and access
-constraints. Repository CI runs these checks without AWS credentials. They do
-not establish live access, logging, or revocation behavior; those require
-acceptance against the generated bootstrap and supported module version.

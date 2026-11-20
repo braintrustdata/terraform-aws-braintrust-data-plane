@@ -28,10 +28,8 @@ secrets or customer payloads; permitted metadata APIs expose them. Some AWS
 console pages need content reads that Observer does not have. Use the permitted
 CLI/API calls instead of broadening access for console convenience.
 
-Inspection covers the supported data plane, not a general AWS inventory.
-Unused VPN, edge hardware, VM import/export, DynamoDB, and EFS reads are omitted.
-Core networking, capacity, quotas, and EKS metadata remain available to both
-human roles.
+Inspection covers data-plane infrastructure, including networking, capacity,
+quotas, and EKS metadata.
 Scheduler inspection includes target configuration and input. Keep secrets and
 customer payloads out of schedule input; metadata access is not a content filter.
 
@@ -95,17 +93,14 @@ suffixes, other accounts, Spot, or EKS Fargate roles are included.
 | `eks.amazonaws.com` | `AWSServiceRoleForAmazonEKS` |
 | `eks-nodegroup.amazonaws.com` | `AWSServiceRoleForAmazonEKSNodegroup` |
 
-New bootstraps need no separate preparation script for these grants. These roles
-belong to their AWS services, remain outside data-plane teardown, and do not
+These roles belong to their AWS services, remain outside data-plane teardown, and do not
 expand human access. EKS permissions do not by themselves provide a deployment
 recipe or Kubernetes authorization.
 
 ## Scheduler and metric sharing
 
-The service policies extend the fixed role permissions. They do not alter
-Diagnostics activation, the runtime boundary or the account SCP. Earlier issued
-bootstraps keep their original permissions; a module upgrade alone does not
-install these grants.
+The bootstrap's service policies grant Scheduler and optional metric-sharing
+permissions. Upgrading the data-plane module does not update these grants.
 
 ### Scheduler
 
@@ -124,18 +119,17 @@ group, and grant invocation only for its intended Lambda targets. The existing
 runtime boundary limits those roles; it grants no permissions by itself.
 
 Deployment and both human roles can read IAM policy and instance-profile tags
-under the managed prefix. Existing IAM tag-write permissions remain unchanged.
+under the managed prefix.
 The module's IAM ownership tag is metadata, not a new authorization boundary.
 
 ### CloudWatch metric sharing
 
 The reference [Deployment services policy](deployment-services-policy.json)
-includes an optional OAM source-link configuration. The generated bootstrap pins
-one Braintrust receiver account before issuance. When sharing is unconfigured,
-the generated policy omits every statement whose `Sid` starts with
-`MetricSourceLink`, including `cloudwatch:Link`. Do not replace an unused
-receiver with a wildcard. These reference files show the enabled configuration;
-the generated package supplies its final values and permissions.
+includes optional OAM source-link permissions for one designated Braintrust
+receiver account. Without a configured receiver, the bootstrap grants no
+source-link management or `cloudwatch:Link` permission. These reference files
+show the enabled configuration; the generated package supplies its final
+values and permissions.
 
 - Creation and updates require permission on both the customer source link
   and the pinned receiver sink, in the data-plane Region. New links can target
@@ -173,7 +167,7 @@ be outside the runtime prefix. Inline policies inherit their parent role.
 
 Created runtime roles require the exact boundary. Deployment can manage
 prefixed role policies and trust. Bootstrap IAM is protected except for the
-exact Diagnostics trust update described below; the runtime boundary is unchanged.
+exact Diagnostics trust update described below.
 `PassRole` is constrained by resource and service; RDS receives its monitoring
 role through `rds.amazonaws.com`, while that role trusts
 `monitoring.rds.amazonaws.com`. Listed service-linked roles use AWS-managed

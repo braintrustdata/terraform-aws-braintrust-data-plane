@@ -55,11 +55,11 @@ operational checks, and monitoring still matter.
 | Bucket, key, and external integration access | Scoped IAM and resource/key policies |
 
 Deployment remains able to change workload code, managed runtime trust, and the
-exact Diagnostics trust when the activation capability and customer control
-permit it. The SCP does not enforce Diagnostics participant lists or deadlines,
-or provide an independent customer approval gate. The bootstrap disable control
-restricts Deployment directly; review privileged indirect delegation as described
-in [Diagnostics](../diagnostics.md#customer-owned-disable-control). Customer
+exact Diagnostics trust through the authorized activation process when customer
+controls permit it. The SCP does not enforce Diagnostics participant lists or
+deadlines, or provide an independent customer approval gate. The bootstrap
+disable control restricts Deployment directly; review privileged indirect
+delegation as described in [Diagnostics](../diagnostics.md#customer-owned-disable-control). Customer
 monitoring and [revocation](../diagnostics.md#customer-revocation) remain part of
 the model.
 
