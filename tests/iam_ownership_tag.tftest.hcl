@@ -51,52 +51,6 @@ mock_provider "http" {
   source = "./tests/mocks/http"
 }
 
-run "tags_services_common_iam_with_braintrust_owner" {
-  command = plan
-  module { source = "./modules/services-common" }
-
-  variables {
-    deployment_name                = "bt-test"
-    vpc_id                         = "vpc-12345678"
-    kms_key_arn                    = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
-    brainstore_s3_bucket_arn       = "arn:aws:s3:::bt-test-brainstore"
-    database_secret_arn            = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-database"
-    code_bundle_s3_bucket_arn      = "arn:aws:s3:::bt-test-code-bundles"
-    lambda_responses_s3_bucket_arn = "arn:aws:s3:::bt-test-lambda-responses"
-    enable_quarantine_vpc          = true
-    quarantine_vpc_id              = "vpc-87654321"
-    custom_tags                    = { Environment = "test", BraintrustIAMOwner = "customer" }
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.api_handler_role.tags,
-        aws_iam_role.brainstore_role.tags,
-        aws_iam_role.quarantine_invoke_role[0].tags,
-        aws_iam_role.quarantine_function_role[0].tags,
-        aws_iam_policy.api_handler_policy.tags,
-        aws_iam_policy.api_handler_quarantine[0].tags,
-      ] : tags.BraintrustIAMOwner == "braintrust"
-    ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the services-common roles and managed policies."
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_role.api_handler_role.tags,
-        aws_iam_role.brainstore_role.tags,
-        aws_iam_role.quarantine_invoke_role[0].tags,
-        aws_iam_role.quarantine_function_role[0].tags,
-        aws_iam_policy.api_handler_policy.tags,
-        aws_iam_policy.api_handler_quarantine[0].tags,
-      ] : tags.Environment == "test"
-    ])
-    error_message = "The services-common roles and managed policies must keep unrelated caller tags."
-  }
-}
-
 run "tags_services_iam_with_braintrust_owner" {
   command = plan
   module { source = "./modules/services" }
@@ -204,54 +158,6 @@ run "tags_services_quarantine_and_lambda_api_iam_with_braintrust_owner" {
     error_message = "The quarantine and AIProxy roles must keep unrelated caller tags."
   }
 }
-run "tags_brainstore_instance_profile_with_braintrust_owner" {
-  command = plan
-  module { source = "./modules/brainstore-ec2" }
-
-  variables {
-    deployment_name                       = "bt-test"
-    license_key_secret_arn                = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
-    license_key_secret_version            = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    kms_key_arn                           = null
-    vpc_id                                = "vpc-12345678"
-    private_subnet_ids                    = ["subnet-12345678"]
-    database_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database-test"
-    database_host                         = "database.example.com"
-    database_port                         = "5432"
-    redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test-redis-url"
-    redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:token-test"
-    braintrust_api_url                    = "http://api.example.internal:8000"
-    ai_proxy_url_ssm_parameter            = "/bt-test/ai-proxy-url"
-    brainstore_s3_bucket_arn              = "arn:aws:s3:::test-brainstore"
-    lambda_responses_s3_bucket_arn        = "arn:aws:s3:::test-responses"
-    code_bundle_s3_bucket_arn             = "arn:aws:s3:::test-code"
-    brainstore_iam_role_name              = "bt-test-brainstore"
-    brainstore_instance_security_group_id = "sg-12345678"
-    writer_instance_count                 = 1
-    fast_reader_instance_count            = 1
-    custom_tags                           = { Environment = "test", BraintrustIAMOwner = "customer" }
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_instance_profile.brainstore.tags,
-      ] : tags.BraintrustIAMOwner == "braintrust"
-    ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the Brainstore instance profile."
-  }
-
-  assert {
-    condition = alltrue([
-      for tags in [
-        aws_iam_instance_profile.brainstore.tags,
-      ] : tags.Environment == "test"
-    ])
-    error_message = "The Brainstore instance profile must keep unrelated caller tags."
-  }
-}
-
 run "tags_iam_module_resources_with_braintrust_owner" {
   command = plan
   module { source = "./modules/iam" }
@@ -260,12 +166,19 @@ run "tags_iam_module_resources_with_braintrust_owner" {
     deployment_name = "bt-test"
     custom_tags     = { Environment = "test", BraintrustIAMOwner = "customer" }
 
+    enable_quarantine_vpc = true
+
     created_resources = {
       kms_key_arn                       = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
+      database_secret_arn               = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/DatabaseSecret-AbCdEf"
       database_url_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/DatabaseUrl-AbCdEf"
       function_tools_secret_arn         = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/FunctionToolsSecret-AbCdEf"
       redis_url_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/RedisUrl-AbCdEf"
       brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:bt-test/brainstore/license-key-AbCdEf"
+      brainstore_s3_bucket_arn          = "arn:aws:s3:::bt-test-brainstore"
+      code_bundle_s3_bucket_arn         = "arn:aws:s3:::bt-test-code-bundles"
+      lambda_responses_s3_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
+      quarantine_vpc_id                 = "vpc-87654321"
     }
     brainstore_deployment_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:/braintrust/bt-test/bt-test-BrainstoreDeployment"
     brainstore_asg_names                = ["bt-test-brainstore-reader-123"]
@@ -280,6 +193,13 @@ run "tags_iam_module_resources_with_braintrust_owner" {
         aws_iam_role.api_ecs_task_execution[0].tags,
         aws_iam_role.gateway_task_execution[0].tags,
         aws_iam_role.gateway_task[0].tags,
+        aws_iam_role.api_handler[0].tags,
+        aws_iam_role.brainstore[0].tags,
+        aws_iam_role.quarantine_invoke[0].tags,
+        aws_iam_role.quarantine_function[0].tags,
+        aws_iam_policy.api_handler[0].tags,
+        aws_iam_policy.api_handler_quarantine[0].tags,
+        aws_iam_instance_profile.brainstore[0].tags,
       ] : tags.BraintrustIAMOwner == "braintrust"
     ])
     error_message = "A caller tag must not override BraintrustIAMOwner on a role in modules/iam."
@@ -293,6 +213,13 @@ run "tags_iam_module_resources_with_braintrust_owner" {
         aws_iam_role.api_ecs_task_execution[0].tags,
         aws_iam_role.gateway_task_execution[0].tags,
         aws_iam_role.gateway_task[0].tags,
+        aws_iam_role.api_handler[0].tags,
+        aws_iam_role.brainstore[0].tags,
+        aws_iam_role.quarantine_invoke[0].tags,
+        aws_iam_role.quarantine_function[0].tags,
+        aws_iam_policy.api_handler[0].tags,
+        aws_iam_policy.api_handler_quarantine[0].tags,
+        aws_iam_instance_profile.brainstore[0].tags,
       ] : tags.Environment == "test"
     ])
     error_message = "A role in modules/iam must keep unrelated caller tags."

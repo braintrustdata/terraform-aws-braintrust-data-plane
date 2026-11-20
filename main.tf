@@ -477,11 +477,11 @@ module "services" {
 
   kms_key_arn                         = local.kms_key_arn
   permissions_boundary_arn            = var.permissions_boundary_arn
-  api_handler_role_arn                = module.services_common.api_handler_role_arn
+  api_handler_role_arn                = module.iam.api_handler_role_arn
   api_security_group_id               = module.services_common.api_security_group_id
   function_tools_secret_key           = module.services_common.function_tools_secret_key
-  quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
-  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
+  quarantine_invoke_role_arn          = module.iam.quarantine_invoke_role_arn
+  quarantine_function_role_arn        = module.iam.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
   custom_tags                         = local.all_custom_tags
 
@@ -816,8 +816,8 @@ module "api_ecs" {
     local.quarantine_vpc_private_subnet_2_id,
     local.quarantine_vpc_private_subnet_3_id
   ] : []
-  quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
-  quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
+  quarantine_invoke_role_arn          = module.iam.quarantine_invoke_role_arn
+  quarantine_function_role_arn        = module.iam.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
   quarantine_proxy_url                = var.enable_private_dataplane ? null : local.api_ecs_quarantine_proxy_url
 
@@ -854,7 +854,7 @@ module "api_ecs" {
   task_execution_role_arn = module.iam.api_ecs_task_execution_role_arn
   ecs_cluster_arn         = module.ecs[0].cluster_arn
   ecs_cluster_name        = module.ecs[0].cluster_name
-  task_role_arn           = module.services_common.api_handler_role_arn
+  task_role_arn           = module.iam.api_handler_role_arn
   task_security_group_id  = module.services_common.api_security_group_id
   custom_tags             = local.all_custom_tags
 }
@@ -895,41 +895,12 @@ module "ingress" {
 module "services_common" {
   source = "./modules/services-common"
 
-  deployment_name                            = var.deployment_name
-  diagnostics_transcript_log_group_name      = var.diagnostics_transcript_log_group_name
-  vpc_id                                     = local.main_vpc_id
-  kms_key_arn                                = local.kms_key_arn
-  database_secret_arn                        = local.postgres_credentials_secret_arn
-  brainstore_license_key_secret_arn          = local.brainstore_license_key_secret_arn
-  brainstore_license_key_kms_key_arn         = local.brainstore_license_key_kms_key_arn
-  internal_observability_api_key_secret_arn  = local.internal_observability_api_key_secret_arn
-  brainstore_custom_ca_bundle_secret_arn     = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_secret_arn : null
-  brainstore_custom_ca_bundle_kms_key_arn    = !var.use_deployment_mode_external_eks ? var.custom_ca_bundle_kms_key_arn : null
-  brainstore_s3_bucket_arn                   = module.storage.brainstore_bucket_arn
-  brainstore_s3_bucket_kms_key_arn           = var.existing_brainstore_s3_bucket_kms_key_arn
-  code_bundle_s3_bucket_arn                  = module.storage.code_bundle_bucket_arn
-  lambda_responses_s3_bucket_arn             = module.storage.lambda_responses_bucket_arn
-  attachment_s3_bucket_arn                   = local.attachment_s3_bucket_arn
-  attachment_s3_bucket_kms_key_arn           = local.attachment_s3_bucket_kms_key_arn
-  external_attachment_s3_bucket_arns         = var.external_attachment_s3_bucket_arns
-  external_attachment_s3_bucket_kms_key_arns = var.external_attachment_s3_bucket_kms_key_arns
-  service_additional_policy_arns             = var.service_additional_policy_arns
-  brainstore_additional_policy_arns          = var.brainstore_additional_policy_arns
-  brainstore_enable_export                   = var.brainstore_enable_export
-  s3_export_assume_role_arns                 = var.s3_export_assume_role_arns
-  permissions_boundary_arn                   = var.permissions_boundary_arn
-  eks_cluster_arn                            = var.existing_eks_cluster_arn
-  eks_namespace                              = var.eks_namespace
-  enable_eks_pod_identity                    = var.enable_eks_pod_identity
-  enable_eks_irsa                            = var.enable_eks_irsa
-  enable_ecs                                 = local.create_ecs_api
-  api_ecs_enable_execute_command             = var.api_ecs_enable_execute_command
-  enable_brainstore_ec2_ssm                  = var.enable_brainstore_ec2_ssm
-  custom_tags                                = local.all_custom_tags
-  override_api_iam_role_trust_policy         = var.override_api_iam_role_trust_policy
-  override_brainstore_iam_role_trust_policy  = var.override_brainstore_iam_role_trust_policy
-  enable_quarantine_vpc                      = var.enable_quarantine_vpc
-  quarantine_vpc_id                          = local.quarantine_vpc_id
+  deployment_name       = var.deployment_name
+  vpc_id                = local.main_vpc_id
+  kms_key_arn           = local.kms_key_arn
+  custom_tags           = local.all_custom_tags
+  enable_quarantine_vpc = var.enable_quarantine_vpc
+  quarantine_vpc_id     = local.quarantine_vpc_id
 }
 
 module "iam" {
@@ -940,27 +911,56 @@ module "iam" {
   custom_tags                       = local.all_custom_tags
   use_deployment_mode_external_eks  = var.use_deployment_mode_external_eks
   create_ai_gateway                 = var.create_ai_gateway
+  enable_quarantine_vpc             = var.enable_quarantine_vpc
+  enable_brainstore_ec2_ssm         = var.enable_brainstore_ec2_ssm
+  brainstore_enable_export          = var.brainstore_enable_export
+  api_ecs_enable_execute_command    = var.api_ecs_enable_execute_command
   internal_observability_enabled    = local.create_internal_observability_secret
   ai_gateway_enable_execute_command = var.ai_gateway_enable_execute_command
 
-  # Resources the caller supplies.
-  kms_key_arn                            = var.kms_key_arn != "" ? var.kms_key_arn : null
-  custom_ca_bundle_secret_arn            = var.custom_ca_bundle_secret_arn
-  custom_ca_bundle_kms_key_arn           = var.custom_ca_bundle_kms_key_arn
-  existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
-  diagnostics_transcript_log_group_name  = var.diagnostics_transcript_log_group_name
-  ai_gateway_bedrock_assume_role_arns    = var.ai_gateway_bedrock_assume_role_arns
+  # Trust, additional policies and export scope for the shared API and Brainstore roles.
+  eks_cluster_arn                           = var.existing_eks_cluster_arn
+  eks_namespace                             = var.eks_namespace
+  enable_eks_pod_identity                   = var.enable_eks_pod_identity
+  enable_eks_irsa                           = var.enable_eks_irsa
+  override_api_iam_role_trust_policy        = var.override_api_iam_role_trust_policy
+  override_brainstore_iam_role_trust_policy = var.override_brainstore_iam_role_trust_policy
+  service_additional_policy_arns            = var.service_additional_policy_arns
+  brainstore_additional_policy_arns         = var.brainstore_additional_policy_arns
+  s3_export_assume_role_arns                = var.s3_export_assume_role_arns
 
-  # Exact ARNs of the KMS key and secrets this module creates. Terraform tracks
-  # this object as one value, so every policy that reads it waits for all of
-  # them. Keep fleet values out of it, as explained below.
+  # Resources the caller supplies.
+  kms_key_arn                                = var.kms_key_arn != "" ? var.kms_key_arn : null
+  custom_ca_bundle_secret_arn                = var.custom_ca_bundle_secret_arn
+  custom_ca_bundle_kms_key_arn               = var.custom_ca_bundle_kms_key_arn
+  existing_brainstore_license_key_secret     = var.existing_brainstore_license_key_secret
+  existing_brainstore_s3_bucket_arn          = var.existing_brainstore_s3_bucket_arn
+  existing_brainstore_s3_bucket_kms_key_arn  = var.existing_brainstore_s3_bucket_kms_key_arn
+  existing_attachment_s3_bucket_arn          = local.attachment_s3_bucket_arn
+  existing_attachment_s3_bucket_kms_key_arn  = local.attachment_s3_bucket_kms_key_arn
+  external_attachment_s3_bucket_arns         = var.external_attachment_s3_bucket_arns
+  external_attachment_s3_bucket_kms_key_arns = var.external_attachment_s3_bucket_kms_key_arns
+  existing_quarantine_vpc_id                 = var.existing_quarantine_vpc_id
+  diagnostics_transcript_log_group_name      = var.diagnostics_transcript_log_group_name
+  ai_gateway_bedrock_assume_role_arns        = var.ai_gateway_bedrock_assume_role_arns
+
+  # Exact ARNs of the KMS key, secrets, buckets and quarantine VPC this module
+  # creates. Terraform tracks this object as one value, so every policy that
+  # reads it waits for all of them. Keep fleet values out of it, as explained
+  # below. database_secret_arn is the credentials secret from
+  # postgres_connection_override when that is set.
   created_resources = {
     kms_key_arn                               = var.kms_key_arn == "" ? module.kms[0].key_arn : null
+    database_secret_arn                       = local.postgres_credentials_secret_arn
     database_url_secret_arn                   = local.database_url_secret_arn
     function_tools_secret_arn                 = module.services_common.function_tools_secret_arn
     redis_url_secret_arn                      = module.redis.redis_url_secret_arn
     brainstore_license_key_secret_arn         = local.create_brainstore_license_secret ? aws_secretsmanager_secret.brainstore_license_key[0].arn : null
     internal_observability_api_key_secret_arn = local.internal_observability_api_key_secret_arn
+    brainstore_s3_bucket_arn                  = var.create_brainstore_s3_bucket ? module.storage.brainstore_bucket_arn : null
+    code_bundle_s3_bucket_arn                 = module.storage.code_bundle_bucket_arn
+    lambda_responses_s3_bucket_arn            = module.storage.lambda_responses_bucket_arn
+    quarantine_vpc_id                         = local.create_quarantine_vpc ? module.quarantine_vpc[0].vpc_id : null
   }
 
   # Only the Brainstore waiter policy reads these two. Keeping fleet values out
@@ -1045,7 +1045,7 @@ module "brainstore" {
   ]
 
   kms_key_arn                = local.kms_key_arn
-  brainstore_iam_role_name   = module.services_common.brainstore_iam_role_name
+  instance_profile_arn       = module.iam.brainstore_instance_profile_arn
   custom_tags                = local.all_custom_tags
   custom_post_install_script = var.brainstore_custom_post_install_script
   cache_file_size_reader     = var.brainstore_cache_file_size_reader

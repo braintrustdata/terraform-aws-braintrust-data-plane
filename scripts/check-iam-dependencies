@@ -21,6 +21,18 @@ from pathlib import Path
 import re
 import subprocess
 
+# The Brainstore policies that existing launch templates already waited for,
+# through the old role name output. The export, SSM and diagnostics policies
+# never gated a launch.
+BRAINSTORE_ROLE_POLICIES = [
+    "aws_iam_role_policy.brainstore_secrets_access",
+    "aws_iam_role_policy.brainstore_kms_policy",
+    "aws_iam_role_policy.brainstore_s3_access",
+    "aws_iam_role_policy.brainstore_ssm_parameter_access",
+    "aws_iam_role_policy.brainstore_cloudwatch_logs_access",
+    "aws_iam_role_policy.brainstore_cloudwatch_metrics",
+]
+
 # Output -> the only policy nodes that output may wait for. This deliberately
 # repeats the depends_on lists in modules/iam/outputs.tf, so that editing one
 # without the other fails here.
@@ -42,6 +54,13 @@ OUTPUT_POLICIES = {
         "aws_iam_role_policy.gateway_task_diagnostics_transcripts",
         "aws_iam_role_policy.gateway_task_diagnostics_execute_command",
     ],
+    # The shared API and quarantine roles have no readiness edge, so their outputs
+    # wait for no policy.
+    "api_handler_role_arn": [],
+    "quarantine_invoke_role_arn": [],
+    "quarantine_function_role_arn": [],
+    "brainstore_role_arn": BRAINSTORE_ROLE_POLICIES,
+    "brainstore_instance_profile_arn": [*BRAINSTORE_ROLE_POLICIES, "aws_iam_role_policy.brainstore_redis_secret_access"],
 }
 
 # Consumer -> the policies it must still wait for, as it did before the move.
@@ -60,6 +79,10 @@ CONSUMER_POLICIES = {
         "aws_iam_role_policy.gateway_task_customer_assume_role",
     ],
     "module.gateway_ecs.aws_ecs_service.gateway": ["aws_iam_role_policy.gateway_task_execution_secrets"],
+    **{
+        f"module.brainstore.aws_launch_template.{template}": [*BRAINSTORE_ROLE_POLICIES, "aws_iam_role_policy.brainstore_redis_secret_access"]
+        for template in ["brainstore", "brainstore_fast_reader", "brainstore_writer", "brainstore_automation_writer"]
+    },
 }
 
 
@@ -91,7 +114,7 @@ def check_graph(dot):
 
     policy_nodes = {
         name for name in nodes
-        if re.search(r"module\.iam\.aws_iam_role_policy(_attachment)?\.", name) and name.endswith("(expand)")
+        if re.search(r"module\.iam\.aws_iam_(role_policy|role_policy_attachment|role_policies_exclusive|policy)\.", name) and name.endswith("(expand)")
     }
     errors = []
 

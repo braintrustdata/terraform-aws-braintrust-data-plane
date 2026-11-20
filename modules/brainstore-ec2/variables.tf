@@ -221,9 +221,9 @@ variable "code_bundle_s3_bucket_arn" {
   description = "The ARN of the code bundle S3 bucket"
 }
 
-variable "brainstore_iam_role_name" {
+variable "instance_profile_arn" {
   type        = string
-  description = "The name of the IAM role for Brainstore EC2 instances"
+  description = "ARN of the instance profile for the Brainstore EC2 instances. Pass the brainstore_instance_profile_arn output of modules/iam so the launch templates wait for the Brainstore role's policies."
 }
 
 variable "brainstore_instance_security_group_id" {

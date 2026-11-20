@@ -9,6 +9,8 @@ mock_provider "aws" {
   source = "./tests/mocks/aws"
 }
 
+mock_provider "random" {}
+
 mock_provider "http" {
   source = "./tests/mocks/http"
 }
@@ -167,5 +169,42 @@ run "api_task_definitions_start_with_the_supplied_execution_role" {
       task.execution_role_arn == "arn:aws:iam::123456789012:role/bt-test-api-ecs-task-exec" && task.task_role_arn == "arn:aws:iam::123456789012:role/api-task"
     ])
     error_message = "Every API task definition must use the supplied execution role and keep the shared task role."
+  }
+}
+
+run "brainstore_fleets_start_with_the_supplied_instance_profile" {
+  command = plan
+  module { source = "./modules/brainstore-ec2" }
+
+  variables {
+    deployment_name                       = "bt-test"
+    license_key_secret_arn                = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+    license_key_secret_version            = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+    vpc_id                                = "vpc-12345678"
+    private_subnet_ids                    = ["subnet-12345678", "subnet-23456789", "subnet-34567890"]
+    database_secret_arn                   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:database"
+    database_host                         = "database.example.internal"
+    database_port                         = "5432"
+    redis_url_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:redis"
+    redis_url_secret_version_id           = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-tools"
+    brainstore_s3_bucket_arn              = "arn:aws:s3:::bt-test-brainstore"
+    lambda_responses_s3_bucket_arn        = "arn:aws:s3:::bt-test-responses"
+    code_bundle_s3_bucket_arn             = "arn:aws:s3:::bt-test-code"
+    instance_profile_arn                  = "arn:aws:iam::123456789012:instance-profile/bt-test-brainstore-instance-profile"
+    brainstore_instance_security_group_id = "sg-12345678"
+    ai_proxy_url_ssm_parameter            = "/bt-test/ai-proxy-url"
+    writer_instance_count                 = 1
+    fast_reader_instance_count            = 1
+    automation_writer_instance_count      = 1
+  }
+
+  assert {
+    condition = alltrue([
+      for template in [aws_launch_template.brainstore, aws_launch_template.brainstore_writer[0], aws_launch_template.brainstore_fast_reader[0], aws_launch_template.brainstore_automation_writer[0]] :
+      template.iam_instance_profile[0].arn == var.instance_profile_arn
+    ])
+    error_message = "Every Brainstore launch template must use the supplied instance profile."
   }
 }

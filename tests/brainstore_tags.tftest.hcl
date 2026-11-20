@@ -24,7 +24,7 @@ run "deployment_tag_cannot_be_overridden" {
     brainstore_s3_bucket_arn              = "arn:aws:s3:::test-brainstore"
     lambda_responses_s3_bucket_arn        = "arn:aws:s3:::test-responses"
     code_bundle_s3_bucket_arn             = "arn:aws:s3:::test-code"
-    brainstore_iam_role_name              = "bt-test-brainstore"
+    instance_profile_arn                  = "arn:aws:iam::123456789012:instance-profile/bt-test-brainstore"
     brainstore_instance_security_group_id = "sg-12345678"
     writer_instance_count                 = 1
     fast_reader_instance_count            = 1
