@@ -1,6 +1,7 @@
 locals {
   automation_cron_base_function_name = "AutomationCron"
   automation_cron_function_name      = "${var.deployment_name}-${local.automation_cron_base_function_name}"
+  automation_cron_function_arn       = "${local.lambda_function_arn_base}${local.automation_cron_function_name}"
   automation_cron_original_handler   = "index.handler"
 }
 
@@ -74,23 +75,26 @@ resource "aws_lambda_function" "automation_cron" {
   tags = local.common_tags
 }
 
-resource "aws_cloudwatch_event_rule" "automation_cron_schedule" {
-  name                = "${var.deployment_name}-automation-cron-schedule"
-  description         = "Trigger automation cron Lambda function."
-  schedule_expression = "rate(10 minutes)"
-  tags                = local.common_tags
-}
+resource "aws_scheduler_schedule" "automation_cron" {
+  name        = "${var.deployment_name}-automation-cron-schedule"
+  group_name  = aws_scheduler_schedule_group.scheduled_jobs.name
+  description = "Trigger automation cron Lambda function."
 
-resource "aws_cloudwatch_event_target" "automation_cron_target" {
-  rule      = aws_cloudwatch_event_rule.automation_cron_schedule.name
-  target_id = "AutomationCronLambdaTarget"
-  arn       = aws_lambda_function.automation_cron.arn
-}
+  schedule_expression          = "rate(10 minutes)"
+  schedule_expression_timezone = "UTC"
 
-resource "aws_lambda_permission" "allow_automation_cron_eventbridge" {
-  statement_id  = "AllowEventBridgeInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.automation_cron.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.automation_cron_schedule.arn
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  target {
+    arn      = local.automation_cron_function_arn
+    role_arn = var.automation_cron_schedule_role_arn
+    input    = local.scheduled_event_input
+
+    retry_policy {
+      maximum_event_age_in_seconds = 86400
+      maximum_retry_attempts       = 185
+    }
+  }
 }

@@ -338,7 +338,7 @@ resource "aws_iam_role_policy" "brainstore_ssm_parameter_access" {
 resource "aws_iam_instance_profile" "brainstore" {
   count = var.create_iam && local.create_brainstore_ec2 ? 1 : 0
 
-  name = "${var.deployment_name}-brainstore-instance-profile"
+  name = local.instance_profile_names.brainstore
   role = aws_iam_role.brainstore[0].name
 
   tags = local.iam_tags_deployment_name_wins

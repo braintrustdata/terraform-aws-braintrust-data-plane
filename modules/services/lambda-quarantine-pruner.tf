@@ -1,6 +1,7 @@
 locals {
   quarantine_pruner_base_function_name = "QuarantinePrunerFunction"
   quarantine_pruner_function_name      = "${var.deployment_name}-${local.quarantine_pruner_base_function_name}"
+  quarantine_pruner_function_arn       = "${local.lambda_function_arn_base}${local.quarantine_pruner_function_name}"
   quarantine_pruner_original_handler   = "index.handler"
 }
 
@@ -58,30 +59,29 @@ resource "aws_lambda_function" "quarantine_pruner" {
 
 # The schedule stays enabled in every mode; the handler returns early when mode
 # is off.
-resource "aws_cloudwatch_event_rule" "quarantine_pruner_schedule" {
+resource "aws_scheduler_schedule" "quarantine_pruner" {
   count = var.enable_quarantine_pruner ? 1 : 0
 
-  name                = "${var.deployment_name}-quarantine-pruner-schedule"
-  description         = "Trigger quarantine pruner Lambda function."
-  schedule_expression = "rate(1 hour)"
-  state               = "ENABLED"
-  tags                = local.common_tags
-}
+  name        = "${var.deployment_name}-quarantine-pruner-schedule"
+  group_name  = aws_scheduler_schedule_group.scheduled_jobs.name
+  description = "Trigger quarantine pruner Lambda function."
 
-resource "aws_cloudwatch_event_target" "quarantine_pruner_target" {
-  count = var.enable_quarantine_pruner ? 1 : 0
+  schedule_expression          = "rate(1 hour)"
+  schedule_expression_timezone = "UTC"
+  state                        = "ENABLED"
 
-  rule      = aws_cloudwatch_event_rule.quarantine_pruner_schedule[0].name
-  target_id = "QuarantinePrunerLambdaTarget"
-  arn       = aws_lambda_function.quarantine_pruner[0].arn
-}
+  flexible_time_window {
+    mode = "OFF"
+  }
 
-resource "aws_lambda_permission" "allow_quarantine_pruner_eventbridge" {
-  count = var.enable_quarantine_pruner ? 1 : 0
+  target {
+    arn      = local.quarantine_pruner_function_arn
+    role_arn = var.quarantine_pruner_schedule_role_arn
+    input    = local.scheduled_event_input
 
-  statement_id  = "AllowEventBridgeInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.quarantine_pruner[0].function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.quarantine_pruner_schedule[0].arn
+    retry_policy {
+      maximum_event_age_in_seconds = 86400
+      maximum_retry_attempts       = 185
+    }
+  }
 }

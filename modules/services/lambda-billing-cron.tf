@@ -1,6 +1,7 @@
 locals {
   billing_cron_base_function_name = "BillingCron"
   billing_cron_function_name      = "${var.deployment_name}-${local.billing_cron_base_function_name}"
+  billing_cron_function_arn       = "${local.lambda_function_arn_base}${local.billing_cron_function_name}"
   billing_cron_original_handler   = "lambda.handler"
 }
 
@@ -62,26 +63,28 @@ resource "aws_lambda_function" "billing_cron" {
   tags = local.common_tags
 }
 
-resource "aws_cloudwatch_event_rule" "billing_cron_schedule" {
+resource "aws_scheduler_schedule" "billing_cron" {
+  name        = "${var.deployment_name}-billing-cron-schedule"
+  group_name  = aws_scheduler_schedule_group.scheduled_jobs.name
+  description = "Trigger billing cron Lambda function."
 
-  name                = "${var.deployment_name}-billing-cron-schedule"
-  description         = "Trigger billing cron Lambda function."
-  schedule_expression = "rate(5 minutes)"
-  tags                = local.common_tags
-}
+  schedule_expression          = "rate(5 minutes)"
+  schedule_expression_timezone = "UTC"
 
-resource "aws_cloudwatch_event_target" "billing_cron_target" {
-  rule      = aws_cloudwatch_event_rule.billing_cron_schedule.name
-  target_id = "BillingCronLambdaTarget"
-  arn       = aws_lambda_function.billing_cron.arn
-}
+  flexible_time_window {
+    mode = "OFF"
+  }
 
-resource "aws_lambda_permission" "allow_billing_cron_eventbridge" {
-  statement_id  = "AllowEventBridgeInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.billing_cron.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.billing_cron_schedule.arn
+  target {
+    arn      = local.billing_cron_function_arn
+    role_arn = var.billing_cron_schedule_role_arn
+    input    = local.scheduled_event_input
+
+    retry_policy {
+      maximum_event_age_in_seconds = 86400
+      maximum_retry_attempts       = 185
+    }
+  }
 }
 
 # TODO: remove this after automation cron migration

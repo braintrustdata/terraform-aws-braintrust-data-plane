@@ -3,6 +3,11 @@ output "role_names" {
   value       = local.role_names
 }
 
+output "instance_profile_names" {
+  description = "Instance profile names by key, from the naming definitions. Always populated, including when create_iam is false. They carry no readiness edge. Wire consumers to the ARN outputs below instead."
+  value       = local.instance_profile_names
+}
+
 # Each ARN output waits only for its own role's policies. A consumer that reads
 # the ARN then waits for those policies, without a dependency on this whole
 # module. One shared edge would form a cycle: the database reads the
@@ -170,4 +175,35 @@ output "ai_proxy_invoke_role_arn" {
   # The exclusive reconciler already waits for the invoke policy, so this waits
   # for both.
   depends_on = [aws_iam_role_policies_exclusive.ai_proxy_invoke]
+}
+
+# Each schedule reads its invocation role through one of these outputs, so
+# Scheduler can't validate a role before its invoke policy exists.
+
+output "automation_cron_schedule_role_arn" {
+  description = "ARN of the role that Scheduler assumes to invoke the AutomationCron function."
+  value       = one(aws_iam_role.automation_cron_schedule[*].arn)
+
+  depends_on = [aws_iam_role_policy.automation_cron_schedule]
+}
+
+output "billing_cron_schedule_role_arn" {
+  description = "ARN of the role that Scheduler assumes to invoke the BillingCron function."
+  value       = one(aws_iam_role.billing_cron_schedule[*].arn)
+
+  depends_on = [aws_iam_role_policy.billing_cron_schedule]
+}
+
+output "catchup_etl_schedule_role_arn" {
+  description = "ARN of the role that Scheduler assumes to invoke the CatchupETL function."
+  value       = one(aws_iam_role.catchup_etl_schedule[*].arn)
+
+  depends_on = [aws_iam_role_policy.catchup_etl_schedule]
+}
+
+output "quarantine_pruner_schedule_role_arn" {
+  description = "ARN of the role that Scheduler assumes to invoke the quarantine pruner function. Null when the pruner is off."
+  value       = one(aws_iam_role.quarantine_pruner_schedule[*].arn)
+
+  depends_on = [aws_iam_role_policy.quarantine_pruner_schedule]
 }

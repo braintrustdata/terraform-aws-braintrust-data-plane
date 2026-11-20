@@ -13,6 +13,10 @@ this reads the dependency graph.
 
 Run after terraform init, or pass a saved `terraform graph -type=plan` DOT file.
 This reads the dependency graph only; it never plans or applies AWS resources.
+
+It also checks the Scheduler cutover. Each schedule waits for its own invocation
+role's invoke policy and for no function, migration or Brainstore waiter, and no
+EventBridge rule, target or scheduled-rule Lambda permission is left.
 """
 
 import argparse
@@ -76,6 +80,10 @@ OUTPUT_POLICIES = {
     # The graph drops an edge that another listed edge already implies. The
     # exclusive reconciler waits for the invoke policy, so only it appears here.
     "ai_proxy_invoke_role_arn": ["aws_iam_role_policies_exclusive.ai_proxy_invoke"],
+    "automation_cron_schedule_role_arn": ["aws_iam_role_policy.automation_cron_schedule"],
+    "billing_cron_schedule_role_arn": ["aws_iam_role_policy.billing_cron_schedule"],
+    "catchup_etl_schedule_role_arn": ["aws_iam_role_policy.catchup_etl_schedule"],
+    "quarantine_pruner_schedule_role_arn": ["aws_iam_role_policy.quarantine_pruner_schedule"],
 }
 
 # Consumer -> the policies it must still wait for, as it did before the move.
@@ -107,6 +115,10 @@ CONSUMER_POLICIES = {
         "aws_iam_role_policy.quarantine_warmup",
     ],
     "module.services.aws_lambda_function.api_handler": ["aws_iam_role_policy.ai_proxy_invoke"],
+    "module.services.aws_scheduler_schedule.automation_cron": ["aws_iam_role_policy.automation_cron_schedule"],
+    "module.services.aws_scheduler_schedule.billing_cron": ["aws_iam_role_policy.billing_cron_schedule"],
+    "module.services.aws_scheduler_schedule.catchup_etl": ["aws_iam_role_policy.catchup_etl_schedule"],
+    "module.services.aws_scheduler_schedule.quarantine_pruner": ["aws_iam_role_policy.quarantine_pruner_schedule"],
     **{
         f"module.brainstore.aws_launch_template.{template}": [*BRAINSTORE_ROLE_POLICIES, "aws_iam_role_policy.brainstore_redis_secret_access"]
         for template in ["brainstore", "brainstore_fast_reader", "brainstore_writer", "brainstore_automation_writer"]
@@ -126,6 +138,39 @@ def dependency_path(graph, start, target):
                 visited.add(dependency)
                 pending.append((dependency, path + [dependency]))
     return None
+
+
+def dependency_paths(graph, start):
+    """The shortest dependency path from start to every node it waits for, directly or not."""
+    paths = {start: [start]}
+    pending = deque([start])
+    while pending:
+        node = pending.popleft()
+        for dependency in graph[node]:
+            if dependency not in paths:
+                paths[dependency] = paths[node] + [dependency]
+                pending.append(dependency)
+    return paths
+
+
+# A schedule targets its function by name, so Terraform creates it at the start
+# of the apply. A path to any of these would defer it behind the migration or
+# up to 900 seconds of Brainstore waiter time. The patterns are not tied to
+# modules/services, so a function, invocation or waiter in any module counts.
+SCHEDULE_MUST_NOT_WAIT_FOR = re.compile(
+    r"(module\.\w+\.)?(aws_lambda_function|aws_lambda_invocation)\.\w+ \(expand\)$"
+    r"|(module\.\w+\.)?terraform_data\.brainstore_deployment \(expand\)$"
+    r"|module\.brainstore_deployment[. ]"
+    r"|module\.services\.var\.brainstore_deployment_id \(expand\)$"
+)
+
+# modules/services holds no EventBridge rule or target any more, and the four
+# Lambda permissions for events.amazonaws.com that each scheduled job had before
+# Scheduler are gone too.
+REMOVED_EVENTBRIDGE_NODES = re.compile(
+    r"module\.services\.(aws_cloudwatch_event_(rule|target)\.\w+"
+    r"|aws_lambda_permission\.(allow_automation_cron_eventbridge|allow_billing_cron_eventbridge|allow_eventbridge|allow_quarantine_pruner_eventbridge)) \(expand\)$"
+)
 
 
 def check_graph(dot):
@@ -189,6 +234,22 @@ def check_graph(dot):
             if path:
                 errors.append("Only the waiter policy may wait for the Brainstore fleets or the waiter's log group:\n  " + "\n  -> ".join(path))
 
+    # An empty set would make the loop below pass without checking anything.
+    forbidden = {name for name in nodes if SCHEDULE_MUST_NOT_WAIT_FOR.search(name)}
+    if not forbidden:
+        errors.append("The graph has no function, invocation or Brainstore deployment node for the schedules to avoid, so the pattern matches nothing.")
+    schedules = [consumer for consumer in CONSUMER_POLICIES if ".aws_scheduler_schedule." in consumer]
+    for schedule in schedules:
+        paths = dependency_paths(graph, node(schedule))
+        # Everything past the first forbidden node is forbidden too, so show only the shortest path.
+        reached = sorted(forbidden & paths.keys(), key=lambda name: len(paths[name]))
+        if reached:
+            errors.append("A schedule must not wait for a function, migration or waiter:\n  " + "\n  -> ".join(paths[reached[0]]))
+
+    leftovers = sorted(name for name in nodes if REMOVED_EVENTBRIDGE_NODES.search(name))
+    if leftovers:
+        errors.append(f"The EventBridge rules, targets and permissions must be gone, but the graph has {leftovers}.")
+
     if errors:
         raise ValueError("\n\n".join(errors))
 
@@ -205,7 +266,7 @@ def main():
         check_graph(dot)
     except ValueError as error:
         parser.exit(1, f"{error}\n")
-    print("IAM dependencies pass. Each role output waits only for its own policies.")
+    print("IAM dependencies pass. Each role output waits only for its own policies, and each schedule waits for its invocation role but no function, migration or waiter.")
 
 
 if __name__ == "__main__":

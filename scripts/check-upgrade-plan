@@ -64,14 +64,18 @@ REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 UPGRADE_TEST = "tests/v7_upgrade.tftest.hcl"
 # Each run that plans the working tree, and the changes it may make. Runs that
 # start from the parent commit share one allow-list, and runs that start from the
-# pinned v7 release share another.
+# pinned v7 release share another. The external EKS run has its own, because the
+# changes that every other run makes don't exist there.
 PARENT_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.json"
 RELEASE_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.release.json"
+# External EKS has no services module, so it has no schedules, and no module-owned
+# Scheduler roles. An entry for either would match nothing there and fail the run.
+EXTERNAL_EKS_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.external-eks.json"
 ALLOW_LISTS = {
     "plans_working_tree_with_defaults": PARENT_ALLOW_LIST,
     "plans_working_tree_with_optional_iam_inputs": PARENT_ALLOW_LIST,
     "plans_working_tree_in_lambda_mode": PARENT_ALLOW_LIST,
-    "plans_working_tree_with_external_eks": PARENT_ALLOW_LIST,
+    "plans_working_tree_with_external_eks": EXTERNAL_EKS_ALLOW_LIST,
     "plans_working_tree_from_release": RELEASE_ALLOW_LIST,
     "plans_working_tree_from_release_in_lambda_mode": RELEASE_ALLOW_LIST,
 }

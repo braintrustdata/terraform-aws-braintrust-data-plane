@@ -15,6 +15,15 @@ mock_data "aws_caller_identity" {
   }
 }
 
+# An unpinned partition is a random string, which fails the provider's ARN
+# validation on any resource that takes an ARN built from it.
+mock_data "aws_partition" {
+  defaults = {
+    partition  = "aws"
+    dns_suffix = "amazonaws.com"
+  }
+}
+
 mock_data "aws_region" {
   defaults = {
     name   = "us-east-1"

@@ -87,13 +87,32 @@ run "creates_every_role_with_its_released_name" {
 
   assert {
     condition = (
+      aws_iam_role.automation_cron_schedule[0].name == "bt-test-AutomationCronScheduleRole"
+      && aws_iam_role.billing_cron_schedule[0].name == "bt-test-BillingCronScheduleRole"
+      && aws_iam_role.catchup_etl_schedule[0].name == "bt-test-CatchupETLScheduleRole"
+      && aws_iam_role.quarantine_pruner_schedule[0].name == "bt-test-QuarantinePrunerScheduleRole"
+    )
+    error_message = "The Scheduler invocation roles must be named <deployment_name>-<Job>ScheduleRole."
+  }
+
+  assert {
+    condition = (
       output.role_names == local.role_names
       && output.role_names.gateway_task == "bt-test-gateway-task"
       && output.role_names.api_handler == aws_iam_role.api_handler[0].name
       && output.role_names.brainstore == aws_iam_role.brainstore[0].name
       && output.role_names.ai_proxy_invoke == aws_iam_role.ai_proxy_invoke[0].name
+      && output.role_names.automation_cron_schedule == aws_iam_role.automation_cron_schedule[0].name
+      && output.role_names.billing_cron_schedule == aws_iam_role.billing_cron_schedule[0].name
+      && output.role_names.catchup_etl_schedule == aws_iam_role.catchup_etl_schedule[0].name
+      && output.role_names.quarantine_pruner_schedule == aws_iam_role.quarantine_pruner_schedule[0].name
     )
     error_message = "role_names must publish the same names that the roles use."
+  }
+
+  assert {
+    condition     = output.instance_profile_names == local.instance_profile_names && output.instance_profile_names.brainstore == aws_iam_instance_profile.brainstore[0].name
+    error_message = "instance_profile_names must publish the same names that the instance profiles use."
   }
 
   assert {
@@ -505,6 +524,14 @@ run "creates_no_roles_when_create_iam_is_false" {
       && length(aws_iam_role.quarantine_warmup) == 0
       && length(aws_iam_role.ai_proxy_invoke) == 0
       && length(aws_iam_policy.api_handler_lambda_policies) == 0
+      && length(aws_iam_role.automation_cron_schedule) == 0
+      && length(aws_iam_role.billing_cron_schedule) == 0
+      && length(aws_iam_role.catchup_etl_schedule) == 0
+      && length(aws_iam_role.quarantine_pruner_schedule) == 0
+      && length(aws_iam_role_policy.automation_cron_schedule) == 0
+      && length(aws_iam_role_policy.billing_cron_schedule) == 0
+      && length(aws_iam_role_policy.catchup_etl_schedule) == 0
+      && length(aws_iam_role_policy.quarantine_pruner_schedule) == 0
     )
     error_message = "create_iam = false must create no roles or policies."
   }
@@ -517,6 +544,21 @@ run "creates_no_roles_when_create_iam_is_false" {
   assert {
     condition     = output.role_names.api_handler == "bt-test-APIHandlerRole" && output.api_handler_role_arn == null && output.brainstore_instance_profile_arn == null && output.catchup_etl_role_arn == null
     error_message = "The shared, Brainstore and Lambda role names must stay available, and their ARNs must be null."
+  }
+
+  assert {
+    condition = (
+      output.role_names.automation_cron_schedule == "bt-test-AutomationCronScheduleRole"
+      && output.role_names.billing_cron_schedule == "bt-test-BillingCronScheduleRole"
+      && output.role_names.catchup_etl_schedule == "bt-test-CatchupETLScheduleRole"
+      && output.role_names.quarantine_pruner_schedule == "bt-test-QuarantinePrunerScheduleRole"
+      && output.automation_cron_schedule_role_arn == null
+      && output.billing_cron_schedule_role_arn == null
+      && output.catchup_etl_schedule_role_arn == null
+      && output.quarantine_pruner_schedule_role_arn == null
+      && output.instance_profile_names.brainstore == "bt-test-brainstore-instance-profile"
+    )
+    error_message = "The Scheduler role and instance profile names must stay available when nothing is created, and their ARNs must be null."
   }
 }
 
@@ -568,10 +610,13 @@ run "external_eks_keeps_only_the_roles_that_helm_workloads_use" {
       && length(aws_iam_role.migrate_database) == 0
       && length(aws_iam_role.default) == 0
       && length(aws_iam_role.quarantine_warmup) == 0
+      && length(aws_iam_role.automation_cron_schedule) == 0
+      && length(aws_iam_role.billing_cron_schedule) == 0
+      && length(aws_iam_role.catchup_etl_schedule) == 0
       && length(aws_iam_policy.api_handler_lambda_policies) == 0
       && length(aws_iam_role_policy_attachment.api_handler_vpc_access) == 0
     )
-    error_message = "External EKS has no Brainstore EC2 fleets or Lambda services, so it needs no instance profile or Lambda roles."
+    error_message = "External EKS has no Brainstore EC2 fleets or Lambda services, so it needs no instance profile, Lambda roles or Scheduler roles."
   }
 
   assert {
