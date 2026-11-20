@@ -27,6 +27,14 @@ module "braintrust-data-plane" {
   # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
   allowed_org_ids = ""
 
+  # To test private API access before cutover, see docs/api-alb-listener-transitions.md in the module.
+  # braintrust_api_alb_custom_domain   = "api.example.internal"
+  # braintrust_api_alb_certificate_arn = "arn:aws:acm:REGION:ACCOUNT:certificate/CERTIFICATE_ID"
+  # Retire a legacy HTTPS listener only after its external NLB targets drain.
+  # retire_legacy_api_https_listener = true
+  # legacy_api_https_listener = true # Only if the original listener is already HTTPS:443.
+  # legacy_api_https_private_routes = true # Existing private deployments, or after CloudFront has switched to HTTP:80.
+
   # Optional BTQL query.read audit logging by Braintrust Org ID.
   # Strict mode writes audit rows before returning query results.
   # Best-effort mode writes audit rows asynchronously and logs failures.

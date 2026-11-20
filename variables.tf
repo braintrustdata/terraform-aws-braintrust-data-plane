@@ -1055,6 +1055,35 @@ variable "enable_private_dataplane" {
   }
 }
 
+variable "legacy_api_https_listener" {
+  type        = bool
+  description = "Migration-only setting for an existing api_ecs_http listener that is already HTTPS:443. Leave false for new installations and existing HTTP:80 deployments."
+  default     = false
+
+}
+
+variable "legacy_api_https_private_routes" {
+  type        = bool
+  description = "Migration-only setting to keep or enable private routes on an existing HTTPS:443 listener while CloudFront uses HTTP:80. Set true for existing private deployments or after the HTTP origin is deployed for existing public HTTPS deployments."
+  default     = false
+
+  validation {
+    condition     = !var.legacy_api_https_private_routes || var.legacy_api_https_listener
+    error_message = "legacy_api_https_private_routes requires an existing HTTPS:443 listener."
+  }
+}
+
+variable "retire_legacy_api_https_listener" {
+  type        = bool
+  description = "Retire the legacy HTTPS:443 listener after returning to public mode. Use only for an existing HTTPS deployment, after customer-owned NLB targets on port 443 are deregistered and drained."
+  default     = false
+
+  validation {
+    condition     = !var.retire_legacy_api_https_listener || var.legacy_api_https_listener
+    error_message = "Retirement requires an existing HTTPS:443 listener."
+  }
+}
+
 variable "enable_ecs_api" {
   type        = bool
   description = "Send customer traffic to the API ECS load balancer instead of API Gateway and the APIHandler and AIProxy Lambdas. v7 sends customer traffic to the API ECS load balancer by default. Set enable_ecs_api = false to keep customer traffic on Lambda. When true, those Lambdas, their public Function URL, and API Gateway are removed. Quarantine, database migration, CatchupETL, and the cron Lambdas stay. Public ECS mode uses the CloudFront /v1/proxy URL for quarantine unless an override or PrivateLink selects another URL. Private mode uses create_quarantine_api_access. A CloudFront WAF or source-IP allow list must admit that NAT address. Setting the flag back to false creates the Lambda path again, including a new Function URL hostname. API ECS infra is always created for standard (non-external-EKS) deployments. External EKS does not use this input. On v6 the default was false. Existing deployments finish the v6 applies before this upgrade. See MIGRATION_V7.md."
@@ -1365,6 +1394,18 @@ variable "braintrust_api_authorized_security_groups" {
   description = "Map of security group names to their IDs that are authorized to access the internal API ECS ALB. Format: { name = <security_group_id> }"
   type        = map(string)
   default     = {}
+
+  validation {
+    condition = (
+      var.enable_private_dataplane || var.braintrust_api_alb_certificate_arn == null ||
+      !contains(keys(var.braintrust_api_authorized_security_groups), "API") && !contains(keys(var.braintrust_api_authorized_security_groups), "Brainstore")
+      ) && (
+      var.enable_private_dataplane || var.braintrust_api_alb_custom_domain == null ||
+      (var.legacy_api_https_listener && !var.retire_legacy_api_https_listener && !var.legacy_api_https_private_routes) ||
+      (var.enable_ecs_api && var.create_ai_gateway && var.enable_ai_gateway && !var.use_deployment_mode_external_eks)
+    )
+    error_message = "Testing private access in public mode requires ECS API and an enabled private Gateway; use keys other than API and Brainstore for customer security groups."
+  }
 }
 
 variable "braintrust_api_authorized_cidr_blocks" {
@@ -1374,13 +1415,13 @@ variable "braintrust_api_authorized_cidr_blocks" {
 }
 
 variable "braintrust_api_alb_certificate_arn" {
-  description = "Optional ACM certificate ARN for the internal API ECS ALB. When set together with braintrust_api_alb_custom_domain, the ALB serves HTTPS on port 443 instead of plain HTTP on port 80, plain HTTP is disabled, and customer API URLs use https://<braintrust_api_alb_custom_domain>. Private mode also provides HTTP port 8000 for internal callbacks. Defaults to plain HTTP."
+  description = "Optional ACM certificate ARN for the customer HTTPS:443 listener on the internal API ALB. Pair with braintrust_api_alb_custom_domain to test private access while public mode remains active. Private mode also provides HTTP:8000 for callbacks."
   type        = string
   default     = null
 }
 
 variable "braintrust_api_alb_custom_domain" {
-  description = "Optional custom domain served by the internal API ECS ALB. Must be covered by braintrust_api_alb_certificate_arn and resolve to the ALB. When set together with braintrust_api_alb_certificate_arn, the ALB serves HTTPS on port 443. Defaults to plain HTTP using the ALB's AWS-assigned DNS name."
+  description = "Optional customer hostname served by the internal API ALB on HTTPS port 443. Must be covered by braintrust_api_alb_certificate_arn and resolve to the ALB for direct clients. CloudFront uses the ALB AWS hostname on HTTP port 80."
   type        = string
   default     = null
 
@@ -1388,6 +1429,12 @@ variable "braintrust_api_alb_custom_domain" {
     condition     = (var.braintrust_api_alb_custom_domain == null) == (var.braintrust_api_alb_certificate_arn == null)
     error_message = "braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn must both be set or both be null."
   }
+
+  validation {
+    condition     = !var.legacy_api_https_listener || var.retire_legacy_api_https_listener || var.braintrust_api_alb_custom_domain != null
+    error_message = "Preserving an existing HTTPS:443 listener requires its hostname and certificate until retirement."
+  }
+
 }
 
 variable "braintrust_api_alb_drop_invalid_header_fields" {

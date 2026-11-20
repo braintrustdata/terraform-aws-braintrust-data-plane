@@ -68,3 +68,7 @@ moved {
   from = aws_lb_listener_rule.alb_path_routes["15"]
   to   = aws_lb_listener_rule.alb_path_routes["POST:/logs3/overflow"]
 }
+moved {
+  from = aws_lb_listener.api_ecs_http
+  to   = aws_lb_listener.api_ecs_http[0]
+}

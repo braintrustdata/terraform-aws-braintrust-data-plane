@@ -103,6 +103,7 @@ locals {
   internal_observability_api_key_secret_version = local.create_internal_observability_secret ? aws_secretsmanager_secret_version.internal_observability_api_key[0].version_id : ""
 
   create_ingress                             = !var.use_deployment_mode_external_eks && !var.enable_private_dataplane
+  create_direct_api_routes                   = var.braintrust_api_alb_certificate_arn != null && (var.enable_private_dataplane || !var.legacy_api_https_listener || var.retire_legacy_api_https_listener || var.legacy_api_https_private_routes)
   api_url                                    = var.enable_private_dataplane ? (var.braintrust_api_alb_custom_domain == null ? null : "https://${var.braintrust_api_alb_custom_domain}") : (local.create_ingress ? module.ingress[0].api_url : null)
   internal_api_url                           = local.create_ecs_api ? (var.enable_private_dataplane ? module.api_ecs[0].internal_url : module.api_ecs[0].http_url) : null
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
@@ -558,10 +559,10 @@ module "gateway_ecs" {
   alb_security_group_id       = module.gateway_alb[0].gateway_alb_security_group_id
   gateway_http_listener_arn   = module.gateway_alb[0].gateway_http_listener_arn
   gateway_url                 = module.gateway_alb[0].gateway_url
-  additional_target_group_arns = var.enable_private_dataplane ? {
+  additional_target_group_arns = local.create_direct_api_routes ? {
     "API" = module.api_ecs[0].private_gateway_target_group_arn
   } : {}
-  authorized_security_groups = var.enable_private_dataplane ? {
+  authorized_security_groups = local.create_direct_api_routes ? {
     "API" = module.api_ecs[0].alb_security_group_id
   } : {}
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
@@ -666,10 +667,10 @@ module "loop_runtime_ecs" {
   target_group_arn               = module.loop_runtime_alb[0].loop_runtime_target_group_arn
   alb_security_group_id          = module.loop_runtime_alb[0].loop_runtime_alb_security_group_id
   loop_runtime_http_listener_arn = module.loop_runtime_alb[0].loop_runtime_http_listener_arn
-  additional_target_group_arns = var.enable_private_dataplane ? {
+  additional_target_group_arns = local.create_direct_api_routes ? {
     "API" = module.api_ecs[0].private_loop_runtime_target_group_arn
   } : {}
-  authorized_security_groups = var.enable_private_dataplane ? {
+  authorized_security_groups = local.create_direct_api_routes ? {
     "API" = module.api_ecs[0].alb_security_group_id
   } : {}
 
@@ -830,19 +831,30 @@ module "api_ecs" {
   vpc_id             = local.main_vpc_id
   private_subnet_ids = local.main_vpc_private_subnet_ids
   authorized_security_groups = merge(
-    var.enable_private_dataplane ? {} : {
+    var.enable_private_dataplane || var.retire_legacy_api_https_listener ? {} : {
       "API"        = module.services_common.api_security_group_id
       "Brainstore" = module.services_common.brainstore_instance_security_group_id
     },
     var.braintrust_api_authorized_security_groups,
   )
   authorized_cidr_blocks = var.braintrust_api_authorized_cidr_blocks
+  authorized_security_group_ports = {
+    for name in ["API", "Brainstore"] : name => var.legacy_api_https_listener ? 443 : 80
+    if !var.enable_private_dataplane && !var.retire_legacy_api_https_listener && !contains(keys(var.braintrust_api_authorized_security_groups), name)
+  }
+  public_http_service_security_groups = !var.enable_private_dataplane && var.legacy_api_https_listener ? {
+    "API"        = module.services_common.api_security_group_id
+    "Brainstore" = module.services_common.brainstore_instance_security_group_id
+  } : {}
   gateway_security_groups = local.create_ai_gateway ? {
     "AI Gateway" = module.gateway_ecs[0].task_security_group_id
   } : {}
 
-  enable_private_dataplane = var.enable_private_dataplane
-  enable_loop_runtime      = local.create_loop_runtime
+  enable_private_dataplane     = var.enable_private_dataplane
+  legacy_https_listener        = var.legacy_api_https_listener
+  legacy_https_private_routes  = var.legacy_api_https_private_routes
+  retire_legacy_https_listener = var.retire_legacy_api_https_listener
+  enable_loop_runtime          = local.create_loop_runtime
   internal_authorized_security_groups = merge({
     "API"        = module.services_common.api_security_group_id
     "Brainstore" = module.services_common.brainstore_instance_security_group_id
@@ -885,9 +897,9 @@ module "ingress" {
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api
+  legacy_api_https_listener           = var.legacy_api_https_listener
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
-  api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled
 
   enable_loop_runtime                     = local.create_loop_runtime
   loop_runtime_alb_arn                    = local.create_loop_runtime ? module.loop_runtime_alb[0].loop_runtime_alb_arn : null

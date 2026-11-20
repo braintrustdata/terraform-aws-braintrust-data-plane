@@ -39,6 +39,12 @@ variable "use_private_ai_gateway_origin" {
   default     = false
 }
 
+variable "legacy_api_https_listener" {
+  type        = bool
+  description = "Use a new HTTP VPC origin only when the existing attached API origin may still be HTTPS."
+  default     = false
+}
+
 variable "gateway_alb_arn" {
   description = "ARN of the internal gateway ALB for CloudFront VPC origin routing"
   type        = string
@@ -121,13 +127,8 @@ variable "api_ecs_alb_arn" {
 }
 
 variable "api_ecs_alb_domain" {
-  description = "Domain used as the API ECS ALB CloudFront origin. When the ALB serves HTTPS this must be the custom domain covered by the ALB certificate so it validates; otherwise it is the ALB's AWS-assigned DNS name."
+  description = "AWS-assigned API ALB DNS name used by the CloudFront HTTP origin."
   type        = string
-}
-
-variable "api_ecs_alb_https_enabled" {
-  description = "Whether the API ECS ALB serves HTTPS. When true, CloudFront connects to the ALB origin over HTTPS; otherwise it connects over HTTP."
-  type        = bool
 }
 
 variable "cloudfront_price_class" {

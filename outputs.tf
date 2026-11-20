@@ -178,6 +178,11 @@ output "api_ecs_alb_arn" {
   description = "ARN of the private API ECS ALB"
 }
 
+output "private_api_url" {
+  description = "Customer HTTPS API ALB URL for private-path testing and private mode. Null until direct private routes are active. Public api_url continues to point to CloudFront."
+  value       = local.create_ecs_api ? module.api_ecs[0].customer_https_url : null
+}
+
 output "api_ecs_target_group_arn" {
   value       = local.create_ecs_api ? module.api_ecs[0].target_group_arn : null
   description = "ARN of the API ECS ALB target group"

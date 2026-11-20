@@ -4,6 +4,7 @@ For the latest guidance, always refer to the official Braintrust documentation:
 
 - [Self-hosting overview](https://docs.braintrust.dev/admin/self-hosting)
 - [Protected Diagnostics transcripts](docs/diagnostics-transcripts.md)
+- [API ALB listener transitions](docs/api-alb-listener-transitions.md)
 - [Upgrade your deployment](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/v2)
 

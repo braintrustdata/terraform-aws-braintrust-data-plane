@@ -53,19 +53,23 @@ locals {
     { path = "/v1/proxy/responses", priority = 290, target_group = aws_lb_target_group.braintrust_api_background.arn },
   ]
 
-  alb_path_listener_rules = {
+  alb_customer_path_listener_rules = {
     for route in local.alb_path_routes :
     "${try(route.method, "ANY")}:${route.path}" => merge(
       { method = null },
       route,
-    ) if !var.enable_private_dataplane || !contains(["/v1/proxy/chat/completions", "/v1/proxy/responses"], route.path)
+    ) if !local.customer_https_routes || !contains(["/v1/proxy/chat/completions", "/v1/proxy/responses"], route.path)
+  }
+  alb_public_http_path_listener_rules = {
+    for route in local.alb_path_routes :
+    "${try(route.method, "ANY")}:${route.path}" => merge({ method = null }, route)
   }
 }
 
 resource "aws_lb_listener_rule" "alb_path_routes" {
-  for_each = local.alb_path_listener_rules
+  for_each = var.retire_legacy_https_listener ? {} : (local.legacy_https_listener ? local.alb_customer_path_listener_rules : local.alb_public_http_path_listener_rules)
 
-  listener_arn = aws_lb_listener.api_ecs_http.arn
+  listener_arn = aws_lb_listener.api_ecs_http[0].arn
   priority     = each.value.priority
 
   action {
@@ -94,8 +98,66 @@ resource "aws_lb_listener_rule" "alb_path_routes" {
   }
 }
 
+resource "aws_lb_listener_rule" "alb_public_http_path_routes" {
+  for_each = local.separate_http_listener ? local.alb_public_http_path_listener_rules : {}
+
+  listener_arn = aws_lb_listener.api_ecs_public_http[0].arn
+  priority     = each.value.priority
+
+  action {
+    type             = "forward"
+    target_group_arn = each.value.target_group
+  }
+
+  dynamic "condition" {
+    for_each = each.value.method != null ? [each.value.method] : []
+    content {
+      http_request_method {
+        values = [condition.value]
+      }
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = [each.value.path]
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lb_listener_rule" "alb_customer_https_path_routes" {
+  for_each = local.customer_https_routes && !local.legacy_https_listener ? local.alb_customer_path_listener_rules : {}
+
+  listener_arn = aws_lb_listener.api_ecs_https[0].arn
+  priority     = each.value.priority
+
+  action {
+    type             = "forward"
+    target_group_arn = each.value.target_group
+  }
+
+  dynamic "condition" {
+    for_each = each.value.method != null ? [each.value.method] : []
+    content {
+      http_request_method {
+        values = [condition.value]
+      }
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = [each.value.path]
+    }
+  }
+
+  tags = local.common_tags
+}
+
 resource "aws_lb_listener_rule" "alb_internal_path_routes" {
-  for_each = var.enable_private_dataplane ? local.alb_path_listener_rules : {}
+  for_each = var.enable_private_dataplane ? local.alb_customer_path_listener_rules : {}
 
   listener_arn = aws_lb_listener.api_ecs_internal[0].arn
   priority     = each.value.priority
@@ -125,9 +187,9 @@ resource "aws_lb_listener_rule" "alb_internal_path_routes" {
 }
 
 resource "aws_lb_listener_rule" "private_gateway" {
-  count = var.enable_private_dataplane ? 1 : 0
+  count = local.customer_https_routes ? 1 : 0
 
-  listener_arn = aws_lb_listener.api_ecs_http.arn
+  listener_arn = local.legacy_https_listener ? aws_lb_listener.api_ecs_http[0].arn : aws_lb_listener.api_ecs_https[0].arn
   priority     = 10
 
   action {
@@ -145,9 +207,9 @@ resource "aws_lb_listener_rule" "private_gateway" {
 }
 
 resource "aws_lb_listener_rule" "private_loop_runtime" {
-  count = var.enable_private_dataplane && var.enable_loop_runtime ? 1 : 0
+  count = local.customer_https_routes && var.enable_loop_runtime ? 1 : 0
 
-  listener_arn = aws_lb_listener.api_ecs_http.arn
+  listener_arn = local.legacy_https_listener ? aws_lb_listener.api_ecs_http[0].arn : aws_lb_listener.api_ecs_https[0].arn
   priority     = 20
 
   action {

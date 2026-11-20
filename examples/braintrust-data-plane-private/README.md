@@ -40,6 +40,8 @@ create_ai_gateway        = true
 enable_ai_gateway        = true
 ```
 
+For an existing public deployment, follow [the API ALB listener transition guide](../../docs/api-alb-listener-transitions.md) if you want to test the HTTPS path while CloudFront remains live. Supply the ALB hostname and certificate while staying in public mode. An existing deployment whose original listener is already HTTPS:443 must set `legacy_api_https_listener = true` during the module update; an existing private deployment also sets `legacy_api_https_private_routes = true` so direct routing survives a return to public mode.
+
 ## Deploy and configure DNS
 
 1. For a new AWS account, run `scripts/create-service-linked-roles.sh` from the module repository.
@@ -97,6 +99,7 @@ The client access network is separate from the module-managed quarantine Private
 
 The API certificate must reside in ACM in the deployment account and region and cover `braintrust_api_alb_custom_domain`.
 ACM-issued, imported, and private CA certificates work if every client trusts the issuer.
+CloudFront uses a separate HTTP:80 listener and does not connect to this customer HTTPS listener. A private CA certificate is therefore suitable for direct clients that trust it; it is not suitable for an HTTPS CloudFront origin.
 
 ACM public certificates require domain ownership validation.
 For DNS validation, the validation CNAME must resolve through public DNS.

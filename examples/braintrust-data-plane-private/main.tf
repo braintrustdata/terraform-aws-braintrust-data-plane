@@ -34,7 +34,7 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # Private mode requires ECS and the private AI gateway.
-  # A mode transition causes an outage. See this example README.
+  # See this example README for private access requirements.
   enable_private_dataplane = true
   enable_ecs_api           = true
   create_ai_gateway        = true
