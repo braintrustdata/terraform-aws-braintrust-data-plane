@@ -1675,8 +1675,19 @@ variable "cloudfront_origin_read_timeout" {
   default     = 60
 
   validation {
-    condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 180
-    error_message = "cloudfront_origin_read_timeout must be between 1 and 180 seconds."
+    condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 600
+    error_message = "cloudfront_origin_read_timeout must be between 1 and 600 seconds."
+  }
+}
+
+variable "cloudfront_origin_connection_attempts" {
+  description = "Number of times CloudFront attempts to connect to an origin. AWS may require 1 attempt for higher origin read timeouts."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.cloudfront_origin_connection_attempts >= 1 && var.cloudfront_origin_connection_attempts <= 3 && floor(var.cloudfront_origin_connection_attempts) == var.cloudfront_origin_connection_attempts
+    error_message = "cloudfront_origin_connection_attempts must be a whole number between 1 and 3."
   }
 }
 
