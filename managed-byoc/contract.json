@@ -3,7 +3,7 @@
   "profile": "customer",
   "revision": "aws-customer-2026-11-18-oam-links-preview.1",
   "audience": "customer",
-  "status": "design-preview",
+  "status": "reference",
   "deployment_ready": false,
   "license_encryption": "aws/secretsmanager",
   "default_deprovision_mode": "retain-data",

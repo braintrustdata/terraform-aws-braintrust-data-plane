@@ -3,14 +3,14 @@ name: BYOC Access Model
 on:
   pull_request:
     paths:
-      - "managed-byoc-v2/**"
+      - "managed-byoc/**"
       - ".github/workflows/byoc-access-model.yml"
   push:
     branches:
       - main
       - byoc/v2-iam-foundation
     paths:
-      - "managed-byoc-v2/**"
+      - "managed-byoc/**"
       - ".github/workflows/byoc-access-model.yml"
 
 permissions:
@@ -26,4 +26,4 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq ripgrep
-      - run: bash managed-byoc-v2/validate.sh
+      - run: bash managed-byoc/validate.sh

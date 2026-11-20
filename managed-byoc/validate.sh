@@ -22,7 +22,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
   command -v shasum >/dev/null
   jq -e '.profile == "customer" and .audience == "customer" and
     .revision == "aws-customer-2026-11-18-oam-links-preview.1" and
-    .status == "design-preview" and .deployment_ready == false and
+    .status == "reference" and .deployment_ready == false and
     .diagnostics_activation_mode == "temporary-trust" and
     .default_deprovision_mode == "retain-data" and
     .allowed_deprovision_modes == ["retain-data"]' "$source_dir/contract.json" >/dev/null

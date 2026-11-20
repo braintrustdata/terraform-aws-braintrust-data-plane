@@ -111,7 +111,7 @@ Keep activation disabled until the current grant has closed and its operation
 records have been delivered. Do not race re-enable with an in-flight activation
 or incomplete stack update. Re-enable resets trust to inactive and requires a
 fresh activation. The issued bootstrap package provides its exact customer
-commands; these review JSON files are not an installable stack.
+commands; these reference JSON files are not an installable stack.
 
 Deployment cannot directly remove its protected inline policy, change the fixed
 Diagnostics permissions, or mutate the owning bootstrap stack. Stack protection
