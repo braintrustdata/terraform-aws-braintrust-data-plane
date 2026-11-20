@@ -53,3 +53,7 @@ braintrust-sandbox/*
 scripts/logs*
 scripts/.venv/
 .vscode/*
+
+# Starting points of the upgrade test, written by scripts/prepare-upgrade-fixture
+/tests/fixtures/.upgrade-parent/
+/tests/fixtures/.upgrade-release/

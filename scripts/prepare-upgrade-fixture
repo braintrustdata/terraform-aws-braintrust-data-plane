@@ -1,0 +1,123 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
+"""Archive the upgrade-test parent and release into gitignored fixture directories.
+
+`terraform test` accepts only local or registry module sources, so
+tests/v7_upgrade.tftest.hcl applies each starting point from a local copy. This
+script exports both copies with `git archive`. Run it before `terraform init`.
+
+The release fixture is the v7 release that MIGRATION_V8.md says to upgrade
+from. It's pinned by `base_ref` in tests/upgrade-allow-list.release.json, next
+to the changes expected from it, so the two always change together.
+
+The parent ref is resolved in this order:
+
+1. --base-ref, or the UPGRADE_BASE_REF environment variable. CI sets it to the
+   pull request's base commit, or on a push to the commit it replaced. The
+   keyword `latest-v7` resolves to the newest v7 tag that exists locally. Use
+   it to compare the whole v8 stack with the v7 release it upgrades from.
+   An all-zero commit falls back to `latest-v7`, because CI passes one as
+   `github.event.before` when a push creates a branch. Any other ref that
+   isn't a commit here is an error.
+2. The merge base of HEAD and --base-branch, or UPGRADE_BASE_BRANCH
+   (default origin/next/v8).
+
+Needs a full clone: shallow checkouts don't have the base commit or the tags.
+"""
+
+import argparse
+import io
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tarfile
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+# Dot-prefixed so `terraform fmt -recursive` and `tflint --recursive` skip it.
+PARENT_FIXTURE_DIRECTORY = REPOSITORY_ROOT / "tests" / "fixtures" / ".upgrade-parent"
+RELEASE_FIXTURE_DIRECTORY = REPOSITORY_ROOT / "tests" / "fixtures" / ".upgrade-release"
+RELEASE_ALLOW_LIST = REPOSITORY_ROOT / "tests" / "upgrade-allow-list.release.json"
+DEFAULT_BASE_BRANCH = "origin/next/v8"
+# The test applies the root module only. Everything it doesn't load stays out.
+EXCLUDED_PATHS = ["tests", "examples", "docs", ".github"]
+
+
+def git(*arguments: str) -> bytes:
+    result = subprocess.run(
+        ["git", *arguments], cwd=REPOSITORY_ROOT, capture_output=True, check=False
+    )
+    if result.returncode != 0:
+        sys.exit(f"git {' '.join(arguments)} failed: {result.stderr.decode().strip()}")
+    return result.stdout
+
+
+def latest_v7_tag() -> str:
+    tags = git("tag", "--list", "v7.*", "--sort=-v:refname").decode().split()
+    if not tags:
+        sys.exit("No v7 tag exists locally. Run `git fetch --tags`.")
+    return tags[0]
+
+
+def is_known_commit(ref: str) -> bool:
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def resolve_base_ref(base_ref: str | None, base_branch: str) -> str:
+    if base_ref and set(base_ref) == {"0"}:
+        print("The base commit is all zeros, so the parent falls back to latest-v7.", file=sys.stderr)
+        base_ref = "latest-v7"
+    elif base_ref and base_ref != "latest-v7" and not is_known_commit(base_ref):
+        sys.exit(f"{base_ref} is not a commit in this clone. Fetch it, or fix the ref. A shallow checkout or a force-pushed branch can also cause this.")
+    if base_ref == "latest-v7":
+        base_ref = latest_v7_tag()
+    if base_ref:
+        return base_ref
+    return git("merge-base", "HEAD", base_branch).decode().strip()
+
+
+def pinned_release() -> str:
+    release = json.loads(RELEASE_ALLOW_LIST.read_text())["base_ref"]
+    if not is_known_commit(release):
+        sys.exit(f"The pinned release {release} isn't in this clone. Run `git fetch --tags`.")
+    return release
+
+
+def write_fixture(label: str, base_ref: str, directory: Path) -> None:
+    commit = git("rev-parse", "--verify", f"{base_ref}^{{commit}}").decode().strip()
+    shutil.rmtree(directory, ignore_errors=True)
+    directory.mkdir(parents=True)
+    archive = git(
+        "archive", "--format=tar", commit, "--", ".", *[f":(exclude){path}" for path in EXCLUDED_PATHS]
+    )
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        tar.extractall(directory, filter="data")
+    (directory / ".base-commit").write_text(f"{commit}\n")
+    print(f"Upgrade {label} fixture: {base_ref} ({commit[:12]}) -> {directory.relative_to(REPOSITORY_ROOT)}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--base-ref", default=os.environ.get("UPGRADE_BASE_REF") or None)
+    parser.add_argument(
+        "--base-branch", default=os.environ.get("UPGRADE_BASE_BRANCH") or DEFAULT_BASE_BRANCH
+    )
+    arguments = parser.parse_args()
+
+    write_fixture("parent", resolve_base_ref(arguments.base_ref, arguments.base_branch), PARENT_FIXTURE_DIRECTORY)
+    write_fixture("release", pinned_release(), RELEASE_FIXTURE_DIRECTORY)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,69 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
+"""Check that every versions.tofu pins the same providers as its versions.tf.
+
+OpenTofu reads versions.tofu instead of versions.tf in the same directory, so
+the two files must agree or OpenTofu users resolve different providers than
+Terraform users. This compares the `required_providers` block of each pair.
+It doesn't compare `required_version`, because OpenTofu and Terraform number
+their releases separately.
+"""
+
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+COMMENT = re.compile(r"(#|//)[^\n]*|/\*.*?\*/", re.DOTALL)
+PROVIDER = re.compile(r"(\w+)\s*=\s*\{([^{}]*)\}")
+ATTRIBUTE = re.compile(r'(\w+)\s*=\s*"([^"]*)"')
+
+
+def required_providers(path: Path) -> dict[str, dict[str, str]]:
+    # Strip comments first. A `{` in a comment would unbalance the match below.
+    text = COMMENT.sub("", path.read_text())
+    block_start = re.search(r"required_providers\s*\{", text)
+    if not block_start:
+        sys.exit(f"{path}: no required_providers block")
+    depth, position = 1, block_start.end()
+    while depth:
+        depth += {"{": 1, "}": -1}.get(text[position], 0)
+        position += 1
+    body = text[block_start.end() : position - 1]
+    return {name: dict(ATTRIBUTE.findall(attributes)) for name, attributes in PROVIDER.findall(body)}
+
+
+def main() -> None:
+    tracked = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "*versions.tofu"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    if not tracked:
+        sys.exit("No versions.tofu found.")
+
+    errors = []
+    for relative in tracked:
+        tofu_path = REPOSITORY_ROOT / relative
+        terraform_path = tofu_path.with_suffix(".tf")
+        if not terraform_path.exists():
+            errors.append(f"{relative}: no sibling versions.tf")
+        elif required_providers(tofu_path) != required_providers(terraform_path):
+            errors.append(
+                f"{relative}: required_providers differ from {terraform_path.name}\n"
+                f"  versions.tofu: {required_providers(tofu_path)}\n"
+                f"  versions.tf:   {required_providers(terraform_path)}"
+            )
+    if errors:
+        sys.exit("\n".join(errors))
+    print(f"Checked {len(tracked)} versions.tofu files.")
+
+
+if __name__ == "__main__":
+    main()

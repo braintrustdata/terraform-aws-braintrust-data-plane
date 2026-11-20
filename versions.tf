@@ -1,7 +1,7 @@
 terraform {
-  # v1.9 is needed for variable validation features
-  # v1.2 is needed for precondition checks
-  required_version = ">= 1.10.0"
+  # 1.17 is the version that CI and mise.toml run. We didn't look for a lower
+  # minimum, and child modules keep >= 1.10.0. See MIGRATION_V8.md.
+  required_version = ">= 1.17.0"
   required_providers {
     http = {
       source  = "hashicorp/http"
