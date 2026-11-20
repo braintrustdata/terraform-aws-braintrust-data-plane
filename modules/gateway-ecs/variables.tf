@@ -187,12 +187,49 @@ variable "internal_observability_trace_disabled_plugins" {
 
 variable "extra_env_vars" {
   type        = map(string)
-  description = "Extra environment variables to inject into the gateway container."
+  description = "Extra non-secret environment variables to inject into the gateway container. Use extra_secrets for Secrets Manager ARNs."
   default     = {}
 
   validation {
-    condition     = !contains(keys(var.extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in extra_env_vars; use brainstore_license_key_secret_arn."
+    condition = length(setintersection(keys(var.extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in extra_env_vars. Use extra_secrets for consumer secrets, or brainstore_license_key_secret_arn for the license."
+  }
+}
+
+variable "extra_secrets" {
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  description = "Extra ECS secrets for the gateway container. valueFrom is a Secrets Manager ARN, optionally pinned as ARN:::version-id. The secret must use the deployment KMS key or the default Secrets Manager key."
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for s in var.extra_secrets : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom))
+    ])
+    error_message = "extra_secrets valueFrom must be a Secrets Manager secret ARN, optionally with :json-key:stage:version-id."
+  }
+
+  validation {
+    condition = length(setintersection(toset([for s in var.extra_secrets : s.name]), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "DD_API_KEY",
+      "BRAINTRUST_CUSTOM_CA_BUNDLE",
+      "COMPLETIONS_CACHE_REDIS_URL",
+      "AUTH_CACHE_REDIS_URL",
+    ]))) == 0
+    error_message = "Do not reuse a module-owned secret name in extra_secrets."
   }
 }
 
