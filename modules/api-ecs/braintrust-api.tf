@@ -75,8 +75,10 @@ resource "aws_ecs_service" "braintrust_api" {
   # The listener default action associates this target group with the ALB,
   # which ECS requires before CreateService will attach the service.
   # Also wait for task-exec secret IAM before rolling tasks that resolve secrets.
+  # Require migrate to finish before new API ECS tasks start (same contract as API Handler).
   depends_on = [
     terraform_data.brainstore_deployment,
+    terraform_data.database_migration,
     aws_lb_listener.api_ecs_http,
     aws_iam_role_policy.task_execution_secrets,
   ]
