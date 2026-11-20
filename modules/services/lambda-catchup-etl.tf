@@ -1,6 +1,7 @@
 locals {
   catchup_etl_base_function_name = "CatchupETL"
   catchup_etl_function_name      = "${var.deployment_name}-${local.catchup_etl_base_function_name}"
+  catchup_etl_function_arn       = "${local.lambda_function_arn_base}${local.catchup_etl_function_name}"
   catchup_etl_original_handler   = "index.handler"
 }
 
@@ -62,23 +63,26 @@ resource "aws_lambda_function" "catchup_etl" {
   tags = local.common_tags
 }
 
-resource "aws_cloudwatch_event_rule" "catchup_etl_schedule" {
-  name                = "${var.deployment_name}-catchup-etl-schedule"
-  description         = "Schedule for Braintrust Catchup ETL Lambda function"
-  schedule_expression = "rate(10 minutes)"
-  tags                = local.common_tags
-}
+resource "aws_scheduler_schedule" "catchup_etl" {
+  name        = "${var.deployment_name}-catchup-etl-schedule"
+  group_name  = aws_scheduler_schedule_group.scheduled_jobs.name
+  description = "Schedule for Braintrust Catchup ETL Lambda function"
 
-resource "aws_cloudwatch_event_target" "catchup_etl_target" {
-  rule      = aws_cloudwatch_event_rule.catchup_etl_schedule.name
-  target_id = "BraintrustCatchupETLFunction"
-  arn       = aws_lambda_function.catchup_etl.arn
-}
+  schedule_expression          = "rate(10 minutes)"
+  schedule_expression_timezone = "UTC"
 
-resource "aws_lambda_permission" "allow_eventbridge" {
-  statement_id  = "AllowEventBridgeInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.catchup_etl.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.catchup_etl_schedule.arn
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  target {
+    arn      = local.catchup_etl_function_arn
+    role_arn = var.catchup_etl_schedule_role_arn
+    input    = local.scheduled_event_input
+
+    retry_policy {
+      maximum_event_age_in_seconds = 86400
+      maximum_retry_attempts       = 185
+    }
+  }
 }

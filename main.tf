@@ -480,8 +480,12 @@ module "services" {
   automation_cron_role_arn            = module.iam.automation_cron_role_arn
   billing_cron_role_arn               = module.iam.billing_cron_role_arn
   catchup_etl_role_arn                = module.iam.catchup_etl_role_arn
+  automation_cron_schedule_role_arn   = module.iam.automation_cron_schedule_role_arn
+  billing_cron_schedule_role_arn      = module.iam.billing_cron_schedule_role_arn
+  catchup_etl_schedule_role_arn       = module.iam.catchup_etl_schedule_role_arn
   migrate_database_role_arn           = module.iam.migrate_database_role_arn
   quarantine_pruner_role_arn          = module.iam.quarantine_pruner_role_arn
+  quarantine_pruner_schedule_role_arn = module.iam.quarantine_pruner_schedule_role_arn
   quarantine_warmup_role_arn          = module.iam.quarantine_warmup_role_arn
   ai_proxy_invoke_role_arn            = module.iam.ai_proxy_invoke_role_arn
   api_security_group_id               = module.services_common.api_security_group_id

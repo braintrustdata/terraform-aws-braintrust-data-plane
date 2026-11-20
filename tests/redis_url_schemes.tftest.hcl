@@ -12,30 +12,33 @@ mock_provider "http" {
 }
 
 variables {
-  braintrust_org_name         = "test-org"
-  deployment_name             = "bt-test"
-  vpc_id                      = "vpc-0123456789abcdef0"
-  service_subnet_ids          = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
-  postgres_username           = "braintrust"
-  postgres_password           = "password"
-  postgres_host               = "db.example.internal"
-  postgres_port               = 5432
-  redis_host                  = "redis.example.internal"
-  redis_port                  = "6379"
-  use_quarantine_vpc          = false
-  brainstore_enabled          = false
-  whitelisted_origins         = ["https://example.com"]
-  code_bundle_bucket_arn      = "arn:aws:s3:::bt-test-code"
-  lambda_responses_bucket_arn = "arn:aws:s3:::bt-test-responses"
-  api_security_group_id       = "sg-0123456789abcdef0"
-  api_handler_role_arn        = "arn:aws:iam::123456789012:role/bt-test-api-handler"
-  ai_proxy_invoke_role_arn    = "arn:aws:iam::123456789012:role/bt-test-AIProxyInvokeRole"
-  automation_cron_role_arn    = "arn:aws:iam::123456789012:role/bt-test-AutomationCronRole"
-  billing_cron_role_arn       = "arn:aws:iam::123456789012:role/bt-test-BillingCronRole"
-  catchup_etl_role_arn        = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
-  migrate_database_role_arn   = "arn:aws:iam::123456789012:role/bt-test-MigrateDatabaseFunctionRole"
-  function_tools_secret_key   = "test-function-tools-secret"
-  lambda_version_tag_override = "test-version"
+  braintrust_org_name               = "test-org"
+  deployment_name                   = "bt-test"
+  vpc_id                            = "vpc-0123456789abcdef0"
+  service_subnet_ids                = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+  postgres_username                 = "braintrust"
+  postgres_password                 = "password"
+  postgres_host                     = "db.example.internal"
+  postgres_port                     = 5432
+  redis_host                        = "redis.example.internal"
+  redis_port                        = "6379"
+  use_quarantine_vpc                = false
+  brainstore_enabled                = false
+  whitelisted_origins               = ["https://example.com"]
+  code_bundle_bucket_arn            = "arn:aws:s3:::bt-test-code"
+  lambda_responses_bucket_arn       = "arn:aws:s3:::bt-test-responses"
+  api_security_group_id             = "sg-0123456789abcdef0"
+  api_handler_role_arn              = "arn:aws:iam::123456789012:role/bt-test-api-handler"
+  ai_proxy_invoke_role_arn          = "arn:aws:iam::123456789012:role/bt-test-AIProxyInvokeRole"
+  automation_cron_role_arn          = "arn:aws:iam::123456789012:role/bt-test-AutomationCronRole"
+  billing_cron_role_arn             = "arn:aws:iam::123456789012:role/bt-test-BillingCronRole"
+  catchup_etl_role_arn              = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
+  automation_cron_schedule_role_arn = "arn:aws:iam::123456789012:role/bt-test-AutomationCronScheduleRole"
+  billing_cron_schedule_role_arn    = "arn:aws:iam::123456789012:role/bt-test-BillingCronScheduleRole"
+  catchup_etl_schedule_role_arn     = "arn:aws:iam::123456789012:role/bt-test-CatchupETLScheduleRole"
+  migrate_database_role_arn         = "arn:aws:iam::123456789012:role/bt-test-MigrateDatabaseFunctionRole"
+  function_tools_secret_key         = "test-function-tools-secret"
+  lambda_version_tag_override       = "test-version"
 }
 
 run "legacy_cluster_uses_redis_scheme" {

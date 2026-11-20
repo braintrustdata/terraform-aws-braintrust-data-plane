@@ -18,6 +18,41 @@
       "actions": ["update"],
       "changed_attributes": ["user_data"],
       "reason": "v7.4.0 pins Braintrust services v2.24.0, so BRAINSTORE_RELEASE_VERSION in user data changes from v7.3.0's v2.23.0."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_scheduler_schedule_group\\.scheduled_jobs",
+      "actions": ["create"],
+      "reason": "Scheduler runs the four scheduled Lambda functions, and the one schedule group holds their schedules (Scheduler cutover)."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_scheduler_schedule\\.(automation_cron|billing_cron|catchup_etl|quarantine_pruner\\[0\\])",
+      "actions": ["create"],
+      "reason": "Each scheduled job gets a schedule that replaces its EventBridge rule. The pruner's exists only when enable_quarantine_pruner is true."
+    },
+    {
+      "address": "module\\.iam\\.aws_iam_role\\.(automation_cron_schedule|billing_cron_schedule|catchup_etl_schedule|quarantine_pruner_schedule)\\[0\\]",
+      "actions": ["create"],
+      "reason": "Scheduler assumes one new invocation role per job, and the role replaces the Lambda permission for events.amazonaws.com. The pruner's exists only when enable_quarantine_pruner is true."
+    },
+    {
+      "address": "module\\.iam\\.aws_iam_role_policy\\.(automation_cron_schedule|billing_cron_schedule|catchup_etl_schedule|quarantine_pruner_schedule)\\[0\\]",
+      "actions": ["create"],
+      "reason": "Each invocation role has an inline policy that allows lambda:InvokeFunction on its one function. The pruner's exists only when enable_quarantine_pruner is true."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_cloudwatch_event_rule\\.(automation_cron_schedule|billing_cron_schedule|catchup_etl_schedule|quarantine_pruner_schedule\\[0\\])",
+      "actions": ["delete"],
+      "reason": "Scheduler replaces the four scheduled EventBridge rules. There is no state move from a rule to a schedule."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_cloudwatch_event_target\\.(automation_cron_target|billing_cron_target|catchup_etl_target|quarantine_pruner_target\\[0\\])",
+      "actions": ["delete"],
+      "reason": "The rules' targets go with the rules. Each schedule has its own target."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_lambda_permission\\.(allow_automation_cron_eventbridge|allow_billing_cron_eventbridge|allow_eventbridge|allow_quarantine_pruner_eventbridge\\[0\\])",
+      "actions": ["delete"],
+      "reason": "Scheduler invokes through an execution role, so the events.amazonaws.com permissions on the four functions are no longer needed."
     }
   ]
 }

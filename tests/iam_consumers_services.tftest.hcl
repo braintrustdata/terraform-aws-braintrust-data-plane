@@ -38,14 +38,18 @@ variables {
   quarantine_vpc_private_subnets = ["subnet-q1", "subnet-q2", "subnet-q3"]
   enable_quarantine_pruner       = true
 
-  api_handler_role_arn       = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
-  automation_cron_role_arn   = "arn:aws:iam::123456789012:role/bt-test-AutomationCronRole"
-  billing_cron_role_arn      = "arn:aws:iam::123456789012:role/bt-test-BillingCronRole"
-  catchup_etl_role_arn       = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
-  migrate_database_role_arn  = "arn:aws:iam::123456789012:role/bt-test-MigrateDatabaseFunctionRole"
-  quarantine_pruner_role_arn = "arn:aws:iam::123456789012:role/bt-test-QuarantinePrunerRole"
-  quarantine_warmup_role_arn = "arn:aws:iam::123456789012:role/bt-test-QuarantineWarmupRole"
-  ai_proxy_invoke_role_arn   = "arn:aws:iam::123456789012:role/bt-test-AIProxyInvokeRole"
+  api_handler_role_arn                = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
+  automation_cron_role_arn            = "arn:aws:iam::123456789012:role/bt-test-AutomationCronRole"
+  billing_cron_role_arn               = "arn:aws:iam::123456789012:role/bt-test-BillingCronRole"
+  catchup_etl_role_arn                = "arn:aws:iam::123456789012:role/bt-test-CatchupETLRole"
+  automation_cron_schedule_role_arn   = "arn:aws:iam::123456789012:role/bt-test-AutomationCronScheduleRole"
+  billing_cron_schedule_role_arn      = "arn:aws:iam::123456789012:role/bt-test-BillingCronScheduleRole"
+  catchup_etl_schedule_role_arn       = "arn:aws:iam::123456789012:role/bt-test-CatchupETLScheduleRole"
+  quarantine_pruner_schedule_role_arn = "arn:aws:iam::123456789012:role/bt-test-QuarantinePrunerScheduleRole"
+  migrate_database_role_arn           = "arn:aws:iam::123456789012:role/bt-test-MigrateDatabaseFunctionRole"
+  quarantine_pruner_role_arn          = "arn:aws:iam::123456789012:role/bt-test-QuarantinePrunerRole"
+  quarantine_warmup_role_arn          = "arn:aws:iam::123456789012:role/bt-test-QuarantineWarmupRole"
+  ai_proxy_invoke_role_arn            = "arn:aws:iam::123456789012:role/bt-test-AIProxyInvokeRole"
 }
 
 run "lambda_functions_run_as_the_supplied_roles" {

@@ -34,7 +34,22 @@ locals {
     quarantine_warmup            = "${var.deployment_name}-QuarantineWarmupRole"
     default                      = "${var.deployment_name}-DefaultRole"
     ai_proxy_invoke              = "${var.deployment_name}-AIProxyInvokeRole"
+    automation_cron_schedule     = "${var.deployment_name}-AutomationCronScheduleRole"
+    billing_cron_schedule        = "${var.deployment_name}-BillingCronScheduleRole"
+    catchup_etl_schedule         = "${var.deployment_name}-CatchupETLScheduleRole"
+    quarantine_pruner_schedule   = "${var.deployment_name}-QuarantinePrunerScheduleRole"
   }
+
+  # The same, for instance profiles.
+  instance_profile_names = {
+    brainstore = "${var.deployment_name}-brainstore-instance-profile"
+  }
+
+  # Built from the function names in modules/services, so the Scheduler invoke
+  # policies don't wait for the functions, which wait for their execution roles.
+  # This ends at the deployment name, and callers add "-<Function>". The services
+  # module's lambda_function_arn_base ends at "function:" instead.
+  lambda_function_arn_prefix = "arn:${data.aws_partition.current.partition}:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.deployment_name}"
 
   # Derived from the raw root inputs the way the root module derives its
   # create_ecs_api, enable_ecs_api, create_ai_gateway and create_brainstore_ec2

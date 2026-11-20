@@ -469,6 +469,21 @@ variable "catchup_etl_role_arn" {
   description = "ARN of the CatchupETL execution role. Pass the catchup_etl_role_arn output of modules/iam so the function waits for the role's policies."
 }
 
+variable "automation_cron_schedule_role_arn" {
+  type        = string
+  description = "ARN of the role Scheduler assumes to invoke the AutomationCron function. Pass the automation_cron_schedule_role_arn output of modules/iam so the schedule waits for the role's invoke policy."
+}
+
+variable "billing_cron_schedule_role_arn" {
+  type        = string
+  description = "ARN of the role Scheduler assumes to invoke the BillingCron function. Pass the billing_cron_schedule_role_arn output of modules/iam so the schedule waits for the role's invoke policy."
+}
+
+variable "catchup_etl_schedule_role_arn" {
+  type        = string
+  description = "ARN of the role Scheduler assumes to invoke the CatchupETL function. Pass the catchup_etl_schedule_role_arn output of modules/iam so the schedule waits for the role's invoke policy."
+}
+
 variable "migrate_database_role_arn" {
   type        = string
   description = "ARN of the database migration function's execution role. Pass the migrate_database_role_arn output of modules/iam so the function waits for the role's policies."
@@ -478,6 +493,17 @@ variable "quarantine_pruner_role_arn" {
   type        = string
   description = "ARN of the quarantine pruner's execution role. Required when enable_quarantine_pruner is true. Pass the quarantine_pruner_role_arn output of modules/iam."
   default     = null
+}
+
+variable "quarantine_pruner_schedule_role_arn" {
+  type        = string
+  description = "ARN of the role Scheduler assumes to invoke the quarantine pruner function. Required when enable_quarantine_pruner is true. Pass the quarantine_pruner_schedule_role_arn output of modules/iam."
+  default     = null
+
+  validation {
+    condition     = !var.enable_quarantine_pruner || var.quarantine_pruner_schedule_role_arn != null
+    error_message = "quarantine_pruner_schedule_role_arn is required when enable_quarantine_pruner is true."
+  }
 }
 
 variable "quarantine_warmup_role_arn" {

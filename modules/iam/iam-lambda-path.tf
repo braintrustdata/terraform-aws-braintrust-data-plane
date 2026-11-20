@@ -2,12 +2,6 @@
 # AIProxy invoke role. enable_ecs_api removes the AIProxy role. This file is
 # separate so it can go when the Lambda path does.
 
-locals {
-  # Built from the function names in modules/services, so these policies don't
-  # wait for the functions, which wait for these roles.
-  lambda_function_arn_prefix = "arn:${data.aws_partition.current.partition}:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.deployment_name}"
-}
-
 resource "aws_iam_role_policy_attachment" "api_handler_vpc_access" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 

@@ -1,8 +1,9 @@
 # Upgrade proof: applies the parent under mocks, then plans this working tree
 # against the same state. scripts/check-upgrade-plan reads the plans these runs
 # emit (`terraform test -json -verbose`) and fails on any action that isn't in
-# tests/upgrade-allow-list.json, because assertions can't inspect planned
-# actions. Run scripts/prepare-upgrade-fixture first to write the parent copy.
+# that run's allow-list (tests/upgrade-allow-list*.json), because assertions
+# can't inspect planned actions. Run scripts/prepare-upgrade-fixture first to
+# write the parent copy.
 #
 # The mocks prove the planned action set only. They can't prove apply ordering,
 # IAM propagation or real provider behavior.
@@ -242,6 +243,64 @@ override_resource {
 override_resource {
   target = module.iam.aws_iam_instance_profile.brainstore[0]
   values = { arn = "arn:aws:iam::123456789012:instance-profile/mock-brainstore" }
+}
+# The Lambda function roles and the Lambda-path policy, which moved in the same way.
+# #511 left these out. The gap only shows once a PR stacks on #511, because that
+# parent holds the roles at these addresses.
+override_resource {
+  target = module.iam.aws_iam_role.automation_cron[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-automation-cron" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.billing_cron[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-billing-cron" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.catchup_etl[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-catchup-etl" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.default[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-default" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.migrate_database[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-migrate-database" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.quarantine_warmup[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-warmup" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.quarantine_pruner[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-pruner" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.ai_proxy_invoke[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-services-ai-proxy-invoke" }
+}
+override_resource {
+  target = module.iam.aws_iam_policy.api_handler_lambda_policies[0]
+  values = { arn = "arn:aws:iam::123456789012:policy/mock-services-api-handler-lambda" }
+}
+
+# The Scheduler invocation roles, new in this release. A later parent has them,
+# and each needs its own ARN, as every other role does.
+override_resource {
+  target = module.iam.aws_iam_role.automation_cron_schedule[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-iam-automation-cron-schedule" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.billing_cron_schedule[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-iam-billing-cron-schedule" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.catchup_etl_schedule[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-iam-catchup-etl-schedule" }
+}
+override_resource {
+  target = module.iam.aws_iam_role.quarantine_pruner_schedule[0]
+  values = { arn = "arn:aws:iam::123456789012:role/mock-iam-quarantine-pruner-schedule" }
 }
 
 # Buckets, functions and rules that a policy or permission names.

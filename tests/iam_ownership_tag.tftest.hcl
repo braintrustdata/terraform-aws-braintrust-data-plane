@@ -104,6 +104,10 @@ run "tags_iam_module_resources_with_braintrust_owner" {
         aws_iam_role.quarantine_warmup[0].tags,
         aws_iam_role.ai_proxy_invoke[0].tags,
         aws_iam_policy.api_handler_lambda_policies[0].tags,
+        aws_iam_role.automation_cron_schedule[0].tags,
+        aws_iam_role.billing_cron_schedule[0].tags,
+        aws_iam_role.catchup_etl_schedule[0].tags,
+        aws_iam_role.quarantine_pruner_schedule[0].tags,
       ] : tags.BraintrustIAMOwner == "braintrust"
     ])
     error_message = "A caller tag must not override BraintrustIAMOwner on a role in modules/iam."
@@ -133,6 +137,10 @@ run "tags_iam_module_resources_with_braintrust_owner" {
         aws_iam_role.quarantine_warmup[0].tags,
         aws_iam_role.ai_proxy_invoke[0].tags,
         aws_iam_policy.api_handler_lambda_policies[0].tags,
+        aws_iam_role.automation_cron_schedule[0].tags,
+        aws_iam_role.billing_cron_schedule[0].tags,
+        aws_iam_role.catchup_etl_schedule[0].tags,
+        aws_iam_role.quarantine_pruner_schedule[0].tags,
       ] : tags.Environment == "test"
     ])
     error_message = "A role in modules/iam must keep unrelated caller tags."
