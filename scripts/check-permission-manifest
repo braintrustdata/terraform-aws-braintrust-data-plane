@@ -1,0 +1,885 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
+"""Generate the permission manifest from the module's policy definitions and check its Sids.
+
+tests/permission-manifest/*.tftest.hcl apply each policy module under mock providers,
+one `run` per profile. This script runs them with `terraform test -json -verbose`,
+reads the `test_state` each run emits, and builds the manifest from the policy
+documents in it. Terraform's ordinary `terraform test` never runs these files,
+because it reads only `tests/`, not its subdirectories.
+
+Each document keeps the placeholders that stand in for deployment values:
+
+    ${input:<name>}    a value the deployment supplies (SENTINELS)
+    ${role:<key>}      a role the module creates
+    ${binding:<name>}  a value AWS assigns at apply time that isn't an input
+
+Documents built by an `aws_iam_policy_document` data source are rendered from the
+data source's `statement` blocks, because each generation file overrides the data
+source's `json` with a marker. Every such data source needs this in its file:
+
+    override_data {
+      target = data.aws_iam_policy_document.<name>
+      values = { json = "{\\"ManifestDocument\\":\\"data.aws_iam_policy_document.<name>\\"}" }
+    }
+
+See the Manifest section of
+20261103-external-iam-ownership.md for the design.
+
+With no arguments it runs every check and writes nothing. --output also writes the
+manifest, and --versions-output writes `terraform version -json`, which names the
+Terraform and provider versions the run used. Neither file is committed.
+
+The checks fail on:
+
+    - a Terraform error, or a failed test summary
+    - a role, managed policy or instance profile without a `manifest-` override
+    - two resources that share an ARN
+    - a `manifest-` override value or the mock partition left in a document
+    - a module-authored statement without a Sid, with a Sid outside the pattern,
+      or with a Sid that repeats within its document (AC-2)
+    - a policy resource that no profile's state contains, a policy resource
+      header in a file the manifest doesn't cover, or a generation run this
+      script doesn't know
+    - a module-authored document with an empty Statement
+    - a manifest that differs between two runs
+    - a placeholder that no document uses, or an `aws_iam_policy_document` that sets
+      `source_policy_documents`, `override_policy_documents` or `policy_id`
+
+Run `terraform init -backend=false -test-directory=tests/permission-manifest` first.
+`mise run manifest` does both.
+"""
+
+import argparse
+from dataclasses import dataclass, field
+import functools
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+TEST_DIRECTORY = "tests/permission-manifest"
+MOCK_POLICY_DOCUMENT_SOURCE = "tests/mocks/aws/data.tfmock.hcl"
+SCHEMA_VERSION = "1"
+
+# The mock partition and account. The generation files give every resource whose
+# ARN a policy references its own `manifest-` ARN in this partition, so the script
+# can tell which resource each ARN names.
+MANIFEST_PARTITION = "aws-manifest"
+OVERRIDE_PREFIX = "manifest-"
+DEFAULT_POLICY_VERSION = "2012-10-17"
+
+
+@dataclass(frozen=True)
+class Profile:
+    """One `run` block, which applies one policy module."""
+
+    name: str
+    module: str  # the directory under modules/
+
+    @property
+    def module_key(self) -> str:
+        return self.module.replace("-", "_")
+
+
+@dataclass(frozen=True)
+class GenerationFile:
+    name: str
+    profiles: list[Profile]
+
+    @property
+    def path(self) -> str:
+        return f"{TEST_DIRECTORY}/{self.name}"
+
+
+# The generation files in manifest order, and the runs in each, in run order. A
+# run the files have and this list doesn't fails the check, so a new profile can't
+# be added without listing it here.
+PROFILE_FILES = [
+    GenerationFile(
+        "iam.tftest.hcl",
+        [
+            Profile("iam_managed_ecs_mode", "iam"),
+            Profile("iam_managed_lambda_mode", "iam"),
+            Profile("iam_managed_without_assume_role_lists", "iam"),
+            Profile("iam_managed_caller_resources", "iam"),
+            Profile("iam_managed_external_eks", "iam"),
+            Profile("iam_managed_external_eks_pod_identity_only", "iam"),
+            Profile("iam_standalone_module_resources", "iam"),
+            Profile("iam_standalone_caller_resources", "iam"),
+        ],
+    ),
+    GenerationFile("kms.tftest.hcl", [Profile("kms_key_policy", "kms")]),
+    GenerationFile("storage.tftest.hcl", [Profile("storage_bucket_policies", "storage")]),
+    GenerationFile(
+        "vpc.tftest.hcl",
+        [
+            Profile("vpc_flow_logs_to_cloud_watch", "vpc"),
+            Profile("vpc_flow_logs_to_s3", "vpc"),
+            Profile("vpc_s3_endpoint_restricted", "vpc"),
+        ],
+    ),
+    GenerationFile(
+        "remote_support.tftest.hcl",
+        [Profile("remote_support_logs_and_shell", "remote-support")],
+    ),
+    GenerationFile(
+        "loop.tftest.hcl",
+        [
+            Profile("loop_microvm", "loop-runtime-sandbox-aws-microvm"),
+            Profile("loop_runtime_ecs", "loop-runtime-ecs"),
+        ],
+    ),
+]
+
+# The resource types that carry a policy document, with the kind each one gets in
+# the manifest and the attribute that holds the document. The coverage check scans
+# these types, plus the attachments, which hold no document of their own.
+DOCUMENT_KINDS = {
+    "aws_iam_role": ("trust", "assume_role_policy"),
+    "aws_iam_role_policy": ("inline", "policy"),
+    "aws_iam_policy": ("managed", "policy"),
+    "aws_kms_key": ("key", "policy"),
+    "aws_s3_bucket_policy": ("bucket", "policy"),
+    # Only the endpoints in POLICY_ENDPOINTS set a policy, and the others have none.
+    "aws_vpc_endpoint": ("endpoint", "policy"),
+}
+ATTACHMENT_TYPE = "aws_iam_role_policy_attachment"
+SCANNED_TYPES = [resource_type for resource_type in DOCUMENT_KINDS if resource_type != "aws_vpc_endpoint"] + [ATTACHMENT_TYPE]
+# The endpoints that carry a policy. An endpoint with `policy =` that isn't listed fails the coverage check.
+POLICY_ENDPOINTS = [
+    ("vpc", "s3"),
+    ("loop-runtime-sandbox-aws-microvm", "loop_runtime_microvm"),
+]
+# Resource types whose names look like they carry a policy but that hold no document,
+# or none that this manifest covers: scaling policies, and the reconcilers that only
+# list the policies a role may have.
+NON_DOCUMENT_POLICY_TYPES = re.compile(
+    r"aws_appautoscaling_policy|aws_autoscaling_policy|aws_cloudfront_\w+_policy|aws_iam_role_policies_exclusive"
+)
+# Roles are checked by their id in build_substitutions. These types need a per-address
+# `manifest-` ARN, because nothing else tells two of them apart.
+IDENTITY_TYPES = ["aws_iam_policy", "aws_iam_instance_profile"]
+# Headers are matched at the start of a line, indented or not, like
+# scripts/check-iam-ownership-tags does for its declarations.
+POLICY_RESOURCE_HEADER = re.compile(
+    rf'^[ \t]*resource\s+"({"|".join(SCANNED_TYPES)})"\s+"([^"]+)"\s*\{{',
+    re.MULTILINE,
+)
+# Any resource whose type name suggests a policy, to catch a type DOCUMENT_KINDS doesn't know.
+POLICY_LIKE_HEADER = re.compile(r'^[ \t]*resource\s+"(aws_[a-z0-9_]*polic(?:y|ies)[a-z_]*)"\s+"([^"]+)"', re.MULTILINE)
+ENDPOINT_HEADER = re.compile(r'^[ \t]*resource\s+"aws_vpc_endpoint"\s+"([^"]+)"\s*\{', re.MULTILINE)
+# Types whose arn may repeat in one profile. Nothing grants permissions on the
+# first four, so a wrong reference is a routing or scaling bug rather than an
+# identity one. An event target's arn is the function it invokes, not an ARN of
+# its own. Same list as scripts/check-upgrade-plan.
+SHARED_ARN_TYPES = {
+    "aws_appautoscaling_policy",
+    "aws_lb",
+    "aws_lb_listener",
+    "aws_lb_target_group",
+    "aws_cloudwatch_event_target",
+}
+
+# The deployer documents, read verbatim from managed-byoc/policies/. Empty until
+# BYOC v2 (#407) changes those files and PR 5's Sid renames in them can land. The
+# restricted external deployer policy has no committed JSON source, so it isn't
+# listed either. See Unresolved decisions in the design.
+DEPLOYER_SOURCES: list[tuple[str, str]] = []  # (kind, path relative to the repository root)
+
+# The values the generation files give each input, and the placeholder each one
+# becomes. The script applies the exact values first, then the role and binding
+# values, then the generic ones last, so a generic value never rewrites part of a
+# longer one. Each group is sorted longest first, so the order of the lists is free.
+ACCOUNT_ID = "123456789012"
+SECRET = f"arn:{MANIFEST_PARTITION}:secretsmanager:us-east-1:{ACCOUNT_ID}:secret:"
+KEY = f"arn:{MANIFEST_PARTITION}:kms:us-east-1:{ACCOUNT_ID}:key/"
+SENTINELS = [
+    (f"{KEY}00000000-0000-0000-0000-000000000001", "${input:kms_key_arn}"),
+    (f"{SECRET}bt-manifest/DatabaseSecret-AbCdEf", "${input:database_secret_arn}"),
+    (f"{SECRET}bt-manifest/DatabaseUrl-AbCdEf", "${input:database_url_secret_arn}"),
+    (f"{SECRET}bt-manifest/FunctionToolsSecret-AbCdEf", "${input:function_tools_secret_arn}"),
+    (f"{SECRET}bt-manifest/RedisUrl-AbCdEf", "${input:redis_url_secret_arn}"),
+    (f"{SECRET}bt-manifest/brainstore/license-key-AbCdEf", "${input:brainstore_license_key_secret_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:s3:::bt-manifest-brainstore-0", "${input:brainstore_s3_bucket_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:s3:::bt-manifest-code-bundles-0", "${input:code_bundle_s3_bucket_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:s3:::bt-manifest-lambda-responses-0", "${input:lambda_responses_s3_bucket_arn}"),
+    ("vpc-0000000000000000a", "${input:quarantine_vpc_id}"),
+    ("bt-manifest-brainstore-reader-0", "${input:brainstore_reader_asg_name}"),
+    ("bt-manifest-brainstore-writer-0", "${input:brainstore_writer_asg_name}"),
+    (
+        f"arn:{MANIFEST_PARTITION}:logs:us-east-1:{ACCOUNT_ID}:log-group:/braintrust/bt-manifest/bt-manifest-BrainstoreDeployment",
+        "${input:brainstore_deployment_log_group_arn}",
+    ),
+    (f"{SECRET}custom-ca-bundle-AbCdEf", "${input:custom_ca_bundle_secret_arn}"),
+    (f"{KEY}00000000-0000-0000-0000-000000000002", "${input:custom_ca_bundle_kms_key_arn}"),
+    (f"{SECRET}existing-license-key-AbCdEf", "${input:existing_brainstore_license_key_secret_arn}"),
+    (f"{KEY}00000000-0000-0000-0000-000000000003", "${input:existing_brainstore_license_key_kms_key_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:s3:::existing-brainstore-bucket", "${input:existing_brainstore_s3_bucket_arn}"),
+    (f"{KEY}00000000-0000-0000-0000-000000000004", "${input:existing_brainstore_s3_bucket_kms_key_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:s3:::existing-attachment-bucket", "${input:existing_attachment_s3_bucket_arn}"),
+    (f"{KEY}00000000-0000-0000-0000-000000000005", "${input:existing_attachment_s3_bucket_kms_key_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:s3:::external-attachment-bucket", "${input:external_attachment_s3_bucket_arn}"),
+    (
+        f"arn:{MANIFEST_PARTITION}:kms:us-east-1:210987654321:key/00000000-0000-0000-0000-000000000006",
+        "${input:external_attachment_s3_bucket_kms_key_arn}",
+    ),
+    (f"{SECRET}postgres-credentials-AbCdEf", "${input:postgres_connection_override_credentials_secret_arn}"),
+    # Module validation requires arn:aws:iam:: on these two, so they keep the real partition.
+    ("arn:aws:iam::210987654321:role/braintrust-export", "${input:s3_export_assume_role_arn}"),
+    ("arn:aws:iam::210987654321:role/braintrust-bedrock", "${input:ai_gateway_bedrock_assume_role_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:eks:us-east-1:{ACCOUNT_ID}:cluster/bt-manifest", "${input:eks_cluster_arn}"),
+    ("manifest-namespace", "${input:eks_namespace}"),
+    # The repository mock's issuer.
+    ("oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE", "${input:eks_oidc_provider}"),
+    ("/braintrust-byoc/bt-manifest/diagnostics", "${input:diagnostics_transcript_log_group_name}"),
+    ("o-manifest00", "${input:s3_vpc_endpoint_resource_org_id}"),
+    (f"arn:{MANIFEST_PARTITION}:iam::{ACCOUNT_ID}:policy/service-additional", "${input:service_additional_policy_arn}"),
+    (f"arn:{MANIFEST_PARTITION}:iam::{ACCOUNT_ID}:policy/brainstore-additional", "${input:brainstore_additional_policy_arn}"),
+]
+# Sentinels that only one generation file uses. In the other files the same literal
+# would hide a value that shouldn't be there, instead of failing as a leftover.
+FILE_SENTINELS = {
+    "vpc.tftest.hcl": [("210987654321", "${input:s3_vpc_endpoint_resource_account_id}")],
+}
+GENERIC_SENTINELS = [
+    ("bt-manifest", "${input:deployment_name}"),
+    (ACCOUNT_ID, "${input:account_id}"),
+    ("us-east-1", "${input:region}"),
+    (f"arn:{MANIFEST_PARTITION}:", "arn:${input:partition}:"),
+]
+PLACEHOLDER = re.compile(r"\$\{(?:input|role|binding):[^}]+\}")
+# A `manifest-` value that no pass resolved. The lookbehind skips words that merely
+# end in "manifest", but a hyphenated deployment name such as bt-manifest-x still matches.
+LEFTOVER = re.compile(rf"(?<![A-Za-z0-9]){OVERRIDE_PREFIX}|{MANIFEST_PARTITION}")
+# An override value ends its ARN or id with the override name.
+OVERRIDE_VALUE = re.compile(rf"(?:^|[/:]){OVERRIDE_PREFIX}[^/:]+$")
+
+SID_PATTERN = re.compile(r"^(Allow|Deny)[A-Z][A-Za-z0-9]*$")
+# The catch-all ARN the generation files give a resource that has no override_resource of its own.
+UNOVERRIDDEN = "manifest-unoverridden"
+# The json that each generation file gives an aws_iam_policy_document, which the script renders from the data source.
+MANIFEST_DOCUMENT_KEY = "ManifestDocument"
+
+
+@dataclass
+class TestOutput:
+    messages: list[dict]
+    # None when reading saved output, which has no exit code to check.
+    returncode: int | None
+    stderr: str
+
+
+@dataclass
+class Substitutions:
+    """The replacements for one generation file, each list longest value first.
+
+    They apply in this order: exact input values, role ARNs and bindings, role ids
+    and names, then the generic input values.
+
+    A role's ARN is replaced wherever it appears. Its id and name are replaced
+    only when they are a whole string, because they are short: the id
+    `manifest-brainstore` is also the start of the sentinel `bt-manifest-brainstore-0`.
+    """
+
+    role_arns: list[tuple[str, str]] = field(default_factory=list)
+    role_names: list[tuple[str, str]] = field(default_factory=list)
+    bindings: list[tuple[str, str]] = field(default_factory=list)
+    exact_inputs: list[tuple[str, str]] = field(default_factory=list)
+    generic_inputs: list[tuple[str, str]] = field(default_factory=list)
+
+    def apply(self, text: str) -> str:
+        for value, placeholder in self.exact_inputs:
+            text = text.replace(value, placeholder)
+        for value, placeholder in self.role_arns + self.bindings:
+            text = text.replace(value, placeholder)
+        for value, placeholder in self.role_names:
+            text = text.replace(f'"{value}"', f'"{placeholder}"')
+        for value, placeholder in self.generic_inputs:
+            text = text.replace(value, placeholder)
+        return text
+
+    def left_in(self, text: str) -> set[str]:
+        """The role and binding values that are still in the text."""
+        found = {value for value, _ in self.role_arns + self.bindings if value in text}
+        return found | {value for value, _ in self.role_names if f'"{value}"' in text}
+
+
+def run_generation_test() -> TestOutput:
+    result = subprocess.run(
+        ["terraform", "test", f"-test-directory={TEST_DIRECTORY}", "-json", "-verbose"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return TestOutput(parse_messages(result.stdout), result.returncode, result.stderr)
+
+
+def parse_messages(stdout: str) -> list[dict]:
+    return [json.loads(line) for line in stdout.splitlines() if line.startswith("{")]
+
+
+def check_test_output(output: TestOutput, errors: list[str]) -> None:
+    # In JSON mode terraform reports its errors as messages on stdout.
+    reported = [m["@message"] for m in output.messages if m.get("@level") == "error"]
+    diagnostics = [
+        m["diagnostic"] for m in output.messages if (m.get("diagnostic") or {}).get("severity") == "error"
+    ]
+    if output.returncode:
+        errors.append(
+            f"terraform test exited with {output.returncode}.\n"
+            f"stderr: {output.stderr.strip() or '(empty)'}\nerrors reported: {'; '.join(reported) or '(none)'}"
+        )
+    for diagnostic in diagnostics:
+        errors.append(f"terraform reported {diagnostic.get('summary')}: {diagnostic.get('detail', '').strip()}")
+    summaries = [m["test_summary"] for m in output.messages if m["type"] == "test_summary"]
+    if len(summaries) != 1 or summaries[0]["status"] != "pass" or summaries[0]["failed"] + summaries[0]["errored"] > 0:
+        errors.append(
+            f"Expected exactly one passing test summary, found {summaries}. "
+            f"Run `terraform init -backend=false -test-directory={TEST_DIRECTORY}` first."
+        )
+
+
+def states_by_run(output: TestOutput) -> dict[tuple[str, str], dict]:
+    """Each run's `test_state`, keyed by generation file path and run name."""
+    return {
+        (m["@testfile"], m["@testrun"]): m["test_state"] for m in output.messages if m["type"] == "test_state"
+    }
+
+
+def managed_resources(state: dict) -> list[dict]:
+    return [r for r in state["root_module"].get("resources", []) if r["mode"] == "managed"]
+
+
+def resource_name(resource: dict) -> str:
+    """The resource address without its index."""
+    return f"{resource['type']}.{resource['name']}"
+
+
+def check_known_runs(states: dict[tuple[str, str], dict], errors: list[str]) -> None:
+    """Every run in the generation files is listed here, and every listed run produced state."""
+    known_files = {file.name for file in PROFILE_FILES}
+    for path in sorted((REPOSITORY_ROOT / TEST_DIRECTORY).glob("*.tftest.hcl")):
+        if path.name not in known_files:
+            errors.append(f"{TEST_DIRECTORY}/{path.name} is not in PROFILE_FILES. Add it, with its runs.")
+    for file in PROFILE_FILES:
+        path = REPOSITORY_ROOT / file.path
+        declared = re.findall(r'^run\s+"([^"]+)"', path.read_text(), re.MULTILINE) if path.exists() else []
+        known = [profile.name for profile in file.profiles]
+        for name in declared:
+            if name not in known:
+                errors.append(f"{file.path} has the run {name}, which PROFILE_FILES doesn't list.")
+        for name in known:
+            if name not in declared:
+                errors.append(f"PROFILE_FILES lists the run {name}, which {file.path} doesn't have.")
+            elif (file.path, name) not in states:
+                errors.append(f"The run {name} in {file.path} emitted no state.")
+
+
+def check_shared_arns(profile: Profile, state: dict, errors: list[str]) -> None:
+    """Fail when two managed resources in one profile share an ARN, which a missing override causes."""
+    addresses_by_arn: dict[str, list[str]] = {}
+    for resource in managed_resources(state):
+        arn = resource["values"].get("arn")
+        if arn and resource["type"] not in SHARED_ARN_TYPES:
+            addresses_by_arn.setdefault(arn, []).append(resource["address"])
+    for arn, addresses in addresses_by_arn.items():
+        if len(addresses) > 1:
+            errors.append(
+                f"{profile.name}: {', '.join(addresses)} share the ARN {arn}. "
+                "Give each its own override_resource in the generation file."
+            )
+
+
+def expected_role_key(profile: Profile, resource: dict) -> str:
+    """The role key that a role's `manifest-<role key>` override must carry.
+
+    In modules/iam it's the resource name, which is the design's role key. Other
+    modules prefix it with the module, so keys never collide across modules.
+    """
+    if profile.module == "iam":
+        return resource["name"]
+    return f"{profile.module_key}.{resource['name']}"
+
+
+def is_override(value) -> bool:
+    """Whether a value is a per-address `manifest-` override, not the catch-all default."""
+    return isinstance(value, str) and bool(OVERRIDE_VALUE.search(value)) and not value.endswith(UNOVERRIDDEN)
+
+
+def build_substitutions(
+    file: GenerationFile, states: dict[tuple[str, str], dict], errors: list[str]
+) -> Substitutions:
+    """Build the role and binding maps for a file from every run's state in it.
+
+    That's how a role from one run resolves in another. The file's maps are
+    shared, so a value that two different resources carry fails here.
+    """
+    owners: dict[str, tuple[str, str, str]] = {}
+    role_arns: dict[str, str] = {}
+    role_names: dict[str, str] = {}
+    bindings: dict[str, str] = {}
+
+    def register(target: dict[str, str], value: str, placeholder: str, identity: tuple[str, str, str]) -> None:
+        if owners.setdefault(value, identity) != identity:
+            errors.append(
+                f"{file.name}: {owners[value][2]} in {owners[value][0]} and {identity[2]} in "
+                f"{identity[0]} share the value {value}. Give each its own override_resource."
+            )
+            return
+        target[value] = placeholder
+
+    for profile in file.profiles:
+        state = states.get((file.path, profile.name))
+        if state is None:
+            continue
+        for resource in managed_resources(state):
+            values = resource["values"]
+            identity = (profile.module, resource["type"], resource_name(resource))
+            if resource["type"] == "aws_iam_role":
+                role_id = values.get("id") or ""
+                if not is_override(role_id):
+                    errors.append(
+                        f"{profile.name}: {resource['address']} has no `{OVERRIDE_PREFIX}<role key>` override_resource, "
+                        f"so its id is {role_id!r}."
+                    )
+                    continue
+                key = role_id[len(OVERRIDE_PREFIX) :]
+                if key != expected_role_key(profile, resource):
+                    errors.append(
+                        f"{profile.name}: {resource['address']} overrides its id to {role_id}, "
+                        f"but its role key is {expected_role_key(profile, resource)}."
+                    )
+                for attribute in ("arn", "id", "name"):
+                    if values.get(attribute):
+                        target = role_arns if attribute == "arn" else role_names
+                        register(target, values[attribute], f"${{role:{key}}}", identity)
+                continue
+            for attribute in ("arn", "id"):
+                value = values.get(attribute)
+                overridden = is_override(value)
+                if resource["type"] in IDENTITY_TYPES and attribute == "arn" and not overridden:
+                    errors.append(
+                        f"{profile.name}: {resource['address']} has no `{OVERRIDE_PREFIX}` override_resource, "
+                        f"so its arn is {value!r}."
+                    )
+                if overridden:
+                    placeholder = f"${{binding:{profile.module_key}.{resource_name(resource)}.{attribute}}}"
+                    register(bindings, value, placeholder, identity)
+
+    def longest_first(mapping: dict[str, str]) -> list[tuple[str, str]]:
+        return sorted(mapping.items(), key=lambda item: (-len(item[0]), item[0]))
+
+    return Substitutions(
+        role_arns=longest_first(role_arns),
+        role_names=longest_first(role_names),
+        bindings=longest_first(bindings),
+        exact_inputs=longest_first(dict(SENTINELS + FILE_SENTINELS.get(file.name, []))),
+        generic_inputs=longest_first(dict(GENERIC_SENTINELS)),
+    )
+
+
+@functools.cache
+def mock_policy_document() -> dict:
+    """The JSON the repository mock returns for every aws_iam_policy_document."""
+    source = (REPOSITORY_ROOT / MOCK_POLICY_DOCUMENT_SOURCE).read_text()
+    block = re.search(r'mock_data "aws_iam_policy_document" \{.*?json = ("(?:[^"\\]|\\.)*")', source, re.DOTALL)
+    if not block:
+        sys.exit(f"{MOCK_POLICY_DOCUMENT_SOURCE} has no mock_data for aws_iam_policy_document.")
+    return json.loads(json.loads(block.group(1)))
+
+
+def render_principals(blocks: list[dict]) -> dict | str:
+    """`principals` blocks as a Principal value: an object keyed by type, or "*"."""
+    if any(block["type"] == "*" for block in blocks):
+        return "*"
+    by_type: dict[str, list[str]] = {}
+    for block in blocks:
+        by_type.setdefault(block["type"], []).extend(block["identifiers"])
+    return {principal_type: sorted(identifiers) for principal_type, identifiers in by_type.items()}
+
+
+# Arguments that merge in statements this renderer would drop, because it reads only the `statement` blocks.
+UNSUPPORTED_DOCUMENT_ARGUMENTS = ["source_policy_documents", "override_policy_documents", "policy_id"]
+
+
+def render_policy_document(where: str, data_source: dict, errors: list[str]) -> dict | None:
+    """Render the statements of an aws_iam_policy_document data source as IAM policy JSON."""
+    unsupported = [name for name in UNSUPPORTED_DOCUMENT_ARGUMENTS if data_source["values"].get(name)]
+    if unsupported:
+        errors.append(
+            f"{where} reads {data_source['address']}, which sets {', '.join(unsupported)}. "
+            "The manifest renders only its statement blocks, so the rendered document would be wrong."
+        )
+        return None
+    statements = []
+    for block in data_source["values"].get("statement") or []:
+        statement = {"Effect": block["effect"] or "Allow"}
+        if block["sid"] is not None:
+            statement["Sid"] = block["sid"]
+        for field_name, key in (
+            ("actions", "Action"),
+            ("not_actions", "NotAction"),
+            ("resources", "Resource"),
+            ("not_resources", "NotResource"),
+        ):
+            if block.get(field_name) is not None:
+                statement[key] = block[field_name]
+        if block.get("principals"):
+            statement["Principal"] = render_principals(block["principals"])
+        if block.get("not_principals"):
+            statement["NotPrincipal"] = render_principals(block["not_principals"])
+        if block.get("condition"):
+            condition: dict[str, dict[str, list[str]]] = {}
+            for entry in block["condition"]:
+                condition.setdefault(entry["test"], {})[entry["variable"]] = entry["values"]
+            statement["Condition"] = condition
+        statements.append(statement)
+    return {"Version": data_source["values"].get("version") or DEFAULT_POLICY_VERSION, "Statement": statements}
+
+
+def parse_policy(profile: Profile, address: str, text: str, state: dict, errors: list[str]) -> dict | None:
+    """Parse a policy string, and render the document behind it when it's a data source marker."""
+    where = f"{profile.name}: {address}"
+    try:
+        document = json.loads(text)
+    except (TypeError, json.JSONDecodeError) as error:
+        errors.append(f"{where} has a policy that isn't JSON: {error}")
+        return None
+    if document == mock_policy_document():
+        errors.append(
+            f"{where} has the repository mock's default policy document. "
+            "Add an override_data to the generation file for its aws_iam_policy_document:\n"
+            "    override_data {\n"
+            "      target = data.aws_iam_policy_document.<name>\n"
+            f'      values = {{ json = "{{\\"{MANIFEST_DOCUMENT_KEY}\\":\\"data.aws_iam_policy_document.<name>\\"}}" }}\n'
+            "    }"
+        )
+        return None
+    if isinstance(document, dict) and set(document) == {MANIFEST_DOCUMENT_KEY}:
+        target = document[MANIFEST_DOCUMENT_KEY]
+        matches = [
+            r
+            for r in state["root_module"].get("resources", [])
+            if r["mode"] == "data" and f"data.{r['type']}.{r['name']}" == target
+        ]
+        if len(matches) != 1:
+            errors.append(f"{where} names {target}, which matched {len(matches)} data sources in the state.")
+            return None
+        return render_policy_document(where, matches[0], errors)
+    return document
+
+
+def collect_documents(profile: Profile, state: dict, errors: list[str]) -> tuple[list[dict], list[dict]]:
+    """Return the profile's documents and attachments, before any substitution."""
+    resources = managed_resources(state)
+    managed_policy_roles: dict[str, list[str]] = {}
+    attachments = []
+    managed_policy_arns = {r["values"]["arn"] for r in resources if r["type"] == "aws_iam_policy"}
+    for resource in resources:
+        if resource["type"] != ATTACHMENT_TYPE:
+            continue
+        values = resource["values"]
+        if values["policy_arn"] in managed_policy_arns:
+            managed_policy_roles.setdefault(values["policy_arn"], []).append(values["role"])
+        else:
+            attachments.append({"role": values["role"], "policy_arn": values["policy_arn"]})
+
+    documents = []
+    for resource in resources:
+        if resource["type"] not in DOCUMENT_KINDS:
+            continue
+        kind, attribute = DOCUMENT_KINDS[resource["type"]]
+        values = resource["values"]
+        policy = values.get(attribute)
+        if policy is None and resource["type"] == "aws_vpc_endpoint":
+            continue
+        extra = {}
+        if kind == "inline":
+            extra["role"] = values["role"]
+        elif kind == "managed":
+            extra["roles"] = sorted(managed_policy_roles.get(values["arn"], []))
+        elif kind == "bucket":
+            extra["bucket"] = values["bucket"]
+        document = parse_policy(profile, resource["address"], policy, state, errors)
+        if document is not None:
+            documents.append({"address": resource["address"], "document": document, "kind": kind, **extra})
+    return documents, attachments
+
+
+def statements_of(document: dict) -> list:
+    statement = document.get("Statement", [])
+    return statement if isinstance(statement, list) else [statement]
+
+
+def check_sids(where: str, document: dict, errors: list[str]) -> None:
+    """Every statement has a Sid in the pattern, starting with its Effect, unique within the document."""
+    seen: set[str] = set()
+    for index, statement in enumerate(statements_of(document)):
+        sid = statement.get("Sid")
+        if sid is None:
+            errors.append(f"{where}, statement {index}: no Sid.")
+            continue
+        if not SID_PATTERN.fullmatch(sid):
+            errors.append(f"{where}, statement {index}: Sid {sid!r} doesn't match {SID_PATTERN.pattern}.")
+        elif not sid.startswith(str(statement.get("Effect"))):
+            errors.append(f"{where}, statement {index}: Sid {sid!r} doesn't start with its Effect {statement.get('Effect')!r}.")
+        if sid in seen:
+            errors.append(f"{where}, statement {index}: Sid {sid!r} repeats within the document.")
+        seen.add(sid)
+
+
+def check_leftovers(where: str, text: str, substitutions: Substitutions, errors: list[str]) -> None:
+    """Fail when a mock value survived substitution, which means an ARN didn't resolve to a role or binding."""
+    leftovers = substitutions.left_in(text)
+    leftovers |= {match.group(0) for match in LEFTOVER.finditer(text)}
+    for value in sorted(leftovers):
+        errors.append(f"{where}: {value!r} is left after substitution, so an override value didn't resolve to a role or binding.")
+
+
+def build_profile(
+    file: GenerationFile,
+    profile: Profile,
+    state: dict,
+    substitutions: Substitutions,
+    errors: list[str],
+) -> dict:
+    documents, attachments = collect_documents(profile, state, errors)
+
+    def resolve(value):
+        return json.loads(substitutions.apply(json.dumps(value, sort_keys=True)))
+
+    resolved_documents = []
+    for entry in sorted(documents, key=lambda entry: entry["address"]):
+        where = f"{profile.name}: {entry['address']}"
+        resolved = resolve(entry)
+        check_leftovers(where, json.dumps(resolved), substitutions, errors)
+        check_sids(where, resolved["document"], errors)
+        if not statements_of(resolved["document"]):
+            errors.append(f"{where}: the document has an empty Statement. An input probably isn't wired in the profile.")
+        resolved_documents.append(resolved)
+    resolved_attachments = sorted(resolve(attachments), key=lambda a: (a["role"], a["policy_arn"]))
+    for attachment in resolved_attachments:
+        check_leftovers(f"{profile.name}: attachment of {attachment['policy_arn']}", json.dumps(attachment), substitutions, errors)
+    return {
+        "name": profile.name,
+        "module": f"modules/{profile.module}",
+        "source": file.path,
+        "documents": resolved_documents,
+        "attachments": resolved_attachments,
+    }
+
+
+def read_deployer_documents(errors: list[str]) -> list[dict]:
+    documents = []
+    for kind, path in DEPLOYER_SOURCES:
+        document = json.loads((REPOSITORY_ROOT / path).read_text())
+        check_sids(f"deployer: {path}", document, errors)
+        documents.append({"kind": kind, "source": path, "document": document})
+    return documents
+
+
+def build_manifest(output: TestOutput, errors: list[str]) -> dict:
+    """Build the manifest from one generation test run, adding what it finds wrong to errors."""
+    check_test_output(output, errors)
+    states = states_by_run(output)
+    check_known_runs(states, errors)
+
+    profiles = []
+    for file in PROFILE_FILES:
+        substitutions = build_substitutions(file, states, errors)
+        for profile in file.profiles:
+            state = states.get((file.path, profile.name))
+            if state is None:
+                continue
+            check_shared_arns(profile, state, errors)
+            profiles.append(build_profile(file, profile, state, substitutions, errors))
+    deployer = read_deployer_documents(errors)
+
+    used = {
+        placeholder
+        for item in [*profiles, *deployer]
+        for placeholder in PLACEHOLDER.findall(json.dumps(item))
+    }
+    check_unused_sentinels(used, errors)
+    check_coverage(states, errors)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "placeholders": sorted(used),
+        "profiles": profiles,
+        "deployer": deployer,
+    }
+
+
+def check_unused_sentinels(used: set[str], errors: list[str]) -> None:
+    """Fail on a placeholder that no document uses, because its test input or its sentinel is stale."""
+    every_sentinel = SENTINELS + GENERIC_SENTINELS + [pair for pairs in FILE_SENTINELS.values() for pair in pairs]
+    for _, placeholder in every_sentinel:
+        for token in PLACEHOLDER.findall(placeholder):
+            if token not in used:
+                errors.append(
+                    f"The placeholder {token} is never used in the manifest. "
+                    "Update the generation file that should supply its value, or remove the sentinel from this script."
+                )
+
+
+def policy_headers(path: Path) -> list[tuple[str, str]]:
+    return [match.groups() for match in POLICY_RESOURCE_HEADER.finditer(path.read_text())]
+
+
+def terraform_files(directory: Path) -> list[Path]:
+    """The .tf files under a directory, without hidden directories such as .terraform."""
+    return sorted(
+        path
+        for path in directory.rglob("*.tf")
+        if not any(part.startswith(".") for part in path.relative_to(directory).parts)
+    )
+
+
+def check_coverage(states: dict[tuple[str, str], dict], errors: list[str]) -> None:
+    """Fail when a policy resource is in no profile's state, or sits where the manifest doesn't look."""
+    policy_modules = sorted({profile.module for file in PROFILE_FILES for profile in file.profiles})
+    covered = {
+        (profile.module, resource_name(resource))
+        for file in PROFILE_FILES
+        for profile in file.profiles
+        if (file.path, profile.name) in states
+        for resource in managed_resources(states[(file.path, profile.name)])
+    }
+    for module in policy_modules:
+        declared = {
+            (module, f"{resource_type}.{name}")
+            for path in terraform_files(REPOSITORY_ROOT / "modules" / module)
+            for resource_type, name in policy_headers(path)
+        }
+        declared |= {
+            (module, f"aws_vpc_endpoint.{name}")
+            for endpoint_module, name in POLICY_ENDPOINTS
+            if endpoint_module == module
+        }
+        for _, address in sorted(declared - covered):
+            errors.append(f"modules/{module}: {address} is declared but appears in no profile's state.")
+
+    # A policy resource anywhere else would never reach the manifest.
+    other_files = sorted(REPOSITORY_ROOT.glob("*.tf"))
+    for directory in sorted((REPOSITORY_ROOT / "modules").iterdir()):
+        if directory.is_dir() and directory.name not in policy_modules:
+            other_files += terraform_files(directory)
+    for path in other_files:
+        for resource_type, name in policy_headers(path):
+            errors.append(
+                f"{path.relative_to(REPOSITORY_ROOT)}: {resource_type}.{name} is in a file the manifest doesn't "
+                "cover. Add its module to PROFILE_FILES with a generation profile."
+            )
+
+    # The scans above know only the types in DOCUMENT_KINDS, so look for a policy resource they don't.
+    for path in [*other_files, *(path for module in policy_modules for path in terraform_files(REPOSITORY_ROOT / "modules" / module))]:
+        text = path.read_text()
+        relative = path.relative_to(REPOSITORY_ROOT)
+        for resource_type, name in POLICY_LIKE_HEADER.findall(text):
+            if resource_type not in SCANNED_TYPES and not NON_DOCUMENT_POLICY_TYPES.fullmatch(resource_type):
+                errors.append(
+                    f"{relative}: {resource_type}.{name} looks like it carries a policy, but DOCUMENT_KINDS doesn't "
+                    "list its type. Add it, or add it to NON_DOCUMENT_POLICY_TYPES if it holds no document."
+                )
+        module = path.relative_to(REPOSITORY_ROOT / "modules").parts[0] if relative.parts[0] == "modules" else None
+        for header in ENDPOINT_HEADER.finditer(text):
+            block_end = text.find("\n}", header.end())
+            block = text[header.end() : block_end if block_end != -1 else len(text)]
+            if re.search(r"^[ \t]*policy\s*=", block, re.MULTILINE) and (module, header.group(1)) not in POLICY_ENDPOINTS:
+                errors.append(
+                    f"{relative}: aws_vpc_endpoint.{header.group(1)} sets a policy, but POLICY_ENDPOINTS doesn't list it, "
+                    "so no profile would show it."
+                )
+
+
+def terraform_versions() -> dict:
+    """Terraform's own version report, which names the provider selections in the lock file."""
+    # Skip the update check, which reads the network and would put a changing field in the file.
+    result = subprocess.run(
+        ["terraform", "version", "-json"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "CHECKPOINT_DISABLE": "1"},
+    )
+    if result.returncode != 0:
+        sys.exit(f"terraform version -json exited with {result.returncode}:\n{result.stderr.strip()}")
+    return json.loads(result.stdout)
+
+
+def differences(first: dict, second: dict) -> list[str]:
+    """Name the profiles and documents that two manifests disagree on."""
+    found = []
+    second_profiles = {profile["name"]: profile for profile in second["profiles"]}
+    for profile in first["profiles"]:
+        other = second_profiles.get(profile["name"])
+        if other is None:
+            found.append(f"{profile['name']} is missing from the second run.")
+            continue
+        if profile["attachments"] != other["attachments"]:
+            found.append(f"{profile['name']}: attachments differ.")
+        other_documents = {entry["address"]: entry for entry in other["documents"]}
+        for entry in profile["documents"]:
+            if entry != other_documents.get(entry["address"]):
+                found.append(f"{profile['name']}: {entry['address']} differs.")
+    return found or ["The manifests differ outside the profiles."]
+
+
+def dump(value: dict) -> str:
+    return json.dumps(value, indent=2, sort_keys=True) + "\n"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--output", help="Also write the manifest to this path.")
+    parser.add_argument("--versions-output", help="Also write `terraform version -json` to this path.")
+    parser.add_argument(
+        "--test-json",
+        help="Read saved `terraform test -json -verbose` output instead of running the test. "
+        "The determinism check needs a second run, so it is skipped.",
+    )
+    arguments = parser.parse_args()
+
+    errors: list[str] = []
+    if arguments.test_json:
+        first = TestOutput(parse_messages(Path(arguments.test_json).read_text()), None, "")
+    else:
+        first = run_generation_test()
+    manifest = build_manifest(first, errors)
+
+    if not arguments.test_json:
+        # A value that the mock generates and no substitution caught differs between runs.
+        second_errors: list[str] = []
+        second_manifest = build_manifest(run_generation_test(), second_errors)
+        errors.extend(second_errors)
+        if second_manifest != manifest:
+            errors.append("The manifest differs between two runs, so a mock-generated value escaped substitution:")
+            errors.extend(f"  {line}" for line in differences(manifest, second_manifest))
+
+    if errors:
+        # A shared value is found once for each run of its file, so drop the repeats.
+        print("\n".join(dict.fromkeys(errors)), file=sys.stderr)
+        sys.exit(1)
+
+    document_count = sum(len(profile["documents"]) for profile in manifest["profiles"])
+    print(
+        f"manifest: {len(manifest['profiles'])} profiles, {document_count} documents, "
+        f"{len(manifest['placeholders'])} placeholders, {len(manifest['deployer'])} deployer documents"
+    )
+    if arguments.output:
+        Path(arguments.output).write_text(dump(manifest))
+    if arguments.versions_output:
+        Path(arguments.versions_output).write_text(dump(terraform_versions()))
+
+
+if __name__ == "__main__":
+    main()

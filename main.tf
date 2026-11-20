@@ -4,6 +4,7 @@ module "kms" {
 
   deployment_name         = var.deployment_name
   additional_key_policies = var.additional_kms_key_policies
+  enable_kms_key_freeze   = var.enable_kms_key_freeze
   custom_tags             = local.all_custom_tags
 }
 

@@ -1,28 +1,3 @@
 {
-  "allowed_changes": [
-    {
-      "address": "module\\.iam\\.aws_iam_role\\.(api_handler|brainstore|db_monitoring|quarantine_function|quarantine_invoke)\\[0\\]",
-      "actions": ["update"],
-      "changed_attributes": ["assume_role_policy"],
-      "reason": "Every statement in a module-generated trust gets a Sid. The API handler trust also drops lambda.amazonaws.com outside the Lambda API path. Roles that use the shared ECS trust document change too, but the mock returns fixed policy-document JSON, so they show no diff here."
-    },
-    {
-      "address": "module\\.iam\\.aws_iam_policy\\.(api_handler|api_handler_quarantine)\\[0\\]",
-      "actions": ["update"],
-      "changed_attributes": ["policy"],
-      "reason": "Every statement in the module's managed policies gets a Sid, and existing Sids are renamed to the effect-first pattern. IAM stores a new default policy version."
-    },
-    {
-      "address": "module\\.iam\\.aws_iam_role_policy\\.(brainstore_cloudwatch_logs_access|brainstore_cloudwatch_metrics|brainstore_diagnostics_transcripts|brainstore_export_assume_role|brainstore_kms_policy|brainstore_s3_access|brainstore_secrets_access|brainstore_ssm_parameter_access|quarantine_function_deny_ec2|quarantine_invoke)\\[0\\]",
-      "actions": ["update"],
-      "changed_attributes": ["policy"],
-      "reason": "Every statement in the module's inline policies gets a Sid, and existing Sids are renamed to the effect-first pattern. PutRolePolicy updates each in place."
-    },
-    {
-      "address": "module\\.kms\\[0\\]\\.aws_kms_key\\.braintrust",
-      "actions": ["update"],
-      "changed_attributes": ["policy"],
-      "reason": "The nine key-policy Sids are renamed to the effect-first pattern. This is a one-time PutKeyPolicy; the root kms:* statement keeps its permissions under its new Sid."
-    }
-  ]
+  "allowed_changes": []
 }

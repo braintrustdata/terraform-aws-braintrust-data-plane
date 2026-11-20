@@ -34,6 +34,16 @@ uv run scripts/check-upgrade-plan
 uv run scripts/check-upgrade-plan --self-test
 """
 
+[tasks.manifest]
+description = "Generate the permission manifest and check its Sids"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+# The generation files live in a subdirectory that terraform test skips, so point init at it.
+terraform init -backend=false -test-directory=tests/permission-manifest
+uv run scripts/check-permission-manifest --output permission-manifest.json --versions-output permission-manifest-versions.json
+"""
+
 [tasks.validate]
 description = "Validate the Terraform module and example code"
 run = """

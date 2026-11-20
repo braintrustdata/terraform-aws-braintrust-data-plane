@@ -20,6 +20,10 @@ jobs:
 
       - name: Setup Mise
         uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          # Pinned so a new mise release can't change the toolchain unnoticed.
+          # Keep it the same in create-release.yml.
+          version: 2026.11.10
 
       - name: Run setup task
         run: mise run setup
@@ -39,3 +43,17 @@ jobs:
           # against the commit it replaced.
           UPGRADE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: mise run test
+
+      # This step is also the AC-2 Sid check, so a failure fails CI.
+      - name: Generate permission manifest
+        run: mise run manifest
+
+      - name: Upload permission manifest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: permission-manifest
+          path: |
+            permission-manifest.json
+            permission-manifest-versions.json
+          if-no-files-found: error
+          overwrite: true

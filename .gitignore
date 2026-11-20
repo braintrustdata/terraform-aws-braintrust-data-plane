@@ -57,3 +57,7 @@ scripts/.venv/
 # Starting points of the upgrade test, written by scripts/prepare-upgrade-fixture
 /tests/fixtures/.upgrade-parent/
 /tests/fixtures/.upgrade-release/
+
+# Written by mise run manifest, and never committed. The release workflow attaches them to the GitHub Release.
+permission-manifest.json
+permission-manifest-versions.json

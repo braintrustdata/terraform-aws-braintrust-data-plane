@@ -175,6 +175,53 @@ resource "aws_kms_alias" "braintrust" {
   target_key_id = aws_kms_key.braintrust.key_id
 }
 
+locals {
+  # The key and alias attributes the freeze guard protects. The arguments that
+  # force key replacement are included so a configured replacement fails at
+  # plan time; otherwise only the unknown new key_id would differ and the guard
+  # would fail at apply, after the replacement.
+  kms_key_freeze_protected = {
+    policy                   = aws_kms_key.braintrust.policy
+    description              = aws_kms_key.braintrust.description
+    is_enabled               = aws_kms_key.braintrust.is_enabled
+    enable_key_rotation      = aws_kms_key.braintrust.enable_key_rotation
+    rotation_period_in_days  = aws_kms_key.braintrust.rotation_period_in_days
+    tags                     = aws_kms_key.braintrust.tags
+    tags_all                 = aws_kms_key.braintrust.tags_all
+    region                   = aws_kms_key.braintrust.region
+    key_usage                = aws_kms_key.braintrust.key_usage
+    customer_master_key_spec = aws_kms_key.braintrust.customer_master_key_spec
+    multi_region             = aws_kms_key.braintrust.multi_region
+    custom_key_store_id      = aws_kms_key.braintrust.custom_key_store_id
+    xks_key_id               = aws_kms_key.braintrust.xks_key_id
+    key_id                   = aws_kms_key.braintrust.key_id
+    alias_name               = aws_kms_alias.braintrust.name
+    alias_target_key_id      = aws_kms_alias.braintrust.target_key_id
+  }
+}
+
+# Freeze guard. It stores the protected values when it's created and ignores
+# later changes to its input, so self.output keeps the stored values. The
+# postcondition compares them with the planned values and fails the plan when
+# the configuration changes the key or alias. It doesn't use prevent_destroy,
+# so terraform destroy still works. It doesn't catch out-of-band drift, a
+# -replace or taint on the key, or a caller key policy that is unknown at plan
+# time; MIGRATION_V8.md lists those.
+resource "terraform_data" "kms_key_freeze" {
+  count = var.enable_kms_key_freeze ? 1 : 0
+
+  input = local.kms_key_freeze_protected
+
+  lifecycle {
+    ignore_changes = [input]
+
+    postcondition {
+      condition     = self.output == local.kms_key_freeze_protected
+      error_message = "enable_kms_key_freeze is on and this plan changes the managed KMS key or alias. Restore the configuration, or for an agreed change set enable_kms_key_freeze = false, apply, then set it back to true against a plan with no key or alias changes. See MIGRATION_V8.md."
+    }
+  }
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 data "aws_region" "current" {}
