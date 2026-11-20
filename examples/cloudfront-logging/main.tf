@@ -9,10 +9,6 @@ module "braintrust-data-plane" {
   source = "github.com/braintrustdata/terraform-braintrust-data-plane"
   # ... your eixsting configuration ...
 
-  # Only use this when instructed to by the Braintrust team.
-  # use_global_ai_gateway_origin   = false
-  # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
-
   # The optional Loop runtime is disabled by default.
   enable_loop_runtime = false
 

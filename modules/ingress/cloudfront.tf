@@ -4,14 +4,7 @@ locals {
   # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html
   cloudfront_AllViewerExceptHostHeader = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   cloudfront_ApiEcsOrigin              = "ApiEcsOrigin"
-  cloudfront_GatewayOrigin             = "GatewayOrigin"
   cloudfront_LoopRuntimeOrigin         = "LoopRuntimeOrigin"
-
-  # /v1/proxy always routes to a gateway: hosted global or the private
-  # gateway VPC origin.
-  cloudfront_proxy_origin_id = (
-    var.use_global_ai_gateway_origin ? local.cloudfront_GatewayOrigin : local.cloudfront_PrivateGatewayOrigin
-  )
 
   # When CloudFront reaches the ECS ALB over HTTP, the ALB sets X-Forwarded-Proto=http even
   # though the viewer connected to CloudFront over HTTPS. Add CloudFront-Forwarded-Proto so
@@ -26,7 +19,6 @@ locals {
   )
   cloudfront_origin_request_policy_for_origin = {
     (local.cloudfront_ApiEcsOrigin)         = local.cloudfront_ecs_origin_request_policy_id
-    (local.cloudfront_GatewayOrigin)        = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_PrivateGatewayOrigin) = local.cloudfront_AllViewerExceptHostHeader
     (local.cloudfront_LoopRuntimeOrigin)    = local.cloudfront_AllViewerExceptHostHeader
   }
@@ -89,20 +81,6 @@ resource "aws_cloudfront_distribution" "dataplane" {
   aliases      = var.custom_domain != null ? [var.custom_domain] : null
 
   origin {
-    domain_name = trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/")
-    origin_id   = local.cloudfront_GatewayOrigin
-
-    custom_origin_config {
-      origin_protocol_policy   = "https-only"
-      origin_read_timeout      = var.cloudfront_origin_read_timeout
-      origin_keepalive_timeout = 60
-      https_port               = 443
-      http_port                = 80
-      origin_ssl_protocols     = ["TLSv1.2"]
-    }
-  }
-
-  origin {
     origin_id   = local.cloudfront_ApiEcsOrigin
     domain_name = var.api_ecs_alb_domain
 
@@ -121,17 +99,14 @@ resource "aws_cloudfront_distribution" "dataplane" {
     }
   }
 
-  dynamic "origin" {
-    for_each = local.create_private_gateway_cloudfront_origin ? [1] : []
-    content {
-      domain_name = var.gateway_alb_dns_name
-      origin_id   = local.cloudfront_PrivateGatewayOrigin
+  origin {
+    domain_name = var.gateway_alb_dns_name
+    origin_id   = local.cloudfront_PrivateGatewayOrigin
 
-      vpc_origin_config {
-        vpc_origin_id            = aws_cloudfront_vpc_origin.gateway[0].id
-        origin_read_timeout      = var.cloudfront_origin_read_timeout
-        origin_keepalive_timeout = 60
-      }
+    vpc_origin_config {
+      vpc_origin_id            = aws_cloudfront_vpc_origin.gateway[0].id
+      origin_read_timeout      = var.cloudfront_origin_read_timeout
+      origin_keepalive_timeout = 60
     }
   }
 
@@ -165,11 +140,11 @@ resource "aws_cloudfront_distribution" "dataplane" {
       path_pattern           = ordered_cache_behavior.value
       allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods         = ["GET", "HEAD", "OPTIONS"]
-      target_origin_id       = local.cloudfront_proxy_origin_id
+      target_origin_id       = local.cloudfront_PrivateGatewayOrigin
       viewer_protocol_policy = "redirect-to-https"
 
       cache_policy_id          = local.cloudfront_CachingDisabled
-      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_proxy_origin_id]
+      origin_request_policy_id = local.cloudfront_origin_request_policy_for_origin[local.cloudfront_PrivateGatewayOrigin]
     }
   }
 

@@ -1018,10 +1018,6 @@ variable "enable_private_dataplane" {
     error_message = "Private mode requires braintrust_api_alb_custom_domain and braintrust_api_alb_certificate_arn."
   }
 
-  validation {
-    condition     = !var.enable_private_dataplane || !var.use_global_ai_gateway_origin
-    error_message = "Private mode requires the private gateway and does not support use_global_ai_gateway_origin."
-  }
 
   validation {
     condition     = !var.enable_private_dataplane || var.quarantine_proxy_url == null
@@ -1540,7 +1536,7 @@ variable "custom_domain" {
 }
 
 variable "quarantine_proxy_url" {
-  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the CloudFront /v1/proxy URL. CloudFront always serves that path from the selected gateway (private, or hosted when use_global_ai_gateway_origin is true). Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
+  description = "Optional explicit QUARANTINE_PROXY_URL on API ECS for quarantine UDF LLM calls. Always wins over auto-selection. When null, precedence is the module-created PrivateLink endpoint, then the CloudFront /v1/proxy URL. CloudFront always serves that path from the private gateway. Existing quarantine VPCs can use module-created PrivateLink; public URLs require outbound connectivity. See use_private_gateway_quarantine_proxy."
   type        = string
   default     = null
 
@@ -1563,7 +1559,7 @@ variable "create_quarantine_api_access" {
 }
 
 variable "use_private_gateway_quarantine_proxy" {
-  description = "Create quarantine-to-gateway PrivateLink through an internal NLB, the gateway ALB, and an interface endpoint. Supports managed or existing main and quarantine VPCs. Private mode ignores this flag and uses create_quarantine_api_access. Must be false in external EKS mode, where Helm owns the gateway. PrivateLink requires enable_quarantine_vpc. Otherwise, quarantine_proxy_url is required unless use_global_ai_gateway_origin is true. Both VPCs must use the provider account and region, with private subnets in the same availability zones. API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it. An override does not suppress resource creation. False retains URL selection from quarantine_proxy_url or the CloudFront /v1/proxy fallback, except in private mode. When use_global_ai_gateway_origin is true, the module skips PrivateLink and automatic endpoint URL selection. The NLB and interface endpoint add costs."
+  description = "Create quarantine-to-gateway PrivateLink through an internal NLB, the gateway ALB, and an interface endpoint. Supports managed or existing main and quarantine VPCs. Private mode ignores this flag and uses create_quarantine_api_access. Must be false in external EKS mode, where Helm owns the gateway. PrivateLink requires enable_quarantine_vpc. Otherwise, quarantine_proxy_url is required. Both VPCs must use the provider account and region, with private subnets in the same availability zones. API ECS uses http://<vpce-dns>/v1/proxy unless quarantine_proxy_url overrides it. An override does not suppress resource creation. False retains URL selection from quarantine_proxy_url or the CloudFront /v1/proxy fallback, except in private mode. The NLB and interface endpoint add costs."
   type        = bool
   default     = false
 
@@ -1885,7 +1881,6 @@ variable "ai_gateway_bedrock_assume_role_arns" {
     When empty (default), AssumeRole remains unrestricted (Resource "*") for backward compatibility.
     When set, only matching role ARNs may be assumed. Exact ARNs and IAM Resource patterns are both accepted, for example:
       ["arn:aws:iam::123456789012:role/braintrust-bedrock-role"]
-    Only applies to the private gateway (use_global_ai_gateway_origin = false).
   EOT
   default     = []
 
@@ -2104,18 +2099,6 @@ variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
   default     = null
-}
-
-variable "use_global_ai_gateway_origin" {
-  description = "Use the hosted Braintrust gateway instead of the private gateway. When true, the module creates no private gateway (no gateway ECS service, internal ALB, or CloudFront VPC origin), sets GATEWAY_URL on API ECS to https://<global_ai_gateway_origin_domain>, routes CloudFront /v1/proxy there, and points Loop at it. When false (default), the module creates the private gateway (ECS service, internal ALB, and CloudFront VPC origin), sets GATEWAY_URL to it, and routes CloudFront /v1/proxy and Loop through it. Changing false to true deletes the VPC origin in the same apply that detaches it from CloudFront; if that fails with CannotDeleteEntityWhileInUse, rerun the apply after the distribution finishes deploying (see MIGRATION_V8.md). Every deployment uses one of the two gateways. Don't enable this unless instructed by Braintrust. External EKS deployments use the Helm gateway and ignore this input."
-  type        = bool
-  default     = false
-}
-
-variable "global_ai_gateway_origin_domain" {
-  description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled. Don't change this unless instructed by Braintrust."
-  type        = string
-  default     = "gateway.braintrust.dev"
 }
 
 variable "use_deployment_mode_external_eks" {

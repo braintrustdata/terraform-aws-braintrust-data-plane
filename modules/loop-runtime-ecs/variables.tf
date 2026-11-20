@@ -274,7 +274,7 @@ variable "brainstore_reader_url" {
 
 variable "ai_proxy_url" {
   type        = string
-  description = "Model proxy URL for the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL). Root module sets this to the private gateway /v1/proxy, or the hosted gateway when use_global_ai_gateway_origin is true."
+  description = "Model proxy URL for the Loop runtime (LOOP_RUNTIME_AI_PROXY_URL). Root module sets this to the private gateway /v1/proxy."
 }
 
 variable "brainstore_license_key_secret_arn" {

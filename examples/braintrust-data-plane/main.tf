@@ -193,10 +193,6 @@ module "braintrust-data-plane" {
 
   ### Advanced configuration
 
-  # Only use this when instructed to by the Braintrust team.
-  # use_global_ai_gateway_origin   = false
-  # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
-
   # Opt in to quarantine → module-managed Gateway PrivateLink. Default false.
   # Creating the path requires enable_quarantine_vpc; VPCs
   # may each be managed or existing, with private subnets in matching AZs.

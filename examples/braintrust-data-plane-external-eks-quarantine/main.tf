@@ -125,10 +125,6 @@ module "braintrust-data-plane" {
   # Redis engine version
   redis_version = "7.0"
 
-  # Only use this when instructed to by the Braintrust team.
-  # use_global_ai_gateway_origin   = false
-  # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
-
   # External EKS requires this flag to remain false. Helm owns the Gateway
   # and proxy URL wiring; Terraform does not create this PrivateLink path.
   # use_private_gateway_quarantine_proxy = false

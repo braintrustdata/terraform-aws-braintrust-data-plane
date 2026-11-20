@@ -21,33 +21,25 @@ variable "waf_acl_id" {
   default     = null
 }
 
-variable "use_global_ai_gateway_origin" {
-  description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev"
-  type        = bool
-  default     = false
-}
-
 variable "create_gateway_vpc_origin" {
-  description = "Create the CloudFront VPC origin for the private gateway ALB and route /v1/proxy to it unless use_global_ai_gateway_origin is true."
+  description = "Create the CloudFront VPC origin for the private gateway ALB and route /v1/proxy to it. Must be true. The count keeps the v7 state address, so a rollback to v7 doesn't replace the attached VPC origin."
   type        = bool
   default     = false
 
   validation {
-    condition     = var.use_global_ai_gateway_origin || var.create_gateway_vpc_origin
-    error_message = "/v1/proxy must route to a gateway: set use_global_ai_gateway_origin or create_gateway_vpc_origin."
+    condition     = var.create_gateway_vpc_origin
+    error_message = "/v1/proxy must route to the private gateway: set create_gateway_vpc_origin."
   }
 }
 
 variable "gateway_alb_arn" {
   description = "ARN of the internal gateway ALB for CloudFront VPC origin routing"
   type        = string
-  default     = null
 }
 
 variable "gateway_alb_dns_name" {
   description = "DNS name of the internal gateway ALB for CloudFront VPC origin routing"
   type        = string
-  default     = null
 }
 
 variable "gateway_cloudfront_ingress_rule_id" {
@@ -78,12 +70,6 @@ variable "loop_runtime_cloudfront_ingress_rule_id" {
   description = "ID of the Loop runtime ALB ingress rule for CloudFront VPC origins"
   type        = string
   default     = null
-}
-
-variable "global_ai_gateway_origin_domain" {
-  description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled"
-  type        = string
-  default     = "gateway.braintrust.dev"
 }
 
 variable "api_ecs_alb_arn" {

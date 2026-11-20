@@ -203,7 +203,7 @@ Call this out in the PR. Bump **major** (preferred). If a major is truly wrong, 
 
 ### Review the inverse of every `count` / `for_each`
 
-Traffic/routing flags (`use_global_ai_gateway_origin` and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
+Traffic/routing flags (`use_private_gateway_quarantine_proxy`, `enable_loop_runtime` and similar) are meant to flip in both directions in a single apply. When adding a resource gated on such a flag:
 
 - Mentally apply `true → false`. Terraform will destroy the resource in the same apply that stops referencing it.
 - If AWS requires the parent to finish deploying that detach first, rollback fails. CloudFront origin request policies, cache policies, functions, and VPC origins are in this class — distribution updates are asynchronous, and CloudFront rejects deleting a still-attached child.
@@ -218,26 +218,23 @@ Whether an EKS gateway would reuse this ALB via Terraform is TBD — do not assu
 
 ### API ECS and an AI gateway are mandatory
 
-Since v8 there is no Lambda API path and no option to run without a gateway. Do not reintroduce `enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, or `use_private_ai_gateway_origin`. Upgrade an existing deployment with [MIGRATION_V8.md](MIGRATION_V8.md); stacks must finish the v7 cutover first.
+Since v8 there is no Lambda API path, no option to run without a gateway, and no hosted-gateway option. Do not reintroduce `enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, `use_private_ai_gateway_origin`, `use_global_ai_gateway_origin`, or `global_ai_gateway_origin_domain`. Upgrade an existing deployment with [MIGRATION_V8.md](MIGRATION_V8.md); stacks must finish the v7 cutover first.
 
 - Standard deployments always create API ECS. `local.create_ecs_api` is false only in external EKS mode.
-- `use_global_ai_gateway_origin = false` (default): `local.create_ai_gateway` is true. The module creates the gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`), wires `GATEWAY_URL` on API ECS, sets Loop's `LOOP_RUNTIME_AI_PROXY_URL` to the private gateway, and routes CloudFront `/v1/proxy` to the private gateway VPC origin.
-- `use_global_ai_gateway_origin = true`: no gateway ECS service, gateway ALB, or CloudFront VPC origin. `GATEWAY_URL` on API ECS is the hosted base URL (`https://<global_ai_gateway_origin_domain>`). CloudFront `/v1/proxy` uses the hosted gateway origin and Loop uses the hosted gateway URL.
-- CloudFront `/v1/proxy` never routes to the API ECS ALB. The ingress module rejects any configuration where `/v1/proxy` has no gateway origin.
+- Standard deployments always create the private gateway. `local.create_ai_gateway` is false only in external EKS mode. The module creates the gateway ALB (`modules/gateway-alb`) and gateway ECS service (`modules/gateway-ecs`), wires `GATEWAY_URL` on API ECS, sets Loop's `LOOP_RUNTIME_AI_PROXY_URL` to the private gateway, and routes CloudFront `/v1/proxy` to the private gateway VPC origin.
+- Native inference still reaches the Braintrust gateway: the private gateway forwards `type: "braintrust"` credentials to `NATIVE_GATEWAY_URL`. Do not add a hosted-gateway origin for it.
+- CloudFront `/v1/proxy` never routes to the API ECS ALB.
 
-External EKS ignores `use_global_ai_gateway_origin`. Helm owns the API and gateway.
+External EKS creates neither. Helm owns the API and gateway.
 
 ### Private data plane mode
 
 `enable_private_dataplane = true` serves customer requests through the internal API ALB without CloudFront.
-Private mode requires these inputs:
-
-- `use_global_ai_gateway_origin = false` (the private gateway).
-- `braintrust_api_alb_custom_domain` and `braintrust_api_alb_certificate_arn`.
+Private mode requires `braintrust_api_alb_custom_domain` and `braintrust_api_alb_certificate_arn`.
 
 Private mode supports managed, existing, and mixed main/quarantine VPCs through the standard VPC and subnet inputs.
 The caller controls client connectivity, DNS, and network controls in supplied VPCs.
-Private mode rejects external EKS, `use_global_ai_gateway_origin`, and an explicit `quarantine_proxy_url`.
+Private mode rejects external EKS and an explicit `quarantine_proxy_url`.
 It also rejects the CloudFront inputs `custom_domain`, `custom_certificate_arn`, and `waf_acl_id`.
 Private mode creates no CloudFront gateway VPC origin because CloudFront is absent.
 
@@ -271,14 +268,13 @@ API ECS selects the URL in this order:
 3. The CloudFront API URL with `/v1/proxy` in public mode, which CloudFront always serves from a gateway.
 
 Private mode uses its API endpoint only with `create_quarantine_api_access = true`.
-Public mode uses PrivateLink when `use_private_gateway_quarantine_proxy = true`, quarantine is enabled, and `use_global_ai_gateway_origin = false`.
+Public mode uses PrivateLink when `use_private_gateway_quarantine_proxy = true` and quarantine is enabled.
 An explicit URL override does not suppress resource creation in public mode.
 External EKS rejects `use_private_gateway_quarantine_proxy = true`. Helm owns its gateway and application configuration.
 
 Public fallbacks require quarantine HTTPS egress.
 A managed quarantine VPC uses its own NAT gateway.
-CloudFront serves `/v1/proxy` from the hosted gateway or the private gateway.
-With the hosted gateway origin, quarantine LLM requests leave the data plane.
+CloudFront serves `/v1/proxy` from the private gateway.
 A CloudFront WAF or source-IP allowlist must admit the quarantine egress address for that public path.
 The URL presence check does not test egress, WAF admission, or authentication.
 
@@ -289,7 +285,7 @@ Do not peer quarantine to the main VPC for this path.
 The main VPC ALBs do not provide direct access from the isolated quarantine VPC.
 PrivateLink provides the private connection between these VPCs.
 An absent `QUARANTINE_PROXY_URL` in the ECS configuration falls back to `http://localhost:8000/v1/proxy`, which quarantine Lambdas cannot reach.
-Loop uses the private gateway, or the hosted gateway when `use_global_ai_gateway_origin` is true.
+Loop uses the private gateway.
 
 #### `use_private_gateway_quarantine_proxy` (default `false`)
 

@@ -1,5 +1,5 @@
-# Plan-mode smoke test for the required AI gateway. Standard deployments use
-# the private gateway unless use_global_ai_gateway_origin selects the hosted one.
+# Plan-mode smoke test for the required AI gateway. Standard deployments always
+# use the private gateway.
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
@@ -93,35 +93,6 @@ run "reject_gateway_without_tasks" {
     ai_gateway_min_capacity = 0
   }
   expect_failures = [var.ai_gateway_min_capacity]
-}
-
-run "hosted_gateway_skips_private_gateway_and_wires_hosted_url" {
-  command = plan
-  variables {
-    ai_gateway_min_capacity              = 0
-    use_global_ai_gateway_origin         = true
-    use_private_gateway_quarantine_proxy = true
-  }
-
-  assert {
-    condition     = length(module.gateway_ecs) == 0 && !local.create_quarantine_gateway_privatelink
-    error_message = "The hosted gateway must stop the private gateway service and leave quarantine PrivateLink disabled."
-  }
-
-  assert {
-    condition     = length(module.gateway_alb) == 0
-    error_message = "The hosted gateway must not create the private gateway ALB or its CloudFront VPC origin."
-  }
-
-  assert {
-    condition     = local.gateway_env_vars["GATEWAY_URL"] == "https://gateway.braintrust.dev"
-    error_message = "API services must use the hosted gateway base URL."
-  }
-
-  assert {
-    condition     = local.loop_runtime_ai_proxy_url == "https://gateway.braintrust.dev/v1/proxy"
-    error_message = "Loop must use the hosted gateway."
-  }
 }
 
 run "quarantine_override_keeps_explicit_url" {

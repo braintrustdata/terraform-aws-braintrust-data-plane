@@ -122,7 +122,7 @@ run "private_callbacks_use_internal_api_and_gateway_urls" {
 
   assert {
     condition     = local.loop_runtime_ai_proxy_url == "http://internal-gateway.us-east-1.elb.amazonaws.com/v1/proxy"
-    error_message = "Loop must use the private gateway instead of a hosted gateway or CloudFront."
+    error_message = "Loop must use the private gateway instead of CloudFront."
   }
 }
 
@@ -140,14 +140,6 @@ run "rejects_private_mode_without_customer_certificate" {
     braintrust_api_alb_certificate_arn = null
   }
   expect_failures = [var.braintrust_api_alb_custom_domain]
-}
-
-run "rejects_private_mode_with_hosted_gateway_origin" {
-  command = plan
-  variables {
-    use_global_ai_gateway_origin = true
-  }
-  expect_failures = [var.enable_private_dataplane]
 }
 
 run "private_mode_skips_cloudfront_private_gateway_origin" {

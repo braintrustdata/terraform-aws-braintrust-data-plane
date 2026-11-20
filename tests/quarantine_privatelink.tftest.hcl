@@ -319,23 +319,6 @@ run "existing_vpcs_explicit_override_wins_but_keeps_infrastructure" {
   }
 }
 
-run "global_gateway_skips_privatelink" {
-  command = plan
-  variables {
-    use_global_ai_gateway_origin = true
-  }
-  assert {
-    condition = (
-      length(aws_lb.gateway_quarantine_privatelink) == 0 &&
-      length(aws_vpc_endpoint.quarantine_gateway) == 0 &&
-      length(data.aws_subnet.quarantine_privatelink_main) == 0 &&
-      length(data.aws_subnet.quarantine_privatelink_quarantine) == 0 &&
-      output.quarantine_proxy_url == "https://dtest.cloudfront.net/v1/proxy"
-    )
-    error_message = "Global Gateway must retain its normal URL and skip all PrivateLink provisioning and lookups."
-  }
-}
-
 run "disabled_quarantine_requires_override" {
   command = plan
   variables { enable_quarantine_vpc = false }

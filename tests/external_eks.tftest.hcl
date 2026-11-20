@@ -63,8 +63,7 @@ run "external_eks_ignores_gateway_flags" {
   command = plan
 
   variables {
-    use_global_ai_gateway_origin = false
-    ai_gateway_min_capacity      = 0
+    ai_gateway_min_capacity = 0
   }
 
   assert {

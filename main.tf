@@ -77,11 +77,9 @@ locals {
     : module.database.postgres_database_url_secret_arn
   )
 
-  # API ECS is always created outside external EKS mode. Every standard
-  # deployment uses a gateway: the hosted gateway when
-  # use_global_ai_gateway_origin is true, otherwise the private gateway.
+  # API ECS and the private gateway are always created outside external EKS mode.
   create_ecs_api                = !var.use_deployment_mode_external_eks
-  create_ai_gateway             = !var.use_deployment_mode_external_eks && !var.use_global_ai_gateway_origin
+  create_ai_gateway             = !var.use_deployment_mode_external_eks
   create_brainstore_ec2         = !var.use_deployment_mode_external_eks
   enable_internal_observability = trimspace(nonsensitive(var.internal_observability_api_key)) != ""
   # Secret is shared by API ECS, gateway ECS, and Brainstore EC2 (Datadog agent).
@@ -122,16 +120,14 @@ locals {
 
   # Quarantine UDF LLM proxy URL (QUARANTINE_PROXY_URL on API ECS).
   # Public mode: explicit quarantine_proxy_url override → PrivateLink VPC
-  # endpoint /v1/proxy when use_private_gateway_quarantine_proxy (and not
-  # use_global) with managed or existing VPCs → else the CloudFront API URL
-  # /v1/proxy.
+  # endpoint /v1/proxy when use_private_gateway_quarantine_proxy with managed or
+  # existing VPCs → else the CloudFront API URL /v1/proxy.
   # The CloudFront fallback requires quarantine HTTPS egress (NAT in managed VPCs).
   # Do not use the API ECS ALB or gateway ALB DNS: those are private to the
   # main VPC, and quarantine is not peered to it. Do not build this URL from
   # a request Host header.
   # Private mode uses one API endpoint.
   # Opt-in private-gateway wiring for quarantine (PrivateLink NLB→ALB + URL).
-  # Off when use_global_ai_gateway_origin (no private gateway, no PrivateLink).
   wire_quarantine_to_private_gateway = (
     !var.enable_private_dataplane &&
     var.use_private_gateway_quarantine_proxy &&
@@ -166,15 +162,8 @@ locals {
     )
   )
   # GATEWAY_URL is a base URL; api-ts appends its own paths.
-  hosted_ai_gateway_url = format(
-    "https://%s",
-    trimsuffix(replace(var.global_ai_gateway_origin_domain, "/^https?:\\/\\//", ""), "/"),
-  )
-  selected_ai_gateway_url = (
-    local.create_ai_gateway ? module.gateway_ecs[0].gateway_url : local.hosted_ai_gateway_url
-  )
-  gateway_env_vars = !var.use_deployment_mode_external_eks ? {
-    GATEWAY_URL = local.selected_ai_gateway_url
+  gateway_env_vars = local.create_ai_gateway ? {
+    GATEWAY_URL = module.gateway_ecs[0].gateway_url
   } : {}
 
   # Loop requires API ECS and Brainstore. Public mode routes CloudFront traffic
@@ -196,9 +185,7 @@ locals {
     module.brainstore[0].port,
   ) : ""
 
-  # Loop uses the private gateway, or the hosted gateway when
-  # use_global_ai_gateway_origin is true.
-  loop_runtime_ai_proxy_url = "${local.selected_ai_gateway_url}/v1/proxy"
+  loop_runtime_ai_proxy_url = local.create_ai_gateway ? "${module.gateway_ecs[0].gateway_url}/v1/proxy" : null
 
   # Only wire per-deployment backend URLs into Lambdas that call them. Do not
   # merge GATEWAY_URL into MigrateDatabaseFunction or crons — that changes their
@@ -839,12 +826,10 @@ module "ingress" {
   cloudfront_price_class              = var.cloudfront_price_class
   cloudfront_origin_read_timeout      = var.cloudfront_origin_read_timeout
   cloudfront_minimum_protocol_version = var.cloudfront_minimum_protocol_version
-  use_global_ai_gateway_origin        = var.use_global_ai_gateway_origin
   create_gateway_vpc_origin           = local.create_ai_gateway
-  global_ai_gateway_origin_domain     = var.global_ai_gateway_origin_domain
-  gateway_alb_arn                     = local.create_ai_gateway ? module.gateway_alb[0].gateway_alb_arn : null
-  gateway_alb_dns_name                = local.create_ai_gateway ? trimprefix(module.gateway_ecs[0].gateway_url, "http://") : null
-  gateway_cloudfront_ingress_rule_id  = local.create_ai_gateway ? module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id : null
+  gateway_alb_arn                     = module.gateway_alb[0].gateway_alb_arn
+  gateway_alb_dns_name                = trimprefix(module.gateway_ecs[0].gateway_url, "http://")
+  gateway_cloudfront_ingress_rule_id  = module.gateway_alb[0].gateway_cloudfront_vpc_origin_ingress_rule_id
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled

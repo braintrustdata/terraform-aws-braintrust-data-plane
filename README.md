@@ -185,13 +185,12 @@ handoff for an existing deployment.
 
 ## AI gateway
 
-Every standard deployment runs the API on ECS and uses an AI gateway. There is no option to run without one. Choose one of two:
+Every standard deployment runs the API on ECS and a private AI gateway in your VPC. There is no option to run without one or to use the hosted Braintrust gateway instead. The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API ECS, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
 
-- **Private gateway (default).** The module creates an internal ALB and gateway ECS service, sets `GATEWAY_URL` on API ECS, and routes CloudFront `/v1/proxy` and Loop through it. The gateway infrastructure adds AWS charges.
-- **Hosted gateway.** Set `use_global_ai_gateway_origin = true` only when instructed by Braintrust. The module runs no gateway ECS service. API ECS gets `GATEWAY_URL = https://<global_ai_gateway_origin_domain>`, CloudFront routes `/v1/proxy` there, and Loop uses it. Those model calls leave the data plane.
+Requests for Braintrust native inference models still go from the private gateway to the Braintrust gateway, which serves those models. Other model calls go from your VPC to the provider.
 
 CloudFront `/v1/proxy` never routes to the API ECS load balancer. Existing deployments must finish the v7 ECS cutover before upgrading to v8. See [Migrating from v7 to v8](MIGRATION_V8.md).
-Private data planes (`enable_private_dataplane = true`) require the private gateway. The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
+Private data planes (`enable_private_dataplane = true`) route `/v1/proxy` to the gateway through the API ALB instead of CloudFront. The [private example](examples/braintrust-data-plane-private/README.md#private-request-paths) describes the request paths.
 Terraform waits for the private gateway ECS service to reach steady state before caller updates.
 The service uses the ALB `/health` check. A failed initial deployment leaves existing callers on their previous configuration.
 
@@ -225,7 +224,7 @@ Restricted sandbox egress requires Loop runtime **2.16.0 or later**, which serve
 The module selects the runtime image and matching MicroVM guest artifact by default.
 Set `loop_runtime_version_override` to pin both to a specific release, such as `"v2.16.0"`.
 
-Loop sends model requests to the private AI gateway, or to the hosted gateway when `use_global_ai_gateway_origin` is true.
+Loop sends model requests to the private AI gateway.
 
 Loop connects to MicroVM endpoints through an interface VPC endpoint in the main VPC.
 The endpoint policy allows connections only to MicroVMs in the deployment account.
