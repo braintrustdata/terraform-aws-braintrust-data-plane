@@ -1,9 +1,40 @@
 {
   "allowed_changes": [
     {
-      "address": "terraform_data\\.iam_ownership_mode",
-      "actions": ["create"],
-      "reason": "The ownership marker records the create_iam value a stack first applied with, and blocks any later change to it. Every stack gets one."
+      "address": "module\\.iam\\.aws_iam_role\\.(api_handler|brainstore|db_monitoring|brainstore_deployment_waiter|automation_cron|billing_cron|catchup_etl|migrate_database|default|quarantine_pruner|quarantine_warmup|quarantine_invoke|quarantine_function|ai_proxy_invoke|automation_cron_schedule|billing_cron_schedule|catchup_etl_schedule|quarantine_pruner_schedule)\\[0\\]",
+      "actions": ["update"],
+      "changed_attributes": ["assume_role_policy"],
+      "reason": "Every statement in a module-generated trust gets a Sid. The API handler trust also drops lambda.amazonaws.com outside the Lambda API path. Roles that use the shared ECS trust document change too, but the mock returns fixed policy-document JSON, so they show no diff here."
+    },
+    {
+      "address": "module\\.iam\\.aws_iam_policy\\.(api_handler|api_handler_lambda_policies|api_handler_quarantine)\\[0\\]",
+      "actions": ["update"],
+      "changed_attributes": ["policy"],
+      "reason": "Every statement in the module's managed policies gets a Sid, and existing Sids are renamed to the effect-first pattern. IAM stores a new default policy version."
+    },
+    {
+      "address": "module\\.iam\\.aws_iam_role_policy\\.(api_ecs_task_execution_secrets|api_handler_cloudwatch_metrics|api_handler_external_attachment_read|brainstore_s3_access|brainstore_secrets_access|brainstore_export_assume_role|brainstore_cloudwatch_metrics|brainstore_cloudwatch_logs_access|brainstore_kms_policy|brainstore_ssm_parameter_access|brainstore_redis_secret_access|gateway_task_execution_custom_ca_bundle_secret|gateway_task_execution_secrets|gateway_task_execution_redis_secret|gateway_task_customer_assume_role|brainstore_deployment_waiter|automation_cron_topic_map_report_read|quarantine_pruner_delete_versions|default|quarantine_warmup|quarantine_invoke|quarantine_function_deny_ec2|ai_proxy_invoke|brainstore_diagnostics_transcripts|api_handler_diagnostics_transcripts|gateway_task_diagnostics_transcripts|gateway_task_diagnostics_execute_command|automation_cron_schedule|billing_cron_schedule|catchup_etl_schedule|quarantine_pruner_schedule)\\[0\\]",
+      "actions": ["update"],
+      "changed_attributes": ["policy"],
+      "reason": "Every statement in the module's inline policies gets a Sid, and existing Sids are renamed to the effect-first pattern. PutRolePolicy updates each in place."
+    },
+    {
+      "address": "module\\.kms\\[0\\]\\.aws_kms_key\\.braintrust",
+      "actions": ["update"],
+      "changed_attributes": ["policy"],
+      "reason": "The nine key-policy Sids are renamed to the effect-first pattern. This is a one-time PutKeyPolicy; the root kms:* statement keeps its permissions under its new Sid."
+    },
+    {
+      "address": "module\\.api_ecs\\[0\\]\\.aws_lb_listener\\.api_ecs_http",
+      "actions": ["update"],
+      "changed_attributes": ["tags", "tags_all"],
+      "reason": "The customer listener gets the shared tags that its internal-listener sibling already has."
+    },
+    {
+      "address": "module\\.api_ecs\\[0\\]\\.aws_lb_listener_rule\\.alb_path_routes\\[\".+\"\\]",
+      "actions": ["update"],
+      "changed_attributes": ["tags", "tags_all"],
+      "reason": "The customer listener's path rules get the shared tags that their internal-listener siblings already have."
     }
   ]
 }

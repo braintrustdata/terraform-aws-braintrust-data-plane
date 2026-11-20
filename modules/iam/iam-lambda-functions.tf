@@ -15,6 +15,7 @@ resource "aws_iam_role" "automation_cron" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -55,14 +56,14 @@ resource "aws_iam_role_policy" "automation_cron_topic_map_report_read" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "TopicMapReportRead"
+        Sid      = "AllowReadTopicMapReports"
         Action   = ["s3:GetObject"]
         Effect   = "Allow"
         Resource = "${var.created_resources.code_bundle_s3_bucket_arn}/bundles/topic_maps/*/*.report.json"
       },
       # The code bundle bucket uses SSE-KMS with this key.
       {
-        Sid      = "TopicMapReportDecrypt"
+        Sid      = "AllowKMSDecryptTopicMapReports"
         Action   = ["kms:Decrypt"]
         Effect   = "Allow"
         Resource = local.kms_key_arn
@@ -86,6 +87,7 @@ resource "aws_iam_role" "quarantine_pruner" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -119,7 +121,7 @@ resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "ListQuarantineFunctionVersions"
+        Sid = "AllowListQuarantineFunctionVersions"
         Action = [
           "lambda:ListVersionsByFunction",
           "lambda:ListAliases",
@@ -135,7 +137,7 @@ resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
       {
         # A qualified ARN (function:name:version) only, so an unqualified
         # DeleteFunction cannot remove a whole function.
-        Sid      = "DeleteQuarantineFunctionVersions"
+        Sid      = "AllowDeleteQuarantineFunctionVersions"
         Action   = ["lambda:DeleteFunction"]
         Effect   = "Allow"
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:*:*"
@@ -158,6 +160,7 @@ resource "aws_iam_role" "default" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -189,6 +192,7 @@ resource "aws_iam_role_policy" "default" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowDescribeCacheClusters"
         Action   = ["elasticache:DescribeCacheClusters"]
         Effect   = "Allow"
         Resource = ["*"]
@@ -199,6 +203,7 @@ resource "aws_iam_role_policy" "default" {
         }
       },
       {
+        Sid = "AllowWriteLambdaLogs"
         Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
@@ -228,6 +233,7 @@ resource "aws_iam_role" "billing_cron" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -259,6 +265,7 @@ resource "aws_iam_role" "catchup_etl" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -290,6 +297,7 @@ resource "aws_iam_role" "migrate_database" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowLambdaAssumeRole"
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
@@ -320,6 +328,7 @@ resource "aws_iam_role" "quarantine_warmup" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowLambdaAssumeRole"
       Action    = "sts:AssumeRole"
       Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
@@ -347,7 +356,7 @@ resource "aws_iam_role_policy" "quarantine_warmup" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "CreateQuarantine"
+        Sid      = "AllowCreateQuarantineFunctions"
         Effect   = "Allow"
         Action   = "lambda:CreateFunction"
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
@@ -359,7 +368,7 @@ resource "aws_iam_role_policy" "quarantine_warmup" {
         }
       },
       {
-        Sid      = "TagQuarantine"
+        Sid      = "AllowTagQuarantineFunctions"
         Effect   = "Allow"
         Action   = "lambda:TagResource"
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
@@ -368,7 +377,7 @@ resource "aws_iam_role_policy" "quarantine_warmup" {
         }
       },
       {
-        Sid      = "ReadQuarantine"
+        Sid      = "AllowReadQuarantineFunctions"
         Effect   = "Allow"
         Action   = "lambda:GetFunction"
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
@@ -377,7 +386,7 @@ resource "aws_iam_role_policy" "quarantine_warmup" {
         }
       },
       {
-        Sid      = "PassQuarantineRole"
+        Sid      = "AllowPassQuarantineFunctionRole"
         Effect   = "Allow"
         Action   = "iam:PassRole"
         Resource = aws_iam_role.quarantine_function[0].arn
@@ -386,7 +395,7 @@ resource "aws_iam_role_policy" "quarantine_warmup" {
         }
       },
       {
-        Sid      = "DescribeQuarantineNetwork"
+        Sid      = "AllowDescribeQuarantineNetwork"
         Effect   = "Allow"
         Action   = ["ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:DescribeVpcs"]
         Resource = "*"

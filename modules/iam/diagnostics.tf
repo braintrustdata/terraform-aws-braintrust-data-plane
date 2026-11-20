@@ -13,8 +13,9 @@ resource "aws_iam_role_policy" "brainstore_diagnostics_transcripts" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
+      { Sid = "AllowDescribeLogGroups", Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
       {
+        Sid      = "AllowWriteLogStreams"
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
         Resource = local.diagnostics_transcript_log_group_arn
@@ -30,8 +31,9 @@ resource "aws_iam_role_policy" "api_handler_diagnostics_transcripts" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
+      { Sid = "AllowDescribeLogGroups", Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
       {
+        Sid      = "AllowWriteLogStreams"
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
         Resource = local.diagnostics_transcript_log_group_arn
@@ -47,8 +49,9 @@ resource "aws_iam_role_policy" "gateway_task_diagnostics_transcripts" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
+      { Sid = "AllowDescribeLogGroups", Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*" },
       {
+        Sid      = "AllowWriteLogStreams"
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:DescribeLogStreams", "logs:PutLogEvents"]
         Resource = local.diagnostics_transcript_log_group_arn
@@ -65,6 +68,7 @@ resource "aws_iam_role_policy" "gateway_task_diagnostics_execute_command" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid      = "AllowECSExec"
       Effect   = "Allow"
       Action   = ["ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel", "ssmmessages:OpenControlChannel", "ssmmessages:OpenDataChannel"]
       Resource = "*"

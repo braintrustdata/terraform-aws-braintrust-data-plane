@@ -94,7 +94,7 @@ run "api_ecs_without_exec_creates_no_transcript_grant" {
   assert {
     condition = length([
       for statement in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : statement
-      if try(statement.Sid, null) == "ECSExec"
+      if try(statement.Sid, null) == "AllowECSExec"
     ]) == 1
     error_message = "The transcript gate must not change existing ECS Exec channel permissions."
   }
@@ -105,6 +105,7 @@ run "api_exec_without_ecs_creates_no_transcript_grant" {
   module { source = "./modules/iam" }
   variables {
     use_deployment_mode_external_eks      = true
+    enable_eks_pod_identity               = true
     diagnostics_transcript_log_group_name = "/braintrust-byoc/test/diagnostics"
     api_ecs_enable_execute_command        = true
   }

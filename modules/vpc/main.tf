@@ -32,6 +32,7 @@ data "aws_iam_policy_document" "s3_vpc_endpoint" {
   dynamic "statement" {
     for_each = local.s3_vpc_endpoint_restricted ? [] : [1]
     content {
+      sid       = "AllowAllS3"
       effect    = "Allow"
       actions   = ["s3:*"]
       resources = ["*"]

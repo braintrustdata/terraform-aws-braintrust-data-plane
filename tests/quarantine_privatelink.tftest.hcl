@@ -599,6 +599,7 @@ run "external_eks_rejects_terraform_privatelink" {
   command = plan
   variables {
     use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
     enable_ecs_api                   = false
   }
   expect_failures = [var.use_private_gateway_quarantine_proxy]

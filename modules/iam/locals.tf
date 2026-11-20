@@ -147,6 +147,7 @@ data "aws_eks_cluster" "cluster" {
 
 data "aws_iam_policy_document" "ecs_task_assume_role" {
   statement {
+    sid     = "AllowECSTasksAssumeRole"
     actions = ["sts:AssumeRole"]
 
     principals {

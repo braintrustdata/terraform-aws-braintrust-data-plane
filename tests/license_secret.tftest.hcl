@@ -51,7 +51,10 @@ run "existing_license_takes_precedence" {
 }
 run "external_eks_without_license" {
   command = plan
-  variables { use_deployment_mode_external_eks = true }
+  variables {
+    use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
+  }
   assert {
     condition     = length(aws_secretsmanager_secret.brainstore_license_key) == 0 && length(data.aws_secretsmanager_secret_versions.brainstore_license_key) == 0
     error_message = "External EKS must require no license and create no license secret."

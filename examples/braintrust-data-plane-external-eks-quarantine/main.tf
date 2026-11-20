@@ -49,8 +49,10 @@ module "braintrust-data-plane" {
   # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
   # With external EKS, there are additional configurations that must be applied after the EKS cluster has been created outside of this module.
-  # Enable EKS Pod Identity for the Braintrust IAM roles
-  #enable_eks_pod_identity = true
+  # Enable EKS Pod Identity for the Braintrust IAM roles. The API role needs a
+  # trust on external EKS. Set existing_eks_cluster_arn and eks_namespace below
+  # to limit the trust to your cluster and namespace.
+  enable_eks_pod_identity = true
   #enable_eks_irsa = true
   #existing_eks_cluster_arn = "<your EKS cluster ARN>"
   #eks_namespace = "<your EKS namespace>"

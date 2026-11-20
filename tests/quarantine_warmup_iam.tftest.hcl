@@ -55,7 +55,7 @@ run "warmup_permissions_are_scoped" {
       for s in jsondecode(aws_iam_role_policy.quarantine_warmup[0].policy).Statement :
       s.Condition.StringEquals["lambda:VpcIds"] == var.created_resources.quarantine_vpc_id &&
       s.Condition.StringEquals["aws:RequestTag/BraintrustQuarantine"] == "true"
-      if s.Sid == "CreateQuarantine"
+      if s.Sid == "AllowCreateQuarantineFunctions"
     ])
     error_message = "Warmup may only create tagged functions in the quarantine VPC."
   }
@@ -63,7 +63,7 @@ run "warmup_permissions_are_scoped" {
     condition = alltrue([
       for s in jsondecode(aws_iam_role_policy.quarantine_warmup[0].policy).Statement :
       s.Resource == aws_iam_role.quarantine_function[0].arn && s.Condition.StringEquals["iam:PassedToService"] == "lambda.amazonaws.com"
-      if s.Sid == "PassQuarantineRole"
+      if s.Sid == "AllowPassQuarantineFunctionRole"
     ])
     error_message = "Warmup may only pass the quarantine execution role to Lambda."
   }
@@ -99,7 +99,7 @@ run "warmup_role_uses_a_caller_provided_quarantine_vpc" {
     condition = alltrue([
       for s in jsondecode(aws_iam_role_policy.quarantine_warmup[0].policy).Statement :
       s.Condition.StringEquals["lambda:VpcIds"] == "vpc-11111111"
-      if s.Sid == "CreateQuarantine"
+      if s.Sid == "AllowCreateQuarantineFunctions"
     ])
     error_message = "A caller-provided quarantine VPC must scope warmup and replace the one the root module created."
   }
@@ -129,6 +129,7 @@ run "warmup_role_is_absent_on_external_eks" {
 
   variables {
     use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
   }
 
   assert {

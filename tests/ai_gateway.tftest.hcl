@@ -98,6 +98,7 @@ run "external_eks_leaves_gateway_to_helm" {
   variables {
     enable_ai_gateway                = true
     use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
     braintrust_api_url               = "https://api.example.com"
   }
 

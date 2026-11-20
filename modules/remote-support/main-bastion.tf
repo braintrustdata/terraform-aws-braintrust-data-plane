@@ -119,6 +119,7 @@ resource "aws_iam_role" "bastion" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowEC2AssumeRole"
         Effect = "Allow"
         Principal = {
           Service = "ec2.amazonaws.com"
@@ -151,6 +152,7 @@ resource "aws_iam_role_policy" "bastion" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowDescribeInstancesAndEndpoints"
         Effect = "Allow"
         Action = [
           "ec2:DescribeInstances",
@@ -161,6 +163,7 @@ resource "aws_iam_role_policy" "bastion" {
         Resource = "*"
       },
       {
+        Sid    = "AllowSendSSHPublicKey"
         Effect = "Allow"
         Action = [
           "ec2-instance-connect:SendSSHPublicKey"
@@ -175,6 +178,7 @@ resource "aws_iam_role_policy" "bastion" {
         }
       },
       {
+        Sid    = "AllowInvokeFunctions"
         Effect = "Allow"
         Action = [
           "lambda:InvokeFunction",
@@ -190,6 +194,7 @@ resource "aws_iam_role_policy" "bastion" {
         }
       },
       {
+        Sid    = "AllowReadSecrets"
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue"
@@ -200,6 +205,7 @@ resource "aws_iam_role_policy" "bastion" {
         ]
       },
       {
+        Sid    = "AllowKMSUse"
         Effect = "Allow"
         Action = [
           "kms:Encrypt",
@@ -224,6 +230,7 @@ resource "aws_iam_role_policy" "braintrust_support_ec2_connect" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowDescribeInstancesAndEndpoints"
         Effect = "Allow"
         Action = [
           "ec2:DescribeInstances",
@@ -232,6 +239,7 @@ resource "aws_iam_role_policy" "braintrust_support_ec2_connect" {
         Resource = "*"
       },
       {
+        Sid    = "AllowEC2InstanceConnect"
         Effect = "Allow"
         Action = [
           "ec2-instance-connect:SendSSHPublicKey",

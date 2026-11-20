@@ -101,6 +101,7 @@ locals {
   # kms:Decrypt through Secrets Manager on the module-created key. Empty when the
   # caller supplies the key, which each policy then lists beside its other keys.
   module_key_decrypt_for_secrets = local.kms_key_is_module_created ? [{
+    Sid       = "AllowKMSDecryptForSecretsManager"
     Effect    = "Allow"
     Action    = ["kms:Decrypt"]
     Resource  = [local.module_kms_key_arn_pattern]
@@ -109,6 +110,7 @@ locals {
 
   # The module-created key for the data actions, split from the caller's keys the same way.
   module_key_data_access = local.kms_key_is_module_created ? [{
+    Sid       = "AllowUseKMSKeys"
     Effect    = "Allow"
     Action    = local.kms_data_actions
     Resource  = [local.module_kms_key_arn_pattern]
@@ -141,6 +143,7 @@ locals {
     Version = "2012-10-17"
     Statement = concat(
       [{
+        Sid    = "AllowReadSecrets"
         Effect = "Allow"
         Action = ["secretsmanager:GetSecretValue"]
         Resource = concat(
@@ -150,12 +153,14 @@ locals {
         )
       }],
       length(local.api_ecs_caller_secret_arns) == 0 ? [] : [{
+        Sid      = "AllowReadCallerSecrets"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.api_ecs_caller_secret_arns
       }],
       local.module_key_decrypt_for_secrets,
       length(local.api_ecs_caller_kms_key_arns) == 0 ? [] : [{
+        Sid       = "AllowKMSDecryptCallerKeysForSecretsManager"
         Effect    = "Allow"
         Action    = ["kms:Decrypt"]
         Resource  = local.api_ecs_caller_kms_key_arns
@@ -171,17 +176,20 @@ locals {
     Version = "2012-10-17"
     Statement = concat(
       length(local.gateway_module_secret_arns) == 0 ? [] : [{
+        Sid      = "AllowReadSecrets"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.gateway_module_secret_arns
       }],
       length(local.existing_license_secret_arns) == 0 ? [] : [{
+        Sid      = "AllowReadCallerSecrets"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.existing_license_secret_arns
       }],
       local.module_key_decrypt_for_secrets,
       length(local.gateway_caller_kms_key_arns) == 0 ? [] : [{
+        Sid       = "AllowKMSDecryptCallerKeysForSecretsManager"
         Effect    = "Allow"
         Action    = ["kms:Decrypt"]
         Resource  = local.gateway_caller_kms_key_arns
@@ -195,12 +203,14 @@ locals {
     Version = "2012-10-17"
     Statement = concat(
       [{
+        Sid      = "AllowReadRedisURLSecret"
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
         Resource = local.scoped_secret_arns.redis_url
       }],
       local.module_key_decrypt_for_secrets,
       length(local.caller_kms_key_arns) == 0 ? [] : [{
+        Sid       = "AllowKMSDecryptCallerKeysForSecretsManager"
         Effect    = "Allow"
         Action    = ["kms:Decrypt"]
         Resource  = local.caller_kms_key_arns
@@ -217,7 +227,7 @@ locals {
     Statement = concat(
       [
         {
-          Sid      = "ElasticacheAccess"
+          Sid      = "AllowDescribeCacheClusters"
           Action   = ["elasticache:DescribeCacheClusters"]
           Effect   = "Allow"
           Resource = ["*"]
@@ -228,7 +238,7 @@ locals {
           }
         },
         {
-          Sid       = "S3Access"
+          Sid       = "AllowReadWriteBuckets"
           Action    = local.s3_object_actions
           Effect    = "Allow"
           Resource  = concat(local.lambda_responses_bucket_arns, local.code_bundle_bucket_arns, local.module_brainstore_bucket_arns)
@@ -236,18 +246,20 @@ locals {
         },
       ],
       length(local.api_handler_caller_bucket_arns) == 0 ? [] : [{
+        Sid      = "AllowReadWriteCallerBuckets"
         Action   = local.s3_object_actions
         Effect   = "Allow"
         Resource = local.api_handler_caller_bucket_arns
       }],
       local.module_key_data_access,
       length(local.caller_kms_key_arns_with_bucket_keys) == 0 ? [] : [{
+        Sid      = "AllowUseCallerKMSKeys"
         Effect   = "Allow"
         Action   = local.kms_data_actions
         Resource = local.caller_kms_key_arns_with_bucket_keys
       }],
       [{
-        Sid      = "AssumeRoleInCustomerAccountForS3Export"
+        Sid      = "AllowAssumeS3ExportRole"
         Action   = "sts:AssumeRole"
         Effect   = "Allow"
         Resource = length(var.s3_export_assume_role_arns) > 0 ? var.s3_export_assume_role_arns : ["*"]
@@ -258,7 +270,7 @@ locals {
         }
       }],
       local.create_ecs_api ? [{
-        Sid    = "ECSExec"
+        Sid    = "AllowECSExec"
         Effect = "Allow"
         Action = [
           "ssmmessages:CreateControlChannel",
@@ -269,7 +281,7 @@ locals {
         Resource = "*"
       }] : [],
       var.existing_attachment_s3_bucket_kms_key_arn != null && var.existing_attachment_s3_bucket_kms_key_arn != "" ? [{
-        Sid      = "AttachmentBucketKMSAccess"
+        Sid      = "AllowUseAttachmentBucketKMSKey"
         Effect   = "Allow"
         Action   = local.kms_data_actions
         Resource = var.existing_attachment_s3_bucket_kms_key_arn
@@ -285,17 +297,20 @@ locals {
     Version = "2012-10-17"
     Statement = concat(
       [{
+        Sid       = "AllowReadWriteBuckets"
         Effect    = "Allow"
         Action    = local.s3_object_actions
         Resource  = concat(local.module_brainstore_bucket_arns, local.lambda_responses_bucket_arns)
         Condition = local.bucket_account_condition
       }],
       length(local.existing_brainstore_bucket_arns) == 0 ? [] : [{
+        Sid      = "AllowReadWriteCallerBuckets"
         Effect   = "Allow"
         Action   = local.s3_object_actions
         Resource = local.existing_brainstore_bucket_arns
       }],
       [{
+        Sid       = "AllowReadCodeBundles"
         Effect    = "Allow"
         Action    = ["s3:GetObject", "s3:ListBucket"]
         Resource  = local.code_bundle_bucket_arns
@@ -319,22 +334,26 @@ locals {
     Version = "2012-10-17"
     Statement = concat(
       [{
+        Sid      = "AllowReadSecrets"
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
         Resource = local.brainstore_module_secret_arns
       }],
       length(local.brainstore_caller_secret_arns) == 0 ? [] : [{
+        Sid      = "AllowReadCallerSecrets"
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
         Resource = local.brainstore_caller_secret_arns
       }],
       local.brainstore_role_license_key_kms_key_arn == null ? [] : [{
+        Sid       = "AllowKMSDecryptLicenseKeyForSecretsManager"
         Effect    = "Allow"
         Action    = "kms:Decrypt"
         Resource  = local.brainstore_role_license_key_kms_key_arn
         Condition = local.kms_via_secrets_manager_condition
       }],
       local.brainstore_role_custom_ca_bundle_kms_key == null ? [] : [{
+        Sid       = "AllowKMSDecryptCustomCABundleKeyForSecretsManager"
         Effect    = "Allow"
         Action    = "kms:Decrypt"
         Resource  = local.brainstore_role_custom_ca_bundle_kms_key
@@ -349,6 +368,7 @@ locals {
     Statement = concat(
       local.module_key_data_access,
       length(local.caller_kms_key_arns_with_bucket_keys) == 0 ? [] : [{
+        Sid      = "AllowUseCallerKMSKeys"
         Effect   = "Allow"
         Action   = local.kms_data_actions
         Resource = local.caller_kms_key_arns_with_bucket_keys
@@ -360,6 +380,7 @@ locals {
   customer_brainstore_redis_secret_access_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid      = "AllowReadRedisURLSecret"
       Effect   = "Allow"
       Action   = "secretsmanager:GetSecretValue"
       Resource = local.scoped_secret_arns.redis_url
@@ -374,6 +395,7 @@ locals {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowDescribeRolloutState"
         Effect = "Allow"
         Action = [
           "autoscaling:DescribeAutoScalingGroups",
@@ -384,6 +406,7 @@ locals {
         Resource = "*"
       },
       {
+        Sid      = "AllowStartInstanceRefresh"
         Effect   = "Allow"
         Action   = "autoscaling:StartInstanceRefresh"
         Resource = [local.autoscaling_group_arn_pattern]
@@ -392,6 +415,7 @@ locals {
         }
       },
       {
+        Sid      = "AllowWriteLogStreams"
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "arn:${local.partition}:logs:${var.region}:${var.account_id}:log-group:/braintrust/${var.deployment_name}/${var.deployment_name}-BrainstoreDeployment:*"
@@ -406,7 +430,7 @@ locals {
     Version = "2012-10-17"
     Statement = concat(
       [{
-        Sid       = "TopicMapReportRead"
+        Sid       = "AllowReadTopicMapReports"
         Action    = ["s3:GetObject"]
         Effect    = "Allow"
         Resource  = "${local.scoped_bucket_arns.code_bundle}/bundles/topic_maps/*/*.report.json"
@@ -414,14 +438,14 @@ locals {
       }],
       # The code bundle bucket uses SSE-KMS with this key.
       local.kms_key_is_module_created ? [{
-        Sid       = "TopicMapReportDecrypt"
+        Sid       = "AllowKMSDecryptTopicMapReports"
         Action    = ["kms:Decrypt"]
         Effect    = "Allow"
         Resource  = local.module_kms_key_arn_pattern
         Condition = merge(local.kms_alias_condition, local.kms_via_s3_condition)
       }] : [],
       local.kms_key_is_module_created ? [] : [{
-        Sid       = "TopicMapReportDecrypt"
+        Sid       = "AllowKMSDecryptTopicMapReports"
         Action    = ["kms:Decrypt"]
         Effect    = "Allow"
         Resource  = local.caller_kms_key_arn

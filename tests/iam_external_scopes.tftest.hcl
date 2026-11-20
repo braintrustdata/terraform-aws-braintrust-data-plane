@@ -34,12 +34,12 @@ run "scopes_standalone_policies_by_prefix_alias_and_tag" {
 
   assert {
     condition = (
-      [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "S3Access"][0].Resource == [
+      [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "AllowReadWriteBuckets"][0].Resource == [
         "arn:aws:s3:::bt-test-lambda-responses-*", "arn:aws:s3:::bt-test-lambda-responses-*/*",
         "arn:aws:s3:::bt-test-code-bundles-*", "arn:aws:s3:::bt-test-code-bundles-*/*",
         "arn:aws:s3:::bt-test-brainstore-*", "arn:aws:s3:::bt-test-brainstore-*/*",
       ]
-      && [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "S3Access"][0].Condition == { StringEquals = { "s3:ResourceAccount" = "123456789012" } }
+      && [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "AllowReadWriteBuckets"][0].Condition == { StringEquals = { "s3:ResourceAccount" = "123456789012" } }
     )
     error_message = "The shared API role must reach the module's three buckets by prefix, in the deployment account only."
   }
@@ -84,6 +84,7 @@ run "scopes_standalone_policies_by_prefix_alias_and_tag" {
   assert {
     condition = (
       jsondecode(aws_iam_role_policy.brainstore_kms_policy[0].policy).Statement == [{
+        Sid       = "AllowUseKMSKeys"
         Effect    = "Allow"
         Action    = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
         Resource  = ["arn:aws:kms:us-east-1:123456789012:key/*"]
@@ -97,6 +98,7 @@ run "scopes_standalone_policies_by_prefix_alias_and_tag" {
     condition = (
       jsondecode(aws_iam_role_policy.api_ecs_task_execution_secrets[0].policy).Statement == [
         {
+          Sid    = "AllowReadSecrets"
           Effect = "Allow"
           Action = ["secretsmanager:GetSecretValue"]
           Resource = [
@@ -107,6 +109,7 @@ run "scopes_standalone_policies_by_prefix_alias_and_tag" {
           ]
         },
         {
+          Sid      = "AllowKMSDecryptForSecretsManager"
           Effect   = "Allow"
           Action   = ["kms:Decrypt"]
           Resource = ["arn:aws:kms:us-east-1:123456789012:key/*"]
@@ -208,16 +211,16 @@ run "splits_statements_that_mix_module_created_and_caller_supplied_resources" {
   # Shared API role: the module's buckets and key, then the caller's.
   assert {
     condition = (
-      [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "S3Access"][0].Resource == [
+      [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "AllowReadWriteBuckets"][0].Resource == [
         "arn:aws:s3:::bt-test-lambda-responses-*", "arn:aws:s3:::bt-test-lambda-responses-*/*",
         "arn:aws:s3:::bt-test-code-bundles-*", "arn:aws:s3:::bt-test-code-bundles-*/*",
       ]
-      && [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if !contains(keys(s), "Sid") && strcontains(jsonencode(try(s.Action, [])), "s3:Get*")][0].Resource == [
+      && [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "AllowReadWriteCallerBuckets"][0].Resource == [
         "arn:aws:s3:::existing-brainstore", "arn:aws:s3:::existing-brainstore/*",
         "arn:aws:s3:::existing-attachments", "arn:aws:s3:::existing-attachments/*",
       ]
-      && !contains(keys([for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if !contains(keys(s), "Sid") && strcontains(jsonencode(try(s.Action, [])), "s3:Get*")][0]), "Condition")
-      && [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if !contains(keys(s), "Sid") && strcontains(jsonencode(try(s.Action, [])), "kms:Encrypt")][1].Resource == ["arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444"]
+      && !contains(keys([for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "AllowReadWriteCallerBuckets"][0]), "Condition")
+      && [for s in jsondecode(aws_iam_policy.api_handler[0].policy).Statement : s if try(s.Sid, "") == "AllowUseCallerKMSKeys"][0].Resource == ["arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444"]
     )
     error_message = "The shared API role must keep exact ARNs, with no account condition, for an existing Brainstore bucket, an attachment bucket and the bucket's key."
   }
@@ -264,6 +267,7 @@ run "uses_exact_caller_key_without_alias_condition_when_the_caller_supplies_the_
   assert {
     condition = (
       jsondecode(aws_iam_role_policy.brainstore_kms_policy[0].policy).Statement == [{
+        Sid      = "AllowUseCallerKMSKeys"
         Effect   = "Allow"
         Action   = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
         Resource = ["arn:aws:kms:us-east-1:123456789012:key/55555555-5555-5555-5555-555555555555"]

@@ -1,81 +1,92 @@
 # The role used by the API handler and AI proxy. API ECS tasks use it as their
 # task role, and the APIHandler and AIProxy Lambdas use it as their execution
 # role.
+locals {
+  # Lambda runs this role only on the Lambda API path: external EKS off and
+  # enable_ecs_api = false. ECS mode and external EKS don't trust Lambda. Both
+  # terms are needed: create_lambda_services is false on external EKS, where
+  # enable_ecs_api is also false, so the second term alone would keep Lambda there.
+  api_handler_trust_statements = concat(
+    local.create_lambda_services && !local.enable_ecs_api ? [
+      {
+        Sid    = "AllowLambdaAssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ] : [],
+    # IRSA trust relationship (cluster ARN is required)
+    var.enable_eks_irsa && var.eks_cluster_arn != null ? [
+      {
+        Sid    = "AllowIRSAAssumeRoleWithWebIdentity"
+        Effect = "Allow"
+        Principal = {
+          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(local.eks_oidc_issuer_url, "https://", "")}"
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringLike = {
+            "${replace(local.eks_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:${var.eks_namespace != null ? var.eks_namespace : "*"}:*"
+          }
+          StringEquals = {
+            "${replace(local.eks_oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
+          }
+        }
+      }
+    ] : [],
+    # EKS Pod Identity trust relationship
+    var.enable_eks_pod_identity ? [
+      merge(
+        {
+          Sid    = "AllowEKSPodIdentityAssumeRole"
+          Effect = "Allow"
+          Principal = {
+            Service = "pods.eks.amazonaws.com"
+          }
+          Action = [
+            "sts:AssumeRole",
+            "sts:TagSession"
+          ]
+        },
+        # Only include Condition block if at least one EKS restriction is provided
+        var.eks_cluster_arn != null || var.eks_namespace != null ? {
+          Condition = {
+            StringEquals = merge(
+              var.eks_cluster_arn != null ? {
+                "aws:RequestTag/eks-cluster-arn" = [var.eks_cluster_arn]
+              } : {},
+              var.eks_namespace != null ? {
+                "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
+              } : {}
+            )
+          }
+        } : {}
+      )
+    ] : [],
+    # ECS trust relationship
+    local.create_ecs_api ? [
+      {
+        Sid    = "AllowECSTasksAssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ] : []
+  )
+}
+
 resource "aws_iam_role" "api_handler" {
   count = var.create_iam ? 1 : 0
 
   name = local.role_names.api_handler
   path = local.role_paths.api_handler
   assume_role_policy = var.override_api_iam_role_trust_policy != null ? var.override_api_iam_role_trust_policy : jsonencode({ # nosemgrep
-    Version = "2012-10-17"
-    Statement = concat(
-      # Lambda trust relationship
-      [
-        {
-          Effect = "Allow"
-          Principal = {
-            Service = "lambda.amazonaws.com"
-          }
-          Action = "sts:AssumeRole"
-        }
-      ],
-      # IRSA trust relationship (cluster ARN is required)
-      var.enable_eks_irsa && var.eks_cluster_arn != null ? [
-        {
-          Effect = "Allow"
-          Principal = {
-            Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(local.eks_oidc_issuer_url, "https://", "")}"
-          }
-          Action = "sts:AssumeRoleWithWebIdentity"
-          Condition = {
-            StringLike = {
-              "${replace(local.eks_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:${var.eks_namespace != null ? var.eks_namespace : "*"}:*"
-            }
-            StringEquals = {
-              "${replace(local.eks_oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
-            }
-          }
-        }
-      ] : [],
-      # EKS Pod Identity trust relationship
-      var.enable_eks_pod_identity ? [
-        merge(
-          {
-            Effect = "Allow"
-            Principal = {
-              Service = "pods.eks.amazonaws.com"
-            }
-            Action = [
-              "sts:AssumeRole",
-              "sts:TagSession"
-            ]
-          },
-          # Only include Condition block if at least one EKS restriction is provided
-          var.eks_cluster_arn != null || var.eks_namespace != null ? {
-            Condition = {
-              StringEquals = merge(
-                var.eks_cluster_arn != null ? {
-                  "aws:RequestTag/eks-cluster-arn" = [var.eks_cluster_arn]
-                } : {},
-                var.eks_namespace != null ? {
-                  "aws:RequestTag/kubernetes-namespace" = [var.eks_namespace]
-                } : {}
-              )
-            }
-          } : {}
-        )
-      ] : [],
-      # ECS trust relationship
-      local.create_ecs_api ? [
-        {
-          Effect = "Allow"
-          Principal = {
-            Service = "ecs-tasks.amazonaws.com"
-          }
-          Action = "sts:AssumeRole"
-        }
-      ] : []
-    )
+    Version   = "2012-10-17"
+    Statement = local.api_handler_trust_statements
   })
 
   permissions_boundary = var.permissions_boundary_arn
@@ -95,6 +106,11 @@ resource "aws_iam_role" "api_handler" {
         ] : arn != null
       ])
       error_message = "The shared API role needs the KMS key, code bundle bucket and Lambda responses bucket ARNs. Pass them in created_resources or kms_key_arn."
+    }
+
+    precondition {
+      condition     = var.override_api_iam_role_trust_policy != null || length(local.api_handler_trust_statements) > 0
+      error_message = "The shared API role's trust has no statements. External EKS needs a trust for it: set enable_eks_pod_identity = true, set enable_eks_irsa = true with existing_eks_cluster_arn (eks_cluster_arn when you call modules/iam directly), or set override_api_iam_role_trust_policy."
     }
   }
 }
@@ -123,7 +139,7 @@ resource "aws_iam_role_policy" "api_handler_cloudwatch_metrics" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "CloudWatchAutoscalingMetrics"
+        Sid      = "AllowPutMetricData"
         Effect   = "Allow"
         Action   = ["cloudwatch:PutMetricData"]
         Resource = "*"
@@ -151,7 +167,7 @@ resource "aws_iam_role_policy" "api_handler_external_attachment_read" {
     Statement = concat(
       [
         {
-          Sid      = "ExternalAttachmentObjectRead"
+          Sid      = "AllowReadExternalAttachmentObjects"
           Effect   = "Allow"
           Action   = ["s3:GetObject"]
           Resource = [for arn in var.external_attachment_s3_bucket_arns : "${arn}/*"]
@@ -159,7 +175,7 @@ resource "aws_iam_role_policy" "api_handler_external_attachment_read" {
       ],
       length(var.external_attachment_s3_bucket_kms_key_arns) > 0 ? [
         {
-          Sid      = "ExternalAttachmentKMSDecrypt"
+          Sid      = "AllowKMSDecryptExternalAttachmentObjects"
           Effect   = "Allow"
           Action   = ["kms:Decrypt"]
           Resource = var.external_attachment_s3_bucket_kms_key_arns
@@ -183,7 +199,7 @@ resource "aws_iam_policy" "api_handler" {
     Statement = concat(
       [
         {
-          Sid      = "ElasticacheAccess"
+          Sid      = "AllowDescribeCacheClusters"
           Action   = ["elasticache:DescribeCacheClusters"]
           Effect   = "Allow"
           Resource = ["*"]
@@ -194,7 +210,7 @@ resource "aws_iam_policy" "api_handler" {
           }
         },
         {
-          Sid = "S3Access"
+          Sid = "AllowReadWriteBuckets"
           Action = [
             "s3:AbortMultipartUpload",
             "s3:Get*",
@@ -221,6 +237,7 @@ resource "aws_iam_policy" "api_handler" {
           ] : [])
         },
         {
+          Sid    = "AllowUseKMSKeys"
           Effect = "Allow"
           Action = [
             "kms:Encrypt",
@@ -235,7 +252,7 @@ resource "aws_iam_policy" "api_handler" {
           ] : [local.kms_key_arn]
         },
         {
-          Sid      = "AssumeRoleInCustomerAccountForS3Export"
+          Sid      = "AllowAssumeS3ExportRole"
           Action   = "sts:AssumeRole"
           Effect   = "Allow"
           Resource = length(var.s3_export_assume_role_arns) > 0 ? var.s3_export_assume_role_arns : ["*"]
@@ -248,7 +265,7 @@ resource "aws_iam_policy" "api_handler" {
       ],
       local.create_ecs_api ? [
         {
-          Sid    = "ECSExec"
+          Sid    = "AllowECSExec"
           Effect = "Allow"
           Action = [
             "ssmmessages:CreateControlChannel",
@@ -263,7 +280,7 @@ resource "aws_iam_policy" "api_handler" {
       # it is configured (i.e. the bucket uses SSE-KMS). Omitted otherwise.
       var.existing_attachment_s3_bucket_kms_key_arn != null && var.existing_attachment_s3_bucket_kms_key_arn != "" ? [
         {
-          Sid    = "AttachmentBucketKMSAccess"
+          Sid    = "AllowUseAttachmentBucketKMSKey"
           Effect = "Allow"
           Action = [
             "kms:Encrypt",

@@ -216,6 +216,8 @@ resource "aws_lb_listener" "api_ecs_http" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.braintrust_api.arn
   }
+
+  tags = local.common_tags
 }
 
 resource "aws_lb_listener" "api_ecs_internal" {

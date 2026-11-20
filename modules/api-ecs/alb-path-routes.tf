@@ -90,6 +90,8 @@ resource "aws_lb_listener_rule" "alb_path_routes" {
       values = [each.value.path]
     }
   }
+
+  tags = local.common_tags
 }
 
 resource "aws_lb_listener_rule" "alb_internal_path_routes" {

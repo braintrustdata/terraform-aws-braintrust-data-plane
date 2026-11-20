@@ -7,6 +7,7 @@ resource "aws_iam_role" "brainstore_deployment_waiter" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Sid       = "AllowLambdaAssumeRole"
       Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
       Action    = "sts:AssumeRole"
@@ -33,6 +34,7 @@ resource "aws_iam_role_policy" "brainstore_deployment_waiter" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowDescribeRolloutState"
         Effect = "Allow"
         Action = [
           "autoscaling:DescribeAutoScalingGroups",
@@ -43,6 +45,7 @@ resource "aws_iam_role_policy" "brainstore_deployment_waiter" {
         Resource = "*"
       },
       {
+        Sid      = "AllowStartInstanceRefresh"
         Effect   = "Allow"
         Action   = "autoscaling:StartInstanceRefresh"
         Resource = [for asg_name in var.brainstore_asg_names : "arn:${local.partition}:autoscaling:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:autoScalingGroup:*:autoScalingGroupName/${asg_name}"]
@@ -51,6 +54,7 @@ resource "aws_iam_role_policy" "brainstore_deployment_waiter" {
         }
       },
       {
+        Sid      = "AllowWriteLogStreams"
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "${var.brainstore_deployment_log_group_arn}:*"

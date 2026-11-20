@@ -602,6 +602,7 @@ run "external_eks_keeps_only_the_roles_that_helm_workloads_use" {
   variables {
     use_deployment_mode_external_eks = true
     enable_quarantine_vpc            = true
+    enable_eks_pod_identity          = true
   }
 
   assert {
@@ -736,14 +737,9 @@ run "rejects_waiter_role_without_a_brainstore_fleet" {
   expect_failures = [aws_iam_role.brainstore_deployment_waiter[0]]
 }
 
-run "api_role_trusts_lambda_and_ecs_tasks" {
+run "brainstore_role_trusts_only_ec2_by_default" {
   command = plan
   module { source = "./modules/iam" }
-
-  assert {
-    condition     = [for statement in jsondecode(aws_iam_role.api_handler[0].assume_role_policy).Statement : statement.Principal.Service] == ["lambda.amazonaws.com", "ecs-tasks.amazonaws.com"]
-    error_message = "The shared API role must trust Lambda and ECS tasks, in that order."
-  }
 
   assert {
     condition     = [for statement in jsondecode(aws_iam_role.brainstore[0].assume_role_policy).Statement : statement.Principal.Service] == ["ec2.amazonaws.com"]
@@ -751,7 +747,46 @@ run "api_role_trusts_lambda_and_ecs_tasks" {
   }
 }
 
-run "api_role_trusts_only_lambda_on_external_eks" {
+run "keeps_lambda_trust_in_lambda_mode" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  variables {
+    enable_ecs_api = false
+  }
+
+  assert {
+    condition     = [for statement in jsondecode(aws_iam_role.api_handler[0].assume_role_policy).Statement : statement.Sid] == ["AllowLambdaAssumeRole", "AllowECSTasksAssumeRole"]
+    error_message = "On the Lambda API path the shared API role must trust Lambda, then ECS tasks."
+  }
+}
+
+run "drops_lambda_trust_in_ecs_mode" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  assert {
+    condition     = [for statement in jsondecode(aws_iam_role.api_handler[0].assume_role_policy).Statement : statement.Principal.Service] == ["ecs-tasks.amazonaws.com"]
+    error_message = "In ECS mode the shared API role must trust only ECS tasks."
+  }
+}
+
+run "drops_lambda_trust_in_external_eks" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  variables {
+    use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
+  }
+
+  assert {
+    condition     = [for statement in jsondecode(aws_iam_role.api_handler[0].assume_role_policy).Statement : statement.Sid] == ["AllowEKSPodIdentityAssumeRole"]
+    error_message = "On external EKS the shared API role must trust only the configured EKS identity, not Lambda or ECS tasks."
+  }
+}
+
+run "rejects_empty_api_trust_on_external_eks" {
   command = plan
   module { source = "./modules/iam" }
 
@@ -759,10 +794,19 @@ run "api_role_trusts_only_lambda_on_external_eks" {
     use_deployment_mode_external_eks = true
   }
 
-  assert {
-    condition     = [for statement in jsondecode(aws_iam_role.api_handler[0].assume_role_policy).Statement : statement.Principal.Service] == ["lambda.amazonaws.com"]
-    error_message = "Without API ECS, the shared API role must not trust ECS tasks."
+  expect_failures = [aws_iam_role.api_handler[0]]
+}
+
+run "rejects_irsa_without_cluster_arn_on_external_eks" {
+  command = plan
+  module { source = "./modules/iam" }
+
+  variables {
+    use_deployment_mode_external_eks = true
+    enable_eks_irsa                  = true
   }
+
+  expect_failures = [aws_iam_role.api_handler[0]]
 }
 
 run "api_and_brainstore_roles_trust_the_named_eks_cluster" {
@@ -854,6 +898,7 @@ run "api_policy_names_the_caller_provided_buckets_and_keys" {
     existing_attachment_s3_bucket_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444"
     s3_export_assume_role_arns                = ["arn:aws:iam::210987654321:role/export"]
     use_deployment_mode_external_eks          = true
+    enable_eks_pod_identity                   = true
   }
 
   assert {
@@ -881,7 +926,7 @@ run "api_policy_names_the_caller_provided_buckets_and_keys" {
   }
 
   assert {
-    condition     = jsondecode(aws_iam_policy.api_handler[0].policy).Statement[4].Sid == "AttachmentBucketKMSAccess" && jsondecode(aws_iam_policy.api_handler[0].policy).Statement[4].Resource == "arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444"
+    condition     = jsondecode(aws_iam_policy.api_handler[0].policy).Statement[4].Sid == "AllowUseAttachmentBucketKMSKey" && jsondecode(aws_iam_policy.api_handler[0].policy).Statement[4].Resource == "arn:aws:kms:us-east-1:123456789012:key/44444444-4444-4444-4444-444444444444"
     error_message = "A KMS-encrypted attachment bucket must grant its key, and without API ECS there is no ECS Exec statement before it."
   }
 }
@@ -1029,6 +1074,7 @@ run "external_eks_brainstore_reads_only_the_ai_proxy_url_parameter" {
 
   variables {
     use_deployment_mode_external_eks = true
+    enable_eks_pod_identity          = true
   }
 
   assert {
@@ -1172,7 +1218,7 @@ run "quarantine_policies_name_the_quarantine_vpc" {
   }
 
   assert {
-    condition     = one([for statement in jsondecode(aws_iam_policy.api_handler_quarantine[0].policy).Statement : statement if try(statement.Sid, null) == "QuarantinePublish"]).Condition.StringEquals["lambda:VpcIds"] == "vpc-87654321"
+    condition     = one([for statement in jsondecode(aws_iam_policy.api_handler_quarantine[0].policy).Statement : statement if try(statement.Sid, null) == "AllowPublishQuarantineFunctions"]).Condition.StringEquals["lambda:VpcIds"] == "vpc-87654321"
     error_message = "The API role may publish quarantine functions only in the quarantine VPC."
   }
 
