@@ -2,8 +2,6 @@
 
 [Back to overview](README.md#start-here)
 
-Status: design preview; live access and transcript acceptance remain pending.
-
 Diagnostics provides temporary operational and troubleshooting access.
 It can read or modify customer data and may provide root access on managed
 hosts or inside containers. Logs and configuration may expose sensitive
@@ -23,8 +21,10 @@ content even without a shell.
   participants may assume Diagnostics during the window; eligibility for the
   shared Braintrust source role alone is not enough.
 - Braintrust records the authorizing actor, named participants, reason, scope,
-  approval reference, start, expiry, extensions, and closure result. The default
-  window is two hours; chained AWS credentials last at most one hour.
+  notification confirmation, any approval reference, start, expiry, extensions,
+  and closure result. Windows range from five minutes to two hours, with a
+  two-hour default. Each set of chained AWS credentials lasts at most one hour;
+  the standard connection procedure requests 30 minutes.
 - Activation verifies logging and delivers its operation record before opening
   trust, then reads back the resulting policy. The participant list stays fixed;
   changing it requires closure and a new activation. Extensions require fresh
@@ -35,35 +35,45 @@ content even without a shell.
   visible and retryable, without extending the expired grant.
 
 ```mermaid
-flowchart TB
-    subgraph BT[Braintrust]
-        A["AAM account role<br/>Signed directory UserId"]
-        S["Diagnostics source role<br/>Verified SourceIdentity"]
-        A -->|verify UserId; set SourceIdentity| S
-        B[BYOC deployment service]
-    end
-    subgraph CUSTOMER[Customer AWS account]
-        D[Deployment role]
-        subgraph G[Diagnostics role]
-            T["Trust policy<br/>Closed or named engineers + deadline"]
-            P["Fixed permissions<br/>Inspection, Diagnostics and service policies"]
-            T -->|controls role assumption| P
-        end
-    end
-    B -.->|temporary operation credentials| D
-    D -.->|replace trust for the access window| T
-    S -->|inherited SourceIdentity binds recipient and session name| T
+sequenceDiagram
+    actor Admin as Braintrust admin
+    participant Service as Activation workflow
+    participant AWS as Customer AWS
+    actor Engineer as Named engineer
+    participant Source as Braintrust AWS sign-in<br/>and source role
+
+    Admin->>Service: Engineers, reason and duration<br/>Notification confirmation if required
+    Service->>AWS: Verify logging and record request<br/>using Deployment role
+    Service->>AWS: Set Diagnostics trust<br/>Exact source role, UserIds and deadline
+    AWS-->>Service: Trust policy readback
+    Service-->>Admin: Activation recorded
+    Engineer->>Source: Sign in and assume Diagnostics source role
+    Source-->>Engineer: Credentials with verified SourceIdentity
+    Engineer->>AWS: STS AssumeRole for customer Diagnostics
+    AWS-->>Engineer: Temporary credentials<br/>if identity and deadline match
+    Note over Engineer,AWS: Engineer uses their own terminal<br/>Admin and engineer may be the same person
+    Note over Service,AWS: Expiry or closure stops new assumptions<br/>Issued credentials retain their AWS lifetime
 ```
+
+Braintrust's application opens the trust window; AWS STS issues the engineer's
+credentials. Engineers connect from their own terminals using their own AWS
+sign-in. The application does not host or open troubleshooting shells.
 
 The customer can inspect the source role, permitted UserIds, and
 deadline in its own IAM console or API. CloudTrail records trust changes and
 successful role assumptions. The inactive, customer-disabled, and active examples
 are alternative complete trust documents, not statements to combine.
 
-Braintrust handles activation. A recorded customer approval or applicable
-standing approval is required. This is process approval, not a customer-owned
-technical gate that Braintrust cannot bypass while activation is enabled.
-The separate customer disable control is described below.
+Only an authorized Braintrust administrator may activate or extend access.
+The customer notification requirement defaults to enabled and can be updated
+by a Braintrust administrator as customer requirements change. When enabled,
+the administrator must confirm that the customer has been notified before
+activation or extension; the confirmation is recorded. Closing access never
+requires notification confirmation.
+
+The workflow does not send notifications or verify customer approval. Any
+additional approval process is agreed with the customer. The customer-owned
+AWS disable control is separate and described below.
 
 Deployment's `iam:UpdateAssumeRolePolicy` is limited to the exact Diagnostics
 role and a service-issued activation/close capability, but AWS does not constrain
@@ -168,14 +178,18 @@ Bootstrap creates:
   retention and default CloudWatch encryption. No additional transcript KMS
   key is required.
 
-The module must enable SSM/ECS Exec and provide instance/task transcript-write
-permissions. ECS logging must use `OVERRIDE` to this group, with images and
-network access that support capture. IAM JSON alone does not configure delivery.
+For supported host and container access, the module configures SSM/ECS Exec
+and instance/task transcript-write permissions. ECS logging must use `OVERRIDE`
+to this group, with images and network access that support capture. IAM JSON
+alone does not configure delivery.
 
 Deployment retains ECS cluster management, including Exec logging settings.
-Activation verifies the destination and configuration. Missing logging blocks
-activation; unexpected drift triggers investigation and closes trust to new
-assumptions. Existing sessions are subject to the limits above.
+Activation verifies the logging destination, configuration, and workload
+delivery permissions. Unavailable hosts, unhealthy containers, and injected
+sidecars do not by themselves block activation. AWS checks connection readiness
+when the engineer starts a session. Missing logging controls block activation;
+unexpected logging drift closes trust to new assumptions. Existing sessions
+are subject to the limits above.
 
 CloudTrail records AWS API activity; CloudWatch holds command/output transcripts.
 Management roles have no direct transcript-write grant. Workloads deliver

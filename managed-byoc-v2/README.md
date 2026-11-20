@@ -1,11 +1,7 @@
 # AWS managed BYOC access model
 
-Status: design preview. This review package describes revision
-`aws-customer-2026-11-18-oam-links-preview.1`, correcting OAM source-link and
-receiver-sink authorization and Diagnostics role chaining while retaining
-Deployment session-tag trust, Scheduler and optional metric sharing.
-Full deployment, access, customer-control,
-and logging acceptance remain required before use.
+Status: design preview of revision
+`aws-customer-2026-11-18-oam-links-preview.1`.
 
 This package describes Braintrust's standard AWS roles and customer controls
 for managed BYOC. It is a security review reference, not an installable bootstrap.
@@ -28,7 +24,28 @@ plane may serve multiple teams. Unrelated workloads belong in other accounts.
 | Scheduler and optional cross-account metrics | [Service permissions](policies/README.md#scheduler-and-metric-sharing) |
 | Audit collection and detections | [Monitoring guide](guardrails/cloudtrail-alerting.md) |
 
-No deployment or placeholder substitution is needed to review these files.
+No deployment, placeholder substitution, or manual hashing is needed to review
+these files. The JSON is a permission reference, not a CloudFormation template
+or Terraform module to apply directly.
+
+## From review to deployment
+
+1. Review this access model and the [organization safeguards](guardrails/README.md).
+2. Braintrust generates a package for your account and Region: a CloudFormation
+   template, `parameters.json`, and instructions. CloudFormation creates the
+   roles, runtime boundary, state and operation-log buckets, and Diagnostics
+   session document and CloudWatch log group. Names and IAM paths are filled in
+   automatically. You choose whether Diagnostics activation is permitted.
+3. Apply that package using your own AWS credentials and return its stack outputs
+   to Braintrust for registration and verification.
+4. Braintrust deploys and operates the data plane using a reviewed Terraform
+   module version and the registered Deployment role.
+
+The access-model revision identifies the issued bootstrap permissions. It is
+separate from the Terraform module and application versions. Upgrading the
+data-plane module does not update an existing bootstrap's permissions; a
+bootstrap change requires a reviewed customer stack update. Publishing this
+reference does not change existing roles or migrate older deployments.
 
 ## Roles and access
 
@@ -42,8 +59,10 @@ Deployment and Observer trust exact designated Braintrust principals. Deployment
 uses a bootstrap-specific execution role and unique External ID. Diagnostics
 trust is normally closed; activation admits the exact Braintrust source role
 for named engineers until a deadline. Diagnostics binds each engineer's session
-identity and session name to the signed IAM Identity Center UserId supplied by
-the Braintrust login path. See the [trust guide](trust-policies/README.md).
+identity and session name to a verified IAM Identity Center UserId. Braintrust
+checks the signed directory identity when the engineer enters the source role;
+AWS preserves SourceIdentity on the customer hop. See the
+[trust guide](trust-policies/README.md).
 
 ```mermaid
 flowchart TD
@@ -131,9 +150,13 @@ default is two hours. The participant list is fixed for that activation; changin
 it requires closure and a new activation. Extensions require fresh checks and
 recorded evidence.
 
-Braintrust handles activation and records the applicable customer approval,
-including standing approval where it covers the work. This is a process control,
-not an approval gate that Braintrust is technically unable to bypass.
+An authorized Braintrust administrator activates access for themselves or other
+eligible engineers. When the customer's notification requirement is enabled,
+activation and extension require the administrator to confirm that the customer
+has been notified. This confirmation is recorded; the workflow does not send
+the notification or verify a customer response. Any additional approval process
+is agreed with the customer. The AWS disable control below is independent of
+this notification requirement.
 
 Activated access can read or modify customer data and can include root access.
 Application logs and workload configuration may expose data even without a shell.
@@ -218,11 +241,12 @@ cross-account perimeter. See [external feature requirements](policies/README.md#
 
 ## Data retention and important limits
 
-Customer deprovisioning uses `retain-data`: serving infrastructure is removed,
-while the module-owned Brainstore storage, data-plane key and alias, and final
-RDS snapshot remain for customer recovery or deletion. State and operation
-records also remain customer-owned. A partial deployment may have no database
-and therefore no final snapshot.
+Deprovisioning removes the infrastructure that serves the data plane. Brainstore
+storage, the module-created data-plane key and alias, and a final RDS snapshot
+remain for customer recovery or deletion. The bootstrap and its state, operation
+records, and Diagnostics log group also remain customer-owned; retiring the
+bootstrap is a separate step. A partial deployment may have no database and
+therefore no final snapshot.
 
 Understand these boundaries:
 
@@ -250,48 +274,7 @@ data isolation from its operator.
 [contract.json](contract.json) records the package revision, export inventory,
 and policy digests. [Policy inputs](policies/README.md#inputs) and
 [trust inputs](trust-policies/README.md) document exact identifiers and limits.
-Static validation is not live access acceptance. The production bootstrap must
-implement and validate the selected revision before use.
-
-## Preview change history
-
-This table records changes to the customer review package, not changes
-deployed to any AWS account. New entries appear first.
-
-| Date | Change | What to review |
-| --- | --- | --- |
-| 2026-11-18 | Corrected customer Diagnostics trust to use the verified inherited SourceIdentity. | Signed directory UserId is checked at Braintrust source entry; customer trust retains exact source, named recipients, session-name matching and deadline. |
-| 2026-11-18 | Corrected OAM create/update grants to include both source-link and receiver-sink resources. | Metrics-only conditions, the receiver account, source account and Region remain bounded. Existing issued bootstraps are unchanged. |
-| 2026-11-18 | Separated Deployment session-tag trust from source-identity conditions. | Review the three STS statements. Role assumption still requires the exact principal, External ID and operation identity; old issued bootstraps remain unchanged. |
-| 2026-11-16 | Added two service policies for Scheduler lifecycle and inspection, IAM ownership-tag reads, and optional metrics-only OAM links. | Review the updated role attachments, bounded Scheduler role passing, read-only human Scheduler access, receiver selection, and shared-link ownership. The runtime boundary, account SCP, Diagnostics trust and customer disable control are unchanged. |
-| 2026-11-10 | Aligned temporary trust with verified IAM Identity Center UserIds, matching session names, and a customer-owned activation disable switch. Added the dedicated eleven-role service-linked-role policy. | Review the active/disabled trust documents, capability-gated trust updates, exact bootstrap-stack protection, customer-control limits, and IAM propagation versus fixed expiry. Human permission policies, the runtime boundary, and the account SCP are unchanged. |
-| 2026-11-06 | Changed Diagnostics activation to temporary trust for named engineers and a deadline. Permissions stay attached; replaced Deployment's attachment activation and automated session termination grants. | Review inactive and active trust examples, exact Deployment trust-update authority, customer revocation, and the distinction between trust expiry and existing session timeouts. This preview requires implementation and live acceptance before use. |
-| 2026-11-04 | Removed unused VPN, edge hardware, specialized compute, VM import/export, legacy EC2 metadata, DynamoDB, and EFS reads from shared inspection. | Observer and activated Diagnostics retain data-plane inspection, networking, capacity, quotas, and EKS metadata. Deployment and SCP permissions are unchanged by this cleanup. |
-| 2026-11-04 | Consolidated organization guardrails into one account-wide SCP and narrowed inspection and ECS lifecycle grants to preserve the three-role model. Simplified the guides and generated handoff. | Review account-wide effects, Deployment's service-content access, retained-data limits, and monitoring. This is a new bootstrap revision, not an update to existing permissions. |
-| 2026-10-29 | Scoped account and organization administration restrictions to Braintrust management and workload roles, consistent with the other safeguards. | Customer administrators outside the reserved IAM namespaces retain control of account settings. Braintrust still cannot change account-level S3 public access protection or organization controls. |
-| 2026-10-28 | Improved navigation and added a deployment policy file map. Clarified that management roles have no permissions boundary; the boundary applies to workload roles. | Documentation only; permissions and the contract revision are unchanged. |
-| 2026-10-28 | Simplified to Deployment, Observer, and temporary Diagnostics. Combined operational and diagnostic permissions, added selected tag reads and Diagnostics IAM inspection, and removed redundant denials. Generalized customer package naming. | Review the three-role access matrix, two-policy activation and revocation, and required customer safeguards. Issued definitions remain unchanged; live acceptance of this revision is pending. |
-| 2026-10-06 | Revision `preview.7` corrects protected EC2 shell authorization and adds bounded ECS initiating-actor correlation. | Original RoleId still scopes SSM cleanup. ECS termination is target-tag scoped and the coordinator verifies its CloudTrail actor. Regional event-history read is new; prior issuance is unchanged. Live acceptance remains required. |
-| 2026-10-06 | Revision `preview.6` allows the two deployment hooks at their exact `$LATEST` qualifiers, matching Terraform invocation. | Positive permissions and retained-data guardrails match. No other functions, aliases, versions, retention permissions or human access are added; prior issuance is unchanged. |
-| 2026-10-05 | Revision `preview.2` requires default AWS-managed license encryption and removes the license KMS input/grant. Added read-only bucket-encryption and bootstrap inline-policy metadata checks for readiness. | Review Secrets Manager service/context restrictions and the two read-only IAM guardrail exceptions; retention and human permissions are unchanged. |
-| 2026-10-05 | Revision `preview.3` adds metadata reads for the exact protected Session Manager document and agent readiness. | Supports logging verification before temporary Diagnostics activation. Prior issued revisions remain immutable; no new human or data access is granted. |
-| 2026-10-06 | Revision `preview.4` separates machine role assumption from STS session-attribute permissions. | Retains the exact principal, unique External ID on assumption and required operation source identity. Corrects a role-chaining denial found during live acceptance; prior issuance is not changed. |
-| 2026-10-06 | Revision `preview.5` adds `rds.amazonaws.com` to the runtime-role PassRole service allowlist and matching retained-data guardrail. | Permits RDS to accept the deployment's enhanced-monitoring role. The role trust remains `monitoring.rds.amazonaws.com`; runtime role namespace and retention restrictions are unchanged. Prior issued definitions are preserved. |
-| 2026-10-05 | Established a revisioned, self-contained customer contract and explicit retention-only mode contract. IAM, trust, and SCP JSON are unchanged from the reviewed source. | Review the profile and revision record; implementation and live acceptance remain pending. |
-| 2026-10-02 | Removed the detailed Kubernetes permission guide and RBAC reference from the customer review package. | Documentation only; AWS IAM policies and guardrails are unchanged. |
-| 2026-10-02 | Simplified identity policies and the runtime boundary to positive allowances; moved explicit restrictions into the three customer SCPs. Layered activated Diagnostics on shared inspection and Support, with exact attachment controls for all three policies. Expanded selected metadata read families and limited Lambda deployment grants to infrastructure operations. | Review the attachment map, required SCP coverage for management and runtime roles, and feature updates to both the runtime boundary and SCPs. Trust, diagnostic targets, retention, and Deployment's ECS cluster management are preserved. |
-| 2026-10-01 | Replaced Deployment's permissions boundary with a protected identity guardrail policy. Preserved its explicit restrictions and made role and service limits explicit denials. Runtime boundaries, human policies, trust, and SCPs are unchanged. | Review the updated attachment map and guardrail policy, including `PassRole`, service-linked role creation, and protection against changing or detaching the guardrail. |
-| 2026-09-30 | Improved reading order and navigation, clarified review and implementation responsibilities, and reorganized the policy and guardrail guides. No policies changed. | Use the Start here links and role attachment map; permissions, safeguards, and scope are unchanged. |
-| 2026-09-30 | Consolidated deployment log-routing and interactive-access denials into one SCP statement. No permissions changed. | The actions, principal, and conditions remain identical; the policy document is smaller. |
-| 2026-09-30 | Added deployment ownership-control permissions for module-created S3 VPC flow-log destinations. | The two actions remain scoped to the managed bucket prefix; public access protection and object permissions are unchanged. |
-| 2026-09-30 | Denied runtime changes to bucket policies, bucket ACLs, and bucket public access settings. Removed the unused deployment bucket ACL grant. | Review the separation between workload object access and deployment bucket administration; object permissions and presigned URLs are unchanged. |
-| 2026-09-30 | Protected account-level S3 Block Public Access and documented enabling it before the SCP. Combined equivalent IAM prefix denials to preserve policy space without changing their restrictions. | Review the account-wide public access safeguard, continued support for authorized presigned URLs, and unchanged deployment bucket permissions. |
-| 2026-09-30 | Required legacy support options to remain disabled, denied workload-initiated interactive access and management-role transcript writes, and added Loop MicroVM log scope. Preserved Deployment's ECS cluster updates and documented required logging checks. Clarified naming and privileged deployment access. | Review separation of routine and activated access, transcript writers, deployment-managed ECS logging, and the limits of direct data access restrictions. |
-| 2026-09-30 | Distinguished SSM and ECS Exec transcript sources and labeled CloudWatch log groups explicitly. Added optional customer-managed replication to a separate audit archive account. No permissions changed. | Review local collection as the default and separate archival as a recommended customer control. |
-| 2026-09-30 | Added a logging diagram distinguishing CloudTrail API events, diagnostic transcripts, and operation records. Clarified storage ownership and the limits of logging protections. No permissions changed in this update. | Review the evidence destinations, configuration responsibilities, and distinction between protected audit resources and ordinary application logs. |
-| 2026-09-29 | Corrected internal runtime role assumptions; closed log-derived content paths and routine human role chaining; allowed bootstrap IAM inspection without weakening mutation controls. Standardized naming, added S3 ABAC and EKS access-entry tagging permissions, and strengthened rendered-policy checks. | Review the internal invocation exceptions, mandatory IAM paths and naming limits, regional scope, and unchanged separation between routine and activated Diagnostics access. |
-| 2026-09-29 | Added temporary Diagnostics access, exact activation permissions, and dedicated session logging safeguards. Added scoped EKS management and discovery permissions plus future Kubernetes role profiles. | Review data-capable troubleshooting, activation and logging controls, and the distinction between proposed Kubernetes permissions and an implemented access path. |
-| 2026-09-25 | Extended the bootstrap scope to multiple data planes under one reserved prefix; protected retained keys without a post-creation key ARN; removed unused broad deployment grants and denied CloudWatch Logs routing/export. Clarified equivalent customer controls and the role-wide permission ceiling. | Review naming scope, KMS and retained-data safeguards, log routing restrictions, and the distinction between role access and per-operation credentials. |
-| 2026-09-23 | Simplified the access diagram and human operations summary; clarified that external access is a documented feature requirement, not a case-by-case approval. No permissions changed. | Role access and operating boundaries are unchanged. |
-| 2026-09-23 | Added the external access model, an S3 owner-account guardrail for Braintrust roles, exact artifact bucket scope, default-deny runtime role assumption, and cross-account audit guidance. | Review the boundary between routine BYOC operations and explicitly enabled runtime integrations. |
-| 2026-09-17 | Published the initial AWS BYOC role, policy, and customer guardrail preview. | Baseline for subsequent feedback. |
+The validator checks policy digests, naming, document sizes, and access
+constraints. Repository CI runs these checks without AWS credentials. They do
+not establish live access, logging, or revocation behavior; those require
+acceptance against the generated bootstrap and supported module version.

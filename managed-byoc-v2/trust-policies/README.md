@@ -14,7 +14,7 @@ standing human trust.
 | `<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>` | Exact Braintrust execution role dedicated to this bootstrap |
 | `<BRAINTRUST_HUMAN_PRINCIPAL_ARN>` | Exact designated Braintrust Observer source role |
 | `<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>` | Exact Braintrust Diagnostics source role |
-| `<ENGINEER_SOURCE_IDENTITY>` | Exact IAM Identity Center UserId from the authenticated login context; repeat array entries for 1–10 approved engineers |
+| `<ENGINEER_SOURCE_IDENTITY>` | Exact IAM Identity Center UserId for a named participant; activation resolves engineer emails to verified directory records or accepts verified IDs, with 1–10 distinct participants |
 | `<DIAGNOSTICS_ACCESS_EXPIRES_AT>` | Absolute UTC deadline for the activation |
 | `<UNIQUE_EXTERNAL_ID>` | Cryptographically random External ID unique to the deployment trust relationship |
 
@@ -22,6 +22,11 @@ Source role ARNs are limited to 256 characters; External IDs to 128.
 Do not truncate existing identities or random values. Use the
 [required target IAM paths](../policies/README.md#naming-and-scope).
 Trust exact role ARNs, not the entire Braintrust account.
+
+Braintrust supplies these values in the generated package or activation trust.
+Email resolution identifies the intended recipient; the signed AWS login
+identity authenticates the engineer when they request credentials. The customer
+trust policy stores UserIds, not email addresses.
 
 ## Diagnostics trust states
 

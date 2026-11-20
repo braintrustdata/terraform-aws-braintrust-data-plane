@@ -2,8 +2,10 @@
 
 [Back to overview](../README.md#start-here)
 
-Use the attachment map to review effective grants. Names and inputs below are
-implementation requirements; placeholders do not need substitution for review.
+Use the attachment map to review effective grants. Braintrust's generated
+CloudFormation package fills in the names, paths, and inputs below. They explain
+the resulting resources; customers do not need to substitute these placeholders
+or rename resources for review or installation.
 
 ## Role attachment model
 
@@ -194,7 +196,7 @@ Scheduler permissions separately cover schedule names under the managed prefix.
 | --- | --- |
 | `<AWS_PARTITION>` | `aws`; other partitions need compatibility validation |
 | `<AWS_ACCOUNT_ID>`, `<AWS_REGION>` | Dedicated account and data-plane Region |
-| `<BOOTSTRAP_NAME>` | 1–16 lowercase letters, digits, or hyphens; start with a letter or digit |
+| `<BOOTSTRAP_NAME>` | Generated bootstrap identifier, not the customer's display name; 1–16 lowercase letters, digits, or hyphens, starting with a letter or digit |
 | `<MANAGED_RESOURCE_PREFIX>` | 2–8 lowercase letters, digits, or hyphens; start with a letter or digit and end in a hyphen |
 | `<RUNTIME_BOUNDARY_ARN>` | Exact runtime boundary ARN from the naming table |
 | `<DIAGNOSTICS_ROLE_ARN>` | Exact Diagnostics role from this bootstrap |
@@ -221,7 +223,7 @@ is a customer control, not a guarantee of this package.
 
 ## Diagnostics constraints
 
-Diagnostics keeps all four permission policies attached. Its inactive trust blocks
+Diagnostics keeps all three permission policies attached. Its inactive trust blocks
 assumption; activation changes only the exact role's trust to allow the designated source
 role, named engineers, and an absolute deadline. Deployment cannot change
 Diagnostics permissions or attachments. Readback uses its existing `iam:GetRole`

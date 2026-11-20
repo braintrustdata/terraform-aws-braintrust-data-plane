@@ -52,7 +52,8 @@ configuration updates are outside its coverage.
 
 For Diagnostics, correlate `UpdateAssumeRolePolicy` and successful `AssumeRole`
 events with the exact role, source principal, verified UserId, matching
-SourceIdentity and session name, bootstrap, approval, and recorded times.
+SourceIdentity and session name, bootstrap, notification confirmation, any
+approval reference, and recorded times.
 Watch customer changes to `DiagnosticsActivationEnabled` and verify the resulting
 trust and protected inline policy. Policy attachments do not change during
 activation; do not treat them as expected window activity. Access after the trust
@@ -110,8 +111,10 @@ and module configure collection; customers do not need to build this destination
 We use standard SSM shells, not SSH or port forwarding.
 
 CloudTrail is the API audit trail, not the shell transcript. Operation records
-describe participants, authorization, expiry, trust changes, and outcomes; they
-are not transcripts either.
+describe participants, authorization, notification confirmation, expiry, trust
+changes, and outcomes; they are not transcripts either. Engineers initiate
+SSM/ECS sessions from their own terminals; Braintrust's application manages the
+activation window rather than running those sessions.
 A privileged shell can interfere with capture. Customer-controlled
 [CloudWatch Logs centralization](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html)
 to a separate archive preserves delivered evidence, but cannot prevent missing

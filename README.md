@@ -6,6 +6,9 @@ For the latest guidance, always refer to the official Braintrust documentation:
 - [Upgrade your deployment](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://www.braintrust.dev/docs/admin/self-hosting/upgrade/v2)
 
+For Braintrust-managed deployments, review the
+[AWS BYOC access model (design preview)](managed-byoc-v2/README.md).
+
 This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
 
 ## Major versions
