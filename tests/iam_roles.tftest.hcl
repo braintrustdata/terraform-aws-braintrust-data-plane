@@ -9,6 +9,23 @@
 
 mock_provider "aws" {
   source = "./tests/mocks/aws"
+
+  # External IAM mode looks roles up. This is a role and instance profile that
+  # security created, for the runs below with create_iam = false.
+  mock_data "aws_iam_role" {
+    defaults = {
+      arn  = "arn:aws:iam::123456789012:role/mock"
+      path = "/"
+      tags = { BraintrustIAMOwner = "customer" }
+    }
+  }
+  mock_data "aws_iam_instance_profile" {
+    defaults = {
+      arn      = "arn:aws:iam::123456789012:instance-profile/mock"
+      path     = "/"
+      role_arn = "arn:aws:iam::123456789012:role/mock"
+    }
+  }
   mock_data "aws_partition" {
     defaults = { partition = "aws" }
   }
@@ -18,6 +35,8 @@ mock_provider "aws" {
 }
 
 variables {
+  region            = "us-east-1"
+  account_id        = "123456789012"
   deployment_name   = "bt-test"
   create_ai_gateway = true
 
@@ -488,7 +507,7 @@ run "roles_keep_the_tag_order_of_their_source_modules" {
   }
 }
 
-run "creates_no_roles_when_create_iam_is_false" {
+run "creates_no_roles_and_reads_lookups_when_create_iam_is_false" {
   command = plan
   module { source = "./modules/iam" }
 
@@ -537,13 +556,13 @@ run "creates_no_roles_when_create_iam_is_false" {
   }
 
   assert {
-    condition     = output.role_names.db_monitoring == "bt-test-db-monitoring" && output.db_monitoring_role_arn == null && output.gateway_task_role_arn == null
-    error_message = "Names must stay available when nothing is created, and ARNs must be null."
+    condition     = output.role_names.db_monitoring == "bt-test-db-monitoring" && output.db_monitoring_role_arn == "arn:aws:iam::123456789012:role/mock" && output.gateway_task_role_arn == "arn:aws:iam::123456789012:role/mock"
+    error_message = "Names must stay available when nothing is created, and ARNs must come from the lookups."
   }
 
   assert {
-    condition     = output.role_names.api_handler == "bt-test-APIHandlerRole" && output.api_handler_role_arn == null && output.brainstore_instance_profile_arn == null && output.catchup_etl_role_arn == null
-    error_message = "The shared, Brainstore and Lambda role names must stay available, and their ARNs must be null."
+    condition     = output.role_names.api_handler == "bt-test-APIHandlerRole" && output.api_handler_role_arn == "arn:aws:iam::123456789012:role/mock" && output.brainstore_instance_profile_arn == "arn:aws:iam::123456789012:instance-profile/mock" && output.catchup_etl_role_arn == "arn:aws:iam::123456789012:role/mock"
+    error_message = "The shared, Brainstore and Lambda role names must stay available, and their ARNs must come from the lookups."
   }
 
   assert {
@@ -552,13 +571,13 @@ run "creates_no_roles_when_create_iam_is_false" {
       && output.role_names.billing_cron_schedule == "bt-test-BillingCronScheduleRole"
       && output.role_names.catchup_etl_schedule == "bt-test-CatchupETLScheduleRole"
       && output.role_names.quarantine_pruner_schedule == "bt-test-QuarantinePrunerScheduleRole"
-      && output.automation_cron_schedule_role_arn == null
-      && output.billing_cron_schedule_role_arn == null
-      && output.catchup_etl_schedule_role_arn == null
+      && output.automation_cron_schedule_role_arn == "arn:aws:iam::123456789012:role/mock"
+      && output.billing_cron_schedule_role_arn == "arn:aws:iam::123456789012:role/mock"
+      && output.catchup_etl_schedule_role_arn == "arn:aws:iam::123456789012:role/mock"
       && output.quarantine_pruner_schedule_role_arn == null
       && output.instance_profile_names.brainstore == "bt-test-brainstore-instance-profile"
     )
-    error_message = "The Scheduler role and instance profile names must stay available when nothing is created, and their ARNs must be null."
+    error_message = "The Scheduler role and instance profile names must stay available when nothing is created, and their ARNs must come from the lookups, or be null for the pruner that is off."
   }
 }
 

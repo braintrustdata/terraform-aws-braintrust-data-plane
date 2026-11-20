@@ -11,6 +11,9 @@ sensitive, for one), so this reads the Terraform source instead. Every
 directory and `modules/` must set `tags` with `local.iam_tags`, and each module
 that does so must define `iam_tags` as the module's common tags plus
 `BraintrustIAMOwner = "braintrust"`, merged last so callers can't override it.
+modules/iam is the one exception: it sets the value from `var.iam_owner`, which
+defaults to "braintrust" and is "customer" when a security team runs the module
+on its own. No other module may use `var.iam_owner`.
 
 modules/iam also has `iam_tags_deployment_name_wins`, for resources that came
 from modules where the deployment name tag overrides a caller's. It must be
@@ -42,10 +45,12 @@ IAM_TAGS_BASES = {
 }
 IAM_TAGS_DEFINITIONS = {
     name: re.compile(
-        rf'\b{name}\s*=\s*merge\(\s*local\.{base}\s*,\s*\{{\s*BraintrustIAMOwner\s*=\s*"braintrust"\s*\}}\s*\)'
+        rf'\b{name}\s*=\s*merge\(\s*local\.{base}\s*,\s*\{{\s*BraintrustIAMOwner\s*=\s*("braintrust"|var\.iam_owner)\s*\}}\s*\)'
     )
     for name, base in IAM_TAGS_BASES.items()
 }
+# The only module that may take the owner value from a variable.
+OWNER_VARIABLE_MODULE = Path("modules") / "iam"
 HEREDOC_START = re.compile(r"<<-?([A-Za-z_]\w*)[ \t]*\n")
 
 
@@ -196,8 +201,11 @@ def check(root):
         # but a commented-out definition doesn't count.
         visible = mask_strings_and_comments(text, keep_strings=True)
         for name, definition in IAM_TAGS_DEFINITIONS.items():
-            if definition.search(visible):
+            found = definition.search(visible)
+            if found:
                 definitions_by_directory.setdefault(directory, set()).add(name)
+                if found.group(1) == "var.iam_owner" and directory.relative_to(root) != OWNER_VARIABLE_MODULE:
+                    errors.append(f"{path.relative_to(root)} sets the owner tag from var.iam_owner. Only {OWNER_VARIABLE_MODULE} may.")
         for header in IAM_RESOURCE_HEADER.finditer(text):
             resource_type, name = header.groups()
             block_end = closing_brace(masked, header.end() - 1)
@@ -267,16 +275,28 @@ def self_test():
             IAM_TAGS_LOCAL + 'resource "aws_iam_role" "r" {\n  tags = local.iam_tags_deployment_name_wins\n}\n',
             ["doesn't define iam_tags_deployment_name_wins"],
         ),
+        "owner tag from var.iam_owner in modules/iam": (
+            'locals {\n  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = var.iam_owner })\n}\n'
+            'resource "aws_iam_role" "r" {\n  tags = local.iam_tags\n}\n',
+            [],
+        ),
+        "owner tag from var.iam_owner outside modules/iam": (
+            'locals {\n  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = var.iam_owner })\n}\n'
+            'resource "aws_iam_role" "r" {\n  tags = local.iam_tags\n}\n',
+            ["Only modules/iam may"],
+        ),
         "owner tag merged first": (
             'locals {\n  iam_tags = merge({ BraintrustIAMOwner = "braintrust" }, local.common_tags)\n}\n'
             'resource "aws_iam_role" "r" {\n  tags = local.iam_tags\n}\n',
             ["doesn't define iam_tags"],
         ),
     }
+    # Every case runs in modules/example unless it is listed here.
+    module_directories = {"owner tag from var.iam_owner in modules/iam": "iam"}
     failures = []
     for name, (source, expected) in cases.items():
         with tempfile.TemporaryDirectory() as directory:
-            module = Path(directory) / "modules" / "example"
+            module = Path(directory) / "modules" / module_directories.get(name, "example")
             module.mkdir(parents=True)
             (module / "main.tf").write_text(source)
             _, errors = check(Path(directory))

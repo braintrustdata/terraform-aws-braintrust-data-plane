@@ -2182,6 +2182,115 @@ variable "permissions_boundary_arn" {
   default     = null
 }
 
+variable "create_iam" {
+  type        = bool
+  description = <<-EOT
+    Create the module's IAM roles, policies and instance profiles. Set false for a new stack whose security team creates that IAM separately by running modules/iam on its own. The module then creates no IAM, no Lambda permissions and no S3 bucket policies. It looks up each role and instance profile by name, or by an ARN in existing_iam, and fails the plan unless every one carries BraintrustIAMOwner = "customer". The module creates and owns everything else.
+    This is for new stacks only. A stack that has applied this module once can't change create_iam in either direction, because terraform_data.iam_ownership_mode fails any plan that changes it. Changing it would destroy the roles that a stack created, or leave a stack with no IAM, and that stops every workload. A plain terraform destroy still works.
+    External IAM mode needs ECS ingress and supplied networking, and it rejects several features and inputs. See MIGRATION_V8.md for the full list, the names, and the standalone call that your security team runs.
+  EOT
+  default     = true
+  nullable    = false
+
+  validation {
+    condition     = var.create_iam || var.enable_ecs_api
+    error_message = "create_iam = false requires ECS ingress (enable_ecs_api = true). Lambda ingress writes API Gateway and Function URL Lambda permissions, which are resource policies that security can't own yet."
+  }
+
+  validation {
+    condition     = var.create_iam || !var.use_deployment_mode_external_eks
+    error_message = "create_iam = false doesn't support external EKS. The Helm deployment owns its pod identity and trust."
+  }
+
+  validation {
+    condition     = var.create_iam || !var.enable_loop_runtime
+    error_message = "create_iam = false doesn't support Loop or MicroVM. Their IAM and endpoint policies are generated from resources that a later apply creates."
+  }
+
+  validation {
+    condition     = var.create_iam || !(var.enable_braintrust_support_logs_access || var.enable_braintrust_support_shell_access)
+    error_message = "create_iam = false doesn't support remote support or the bastion. Their roles trust fixed Braintrust principals, which needs a security review first."
+  }
+
+  validation {
+    condition     = var.create_iam || !(var.main_vpc_flow_log.enabled || var.quarantine_vpc_flow_log.enabled)
+    error_message = "create_iam = false doesn't support module-managed Flow Logs. S3 delivery needs the bucket policy before the flow log exists."
+  }
+
+  validation {
+    condition     = var.create_iam || !var.create_vpc
+    error_message = "create_iam = false doesn't support a managed main VPC. Set create_vpc = false and supply existing_vpc_id and the existing subnet IDs."
+  }
+
+  validation {
+    condition     = var.create_iam || !var.enable_quarantine_vpc || var.existing_quarantine_vpc_id != null
+    error_message = "create_iam = false doesn't support a managed quarantine VPC. Set existing_quarantine_vpc_id and the three existing quarantine private subnet IDs."
+  }
+
+  validation {
+    condition = var.create_iam || !var.enable_quarantine_vpc || !(
+      var.enable_private_dataplane
+      ? var.create_quarantine_api_access
+      : (var.use_private_gateway_quarantine_proxy && var.create_ai_gateway && !var.use_global_ai_gateway_origin)
+    )
+    error_message = "create_iam = false doesn't support quarantine PrivateLink. Endpoint service admission follows the load balancer that the same apply creates."
+  }
+
+  validation {
+    condition = var.create_iam || (
+      var.override_api_iam_role_trust_policy == null
+      && var.override_brainstore_iam_role_trust_policy == null
+      && var.permissions_boundary_arn == null
+      && length(var.service_additional_policy_arns) == 0
+      && length(var.brainstore_additional_policy_arns) == 0
+    )
+    error_message = "create_iam = false doesn't support override_api_iam_role_trust_policy, override_brainstore_iam_role_trust_policy, permissions_boundary_arn, service_additional_policy_arns or brainstore_additional_policy_arns. Your security team sets trust, boundaries and extra policies on the roles it creates."
+  }
+
+  # These two only set permission scopes in role policies, which this module doesn't write
+  # in external mode. Your security team passes them to modules/iam instead.
+  validation {
+    condition     = var.create_iam || (length(var.s3_export_assume_role_arns) == 0 && length(var.ai_gateway_bedrock_assume_role_arns) == 0)
+    error_message = "create_iam = false doesn't support s3_export_assume_role_arns or ai_gateway_bedrock_assume_role_arns, because they only set permission scopes that this module doesn't write. Your security team passes them to modules/iam on its standalone call."
+  }
+
+  # These only shape the trust that the module generates, which it doesn't render in external mode.
+  validation {
+    condition     = var.create_iam || (!var.enable_eks_pod_identity && !var.enable_eks_irsa && var.existing_eks_cluster_arn == null && var.eks_namespace == null)
+    error_message = "create_iam = false doesn't support enable_eks_pod_identity, enable_eks_irsa, existing_eks_cluster_arn or eks_namespace, because they only shape role trust that this module doesn't render. Your security team sets trust on the roles it creates."
+  }
+}
+
+variable "override_iam_names" {
+  type        = map(map(string))
+  description = <<-EOT
+    External IAM mode only. Sparse name and path overrides for the roles and the Brainstore instance profile that the module looks up. The key is "role.<key>" or "instance_profile.brainstore", and an entry accepts "name" and "path". A field you leave out keeps its default, which comes from deployment_name. Pass the same map to modules/iam when your security team runs it on its own, so the names it creates are the names this module looks up. Must be empty when create_iam is true.
+    Example: { "role.api_handler" = { name = "example-api", path = "/security/" } }
+  EOT
+  default     = {}
+  nullable    = false
+
+  validation {
+    condition     = !var.create_iam || length(var.override_iam_names) == 0
+    error_message = "override_iam_names is only valid when create_iam is false. The module chooses the names of the IAM it creates."
+  }
+}
+
+variable "existing_iam" {
+  type        = map(map(string))
+  description = <<-EOT
+    External IAM mode only. Exact references for roles, and the Brainstore instance profile, that a lookup by name can't find. The key is "role.<key>" or "instance_profile.brainstore". A role entry accepts "arn", and the instance profile entry accepts "arn" or "name". The module reads each reference back and applies the same ownership checks as a lookup by name. Must be empty when create_iam is true.
+    Example: { "role.gateway_task" = { arn = "arn:aws:iam::123456789012:role/security/example-gateway" } }
+  EOT
+  default     = {}
+  nullable    = false
+
+  validation {
+    condition     = !var.create_iam || length(var.existing_iam) == 0
+    error_message = "existing_iam is only valid when create_iam is false. The module creates the IAM it needs."
+  }
+}
+
 variable "use_global_ai_proxy" {
   description = "Whether to use the global Cloudflare prox. Don't enable this unless instructed by Braintrust."
   type        = bool

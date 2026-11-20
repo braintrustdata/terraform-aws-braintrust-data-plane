@@ -2,6 +2,7 @@ resource "aws_iam_role" "db_monitoring" {
   count = var.create_iam ? 1 : 0
 
   name = local.role_names.db_monitoring
+  path = local.role_paths.db_monitoring
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2008-10-17"

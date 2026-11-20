@@ -145,6 +145,19 @@ moved {
   to   = module.storage.aws_s3_bucket_public_access_block.lambda_responses_bucket[0]
 }
 
+# The TLS-only code bundle and Lambda responses bucket policies became optional
+# (manage_s3_bucket_policies, set from create_iam), so each gains a count index.
+# Keep existing policies in place.
+moved {
+  from = module.storage.aws_s3_bucket_policy.code_bundle_bucket
+  to   = module.storage.aws_s3_bucket_policy.code_bundle_bucket[0]
+}
+
+moved {
+  from = module.storage.aws_s3_bucket_policy.lambda_responses_bucket
+  to   = module.storage.aws_s3_bucket_policy.lambda_responses_bucket[0]
+}
+
 # CloudFront and API Gateway resources moved from services -> ingress
 moved {
   from = module.services.aws_cloudfront_distribution.dataplane

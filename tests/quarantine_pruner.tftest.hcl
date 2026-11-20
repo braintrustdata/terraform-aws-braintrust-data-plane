@@ -12,6 +12,8 @@ mock_provider "http" {
 }
 
 variables {
+  region     = "us-east-1"
+  account_id = "123456789012"
   # Root module inputs.
   primary_org_name            = "test-org"
   brainstore_license_key      = "test-license"

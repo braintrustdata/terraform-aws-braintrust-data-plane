@@ -9,6 +9,7 @@ resource "aws_iam_role" "automation_cron" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 
   name = local.role_names.automation_cron
+  path = local.role_paths.automation_cron
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -29,7 +30,7 @@ resource "aws_iam_role" "automation_cron" {
 
   lifecycle {
     precondition {
-      condition     = local.kms_key_arn != null && var.created_resources.code_bundle_s3_bucket_arn != null
+      condition     = !local.is_managed_call || (local.kms_key_arn != null && var.created_resources.code_bundle_s3_bucket_arn != null)
       error_message = "The AutomationCron role needs the KMS key and code bundle bucket ARNs. Pass them in created_resources or kms_key_arn."
     }
   }
@@ -48,7 +49,9 @@ resource "aws_iam_role_policy" "automation_cron_topic_map_report_read" {
   name = "${var.deployment_name}-AutomationCronTopicMapReportRead"
   role = aws_iam_role.automation_cron[0].id
 
-  policy = jsonencode({ # nosemgrep
+  # Keep the actions in step with local.customer_automation_cron_topic_map_report_read_policy in scopes.tf.
+
+  policy = local.is_standalone_call ? local.customer_automation_cron_topic_map_report_read_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = [
       {
@@ -77,6 +80,7 @@ resource "aws_iam_role" "quarantine_pruner" {
   count = var.create_iam && local.create_lambda_services && var.enable_quarantine_pruner ? 1 : 0
 
   name = local.role_names.quarantine_pruner
+  path = local.role_paths.quarantine_pruner
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -146,7 +150,7 @@ resource "aws_iam_role_policy" "quarantine_pruner_delete_versions" {
 }
 
 resource "aws_iam_role" "default" {
-  count = var.create_iam && local.create_lambda_services ? 1 : 0
+  count = var.create_iam && local.create_lambda_services && local.is_managed_call ? 1 : 0
 
   name = local.role_names.default
 
@@ -169,14 +173,14 @@ resource "aws_iam_role" "default" {
 }
 
 resource "aws_iam_role_policy_attachment" "default_vpc_access" {
-  count = var.create_iam && local.create_lambda_services ? 1 : 0
+  count = var.create_iam && local.create_lambda_services && local.is_managed_call ? 1 : 0
 
   role       = aws_iam_role.default[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 resource "aws_iam_role_policy" "default" {
-  count = var.create_iam && local.create_lambda_services ? 1 : 0
+  count = var.create_iam && local.create_lambda_services && local.is_managed_call ? 1 : 0
 
   name = "${var.deployment_name}-DefaultRolePolicy"
   role = aws_iam_role.default[0].id
@@ -218,6 +222,7 @@ resource "aws_iam_role" "billing_cron" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 
   name = local.role_names.billing_cron
+  path = local.role_paths.billing_cron
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -248,6 +253,7 @@ resource "aws_iam_role" "catchup_etl" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 
   name = local.role_names.catchup_etl
+  path = local.role_paths.catchup_etl
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -278,6 +284,7 @@ resource "aws_iam_role" "migrate_database" {
   count = var.create_iam && local.create_lambda_services ? 1 : 0
 
   name = local.role_names.migrate_database
+  path = local.role_paths.migrate_database
 
   assume_role_policy = jsonencode({ # nosemgrep
     Version = "2012-10-17"
@@ -308,6 +315,7 @@ resource "aws_iam_role" "quarantine_warmup" {
   count = var.create_iam && local.create_lambda_services && var.enable_quarantine_vpc ? 1 : 0
 
   name = local.role_names.quarantine_warmup
+  path = local.role_paths.quarantine_warmup
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

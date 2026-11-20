@@ -53,6 +53,11 @@
       "address": "module\\.services\\[0\\]\\.aws_lambda_permission\\.(allow_automation_cron_eventbridge|allow_billing_cron_eventbridge|allow_eventbridge|allow_quarantine_pruner_eventbridge\\[0\\])",
       "actions": ["delete"],
       "reason": "Scheduler invokes through an execution role, so the events.amazonaws.com permissions on the four functions are no longer needed."
+    },
+    {
+      "address": "terraform_data\\.iam_ownership_mode",
+      "actions": ["create"],
+      "reason": "The ownership marker records the create_iam value a stack first applied with, and blocks any later change to it. Every stack gets one."
     }
   ]
 }

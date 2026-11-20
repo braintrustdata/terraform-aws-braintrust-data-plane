@@ -5,8 +5,174 @@ variable "deployment_name" {
 
 variable "create_iam" {
   type        = bool
-  description = "Create the IAM resources in this module. Every resource has its own count that combines this with its feature gate, so the module can still expose names when it creates nothing. The root module always creates IAM for now."
+  description = "Create the IAM resources in this module. Every resource has its own count that combines this with its feature gate. When false, the module creates nothing. It looks up each role and instance profile that the deployment needs, by name or by an existing_iam ARN, checks that security owns it, and exposes the same outputs."
   default     = true
+}
+
+variable "iam_owner" {
+  type        = string
+  description = <<-EOT
+    Who runs this module. The root module's managed call leaves the default, "braintrust". A security team that runs this module on its own sets "customer".
+    With "customer", every role, managed policy and instance profile carries BraintrustIAMOwner = "customer", policies scope module-created resources by deterministic prefixes, the KMS alias and tags instead of exact ARNs from created_resources, and the module creates neither the default role nor the AIProxy invoke role.
+  EOT
+  default     = "braintrust"
+  nullable    = false
+
+  validation {
+    condition     = contains(["braintrust", "customer"], var.iam_owner)
+    error_message = "iam_owner must be \"braintrust\" or \"customer\"."
+  }
+
+  validation {
+    condition     = var.iam_owner != "customer" || var.enable_ecs_api
+    error_message = "iam_owner = \"customer\" requires enable_ecs_api = true. External IAM mode requires ECS ingress, because the Lambda ingress path writes Lambda resource policies that security can't own yet."
+  }
+
+  validation {
+    condition     = var.iam_owner != "customer" || var.create_iam
+    error_message = "iam_owner = \"customer\" requires create_iam = true. A standalone run always creates IAM, and setting create_iam to false later would destroy every role that security created."
+  }
+}
+
+variable "region" {
+  type        = string
+  description = "AWS region that the deployment runs in. Policy scopes use it, so they don't depend on the credentials of whoever runs this module. A check fails when it differs from the provider's region."
+
+  validation {
+    condition     = can(regex("^[a-z]{2}(-[a-z]+)+-[0-9]+$", var.region))
+    error_message = "region must be an AWS region name, such as us-east-1."
+  }
+}
+
+variable "account_id" {
+  type        = string
+  description = "ID of the AWS account that the deployment runs in. Policy scopes use it, so they don't depend on the credentials of whoever runs this module. A check fails when it differs from the provider's account."
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.account_id))
+    error_message = "account_id must be a 12-digit AWS account ID."
+  }
+}
+
+# The keys below are the roles and instance profile that external mode can need. The default and AIProxy invoke roles are managed-only, so they have no key.
+
+variable "override_iam_names" {
+  type        = map(map(string))
+  description = <<-EOT
+    Sparse name and path overrides, keyed "role.<key>" or "instance_profile.brainstore". Each entry accepts "name" and "path". A field you leave out keeps its default. A security team that runs this module on its own passes the same map as the root module's override_iam_names, so the names it creates match the names infrastructure looks up. The root module never passes it in managed mode.
+  EOT
+  default     = {}
+  nullable    = false
+
+  # Keep this list in step with external_role_gates in lookups.tf, and with the
+  # list in the existing_iam validation below.
+  validation {
+    condition = alltrue([
+      for key in keys(var.override_iam_names) : contains([
+        "role.api_handler", "role.api_ecs_task_execution", "role.brainstore", "role.quarantine_invoke", "role.quarantine_function",
+        "role.gateway_task_execution", "role.gateway_task", "role.db_monitoring", "role.brainstore_deployment_waiter",
+        "role.automation_cron", "role.billing_cron", "role.catchup_etl", "role.migrate_database", "role.quarantine_pruner",
+        "role.quarantine_warmup", "role.automation_cron_schedule", "role.billing_cron_schedule", "role.catchup_etl_schedule",
+        "role.quarantine_pruner_schedule", "instance_profile.brainstore",
+      ], key)
+    ])
+    error_message = "override_iam_names accepts only role.<key> for a role that external mode looks up (see the Role keys table in MIGRATION_V8.md), and instance_profile.brainstore. The default and AIProxy invoke roles can't be overridden."
+  }
+
+  validation {
+    condition     = alltrue([for entry in values(var.override_iam_names) : alltrue([for field in keys(entry) : contains(["name", "path"], field)])])
+    error_message = "Each override_iam_names entry accepts only name and path."
+  }
+
+  validation {
+    condition = alltrue([
+      for key, entry in var.override_iam_names :
+      !contains(keys(entry), "name") || can(regex(startswith(key, "role.") ? "^[A-Za-z0-9+=,.@_-]{1,64}$" : "^[A-Za-z0-9+=,.@_-]{1,128}$", entry.name))
+    ])
+    error_message = "An override_iam_names name must be 1 to 64 characters for a role, or 1 to 128 for an instance profile, from letters, digits and + = , . @ _ -."
+  }
+
+  validation {
+    condition = alltrue([
+      for entry in values(var.override_iam_names) :
+      !contains(keys(entry), "path") || can(regex("^(/|/[!-~]{1,510}/)$", entry.path))
+    ])
+    error_message = "An override_iam_names path must be \"/\", or start and end with a slash and have 1 to 510 printable characters between them."
+  }
+}
+
+variable "existing_iam" {
+  type        = map(map(string))
+  description = <<-EOT
+    Exact references for roles and the instance profile that name lookup can't find, keyed the same way as override_iam_names. A role entry accepts "arn". The instance profile entry accepts "arn" or "name". Only valid when create_iam is false. The module reads each reference back and checks ownership as it does for a lookup by name.
+  EOT
+  default     = {}
+  nullable    = false
+
+  validation {
+    condition     = !var.create_iam || length(var.existing_iam) == 0
+    error_message = "existing_iam is only valid when create_iam is false. A module that creates IAM chooses the names."
+  }
+
+  # Keep this list in step with external_role_gates in lookups.tf, and with the
+  # list in the override_iam_names validation above.
+  validation {
+    condition = alltrue([
+      for key in keys(var.existing_iam) : contains([
+        "role.api_handler", "role.api_ecs_task_execution", "role.brainstore", "role.quarantine_invoke", "role.quarantine_function",
+        "role.gateway_task_execution", "role.gateway_task", "role.db_monitoring", "role.brainstore_deployment_waiter",
+        "role.automation_cron", "role.billing_cron", "role.catchup_etl", "role.migrate_database", "role.quarantine_pruner",
+        "role.quarantine_warmup", "role.automation_cron_schedule", "role.billing_cron_schedule", "role.catchup_etl_schedule",
+        "role.quarantine_pruner_schedule", "instance_profile.brainstore",
+      ], key)
+    ])
+    error_message = "existing_iam accepts only role.<key> for a role that external mode looks up (see the Role keys table in MIGRATION_V8.md), and instance_profile.brainstore. The default and AIProxy invoke roles aren't looked up."
+  }
+
+  validation {
+    condition = alltrue([
+      for key, entry in var.existing_iam :
+      alltrue([for field in keys(entry) : contains(startswith(key, "role.") ? ["arn"] : ["arn", "name"], field)])
+    ])
+    error_message = "A role entry in existing_iam accepts only arn. The instance profile entry accepts arn or name."
+  }
+
+  validation {
+    condition = alltrue([
+      for key, entry in var.existing_iam :
+      !contains(keys(entry), "arn") || can(regex(
+        startswith(key, "role.") ? "^arn:aws[a-z-]*:iam::[0-9]{12}:role(/[!-~]+)?/[A-Za-z0-9+=,.@_-]{1,64}$" : "^arn:aws[a-z-]*:iam::[0-9]{12}:instance-profile(/[!-~]+)?/[A-Za-z0-9+=,.@_-]{1,128}$",
+        entry.arn
+      ))
+    ])
+    error_message = "An existing_iam arn must be an IAM role ARN for a role, or an instance profile ARN for the instance profile, with the account ID and the name in the usual places."
+  }
+
+  validation {
+    # try() because || doesn't short-circuit, and an entry without arn or name has nothing to compare.
+    condition = alltrue([
+      for key, entry in var.existing_iam :
+      try(endswith(entry.arn, "/${entry.name}"), true)
+    ])
+    error_message = "An existing_iam entry that sets both arn and name must name the same instance profile."
+  }
+
+  validation {
+    condition = alltrue([
+      for key, entry in var.existing_iam :
+      try(endswith(entry.arn, "/${var.override_iam_names[key].name}"), true)
+    ])
+    error_message = "An override_iam_names name contradicts the existing_iam arn for the same key. Remove one of them, or make them name the same role."
+  }
+
+  # The path in the ARN is everything between the resource type and the name.
+  validation {
+    condition = alltrue([
+      for key, entry in var.existing_iam :
+      try(regex("^arn:[^:]+:iam::[0-9]{12}:(?:role|instance-profile)(/(?:.*/)?)[^/]+$", entry.arn)[0] == var.override_iam_names[key].path, true)
+    ])
+    error_message = "An override_iam_names path contradicts the path in the existing_iam arn for the same key. Remove one of them, or make them agree."
+  }
 }
 
 variable "permissions_boundary_arn" {
@@ -157,7 +323,7 @@ variable "s3_export_assume_role_arns" {
 
 variable "kms_key_arn" {
   type        = string
-  description = "ARN of a KMS key the caller supplies. Leave null when the root module created the key and passes it in created_resources."
+  description = "ARN of a KMS key the caller supplies. Leave null or \"\" when the root module created the key and passes it in created_resources, or when a standalone call uses the module-created key."
   default     = null
 }
 
@@ -224,6 +390,18 @@ variable "existing_quarantine_vpc_id" {
   default     = null
 }
 
+variable "use_postgres_connection_override" {
+  type        = bool
+  description = "Whether the root module's postgres_connection_override is set. The override itself is sensitive, so only this flag comes in. When true, the Postgres URL secret is the override secret, not the module's database URL secret."
+  default     = false
+}
+
+variable "postgres_connection_override_credentials_secret_arn" {
+  type        = string
+  description = "The credentials_secret_arn of postgres_connection_override, when it sets one. The ARN isn't sensitive. A customer-managed key on that secret must be kms_key_arn. Used when iam_owner is \"customer\", because that call has no created_resources. Leave null when the override doesn't set one."
+  default     = null
+}
+
 variable "diagnostics_transcript_log_group_name" {
   description = "Optional existing CloudWatch log group in this account and region for protected SSM and ECS Exec transcripts. The bootstrap owns the group. Null keeps legacy Exec permissions unchanged and grants no transcript delivery."
   type        = string
@@ -261,6 +439,7 @@ variable "created_resources" {
     Exact ARNs of the KMS key, secrets, buckets and quarantine VPC the root module created. An attribute stays null when its resource doesn't exist.
     database_secret_arn is the exception: when postgres_connection_override sets credentials_secret_arn, the root module passes the caller's secret, which it didn't create.
     Every policy that needs one of these waits for all of them, because Terraform tracks the whole object as one value. Keep only resources here that can't depend on any role in this module. Anything that can goes in its own input.
+    Only the managed call (iam_owner = "braintrust") passes this. A role's precondition that checks one of these ARNs runs only then. A standalone run (iam_owner = "customer") leaves it empty and scopes by prefix, alias and tag instead.
   EOT
   type = object({
     kms_key_arn                               = optional(string)

@@ -5,6 +5,7 @@ resource "aws_iam_role" "api_handler" {
   count = var.create_iam ? 1 : 0
 
   name = local.role_names.api_handler
+  path = local.role_paths.api_handler
   assume_role_policy = var.override_api_iam_role_trust_policy != null ? var.override_api_iam_role_trust_policy : jsonencode({ # nosemgrep
     Version = "2012-10-17"
     Statement = concat(
@@ -86,7 +87,7 @@ resource "aws_iam_role" "api_handler" {
     ignore_changes = [name]
 
     precondition {
-      condition = alltrue([
+      condition = !local.is_managed_call || alltrue([
         for arn in [
           local.kms_key_arn,
           var.created_resources.code_bundle_s3_bucket_arn,
@@ -177,7 +178,8 @@ resource "aws_iam_policy" "api_handler" {
   count = var.create_iam ? 1 : 0
 
   name = "${var.deployment_name}-APIHandlerRolePolicy"
-  policy = jsonencode({ # nosemgrep
+  # Keep the actions in step with local.customer_api_handler_policy in scopes.tf.
+  policy = local.is_standalone_call ? local.customer_api_handler_policy : jsonencode({ # nosemgrep
     Statement = concat(
       [
         {

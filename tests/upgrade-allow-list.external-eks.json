@@ -1,3 +1,9 @@
 {
-  "allowed_changes": []
+  "allowed_changes": [
+    {
+      "address": "terraform_data\\.iam_ownership_mode",
+      "actions": ["create"],
+      "reason": "The ownership marker records the create_iam value a stack first applied with, and blocks any later change to it. Every stack gets one."
+    }
+  ]
 }

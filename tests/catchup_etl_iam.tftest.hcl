@@ -20,6 +20,8 @@ mock_provider "aws" {
 }
 
 variables {
+  region            = "us-east-1"
+  account_id        = "123456789012"
   deployment_name   = "bt-test"
   create_ai_gateway = false
 

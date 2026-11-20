@@ -57,6 +57,8 @@ run "tags_iam_module_resources_with_braintrust_owner" {
 
   variables {
     deployment_name = "bt-test"
+    region          = "us-east-1"
+    account_id      = "123456789012"
     custom_tags     = { Environment = "test", BraintrustIAMOwner = "customer" }
 
     enable_quarantine_vpc    = true

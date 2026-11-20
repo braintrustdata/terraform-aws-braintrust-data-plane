@@ -1,0 +1,105 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.15"
+# dependencies = []
+# ///
+"""Check that external IAM mode plans no IAM writer.
+
+With create_iam = false the module must write no IAM, no S3 bucket policy, no
+Lambda permission, no endpoint policy and no endpoint service admission, because
+the customer's security team owns all of them. Test assertions can't list a
+plan's resources, so this script runs the run named below with `terraform test
+-json -verbose`, reads its plan, and fails on any planned managed resource of
+those types. Data source lookups don't count: external mode reads roles.
+
+It never calls AWS. The test uses mock providers.
+"""
+
+import argparse
+import json
+from pathlib import Path
+import re
+import subprocess
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+TEST_FILE = "tests/iam_external_mode.tftest.hcl"
+RUN_NAME = "plans_external_mode_without_iam_writers"
+# A resource type that writes a policy or an identity.
+WRITER_TYPES = re.compile(
+    r"aws_iam_\w+|aws_s3_bucket_policy|aws_lambda_permission|aws_vpc_endpoint_policy|aws_vpc_endpoint_service_allowed_principal"
+)
+# One resource that the plan must contain, so an empty plan can't pass.
+PROOF_OF_SCAN = "aws_ecs_service"
+
+
+def writers(plan: dict) -> list[str]:
+    return sorted(
+        change["address"]
+        for change in plan.get("resource_changes", [])
+        if change["mode"] == "managed" and WRITER_TYPES.fullmatch(change["type"])
+    )
+
+
+def check_messages(messages: list[dict]) -> list[str]:
+    plans = [m["test_plan"] for m in messages if m.get("type") == "test_plan" and m.get("@testrun") == RUN_NAME]
+    if len(plans) != 1:
+        return [f"Expected one plan from {RUN_NAME}, found {len(plans)}."]
+    errors = []
+    found = writers(plans[0])
+    if found:
+        errors.append("External IAM mode must plan no IAM, bucket policy, Lambda permission or endpoint policy writer, but it plans:\n  " + "\n  ".join(found))
+    if not any(change["type"] == PROOF_OF_SCAN for change in plans[0].get("resource_changes", [])):
+        errors.append(f"The plan has no {PROOF_OF_SCAN}, so the scan covered too little to mean anything.")
+    return errors
+
+
+def self_test() -> list[str]:
+    def plan(*types):
+        return {"test_plan": {"resource_changes": [{"address": f"{t}.x", "mode": "managed", "type": t} for t in types]}, "type": "test_plan", "@testrun": RUN_NAME}
+
+    cases = {
+        "clean plan": ([plan("aws_ecs_service", "aws_lambda_function")], []),
+        "a role": ([plan("aws_ecs_service", "aws_iam_role")], ["aws_iam_role.x"]),
+        "a bucket policy": ([plan("aws_ecs_service", "aws_s3_bucket_policy")], ["aws_s3_bucket_policy.x"]),
+        "a Lambda permission": ([plan("aws_ecs_service", "aws_lambda_permission")], ["aws_lambda_permission.x"]),
+        "an endpoint policy": ([plan("aws_ecs_service", "aws_vpc_endpoint_policy")], ["aws_vpc_endpoint_policy.x"]),
+        "an empty plan": ([plan()], [PROOF_OF_SCAN]),
+        "no plan": ([], ["Expected one plan"]),
+    }
+    failures = []
+    for name, (messages, expected) in cases.items():
+        errors = check_messages(messages)
+        if len(errors) != len(expected) or not all(any(fragment in error for error in errors) for fragment in expected):
+            failures.append(f"{name}: expected {expected or 'no errors'}, got {errors or 'no errors'}")
+    return failures
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--directory", type=Path, default=REPOSITORY_ROOT)
+    parser.add_argument("--self-test", action="store_true", help="Check the checker against synthetic plans.")
+    args = parser.parse_args()
+    if args.self_test:
+        failures = self_test()
+        if failures:
+            parser.exit(1, "\n".join(failures) + "\n")
+        print("External mode plan self-test passes.")
+        return
+    result = subprocess.run(
+        ["terraform", "test", f"-filter={TEST_FILE}", "-json", "-verbose"],
+        cwd=args.directory,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    messages = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+    errors = check_messages(messages)
+    if result.returncode:
+        errors.append(f"terraform test exited with {result.returncode}.\n{result.stderr.strip()}")
+    if errors:
+        parser.exit(1, "\n".join(errors) + "\n")
+    print("External IAM mode plans no IAM writer.")
+
+
+if __name__ == "__main__":
+    main()
