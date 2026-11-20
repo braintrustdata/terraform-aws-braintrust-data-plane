@@ -96,7 +96,7 @@ module "braintrust-data-plane" {
   postgres_storage_throughput = 500
 
   # PostgreSQL engine version for the RDS instance.
-  postgres_version = "15"
+  postgres_version = "17"
 
   # Automatic upgrades of PostgreSQL minor engine version.
   # If true, AWS will automatically upgrade the minor version of the PostgreSQL engine for you.

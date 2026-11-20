@@ -66,7 +66,7 @@ module "braintrust-data-plane" {
   postgres_storage_iops       = null
   postgres_storage_throughput = null
 
-  postgres_version                    = "15"
+  postgres_version                    = "17"
   postgres_auto_minor_version_upgrade = true
 
   # Daily window (UTC) for automated RDS backups (hh24:mi-hh24:mi) and weekly maintenance
