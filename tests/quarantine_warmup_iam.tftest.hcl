@@ -17,12 +17,9 @@ variables {
   use_redis_replication_group    = false
   redis_host                     = "redis.internal"
   redis_port                     = "6379"
-  whitelisted_origins            = []
   code_bundle_bucket_arn         = "arn:aws:s3:::bt-test-code-bundles"
-  lambda_responses_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
   api_security_group_id          = "sg-12345678"
   function_tools_secret_key      = "test-key"
-  api_handler_role_arn           = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
   lambda_version_tag_override    = "test-version"
   use_quarantine_vpc             = true
   quarantine_vpc_id              = "vpc-87654321"

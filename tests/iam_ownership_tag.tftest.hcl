@@ -113,11 +113,8 @@ run "tags_services_iam_with_braintrust_owner" {
     use_redis_replication_group = false
     redis_host                  = "redis.example.internal"
     redis_port                  = "6379"
-    whitelisted_origins         = ["https://example.com"]
     code_bundle_bucket_arn      = "arn:aws:s3:::bt-test-code-bundles"
-    lambda_responses_bucket_arn = "arn:aws:s3:::bt-test-lambda-responses"
     api_security_group_id       = "sg-12345678"
-    api_handler_role_arn        = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
     function_tools_secret_key   = "test-secret-key"
     use_quarantine_vpc          = false
     custom_tags                 = { Environment = "test", BraintrustIAMOwner = "customer" }
@@ -131,10 +128,9 @@ run "tags_services_iam_with_braintrust_owner" {
         aws_iam_role.billing_cron.tags,
         aws_iam_role.catchup_etl.tags,
         aws_iam_role.migrate_database.tags,
-        aws_iam_policy.api_handler_lambda_policies.tags,
       ] : tags.BraintrustIAMOwner == "braintrust"
     ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the services roles and managed policy."
+    error_message = "A caller tag must not override BraintrustIAMOwner on the services roles."
   }
 
   assert {
@@ -145,14 +141,13 @@ run "tags_services_iam_with_braintrust_owner" {
         aws_iam_role.billing_cron.tags,
         aws_iam_role.catchup_etl.tags,
         aws_iam_role.migrate_database.tags,
-        aws_iam_policy.api_handler_lambda_policies.tags,
       ] : tags.Environment == "test"
     ])
     error_message = "The services roles and managed policy must keep unrelated caller tags."
   }
 }
 
-run "tags_services_quarantine_and_lambda_api_iam_with_braintrust_owner" {
+run "tags_services_quarantine_iam_with_braintrust_owner" {
   command = plan
   module { source = "./modules/services" }
 
@@ -167,11 +162,8 @@ run "tags_services_quarantine_and_lambda_api_iam_with_braintrust_owner" {
     use_redis_replication_group    = false
     redis_host                     = "redis.example.internal"
     redis_port                     = "6379"
-    whitelisted_origins            = ["https://example.com"]
     code_bundle_bucket_arn         = "arn:aws:s3:::bt-test-code-bundles"
-    lambda_responses_bucket_arn    = "arn:aws:s3:::bt-test-lambda-responses"
     api_security_group_id          = "sg-12345678"
-    api_handler_role_arn           = "arn:aws:iam::123456789012:role/bt-test-APIHandlerRole"
     function_tools_secret_key      = "test-secret-key"
     use_quarantine_vpc             = true
     quarantine_vpc_id              = "vpc-87654321"
@@ -179,7 +171,6 @@ run "tags_services_quarantine_and_lambda_api_iam_with_braintrust_owner" {
     quarantine_function_role_arn   = "arn:aws:iam::123456789012:role/bt-test-QuarantineFunctionRole"
     lambda_version_tag_override    = "test-version"
     enable_quarantine_pruner       = true
-    enable_ecs_api                 = false
     custom_tags                    = { Environment = "test", BraintrustIAMOwner = "customer" }
   }
 
@@ -188,10 +179,9 @@ run "tags_services_quarantine_and_lambda_api_iam_with_braintrust_owner" {
       for tags in [
         aws_iam_role.quarantine_pruner_role[0].tags,
         aws_iam_role.quarantine_warmup[0].tags,
-        aws_iam_role.ai_proxy_invoke_role[0].tags,
       ] : tags.BraintrustIAMOwner == "braintrust"
     ])
-    error_message = "A caller tag must not override BraintrustIAMOwner on the quarantine and AIProxy roles."
+    error_message = "A caller tag must not override BraintrustIAMOwner on the quarantine roles."
   }
 
   assert {
@@ -199,10 +189,9 @@ run "tags_services_quarantine_and_lambda_api_iam_with_braintrust_owner" {
       for tags in [
         aws_iam_role.quarantine_pruner_role[0].tags,
         aws_iam_role.quarantine_warmup[0].tags,
-        aws_iam_role.ai_proxy_invoke_role[0].tags,
       ] : tags.Environment == "test"
     ])
-    error_message = "The quarantine and AIProxy roles must keep unrelated caller tags."
+    error_message = "The quarantine roles must keep unrelated caller tags."
   }
 }
 run "tags_brainstore_instance_profile_with_braintrust_owner" {

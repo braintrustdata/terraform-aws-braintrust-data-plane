@@ -35,9 +35,6 @@ The example sets all required mode flags:
 
 ```hcl
 enable_private_dataplane = true
-enable_ecs_api           = true
-create_ai_gateway        = true
-enable_ai_gateway        = true
 ```
 
 ## Deploy and configure DNS
@@ -157,7 +154,7 @@ Enabling the quarantine VPC does not automatically enable PrivateLink access to 
 | Input | Default | Private mode | Public mode |
 | --- | --- | --- | --- |
 | `create_quarantine_api_access` | `false` | Enables quarantine API and AI Gateway access through the API ALB on HTTP port 8000. Requires `enable_quarantine_vpc = true`. | Ignored. |
-| `use_private_gateway_quarantine_proxy` | `false` | Ignored. | Enables quarantine LLM proxy access through the Gateway ALB when quarantine and `create_ai_gateway` are enabled and `use_global_ai_gateway_origin = false`. |
+| `use_private_gateway_quarantine_proxy` | `false` | Ignored. | Enables quarantine LLM proxy access through the Gateway ALB when quarantine is enabled. |
 
 For quarantine functions that need API callbacks or the data plane's AI Gateway in private mode, set:
 

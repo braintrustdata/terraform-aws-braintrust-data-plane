@@ -1,3 +1,25 @@
 {
-  "allowed_changes": []
+  "allowed_changes": [
+    {
+      "address": "module\\.ingress\\[0\\]\\.aws_cloudfront_distribution\\.dataplane",
+      "actions": ["update"],
+      "changed_attributes": ["origin"],
+      "reason": "v8 removes the CloudflareProxy and hosted-gateway GatewayOrigin origins. No cache behavior routes to either on an ECS-mode stack with the private gateway."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_iam_policy\\.api_handler_lambda_policies",
+      "actions": ["delete"],
+      "reason": "v8 removes the APIHandler Lambda. This policy only granted it Lambda log, CatchupETL invoke and VPC permissions; API ECS doesn't use it."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_iam_role_policy_attachment\\.api_handler_lambda_policies",
+      "actions": ["delete"],
+      "reason": "v8 removes the APIHandler Lambda, so the APIHandler-Lambdas policy is no longer attached to APIHandlerRole. The role stays for API ECS."
+    },
+    {
+      "address": "module\\.services\\[0\\]\\.aws_iam_role_policy_attachment\\.vpc_access",
+      "actions": ["delete"],
+      "reason": "v8 removes the APIHandler Lambda, so APIHandlerRole no longer needs AWSLambdaVPCAccessExecutionRole. API ECS tasks get network access from ECS."
+    }
+  ]
 }

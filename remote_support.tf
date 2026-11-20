@@ -17,9 +17,7 @@ module "remote_support" {
   redis_url_secret_version_id = module.redis.redis_url_secret_version_id
   kms_key_arn                 = local.kms_key_arn
   lambda_function_arns = compact([
-    !var.use_deployment_mode_external_eks ? module.services[0].api_handler_arn : null,
     !var.use_deployment_mode_external_eks ? module.services[0].migrate_database_arn : null,
-    !var.use_deployment_mode_external_eks ? module.services[0].ai_proxy_arn : null,
     !var.use_deployment_mode_external_eks ? module.services[0].catchup_etl_arn : null,
     !var.use_deployment_mode_external_eks ? module.services[0].quarantine_warmup_arn : null,
   ])

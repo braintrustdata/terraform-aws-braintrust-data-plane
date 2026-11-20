@@ -28,14 +28,6 @@ run "automation_writer_plans" {
   }
 }
 
-run "automation_writer_with_ecs_cutover_plans" {
-  command = plan
-
-  variables {
-    enable_ecs_api = true
-  }
-}
-
 run "automation_writer_custom_targets_plan_in_existing_vpc" {
   command = plan
 

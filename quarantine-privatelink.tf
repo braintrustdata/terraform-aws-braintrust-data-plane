@@ -68,7 +68,6 @@ resource "terraform_data" "quarantine_privatelink_requirements" {
   lifecycle {
     precondition {
       condition = (
-        var.use_global_ai_gateway_origin ||
         local.quarantine_proxy_url_override != null ||
         local.create_quarantine_gateway_privatelink
       )

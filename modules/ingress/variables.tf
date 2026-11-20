@@ -21,34 +21,25 @@ variable "waf_acl_id" {
   default     = null
 }
 
-variable "use_global_ai_proxy" {
-  description = "Whether to use the global Cloudflare proxy"
+variable "create_gateway_vpc_origin" {
+  description = "Create the CloudFront VPC origin for the private gateway ALB and route /v1/proxy to it. Must be true. The count keeps the v7 state address, so a rollback to v7 doesn't replace the attached VPC origin."
   type        = bool
   default     = false
-}
 
-variable "use_global_ai_gateway_origin" {
-  description = "Whether to route /v1/proxy traffic to gateway.braintrust.dev"
-  type        = bool
-  default     = false
-}
-
-variable "use_private_ai_gateway_origin" {
-  description = "Whether to route /v1/proxy traffic to the private gateway ALB via a VPC origin"
-  type        = bool
-  default     = false
+  validation {
+    condition     = var.create_gateway_vpc_origin
+    error_message = "/v1/proxy must route to the private gateway: set create_gateway_vpc_origin."
+  }
 }
 
 variable "gateway_alb_arn" {
   description = "ARN of the internal gateway ALB for CloudFront VPC origin routing"
   type        = string
-  default     = null
 }
 
 variable "gateway_alb_dns_name" {
   description = "DNS name of the internal gateway ALB for CloudFront VPC origin routing"
   type        = string
-  default     = null
 }
 
 variable "gateway_cloudfront_ingress_rule_id" {
@@ -81,42 +72,8 @@ variable "loop_runtime_cloudfront_ingress_rule_id" {
   default     = null
 }
 
-variable "global_ai_gateway_origin_domain" {
-  description = "Gateway origin domain to use when use_global_ai_gateway_origin is enabled"
-  type        = string
-  default     = "gateway.braintrust.dev"
-}
-
-variable "ai_proxy_function_url" {
-  description = "The function URL of the AI proxy lambda function. Required when enable_ecs_api is false."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.enable_ecs_api || try(trimspace(var.ai_proxy_function_url) != "", false)
-    error_message = "ai_proxy_function_url is required when enable_ecs_api is false."
-  }
-}
-
-variable "api_handler_function_arn" {
-  description = "The ARN of the API handler lambda function. Required when enable_ecs_api is false."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.enable_ecs_api || try(trimspace(var.api_handler_function_arn) != "", false)
-    error_message = "api_handler_function_arn is required when enable_ecs_api is false."
-  }
-}
-
-variable "enable_ecs_api" {
-  description = "Route CloudFront API and function traffic to the API ECS ALB instead of API Gateway and the AI Proxy Lambda. When true, API Gateway and the API Gateway and AI Proxy CloudFront origins are not created. /v1/proxy can still use a hosted or private gateway origin ahead of the ECS ALB."
-  type        = bool
-  default     = false
-}
-
 variable "api_ecs_alb_arn" {
-  description = "ARN of the API ECS ALB. The CloudFront VPC origin always points here; enable_ecs_api controls whether traffic is routed there."
+  description = "ARN of the API ECS ALB. CloudFront routes API and function traffic here through a VPC origin."
   type        = string
 }
 
