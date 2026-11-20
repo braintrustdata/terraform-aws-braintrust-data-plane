@@ -470,3 +470,34 @@ Removed outputs. `services-common` no longer creates these roles, so its outputs
 | `services-common` | `quarantine_function_role_arn` | `quarantine_function_role_arn` |
 
 **Note** - The `moved` blocks live in the root module's `moved_state.tf`, and Terraform applies them only to the root module's own addresses. If you call a child module directly, your state has the old addresses and the root blocks don't reach them. Add your own `moved` blocks that map each old address to wherever you create the resource now, or the next apply destroys and recreates it. The root module's `moved_state.tf` is the complete list of addresses to move. The table above has one row per role, but each role also has policies and attachments that need their own blocks.
+
+## Optional KMS freeze guard
+
+`enable_kms_key_freeze` defaults to `false`. When you turn it on, the module adds a guard that fails any plan whose configuration would change the module-created KMS key or its alias.
+
+Turn it on in a later apply after the v8 upgrade, not in the upgrade apply itself. A guard created in an apply can't block changes planned in that same apply: its stored values aren't known until it exists, so the check passes and the change goes through. That's why you turn it on in a later apply, and why you should read the key and alias entries in the plan that turns it on. Turn it on only against a plan that shows no key or alias changes.
+
+On a new stack, turn it on in an apply after the first one, not in the apply that creates the key.
+
+Once it's on, any plan whose configuration changes the key policy, description, enabled state, rotation, tags (including provider `default_tags`), alias, or an argument that forces key replacement fails at plan time.
+
+To make an agreed change, set `enable_kms_key_freeze = false`, apply, make the change and apply it, then set the flag back to `true` against a plan with no key or alias changes. You don't need any state commands. `terraform destroy` still works with the guard on.
+
+A module release that changes the key policy, or the set of protected attributes, fails a frozen stack's plan until you run the off/on cycle.
+
+The guard has limits. These are documented, not blocked:
+
+- Out-of-band drift is planned back to the configuration, and the guard doesn't block that. If your deployer's IAM policy denies `kms:PutKeyPolicy`, `kms:DisableKey`, `kms:ScheduleKeyDeletion`, `kms:UpdateAlias`, `kms:DeleteAlias`, `kms:EnableKeyRotation`, `kms:DisableKeyRotation`, `kms:TagResource` and `kms:UntagResource` on the key and alias, that apply fails with `AccessDenied`.
+- Running `-replace` or `taint` on the key replaces it before the guard fails. Read a `-replace` plan for dependent replacements first, because resources that take the key ARN can be replaced in the same apply. What happens next depends on whether your deployer has the deny above:
+  - **With the deny:** `ScheduleKeyDeletion` fails before a new key exists. The old key stays Enabled and in state, and there's nothing to cancel.
+  - **Without the deny:** the old key goes to PendingDeletion, a new key is created and the alias moves to it, and then the guard fails. Recover within the 7-day deletion window:
+
+    1. Run `CancelKeyDeletion` and `EnableKey` on the old key.
+    1. Remove the new key from state, and import the old key's ID at `module.kms[0].aws_kms_key.braintrust`.
+    1. Point the alias back at the old key.
+    1. Find the resources that took the new key's ARN, and plan them back to the old one.
+    1. Retire the new key once nothing uses it.
+- `kms_key_arn` is rejected while the flag is on, because the guard protects only the key this module creates.
+- A caller key policy that's unknown at plan time is checked only at apply, after the key policy updates.
+- Putting `depends_on` on your call to this module makes the key policy unknown at plan time whenever that dependency has changes, so the guard checks only at apply, after the policy updates. Don't use `depends_on` on the module call while the guard is on.
+- Turning the flag off, state edits, targeted runs and stale saved plans also bypass the guard.

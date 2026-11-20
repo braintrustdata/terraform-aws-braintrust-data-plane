@@ -94,6 +94,17 @@ variable "kms_key_arn" {
   default     = ""
 }
 
+variable "enable_kms_key_freeze" {
+  type        = bool
+  description = "Fail any plan whose configuration changes the module-created KMS key or alias after this is turned on. Turn it on in an apply after the v8 upgrade, against a plan with no key or alias changes. Not supported with kms_key_arn, because the module doesn't manage a caller's key. See MIGRATION_V8.md."
+  default     = false
+
+  validation {
+    condition     = !var.enable_kms_key_freeze || var.kms_key_arn == ""
+    error_message = "enable_kms_key_freeze protects the module-created KMS key, and kms_key_arn is set, so there is no module-created key to protect. Leave enable_kms_key_freeze off when you supply your own key."
+  }
+}
+
 variable "additional_kms_key_policies" {
   description = "Additional IAM policy statements to append to the generated KMS key."
   type        = list(any)

@@ -81,7 +81,8 @@ ALLOW_LISTS = {
 }
 # Types whose arn may repeat. Nothing grants permissions on the first four, so a
 # wrong reference is a routing or scaling bug rather than an identity one. An
-# event target's arn is the function it invokes, not an ARN of its own.
+# event target's arn is the function it invokes, not an ARN of its own. Same list as
+# scripts/check-permission-manifest; keep them in step.
 SHARED_ARN_TYPES = {
     "aws_appautoscaling_policy",
     "aws_lb",

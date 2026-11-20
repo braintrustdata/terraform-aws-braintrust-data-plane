@@ -49,6 +49,22 @@ The plan fails unless every role it looks up carries `BraintrustIAMOwner = custo
 
 The [external IAM example](examples/braintrust-data-plane-external-iam) shows the configuration, and [MIGRATION_V8.md](MIGRATION_V8.md#external-iam-mode-create_iam--false) covers the checks, names, security's standalone call, teardown and what goes wrong if you retag a module-managed role.
 
+### What does the IAM permission manifest list?
+
+Each GitHub Release has two files attached, `permission-manifest.json` and `permission-manifest-versions.json`. The manifest holds the policy documents that `modules/iam` and the other modules that write IAM generate, in a fixed set of coverage profiles rather than every feature combination, so your security team can review them and diff one release against the next. The versions file records which Terraform and provider versions generated it.
+
+The documents use placeholders in place of deployment values. The manifest's `placeholders` list names every one it uses. Any other value in a document is a literal that the generator's test inputs use, such as an `existing-brainstore-bucket` name or a `policy/service-additional` ARN. It isn't a real resource, so don't treat it as one.
+
+| Placeholder | Meaning |
+| --- | --- |
+| `${input:<name>}` | A value your deployment supplies, such as `${input:account_id}` or `${input:kms_key_arn}`. |
+| `${role:<key>}` | A role the module creates. |
+| `${binding:<name>}` | A value AWS assigns at apply time that isn't a module input, such as a bucket or log group the module creates. |
+
+**Note** - An `arn:aws:` in the manifest marks a hardcoded partition. The generator uses a mock partition, so every ARN the module builds from the real one shows `arn:${input:partition}:`, and the literal `arn:aws:` ones are the places that would need a change to support GovCloud or China.
+
+The files aren't committed. Run `mise run manifest` to generate them in the repository root. It also runs all the manifest's checks: every statement has a valid Sid, every policy resource is covered by a profile, nothing from the mock inputs is left in a document, and two runs give the same output.
+
 ## Brainstore license secret
 
 The module uses one license secret for Brainstore EC2, API ECS, Gateway ECS, and Loop runtime.

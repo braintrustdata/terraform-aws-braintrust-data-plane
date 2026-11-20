@@ -302,6 +302,9 @@ module "braintrust-data-plane" {
   # s3_vpc_endpoint_resource_org_ids     = ["o-xxxxxxxxxx"]
   # s3_vpc_endpoint_resource_account_ids = ["123456789012"]
 
+  # Optional: freeze the KMS key after the v8 upgrade. See MIGRATION_V8.md.
+  # enable_kms_key_freeze = true
+
   ### Braintrust Remote Support
 
   # Enable sharing of Cloudwatch logs with Braintrust staff

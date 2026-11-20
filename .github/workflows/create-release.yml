@@ -1,3 +1,20 @@
+# Creates a draft release with the permission manifest attached.
+#
+# If the lock step, the manifest or the tag check fails, no draft exists. Fix the cause and dispatch the workflow again.
+# If `gh release create` fails after it made the draft, delete the draft with `gh release delete <version> --yes`, then
+# dispatch again. That's safe because a draft has no tag yet. A dispatch skips the lock step's commit when the versions
+# are unchanged.
+#
+# The draft is created with --target at the commit the manifest came from. A fix that lands on main after the draft
+# exists needs a new draft, so delete the draft and dispatch again.
+#
+# Before you publish the draft, check that:
+#
+# 1. the draft has both permission-manifest.json and permission-manifest-versions.json attached.
+# 1. if the release changes module.kms[0].aws_kms_key.braintrust or aws_kms_alias.braintrust, or the set of protected
+#    attributes, the release notes tell stacks with the KMS freeze on to run the off/on re-baseline, and why.
+# 1. the release notes are correct.
+
 name: Create Release
 
 on:
@@ -16,9 +33,11 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    # Read-only: the push and the release use the bot token, not github.token.
+    # mise-action exports github.token as GITHUB_TOKEN to every later step,
+    # including the one that runs downloaded Terraform and provider binaries.
     permissions:
-      id-token: write
-      contents: write
+      contents: read
 
     steps:
       - name: Generate GitHub App token
@@ -34,8 +53,12 @@ jobs:
           token: ${{ steps.bot-token.outputs.token }}
           ref: main
 
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - name: Setup Mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
+        with:
+          # Keep the version the same in terraform-ci.yml.
+          version: 2026.11.10
+          install_args: "terraform uv"
 
       - name: Lock Braintrust service image versions
         if: inputs.services_version != ''
@@ -51,6 +74,34 @@ jobs:
           git commit -m "Update Braintrust Services versions to ${{ inputs.services_version }}"
           git push origin main
 
+      - name: Drop the push credential
+        # The manifest step runs downloaded Terraform and provider binaries, so the bot's push token mustn't be readable from .git/config.
+        run: |
+          # Exit code 5 means the key was already absent. Any other failure stops the release.
+          git config --local --unset-all http.https://github.com/.extraheader || [ $? -eq 5 ]
+          ! git config --local --get-all http.https://github.com/.extraheader
+
+      # Runs after the lock step, so the manifest comes from the commit that step may have just pushed.
+      - name: Generate permission manifest
+        run: mise run --skip-tools manifest
+
+      - name: Fail if the release tag points at a different commit
+        # --target only applies when the tag doesn't exist, so a pre-existing tag on another commit would publish the wrong code.
+        env:
+          MODULE_VERSION: ${{ inputs.module_version }}
+        run: |
+          # An annotated tag lists the tag object first and the commit it points to on the ^{} line.
+          tag_lines=$(git ls-remote --tags origin "refs/tags/${MODULE_VERSION}" "refs/tags/${MODULE_VERSION}^{}")
+          tag_commit=$(echo "$tag_lines" | awk '/\^\{\}$/ { print $1 }')
+          if [ -z "$tag_commit" ]; then
+            tag_commit=$(echo "$tag_lines" | awk 'NR == 1 { print $1 }')
+          fi
+          head_commit=$(git rev-parse HEAD)
+          if [ -n "$tag_commit" ] && [ "$tag_commit" != "$head_commit" ]; then
+            echo "The tag ${MODULE_VERSION} already points to ${tag_commit}, not ${head_commit}." >&2
+            exit 1
+          fi
+
       - name: Create GitHub Release
         run: |
           if [ "${{ inputs.services_version }}" != "" ]; then
@@ -60,13 +111,17 @@ jobs:
           * Updated Braintrust service image versions to \`${{ inputs.services_version }}\`
           EOF
             gh release create ${{ inputs.module_version }} \
+              permission-manifest.json permission-manifest-versions.json \
               --draft \
+              --target "$(git rev-parse HEAD)" \
               --generate-notes \
               --notes-file release_notes.md \
               --title "${{ inputs.module_version }}"
           else
             gh release create ${{ inputs.module_version }} \
+              permission-manifest.json permission-manifest-versions.json \
               --draft \
+              --target "$(git rev-parse HEAD)" \
               --generate-notes \
               --title "${{ inputs.module_version }}"
           fi

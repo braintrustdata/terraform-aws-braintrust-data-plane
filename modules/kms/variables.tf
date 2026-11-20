@@ -13,3 +13,9 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_kms_key_freeze" {
+  type        = bool
+  description = "Fail any plan whose configuration changes the managed KMS key or alias after this is turned on. Turn it on in an apply after the v8 upgrade, against a plan with no key or alias changes. To make an agreed key change, turn it off, apply the change, then turn it back on. See MIGRATION_V8.md."
+  default     = false
+}
