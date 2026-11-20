@@ -413,3 +413,189 @@ run "plans_working_tree_from_release" {
   command   = plan
   state_key = "release"
 }
+
+# Turns on every optional input that adds or changes a policy on a role that has
+# moved into modules/iam, so the move is proven for those branches too. The
+# apply and plan runs below must set identical variables, or the plan would
+# show the difference instead of the move.
+run "applies_parent_with_optional_iam_inputs" {
+  command   = apply
+  state_key = "optional_iam_inputs"
+
+  module {
+    source = "./tests/fixtures/.upgrade-parent"
+  }
+
+  # The same distinct ARNs as the defaults run, under the parent's addresses.
+  override_resource {
+    target = module.api_ecs[0].aws_iam_role.task_execution
+    values = { arn = "arn:aws:iam::123456789012:role/mock-api-ecs-task-execution" }
+  }
+  override_resource {
+    target = module.brainstore_deployment[0].aws_iam_role.waiter
+    values = { arn = "arn:aws:iam::123456789012:role/mock-brainstore-deployment-waiter" }
+  }
+  override_resource {
+    target = module.database.aws_iam_role.db_monitoring
+    values = { arn = "arn:aws:iam::123456789012:role/mock-database-db-monitoring" }
+  }
+  override_resource {
+    target = module.gateway_ecs[0].aws_iam_role.task
+    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task" }
+  }
+  override_resource {
+    target = module.gateway_ecs[0].aws_iam_role.task_execution
+    values = { arn = "arn:aws:iam::123456789012:role/mock-gateway-ecs-task-execution" }
+  }
+  override_resource {
+    target = module.services[0].aws_iam_role.automation_cron_role
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-automation-cron" }
+  }
+  override_resource {
+    target = module.services[0].aws_iam_role.billing_cron
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-billing-cron" }
+  }
+  override_resource {
+    target = module.services[0].aws_iam_role.catchup_etl
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-catchup-etl" }
+  }
+  override_resource {
+    target = module.services[0].aws_iam_role.default_role
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-default" }
+  }
+  override_resource {
+    target = module.services[0].aws_iam_role.migrate_database
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-migrate-database" }
+  }
+  override_resource {
+    target = module.services[0].aws_iam_role.quarantine_warmup[0]
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-quarantine-warmup" }
+  }
+  override_resource {
+    target = module.services_common.aws_iam_role.api_handler_role
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-api-handler" }
+  }
+  override_resource {
+    target = module.services_common.aws_iam_role.brainstore_role
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-brainstore" }
+  }
+  override_resource {
+    target = module.services_common.aws_iam_role.quarantine_function_role[0]
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-function" }
+  }
+  override_resource {
+    target = module.services_common.aws_iam_role.quarantine_invoke_role[0]
+    values = { arn = "arn:aws:iam::123456789012:role/mock-services-common-quarantine-invoke" }
+  }
+  override_resource {
+    target = module.services[0].aws_iam_policy.api_handler_lambda_policies
+    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-api-handler-lambda" }
+  }
+  override_resource {
+    target = module.services_common.aws_iam_policy.api_handler_policy
+    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler" }
+  }
+  override_resource {
+    target = module.services_common.aws_iam_policy.api_handler_quarantine[0]
+    values = { arn = "arn:aws:iam::123456789012:policy/mock-services-common-api-handler-quarantine" }
+  }
+  override_resource {
+    target = module.brainstore[0].aws_iam_instance_profile.brainstore
+    values = { arn = "arn:aws:iam::123456789012:instance-profile/mock-brainstore" }
+  }
+  override_resource {
+    target = module.storage.aws_s3_bucket.brainstore[0]
+    values = { arn = "arn:aws:s3:::mock-storage-brainstore" }
+  }
+  override_resource {
+    target = module.storage.aws_s3_bucket.code_bundle_bucket
+    values = { arn = "arn:aws:s3:::mock-storage-code-bundle" }
+  }
+  override_resource {
+    target = module.storage.aws_s3_bucket.lambda_responses_bucket
+    values = { arn = "arn:aws:s3:::mock-storage-lambda-responses" }
+  }
+  override_resource {
+    target = module.brainstore_deployment[0].aws_lambda_function.waiter
+    values = {
+      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter"
+      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-brainstore-deployment-waiter/invocations"
+    }
+  }
+  override_resource {
+    target = module.services[0].aws_lambda_function.automation_cron
+    values = {
+      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron"
+      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-automation-cron/invocations"
+    }
+  }
+  override_resource {
+    target = module.services[0].aws_lambda_function.billing_cron
+    values = {
+      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron"
+      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-billing-cron/invocations"
+    }
+  }
+  override_resource {
+    target = module.services[0].aws_lambda_function.catchup_etl
+    values = {
+      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl"
+      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-catchup-etl/invocations"
+    }
+  }
+  override_resource {
+    target = module.services[0].aws_lambda_function.migrate_database
+    values = {
+      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database"
+      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-migrate-database/invocations"
+    }
+  }
+  override_resource {
+    target = module.services[0].aws_lambda_function.quarantine_warmup[0]
+    values = {
+      arn        = "arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup"
+      invoke_arn = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:mock-services-quarantine-warmup/invocations"
+    }
+  }
+  override_resource {
+    target = module.services[0].aws_cloudwatch_event_rule.automation_cron_schedule
+    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-automation-cron" }
+  }
+  override_resource {
+    target = module.services[0].aws_cloudwatch_event_rule.billing_cron_schedule
+    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-billing-cron" }
+  }
+  override_resource {
+    target = module.services[0].aws_cloudwatch_event_rule.catchup_etl_schedule
+    values = { arn = "arn:aws:events:us-east-1:123456789012:rule/mock-services-catchup-etl" }
+  }
+
+  variables {
+    permissions_boundary_arn               = "arn:aws:iam::123456789012:policy/boundary"
+    custom_tags                            = { team = "platform" }
+    custom_ca_bundle_secret_arn            = "arn:aws:secretsmanager:us-east-1:123456789012:secret:ca-bundle-AbCdEf"
+    custom_ca_bundle_kms_key_arn           = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
+    existing_brainstore_license_key_secret = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license-AbCdEf", kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/22222222-2222-2222-2222-222222222222" }
+    internal_observability_api_key         = "test-observability-key"
+    diagnostics_transcript_log_group_name  = "/braintrust-byoc/test/diagnostics"
+    ai_gateway_enable_execute_command      = true
+    ai_gateway_bedrock_assume_role_arns    = ["arn:aws:iam::210987654321:role/bedrock"]
+  }
+}
+
+run "plans_working_tree_with_optional_iam_inputs" {
+  command   = plan
+  state_key = "optional_iam_inputs"
+
+  variables {
+    permissions_boundary_arn               = "arn:aws:iam::123456789012:policy/boundary"
+    custom_tags                            = { team = "platform" }
+    custom_ca_bundle_secret_arn            = "arn:aws:secretsmanager:us-east-1:123456789012:secret:ca-bundle-AbCdEf"
+    custom_ca_bundle_kms_key_arn           = "arn:aws:kms:us-east-1:123456789012:key/11111111-1111-1111-1111-111111111111"
+    existing_brainstore_license_key_secret = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license-AbCdEf", kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/22222222-2222-2222-2222-222222222222" }
+    internal_observability_api_key         = "test-observability-key"
+    diagnostics_transcript_log_group_name  = "/braintrust-byoc/test/diagnostics"
+    ai_gateway_enable_execute_command      = true
+    ai_gateway_bedrock_assume_role_arns    = ["arn:aws:iam::210987654321:role/bedrock"]
+  }
+}

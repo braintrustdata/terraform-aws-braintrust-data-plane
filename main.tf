@@ -336,9 +336,9 @@ module "database" {
   maintenance_window                 = var.postgres_maintenance_window
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
-  kms_key_arn              = local.kms_key_arn
-  permissions_boundary_arn = var.permissions_boundary_arn
-  custom_tags              = local.all_custom_tags
+  kms_key_arn         = local.kms_key_arn
+  monitoring_role_arn = module.iam.db_monitoring_role_arn
+  custom_tags         = local.all_custom_tags
 }
 
 module "redis" {
@@ -530,13 +530,14 @@ module "gateway_ecs" {
   source = "./modules/gateway-ecs"
   count  = local.create_ai_gateway ? 1 : 0
 
-  deployment_name                       = var.deployment_name
-  diagnostics_transcript_log_group_name = var.diagnostics_transcript_log_group_name
-  kms_key_arn                           = local.kms_key_arn
-  vpc_id                                = local.main_vpc_id
-  private_subnet_ids                    = local.main_vpc_private_subnet_ids
-  ecs_cluster_arn                       = module.ecs[0].cluster_arn
-  ecs_cluster_name                      = module.ecs[0].cluster_name
+  deployment_name         = var.deployment_name
+  kms_key_arn             = local.kms_key_arn
+  task_execution_role_arn = module.iam.gateway_task_execution_role_arn
+  task_role_arn           = module.iam.gateway_task_role_arn
+  vpc_id                  = local.main_vpc_id
+  private_subnet_ids      = local.main_vpc_private_subnet_ids
+  ecs_cluster_arn         = module.ecs[0].cluster_arn
+  ecs_cluster_name        = module.ecs[0].cluster_name
   container_image = format(
     "public.ecr.aws/braintrust/gateway:%s",
     var.ai_gateway_version_override != null ? var.ai_gateway_version_override : jsondecode(file("${path.module}/modules/gateway-ecs/VERSIONS.json"))["gateway"]
@@ -549,7 +550,6 @@ module "gateway_ecs" {
   target_cpu_utilization      = var.ai_gateway_target_cpu_utilization
   target_memory_utilization   = var.ai_gateway_target_memory_utilization
   log_retention_days          = var.ai_gateway_log_retention_days
-  permissions_boundary_arn    = var.permissions_boundary_arn
   redis_url_secret_arn        = module.redis.redis_url_secret_arn
   redis_url_secret_version_id = module.redis.redis_url_secret_version_id
   redis_port                  = module.redis.redis_port
@@ -568,11 +568,9 @@ module "gateway_ecs" {
     OVERRIDE_BRAINTRUST_API_URL = local.internal_api_url
   } : {})
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
-  custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
   custom_tags                           = local.all_custom_tags
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
-  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
   enable_execute_command                = var.ai_gateway_enable_execute_command
   org_name                              = var.braintrust_org_name
   allowed_org_ids                       = var.allowed_org_ids
@@ -581,7 +579,6 @@ module "gateway_ecs" {
   unsafe_url_request_mode               = var.unsafe_url_request_mode
   url_security_dns_servers              = var.url_security_dns_servers
   url_security_allow_cidrs              = var.url_security_allow_cidrs
-  bedrock_assume_role_arns              = var.ai_gateway_bedrock_assume_role_arns
 
   # Observability
   internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
@@ -740,12 +737,11 @@ module "api_ecs" {
   internal_observability_trace_disabled_plugins = var.internal_observability_trace_disabled_plugins
 
   # Data stores
-  database_url_secret_arn      = local.database_url_secret_arn
-  redis_url_secret_arn         = module.redis.redis_url_secret_arn
-  redis_url_secret_version_id  = module.redis.redis_url_secret_version_id
-  function_tools_secret_arn    = module.services_common.function_tools_secret_arn
-  custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
-  custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
+  database_url_secret_arn     = local.database_url_secret_arn
+  redis_url_secret_arn        = module.redis.redis_url_secret_arn
+  redis_url_secret_version_id = module.redis.redis_url_secret_version_id
+  function_tools_secret_arn   = module.services_common.function_tools_secret_arn
+  custom_ca_bundle_secret_arn = var.custom_ca_bundle_secret_arn
 
   # Brainstore
   brainstore_hostname                   = module.brainstore[0].dns_name
@@ -758,7 +754,6 @@ module "api_ecs" {
   skip_pg_for_brainstore_objects        = var.skip_pg_for_brainstore_objects
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
-  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
 
   brainstore_automation_writer_hostname = module.brainstore[0].automation_writer_dns_name
 
@@ -855,13 +850,13 @@ module "api_ecs" {
   alb_custom_domain              = var.braintrust_api_alb_custom_domain
   alb_drop_invalid_header_fields = var.braintrust_api_alb_drop_invalid_header_fields
 
-  kms_key_arn              = local.kms_key_arn
-  permissions_boundary_arn = var.permissions_boundary_arn
-  ecs_cluster_arn          = module.ecs[0].cluster_arn
-  ecs_cluster_name         = module.ecs[0].cluster_name
-  task_role_arn            = module.services_common.api_handler_role_arn
-  task_security_group_id   = module.services_common.api_security_group_id
-  custom_tags              = local.all_custom_tags
+  kms_key_arn             = local.kms_key_arn
+  task_execution_role_arn = module.iam.api_ecs_task_execution_role_arn
+  ecs_cluster_arn         = module.ecs[0].cluster_arn
+  ecs_cluster_name        = module.ecs[0].cluster_name
+  task_role_arn           = module.services_common.api_handler_role_arn
+  task_security_group_id  = module.services_common.api_security_group_id
+  custom_tags             = local.all_custom_tags
 }
 
 module "ingress" {
@@ -935,6 +930,46 @@ module "services_common" {
   override_brainstore_iam_role_trust_policy  = var.override_brainstore_iam_role_trust_policy
   enable_quarantine_vpc                      = var.enable_quarantine_vpc
   quarantine_vpc_id                          = local.quarantine_vpc_id
+}
+
+module "iam" {
+  source = "./modules/iam"
+
+  deployment_name                   = var.deployment_name
+  permissions_boundary_arn          = var.permissions_boundary_arn
+  custom_tags                       = local.all_custom_tags
+  use_deployment_mode_external_eks  = var.use_deployment_mode_external_eks
+  create_ai_gateway                 = var.create_ai_gateway
+  internal_observability_enabled    = local.create_internal_observability_secret
+  ai_gateway_enable_execute_command = var.ai_gateway_enable_execute_command
+
+  # Resources the caller supplies.
+  kms_key_arn                            = var.kms_key_arn != "" ? var.kms_key_arn : null
+  custom_ca_bundle_secret_arn            = var.custom_ca_bundle_secret_arn
+  custom_ca_bundle_kms_key_arn           = var.custom_ca_bundle_kms_key_arn
+  existing_brainstore_license_key_secret = var.existing_brainstore_license_key_secret
+  diagnostics_transcript_log_group_name  = var.diagnostics_transcript_log_group_name
+  ai_gateway_bedrock_assume_role_arns    = var.ai_gateway_bedrock_assume_role_arns
+
+  # Exact ARNs of the KMS key and secrets this module creates. Terraform tracks
+  # this object as one value, so every policy that reads it waits for all of
+  # them. Keep fleet values out of it, as explained below.
+  created_resources = {
+    kms_key_arn                               = var.kms_key_arn == "" ? module.kms[0].key_arn : null
+    database_url_secret_arn                   = local.database_url_secret_arn
+    function_tools_secret_arn                 = module.services_common.function_tools_secret_arn
+    redis_url_secret_arn                      = module.redis.redis_url_secret_arn
+    brainstore_license_key_secret_arn         = local.create_brainstore_license_secret ? aws_secretsmanager_secret.brainstore_license_key[0].arn : null
+    internal_observability_api_key_secret_arn = local.internal_observability_api_key_secret_arn
+  }
+
+  # Only the Brainstore waiter policy reads these two. Keeping fleet values out
+  # of created_resources prevents a cycle: one forms when the fleets consume a
+  # role or profile output that waits on a policy reading fleet values. The
+  # database reads the monitoring role output and the fleets read the database
+  # port, so the monitoring policy must not wait for the fleets.
+  brainstore_asg_names                = local.create_brainstore_ec2 ? [for fleet in module.brainstore[0].deployment_fleets : fleet.asg_name] : []
+  brainstore_deployment_log_group_arn = !var.use_deployment_mode_external_eks ? module.brainstore_deployment[0].waiter_log_group_arn : null
 }
 
 module "brainstore" {

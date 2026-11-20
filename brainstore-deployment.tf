@@ -9,9 +9,9 @@ module "brainstore_deployment" {
   source = "./modules/brainstore-deployment"
   count  = !var.use_deployment_mode_external_eks ? 1 : 0
 
-  deployment_name          = var.deployment_name
-  version_tag              = local.brainstore_deployment_version
-  fleets                   = module.brainstore[0].deployment_fleets
-  permissions_boundary_arn = var.permissions_boundary_arn
-  custom_tags              = local.all_custom_tags
+  deployment_name = var.deployment_name
+  version_tag     = local.brainstore_deployment_version
+  fleets          = module.brainstore[0].deployment_fleets
+  waiter_role_arn = module.iam.brainstore_deployment_waiter_role_arn
+  custom_tags     = local.all_custom_tags
 }

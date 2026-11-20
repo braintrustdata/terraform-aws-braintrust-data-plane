@@ -8,7 +8,7 @@ resource "aws_ecs_task_definition" "braintrust_api" {
   network_mode             = "awsvpc"
   cpu                      = tostring(var.braintrust_api_cpu)
   memory                   = tostring(var.braintrust_api_memory)
-  execution_role_arn       = aws_iam_role.task_execution.arn
+  execution_role_arn       = var.task_execution_role_arn
   task_role_arn            = var.task_role_arn
 
   runtime_platform {
@@ -17,9 +17,6 @@ resource "aws_ecs_task_definition" "braintrust_api" {
   }
 
   container_definitions = local.api_container_definitions[local.braintrust_api_name]
-
-  # Ensure GetSecretValue is granted before a revision that references secrets is registered.
-  depends_on = [aws_iam_role_policy.task_execution_secrets]
 
   tags = merge({
     Name = "${var.deployment_name}-${local.braintrust_api_name}"
@@ -74,11 +71,9 @@ resource "aws_ecs_service" "braintrust_api" {
 
   # The listener default action associates this target group with the ALB,
   # which ECS requires before CreateService will attach the service.
-  # Also wait for task-exec secret IAM before rolling tasks that resolve secrets.
   depends_on = [
     terraform_data.brainstore_deployment,
     aws_lb_listener.api_ecs_http,
-    aws_iam_role_policy.task_execution_secrets,
   ]
 
   lifecycle {

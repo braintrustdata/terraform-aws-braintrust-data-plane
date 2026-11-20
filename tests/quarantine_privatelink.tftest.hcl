@@ -83,8 +83,11 @@ override_module {
   }
 }
 override_module {
-  target  = module.brainstore_deployment[0]
-  outputs = { completion_id = "mock-rollout-complete" }
+  target = module.brainstore_deployment[0]
+  outputs = {
+    completion_id        = "mock-rollout-complete"
+    waiter_log_group_arn = "arn:aws:logs:us-east-1:123456789012:log-group:/braintrust/bt-test/bt-test-BrainstoreDeployment"
+  }
 }
 override_data {
   target = data.aws_subnet.quarantine_privatelink_main[0]

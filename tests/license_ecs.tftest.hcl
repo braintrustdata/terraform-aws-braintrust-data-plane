@@ -29,6 +29,7 @@ run "api_ecs_license" {
     billing_telemetry_log_level           = "info"
     quarantine_proxy_url                  = ""
     task_role_arn                         = "arn:aws:iam::123456789012:role/api-task"
+    task_execution_role_arn               = "arn:aws:iam::123456789012:role/bt-test-api-ecs-task-exec"
     task_security_group_id                = "sg-0123456789abcdef0"
 
     braintrust_api_cpu_autoscaling = {
@@ -97,7 +98,6 @@ run "api_ecs_license" {
 
     brainstore_license_key_secret_arn     = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
     brainstore_license_key_secret_version = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    brainstore_license_key_kms_key_arn    = "arn:aws:kms:us-east-1:123456789012:key/license"
   }
   assert {
     condition = alltrue([
@@ -107,10 +107,6 @@ run "api_ecs_license" {
     ])
     error_message = "The license must use a versioned ECS secret without a plaintext environment value."
   }
-  assert {
-    condition     = strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_secret_arn) && strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_kms_key_arn)
-    error_message = "The execution policy must authorize the license secret and its KMS key."
-  }
 }
 
 run "gateway_ecs_license" {
@@ -119,6 +115,8 @@ run "gateway_ecs_license" {
   variables {
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
+    task_execution_role_arn                   = "arn:aws:iam::123456789012:role/bt-test-gateway-task-exec"
+    task_role_arn                             = "arn:aws:iam::123456789012:role/bt-test-gateway-task"
     vpc_id                                    = "vpc-0123456789abcdef0"
     private_subnet_ids                        = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
     ecs_cluster_arn                           = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"
@@ -138,15 +136,10 @@ run "gateway_ecs_license" {
 
     brainstore_license_key_secret_arn     = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
     brainstore_license_key_secret_version = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    brainstore_license_key_kms_key_arn    = "arn:aws:kms:us-east-1:123456789012:key/license"
   }
   assert {
     condition     = alltrue([for c in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : !contains([for e in c.environment : e.name], "BRAINSTORE_LICENSE_KEY")]) && one([for c in jsondecode(aws_ecs_task_definition.gateway.container_definitions) : one([for secret in c.secrets : secret.valueFrom if secret.name == "BRAINSTORE_LICENSE_KEY"]) if c.name == "gateway"]) == "arn:aws:secretsmanager:us-east-1:123456789012:secret:license:::aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     error_message = "The license must use a versioned ECS secret without a plaintext environment value."
-  }
-  assert {
-    condition     = strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_secret_arn) && strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_kms_key_arn)
-    error_message = "The execution policy must authorize the license secret and its KMS key."
   }
 }
 

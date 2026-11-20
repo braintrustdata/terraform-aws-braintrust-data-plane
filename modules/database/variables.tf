@@ -120,10 +120,9 @@ variable "DANGER_disable_deletion_protection" {
   default     = false
 }
 
-variable "permissions_boundary_arn" {
+variable "monitoring_role_arn" {
   type        = string
-  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module"
-  default     = null
+  description = "ARN of the IAM role that RDS enhanced monitoring assumes. Pass the db_monitoring_role_arn output of modules/iam so the database waits for the role's policy attachment."
 }
 
 variable "custom_tags" {

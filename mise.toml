@@ -24,6 +24,7 @@ uv run scripts/check-loop-network-dependencies
 uv run scripts/check-brainstore-autoscaling
 uv run scripts/check-iam-ownership-tags
 uv run scripts/check-iam-ownership-tags --self-test
+uv run scripts/check-iam-dependencies
 terraform test
 uv run scripts/check-upgrade-plan
 # Proves the check above rejects a workload on the wrong role or a policy on the wrong bucket.

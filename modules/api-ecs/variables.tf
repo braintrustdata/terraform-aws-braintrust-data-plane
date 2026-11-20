@@ -32,10 +32,9 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt API ECS resources that support customer-managed KMS keys."
 }
 
-variable "permissions_boundary_arn" {
+variable "task_execution_role_arn" {
   type        = string
-  description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
-  default     = null
+  description = "ARN of the role ECS uses to start the API tasks. Pass the api_ecs_task_execution_role_arn output of modules/iam so a task definition waits for the role's policies."
 }
 
 variable "vpc_id" {
@@ -529,12 +528,6 @@ variable "custom_ca_bundle_secret_arn" {
   default     = null
 }
 
-variable "custom_ca_bundle_kms_key_arn" {
-  type        = string
-  description = "Optional ARN of the customer-managed KMS key encrypting the custom CA bundle secret."
-  default     = null
-}
-
 variable "brainstore_hostname" {
   type        = string
   description = "Brainstore hostname."
@@ -751,12 +744,6 @@ variable "brainstore_license_key_secret_version" {
   type        = string
   description = "License secret version ID. A version change forces a new task revision and service deployment."
   default     = ""
-}
-
-variable "brainstore_license_key_kms_key_arn" {
-  type        = string
-  description = "Customer-managed KMS key ARN for the existing license secret."
-  default     = null
 }
 
 variable "authorized_security_groups" {

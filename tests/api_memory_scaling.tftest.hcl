@@ -26,6 +26,7 @@ variables {
   billing_telemetry_log_level           = "info"
   quarantine_proxy_url                  = ""
   task_role_arn                         = "arn:aws:iam::123456789012:role/api-task"
+  task_execution_role_arn               = "arn:aws:iam::123456789012:role/bt-test-api-ecs-task-exec"
   task_security_group_id                = "sg-0123456789abcdef0"
 
   braintrust_api_cpu_autoscaling = {
