@@ -112,6 +112,11 @@ module "braintrust-data-plane" {
   # Set to true if you need to test user-defined functions.
   enable_quarantine_vpc = false
 
+  # If enabling quarantine, select a published services bundle that supports
+  # quarantine cleanup, then set this to true and apply BEFORE destroy to remove
+  # generated UDF Lambdas. Leave false while enable_quarantine_vpc is false.
+  # enable_quarantine_destroy_cleanup = false
+
   ### Redis configuration
   # Reuse a subnet group in the data plane VPC; null creates one (default).
   # Changing the subnet group name on an existing deployment replaces Redis.

@@ -83,3 +83,8 @@ output "ai_proxy_url_ssm_parameter_name" {
   description = "The name of the SSM parameter containing the AI proxy URL. Null when enable_ecs_api is true."
   value       = one(aws_ssm_parameter.ai_proxy_url[*].name)
 }
+
+output "quarantine_function_role_arn" {
+  description = "Execution role ARN after native quarantine lifecycle initialization."
+  value       = local.quarantine_runtime_role_arn
+}

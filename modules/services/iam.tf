@@ -398,3 +398,45 @@ resource "aws_iam_role_policy" "quarantine_warmup" {
     ]
   })
 }
+
+resource "aws_iam_role_policy" "quarantine_cleanup" {
+  count = var.enable_quarantine_destroy_cleanup ? 1 : 0
+  name  = "${var.deployment_name}-QuarantineCleanupPolicy"
+  role  = aws_iam_role.quarantine_warmup[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "lambda:ListFunctions"
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["lambda:GetFunctionConfiguration", "lambda:ListVersionsByFunction", "lambda:ListTags", "lambda:DeleteFunction"]
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:Quarantine-*"
+        Condition = {
+          StringEquals = { "aws:ResourceTag/BraintrustQuarantine" = "true", "aws:ResourceTag/IsQuarantine" = "true" }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = "lambda:GetFunctionConfiguration"
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.deployment_name}-APIHandler"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ecs:ListServices", "ecs:ListTasks"]
+        Resource = "*"
+        Condition = {
+          ArnEquals = { "ecs:cluster" = "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:cluster/${var.deployment_name}" }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = "ecs:DescribeTasks"
+        Resource = "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:task/${var.deployment_name}/*"
+      }
+    ]
+  })
+}

@@ -3,6 +3,9 @@
 # It is created in services-common (not services) so it's available in both Lambda and EKS deployment modes.
 
 resource "aws_security_group" "quarantine_lambda" {
+  # Lambda needs these permissions until its network interfaces are released.
+  depends_on = [aws_iam_role_policy_attachment.quarantine_function_role]
+
   count  = var.enable_quarantine_vpc ? 1 : 0
   name   = "${var.deployment_name}-quarantine-lambda"
   vpc_id = var.quarantine_vpc_id
