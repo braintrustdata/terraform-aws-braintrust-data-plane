@@ -3,6 +3,9 @@ locals {
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
+
   architecture     = data.aws_ec2_instance_type.brainstore.supported_architectures[0]
   has_writer_nodes = var.writer_instance_count > 0
   # Preserve legacy bounds when explicit autoscaling capacities are not supplied.
@@ -95,6 +98,7 @@ resource "aws_launch_template" "brainstore" {
   user_data = base64gzip(templatefile("${path.module}/templates/user_data.sh.tpl", {
     aws_region                  = data.aws_region.current.region
     deployment_name             = var.deployment_name
+    legacy_filesystem_tuning    = var.legacy_filesystem_tuning
     database_secret_arn         = var.database_secret_arn
     database_host               = var.database_host
     database_port               = var.database_port

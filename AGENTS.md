@@ -410,19 +410,19 @@ A method condition consumes a match evaluation as well as the path condition.
 A path pattern can contain up to 128 characters.
 These limits prevent arbitrary combinations of paths in one rule.
 
-Current counts from `modules/api-ecs/alb-path-routes.tf`, reviewed on November 16, 2026:
+Current counts from `modules/api-ecs/alb-path-routes.tf`, reviewed on November 20, 2026:
 
 | Mode | Customer listener rules | Internal listener rules | Total nondefault rules | Space under default quota |
 | --- | ---: | ---: | ---: | ---: |
-| Public, voice disabled, with or without Loop | 21 | 0 | 21 | 79 |
-| Public, voice enabled, with or without Loop | 23 | 0 | 23 | 77 |
-| Private, voice and Loop disabled | 20 | 20 | 40 | 60 |
-| Private, voice enabled, Loop disabled | 22 | 22 | 44 | 56 |
-| Private, voice disabled, Loop enabled | 21 | 21 | 42 | 58 |
-| Private, voice and Loop enabled | 23 | 23 | 46 | 54 |
+| Public, voice disabled, with or without Loop | 23 | 0 | 23 | 77 |
+| Public, voice enabled, with or without Loop | 25 | 0 | 25 | 75 |
+| Private, voice and Loop disabled | 22 | 22 | 44 | 56 |
+| Private, voice enabled, Loop disabled | 24 | 24 | 48 | 52 |
+| Private, voice disabled, Loop enabled | 23 | 23 | 46 | 54 |
+| Private, voice and Loop enabled | 25 | 25 | 50 | 50 |
 
-Public mode has 21 shared service rules, plus two when hosted voice sessions are enabled.
-Private mode excludes two public proxy rules and retains 19 shared service rules per listener.
+Public mode has 23 shared service rules, plus two when hosted voice sessions are enabled.
+Private mode excludes two public proxy rules and retains 21 shared service rules per listener.
 Each private listener also has one gateway rule, two optional voice rules, and, with Loop enabled, one Loop rule.
 Each gateway or Loop rule contains two path values, but counts as one rule.
 A new shared service route adds one public rule or two private rules across both listeners.

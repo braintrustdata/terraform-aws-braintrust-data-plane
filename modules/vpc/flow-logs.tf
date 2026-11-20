@@ -99,7 +99,7 @@ resource "aws_iam_role" "flow_log" {
   assume_role_policy   = data.aws_iam_policy_document.flow_log_assume_role[0].json
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 data "aws_iam_policy_document" "flow_log" {

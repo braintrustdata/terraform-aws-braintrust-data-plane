@@ -130,7 +130,7 @@ resource "aws_iam_role" "bastion" {
 
   permissions_boundary = var.permissions_boundary_arn
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_instance_profile" "bastion" {
@@ -138,7 +138,7 @@ resource "aws_iam_instance_profile" "bastion" {
 
   name = "${var.deployment_name}-bastion"
   role = aws_iam_role.bastion[0].name
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy" "bastion" {

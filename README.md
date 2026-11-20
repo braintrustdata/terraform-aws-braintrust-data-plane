@@ -440,6 +440,10 @@ provider "aws" {
 
 The `deployment_name` variable is also used to prefix the names of the resources created by the module wherever possible. It will also be applied as a tag named `BraintrustDeploymentName` to all resources created by the module.
 
+#### IAM ownership tag
+
+Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. We use it to tell module-managed IAM apart from IAM that you create yourself. The module reserves the key, so it rejects `BraintrustIAMOwner` in `custom_tags` at plan time in any letter case. Don't change the tag by hand. See [Migrating to v7](MIGRATION_V7.md#v730-iam-ownership-tag) for the upgrade steps.
+
 ### CloudFront Access Logging
 
 If you need to enable CloudFront standard access logging, you can configure it independently by referencing the `cloudfront_distribution_arn` output from the module. This approach gives you full flexibility over the logging configuration without requiring changes to the module itself.

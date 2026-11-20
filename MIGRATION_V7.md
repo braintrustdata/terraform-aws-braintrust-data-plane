@@ -119,3 +119,36 @@ enable_ecs_api = false
 Terraform ignores `enable_ecs_api`, `create_ai_gateway`, `enable_ai_gateway`, and `use_private_ai_gateway_origin`. Helm owns the gateway. External EKS mode does not create the gateway. `use_private_gateway_quarantine_proxy = true` fails the plan. Terraform does not ignore that flag, so `use_private_gateway_quarantine_proxy` must be `false`. `braintrust_api_url` is a legacy input and is not required.
 
 Stacks that already built a gateway with Terraform must move to the Helm gateway and repoint before upgrading. The upgrade destroys that ALB, ECS service, and ECS cluster.
+
+## v7.3.0 IAM ownership tag
+
+Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. On an existing stack this is an in-place tag update. Nothing is replaced. The module reserves the key, so setting `BraintrustIAMOwner` in `custom_tags` fails at plan time, in any letter case.
+
+Check these before you apply it.
+
+1. The principal that runs `terraform apply` needs `iam:TagRole`, `iam:TagPolicy` and `iam:TagInstanceProfile`, plus `iam:ListRoleTags`, `iam:ListPolicyTags` and `iam:ListInstanceProfileTags` so Terraform can read the tags back.
+1. Look at any SCP or permissions boundary that has a condition on tag keys, such as `aws:RequestTag` or `aws:TagKeys`. This is the most likely thing to block the new tag.
+1. An organization tag policy only matters if it defines `BraintrustIAMOwner` or a differently cased variant of it. Tag policies don't block keys they don't mention.
+1. IAM allows 50 tags per resource. A role that is already close to that limit can't take another tag.
+1. Don't set the key in the AWS provider's `default_tags`. The module can't validate those, and the module's own value has to be the one that applies.
+
+The module pins Braintrust service versions, so changing the module version also moves your services. Coming from v7.2.1, the upgrade plan includes more than the tags:
+
+- Services move to the version this release pins, and the database migrations for that version run.
+- A new Secrets Manager secret holds the Brainstore license key, unless you supply one with `existing_brainstore_license_key_secret`.
+- API and gateway ECS task definitions are replaced, so those services roll.
+- Brainstore launch templates change, so Brainstore instances refresh. This includes an IMDS hop limit of 1, so containers on a Docker bridge network on those instances can no longer get credentials from IMDS.
+
+To keep the service upgrade out of this apply, pin each service to the version v7.2.1 pins, `v2.22.0`. v7.3.0 has only been tested with services back to `v2.22.0`, and it requires at least `v2.17.0`, because the Brainstore rollout depends on a deployment helper added in that version. Add these to the module block:
+
+```hcl
+  lambda_version_tag_override     = "v2.22.0"
+  braintrust_api_version_override = "v2.22.0"
+  ai_gateway_version_override     = "v2.22.0"
+  loop_runtime_version_override   = "v2.22.0"
+  brainstore_version_override     = "v2.22.0"
+```
+
+Apply, confirm the stack is healthy, then remove the overrides in a later apply. That one moves services to the pinned version and runs its migrations. We tested this path from v7.2.1 to v7.3.0, except for `loop_runtime_version_override`. If you run Loop, check its version after the first apply.
+
+For IAM, going back to an earlier version only removes the tag, since the older module doesn't set it. It doesn't replace any IAM. Going back to v7.2.1 also returns the license key to plaintext task definitions and user data, deletes the module-created license secret, and moves services back to v7.2.1's pinned version after the newer migrations have run.

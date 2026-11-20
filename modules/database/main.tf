@@ -4,6 +4,9 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
+
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
   rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
 }
@@ -39,6 +42,7 @@ resource "aws_db_instance" "main" {
   copy_tags_to_snapshot     = true
   backup_retention_period   = var.backup_retention_period
   backup_window             = var.backup_window
+  apply_immediately         = var.apply_immediately
   maintenance_window        = var.maintenance_window
 
   performance_insights_enabled          = true
@@ -146,7 +150,7 @@ resource "aws_iam_role" "db_monitoring" {
     ignore_changes = [name]
   }
 
-  tags = local.common_tags
+  tags = local.iam_tags
 }
 
 resource "aws_iam_role_policy_attachment" "db_monitoring" {

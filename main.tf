@@ -334,6 +334,7 @@ module "database" {
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   backup_retention_period            = var.postgres_backup_retention_period
   backup_window                      = var.postgres_backup_window
+  apply_immediately                  = var.postgres_apply_immediately
   maintenance_window                 = var.postgres_maintenance_window
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
@@ -947,6 +948,7 @@ module "brainstore" {
   count  = local.create_brainstore_ec2 ? 1 : 0
 
   deployment_name                               = var.deployment_name
+  legacy_filesystem_tuning                      = var.brainstore_legacy_filesystem_tuning
   instance_count                                = var.brainstore_instance_count
   instance_type                                 = var.brainstore_instance_type
   instance_key_pair_name                        = var.brainstore_instance_key_pair_name

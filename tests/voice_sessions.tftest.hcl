@@ -239,7 +239,7 @@ run "disabling_voice_removes_routes_and_configuration" {
   }
   assert {
     condition = (
-      length(aws_lb_listener_rule.alb_path_routes) == 21
+      length(aws_lb_listener_rule.alb_path_routes) == 23
       && length(aws_lb_listener_rule.alb_internal_path_routes) == 0
       && length(aws_appautoscaling_policy.braintrust_api_background_voice_slots) == 0
       && alltrue([for container in jsondecode(aws_ecs_task_definition.braintrust_api_background.container_definitions) : !contains([for env in container.environment : env.name], "VOICE_SESSION_WS_BASE_URL") if container.name == "api"])

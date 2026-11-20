@@ -6,6 +6,8 @@ locals {
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
+  # Marks IAM this module owns. Merged last so callers can't override it.
+  iam_tags = merge(local.common_tags, { BraintrustIAMOwner = "braintrust" })
 
   region    = data.aws_region.current.region
   partition = data.aws_partition.current.partition
@@ -327,7 +329,7 @@ resource "aws_iam_role" "network_connector_operator" {
 
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-network-connector"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 resource "aws_iam_role_policy_attachment" "network_connector_operator" {
@@ -397,7 +399,7 @@ resource "aws_iam_role" "microvm_image_build" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-microvm-build"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 data "aws_iam_policy_document" "microvm_image_build" {
@@ -443,7 +445,7 @@ resource "aws_iam_role" "microvm_execution" {
   permissions_boundary = var.permissions_boundary_arn
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime-microvm-exec"
-  }, local.common_tags)
+  }, local.iam_tags)
 }
 
 resource "aws_iam_role_policy" "microvm_execution" {
