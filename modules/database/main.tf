@@ -9,6 +9,15 @@ locals {
 
   database_subnet_group_name = var.existing_database_subnet_group_name == null ? aws_db_subnet_group.main[0].name : var.existing_database_subnet_group_name
   rds_security_group_ids     = length(var.custom_security_group_ids) > 0 ? var.custom_security_group_ids : [aws_security_group.rds[0].id]
+
+  postgres_parameters = merge({
+    # Already the default in PG 15+; explicit to satisfy static checkers.
+    "rds.force_ssl"                       = { value = "1", apply_method = "pending-reboot" }
+    "idle_in_transaction_session_timeout" = { value = "900000", apply_method = "immediate" }
+    "random_page_cost"                    = { value = "1", apply_method = "immediate" }
+    "shared_preload_libraries"            = { value = "pg_stat_statements,pg_hint_plan,pg_cron", apply_method = "pending-reboot" }
+    "statement_timeout"                   = { value = "3600000", apply_method = "immediate" }
+  }, var.postgres_parameters)
 }
 
 resource "aws_db_instance" "main" {
@@ -77,33 +86,13 @@ resource "aws_db_parameter_group" "main" {
   family      = "postgres${split(".", var.postgres_version)[0]}"
   description = "DB parameter group for the Braintrust main database"
 
-  # This is already the default in PG 15+, but we want to be explicit to
-  # avoid static checkers complaining about it being missing.
-  parameter {
-    apply_method = "pending-reboot"
-    name         = "rds.force_ssl"
-    value        = "1"
-  }
-
-  parameter {
-    name  = "idle_in_transaction_session_timeout"
-    value = "900000"
-  }
-
-  parameter {
-    name  = "random_page_cost"
-    value = "1"
-  }
-
-  parameter {
-    name         = "shared_preload_libraries"
-    value        = "pg_stat_statements,pg_hint_plan,pg_cron"
-    apply_method = "pending-reboot"
-  }
-
-  parameter {
-    name  = "statement_timeout"
-    value = "3600000"
+  dynamic "parameter" {
+    for_each = local.postgres_parameters
+    content {
+      name         = parameter.key
+      value        = parameter.value.value
+      apply_method = parameter.value.apply_method
+    }
   }
 
   lifecycle {

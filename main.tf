@@ -313,6 +313,7 @@ module "database" {
   postgres_max_storage_size           = var.postgres_max_storage_size
   postgres_storage_type               = var.postgres_storage_type
   postgres_version                    = var.postgres_version
+  postgres_parameters                 = var.postgres_parameters
   database_subnet_ids                 = local.database_subnet_ids
   existing_database_subnet_group_name = var.existing_database_subnet_group_name
   vpc_id                              = local.main_vpc_id
