@@ -27,12 +27,6 @@ module "braintrust-data-plane" {
   # If braintrust_org_name is a specific name, include that org's ID here for forward compatibility.
   allowed_org_ids = ""
 
-  # Optional BTQL query.read audit logging by Braintrust Org ID.
-  # Strict mode writes audit rows before returning query results.
-  # Best-effort mode writes audit rows asynchronously and logs failures.
-  # btql_audit_logs_strict_org_ids      = []
-  # btql_audit_logs_best_effort_org_ids = []
-
   # The optional Loop runtime is disabled by default.
   enable_ecs_voice_sessions = false
   enable_loop_runtime       = false
