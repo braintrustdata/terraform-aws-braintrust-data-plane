@@ -109,6 +109,14 @@ brainstore_automation_writer_max_capacity = 2
 
 Upgrading an enabled pool also triggers a rolling instance refresh to publish ASG-level memory metrics. Equal bounds prevent autoscaling growth, but the existing rolling refresh preferences can still temporarily double capacity to preserve availability, incurring additional EC2 costs during the rollout.
 
+### Writer autoscaling
+
+Writer autoscaling is opt-in. Set `brainstore_writer_min_capacity` and `brainstore_writer_max_capacity` together to enable it for an enabled writer pool (`brainstore_writer_instance_count > 0`). Leave both unset to keep the existing fixed pool of `brainstore_writer_instance_count` instances; that path plans no changes.
+
+When enabled, two target-tracking policies scale the writer ASG on Brainstore backfill gauges: `brainstore_backfill_compaction_queue_size` (`brainstore_writer_target_compaction_queue_size`, default 15) and `brainstore_backfill_merge_loop_segments` (`brainstore_writer_target_merge_loop_segments`, default 400). Either policy can scale out; both must agree to scale in. Autoscaling owns desired capacity after creation.
+
+Writers send these gauges over statsd to the local CloudWatch agent, which publishes them to the `CWAgent` namespace with an `AutoScalingGroupName` dimension. Enabling writer autoscaling changes the writer launch template and triggers a rolling writer instance refresh. The additional statsd series are billed as CloudWatch custom metrics.
+
 ### Organization access configuration
 
 Prefer ID-based organization access for new deployments:
