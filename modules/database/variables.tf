@@ -108,6 +108,12 @@ variable "backup_window" {
   default     = "00:00-00:30"
 }
 
+variable "apply_immediately" {
+  description = "When true, RDS applies eligible changes immediately instead of during the next maintenance window. This includes queued modifications and can cause downtime."
+  type        = bool
+  default     = false
+}
+
 variable "maintenance_window" {
   description = "The weekly time range (in UTC) during which system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi. Default is Mon 08:00-11:00 UTC (12am-3am PST)."
   type        = string

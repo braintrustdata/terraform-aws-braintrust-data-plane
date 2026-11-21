@@ -517,6 +517,12 @@ variable "postgres_backup_window" {
   default     = "00:00-00:30"
 }
 
+variable "postgres_apply_immediately" {
+  description = "When true, RDS applies eligible changes immediately instead of during the next maintenance window. This includes queued modifications and can cause downtime."
+  type        = bool
+  default     = false
+}
+
 variable "postgres_maintenance_window" {
   description = "The weekly time range (in UTC) during which system maintenance can occur. Format: ddd:hh24:mi-ddd:hh24:mi. Default is Mon 08:00-11:00 UTC (12am-3am PST)."
   type        = string
@@ -1122,6 +1128,22 @@ variable "enable_private_dataplane" {
   validation {
     condition     = !var.enable_private_dataplane || (var.custom_domain == null && var.custom_certificate_arn == null && var.waf_acl_id == null)
     error_message = "Private mode does not support CloudFront domain, certificate, or WAF inputs. Private mode requires the API ALB domain and certificate inputs."
+  }
+}
+
+variable "enable_ecs_voice_sessions" {
+  type        = bool
+  description = "Enable hosted voice session creation and WebSocket connections on the background API ECS pool. Requires enable_ai_gateway and an API image containing braintrustdata/braintrust#25882. Not supported with external EKS."
+  default     = false
+
+  validation {
+    condition     = !var.enable_ecs_voice_sessions || !var.use_deployment_mode_external_eks
+    error_message = "This module does not configure hosted voice for external EKS."
+  }
+
+  validation {
+    condition     = !var.enable_ecs_voice_sessions || var.enable_ai_gateway
+    error_message = "enable_ecs_voice_sessions requires enable_ai_gateway to provide GATEWAY_URL."
   }
 }
 

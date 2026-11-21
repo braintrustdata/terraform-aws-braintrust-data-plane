@@ -105,6 +105,7 @@ locals {
 
   create_ingress                             = !var.use_deployment_mode_external_eks && !var.enable_private_dataplane
   api_url                                    = var.enable_private_dataplane ? (var.braintrust_api_alb_custom_domain == null ? null : "https://${var.braintrust_api_alb_custom_domain}") : (local.create_ingress ? module.ingress[0].api_url : null)
+  voice_session_ws_base_url                  = var.enable_ecs_voice_sessions ? replace(var.custom_domain != null ? "https://${var.custom_domain}" : local.api_url, "https://", "wss://") : null
   internal_api_url                           = local.create_ecs_api ? (var.enable_private_dataplane ? module.api_ecs[0].internal_url : module.api_ecs[0].http_url) : null
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
@@ -338,6 +339,7 @@ module "database" {
   auto_minor_version_upgrade         = var.postgres_auto_minor_version_upgrade
   backup_retention_period            = var.postgres_backup_retention_period
   backup_window                      = var.postgres_backup_window
+  apply_immediately                  = var.postgres_apply_immediately
   maintenance_window                 = var.postgres_maintenance_window
   DANGER_disable_deletion_protection = var.DANGER_disable_database_deletion_protection
 
@@ -575,6 +577,8 @@ module "gateway_ecs" {
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
   custom_tags                           = local.all_custom_tags
+  brainstore_s3_bucket_arn              = module.storage.brainstore_bucket_arn
+  brainstore_s3_bucket_kms_key_arn      = var.existing_brainstore_s3_bucket_kms_key_arn
   brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
   brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
   brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
@@ -782,6 +786,9 @@ module "api_ecs" {
   deployment_name      = var.deployment_name
   api_version_override = local.api_version_tag
 
+  enable_ecs_voice_sessions = var.enable_ecs_voice_sessions
+  voice_session_ws_base_url = local.voice_session_ws_base_url
+
   # Telemetry
   monitoring_telemetry                          = var.monitoring_telemetry
   internal_observability_api_key_secret_arn     = local.internal_observability_api_key_secret_arn
@@ -937,6 +944,7 @@ module "ingress" {
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api
+  enable_ecs_voice_sessions           = var.enable_ecs_voice_sessions
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled

@@ -35,7 +35,8 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime = false
+  enable_ecs_voice_sessions = false
+  enable_loop_runtime       = false
   # Hard cutover: existing chats start fresh sandboxes on Sandbox Service.
   enable_sandbox_service         = false
   sandbox_service_instance_types = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge"]

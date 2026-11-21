@@ -44,7 +44,8 @@ module "braintrust-data-plane" {
   # brainstore_automation_writer_target_memory_utilization apply only to module-managed EC2, not EKS.
 
   # Loop runtime is not supported with external EKS deployments.
-  enable_loop_runtime = false
+  enable_ecs_voice_sessions = false
+  enable_loop_runtime       = false
   # Sandbox Service also requires the module-managed Loop runtime.
   enable_sandbox_service         = false
   sandbox_service_instance_types = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge"]

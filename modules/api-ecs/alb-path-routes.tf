@@ -24,7 +24,7 @@
 # non-overlapping range (or append into unused numbers).
 
 locals {
-  alb_path_routes = [
+  alb_path_routes = concat([
     # braintrust-api-ingest
     { path = "/logs3", method = "POST", priority = 100, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
     { path = "/otel/v1/*", method = "POST", priority = 110, target_group = aws_lb_target_group.braintrust_api_ingest.arn },
@@ -43,13 +43,18 @@ locals {
     { path = "/function/eval", method = "POST", priority = 220, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/sandbox", method = "POST", priority = 230, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/use", method = "POST", priority = 240, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/function/invoke", method = "POST", priority = 243, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/v1/function/*/invoke", method = "POST", priority = 246, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/invoke-async-batch", method = "POST", priority = 250, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/function/insert-functions", method = "POST", priority = 260, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/automation/logs/trigger", method = "POST", priority = 270, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/automation/trigger", method = "POST", priority = 275, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/chat/completions", priority = 280, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/responses", priority = 290, target_group = aws_lb_target_group.braintrust_api_background.arn },
-  ]
+    ], var.enable_ecs_voice_sessions ? [
+    { path = "/v1/project/*/simulated_user/*/session", method = "POST", priority = 300, target_group = aws_lb_target_group.braintrust_api_background.arn },
+    { path = "/v1/voice_session/*/connect", method = "GET", priority = 310, target_group = aws_lb_target_group.braintrust_api_background.arn },
+  ] : [])
 
   alb_path_listener_rules = {
     for route in local.alb_path_routes :
@@ -90,6 +95,8 @@ resource "aws_lb_listener_rule" "alb_path_routes" {
       values = [each.value.path]
     }
   }
+
+  tags = local.common_tags
 }
 
 resource "aws_lb_listener_rule" "alb_internal_path_routes" {
