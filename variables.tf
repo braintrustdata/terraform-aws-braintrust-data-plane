@@ -792,6 +792,76 @@ variable "enable_loop_runtime" {
   }
 }
 
+variable "enable_sandbox_service" {
+  type        = bool
+  default     = false
+  description = "Deploy Sandbox Service and replace Loop Runtime's Lambda sandbox backend in one apply. Every chat starts a fresh service sandbox; files and processes are not migrated."
+  validation {
+    condition     = !var.enable_sandbox_service || var.enable_loop_runtime
+    error_message = "enable_sandbox_service requires enable_loop_runtime."
+  }
+}
+
+variable "sandbox_service_instance_types" {
+  type        = list(string)
+  default     = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge"]
+  description = "Sandbox worker instance types with local NVMe and nested virtualization. Availability depends on region and AZ."
+}
+
+variable "sandbox_service_vcpu_count" {
+  type        = number
+  default     = 1
+  description = "Virtual CPUs reserved per Sandbox Service sandbox."
+}
+
+variable "sandbox_service_memory_mib" {
+  type        = number
+  default     = 2048
+  description = "Memory in MiB reserved per Sandbox Service sandbox."
+}
+
+variable "sandbox_service_existing_private_subnet_1_id" {
+  type        = string
+  default     = null
+  description = "Dedicated sandbox private subnet 1 in an existing main VPC. Required when enable_sandbox_service is true and create_vpc is false. The caller owns routes and subnet network ACLs."
+  validation {
+    condition     = !var.enable_sandbox_service || var.create_vpc || try(trimspace(var.sandbox_service_existing_private_subnet_1_id) != "", false)
+    error_message = "An existing VPC requires three nonempty dedicated Sandbox Service subnet IDs."
+  }
+  validation {
+    condition     = var.sandbox_service_existing_private_subnet_1_id == null || (!var.create_vpc && try(trimspace(var.sandbox_service_existing_private_subnet_1_id) != "", false))
+    error_message = "Sandbox Service existing subnet IDs must be nonempty and are only used with create_vpc = false."
+  }
+}
+
+variable "sandbox_service_existing_private_subnet_2_id" {
+  type        = string
+  default     = null
+  description = "Dedicated sandbox private subnet 2 in an existing main VPC. Required when enable_sandbox_service is true and create_vpc is false. The caller owns routes and subnet network ACLs."
+  validation {
+    condition     = !var.enable_sandbox_service || var.create_vpc || try(trimspace(var.sandbox_service_existing_private_subnet_2_id) != "", false)
+    error_message = "An existing VPC requires three nonempty dedicated Sandbox Service subnet IDs."
+  }
+  validation {
+    condition     = var.sandbox_service_existing_private_subnet_2_id == null || (!var.create_vpc && try(trimspace(var.sandbox_service_existing_private_subnet_2_id) != "", false))
+    error_message = "Sandbox Service existing subnet IDs must be nonempty and are only used with create_vpc = false."
+  }
+}
+
+variable "sandbox_service_existing_private_subnet_3_id" {
+  type        = string
+  default     = null
+  description = "Dedicated sandbox private subnet 3 in an existing main VPC. Required when enable_sandbox_service is true and create_vpc is false. The caller owns routes and subnet network ACLs."
+  validation {
+    condition     = !var.enable_sandbox_service || var.create_vpc || try(trimspace(var.sandbox_service_existing_private_subnet_3_id) != "", false)
+    error_message = "An existing VPC requires three nonempty dedicated Sandbox Service subnet IDs."
+  }
+  validation {
+    condition     = var.sandbox_service_existing_private_subnet_3_id == null || (!var.create_vpc && try(trimspace(var.sandbox_service_existing_private_subnet_3_id) != "", false))
+    error_message = "Sandbox Service existing subnet IDs must be nonempty and are only used with create_vpc = false."
+  }
+}
+
 variable "loop_runtime_version_override" {
   type        = string
   description = "Override the Loop runtime and MicroVM guest version. Restricted sandbox egress requires Loop runtime 2.16.0 or later. Null uses the module's default version."

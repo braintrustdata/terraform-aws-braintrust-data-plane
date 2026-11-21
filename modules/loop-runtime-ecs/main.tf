@@ -94,9 +94,28 @@ locals {
     } : {},
   )
 
+  sandbox_service_env = var.sandbox_service == null ? {} : {
+    LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN       = "0.0.0.0:4002"
+    EXO_SANDBOX_PROVIDER                            = "sandbox_service"
+    EXO_SANDBOX_IMAGE                               = var.sandbox_service.image
+    EXO_SANDBOX_SERVICE_DNS_URL                     = var.sandbox_service.endpoint
+    EXO_SANDBOX_SERVICE_IMAGE                       = var.sandbox_service.image
+    EXO_SANDBOX_VCPU_COUNT                          = tostring(var.sandbox_service.vcpu_count)
+    EXO_SANDBOX_MEMORY_MIB                          = tostring(var.sandbox_service.memory_mib)
+    SANDBOX_SERVICE_TLS_CERT                        = "/etc/sandbox-tls/cert.pem"
+    SANDBOX_SERVICE_TLS_KEY                         = "/etc/sandbox-tls/key.pem"
+    SANDBOX_SERVICE_TLS_CA                          = "/etc/sandbox-tls/ca_cert.pem"
+    LOOP_RUNTIME_SANDBOX_SERVICE_EGRESS_GATEWAY_URL = var.sandbox_service.egress_gateway_url
+    LOOP_RUNTIME_SANDBOX_EGRESS_MODE                = "restricted"
+    LOOP_RUNTIME_SANDBOX_EKS_CLUSTER                = var.sandbox_service.cluster_name
+    LOOP_RUNTIME_SANDBOX_KUBERNETES_API_URL         = var.sandbox_service.kubernetes_api_url
+    LOOP_RUNTIME_SANDBOX_KUBERNETES_CA              = var.sandbox_service.kubernetes_ca
+  }
+
   merged_env_vars = merge(
     local.core_env,
     var.sandbox_env_vars,
+    local.sandbox_service_env,
     var.extra_env_vars,
     local.observability_enabled ? module.datadog_agent_telemetry.otlp_env_vars : {},
   )
@@ -118,6 +137,47 @@ locals {
       { name = "BRAINSTORE_LOCKS_URI", valueFrom = local.redis_url_secret_value_from },
     ],
   )
+
+  sandbox_tls_init_containers = var.sandbox_service == null ? [] : [{
+    name      = "sandbox-tls-init"
+    image     = var.container_image
+    user      = "0:0"
+    essential = false
+    entryPoint = ["node", "-e", <<-JS
+      const fs = require('fs');
+      let bundle;
+      try { bundle = JSON.parse(process.env.TLS_BUNDLE); }
+      catch { throw new Error('Invalid sandbox TLS bundle'); }
+      if (!bundle || typeof bundle !== 'object') {
+        throw new Error('Invalid sandbox TLS bundle');
+      }
+      for (const field of ['cert', 'key', 'ca_cert']) {
+        if (typeof bundle[field] !== 'string' || !bundle[field]) {
+          throw new Error('Invalid sandbox TLS bundle');
+        }
+        const path = '/tls/' + field + '.pem';
+        fs.writeFileSync(path, bundle[field], { mode: 0o400 });
+        fs.chownSync(path, 1000, 1000);
+      }
+    JS
+    ]
+    secrets = [{ name = "TLS_BUNDLE", valueFrom = var.sandbox_service.client_tls_secret_arn }]
+    mountPoints = [{
+      sourceVolume = "sandbox-tls", containerPath = "/tls", readOnly = false
+    }]
+    environment    = []
+    portMappings   = []
+    systemControls = []
+    volumesFrom    = []
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.service.name
+        awslogs-region        = data.aws_region.current.region
+        awslogs-stream-prefix = "sandbox-tls-init"
+      }
+    }
+  }]
 
   app_log_configuration = jsondecode(local.datadog_firelens_logs ? jsonencode({
     logDriver = "awsfirelens"
@@ -180,12 +240,12 @@ locals {
       }
     ]
     secrets = local.container_secrets
-    dependsOn = [
+    dependsOn = concat([
       for dep in [
         { containerName = "log-router", condition = "START" },
         { containerName = "datadog-agent", condition = "START" },
       ] : dep if local.observability_enabled && (dep.containerName != "log-router" || local.datadog_firelens_logs)
-    ]
+    ], var.sandbox_service == null ? [] : [{ containerName = "sandbox-tls-init", condition = "SUCCESS" }])
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:${local.container_port}/health/liveness || exit 1"]
       interval    = 30
@@ -194,7 +254,7 @@ locals {
       timeout     = 5
     }
     logConfiguration = local.app_log_configuration
-    mountPoints      = []
+    mountPoints      = var.sandbox_service == null ? [] : [{ sourceVolume = "sandbox-tls", containerPath = "/etc/sandbox-tls", readOnly = true }]
     systemControls   = []
     volumesFrom      = []
   }
@@ -393,6 +453,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           ],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
           [var.brainstore_license_key_secret_arn],
+          var.sandbox_service == null ? [] : [var.sandbox_service.client_tls_secret_arn],
         )
       },
       {
@@ -578,6 +639,7 @@ resource "aws_iam_role_policy" "execute_command" {
 
 # Sandbox-supplied IAM (MicroVM lifecycle, network connectors, optional PassRole).
 resource "aws_iam_role_policy" "sandbox" {
+  count  = var.sandbox_service == null ? 1 : 0
   name   = "LoopRuntimeSandbox"
   role   = aws_iam_role.task.id
   policy = var.additional_task_role_policy_json
@@ -592,7 +654,7 @@ resource "aws_ecs_task_definition" "loop_runtime" {
   cpu                      = tostring(var.cpu)
   memory                   = tostring(var.memory)
   execution_role_arn       = aws_iam_role.task_execution.arn
-  task_role_arn            = aws_iam_role.task.arn
+  task_role_arn            = var.sandbox_service == null ? aws_iam_role.task.arn : aws_eks_access_entry.sandbox_worker_nodes[0].principal_arn
 
   runtime_platform {
     operating_system_family = "LINUX"
@@ -606,7 +668,13 @@ resource "aws_ecs_task_definition" "loop_runtime" {
     }
   }
 
-  container_definitions = jsonencode(concat([local.loop_runtime_container_definition], local.observability_sidecars))
+  dynamic "volume" {
+    for_each = var.sandbox_service == null ? [] : ["sandbox-tls"]
+    content {
+      name = volume.value
+    }
+  }
+  container_definitions = jsonencode(concat([local.loop_runtime_container_definition], local.sandbox_tls_init_containers, local.observability_sidecars))
 
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime"
@@ -686,4 +754,13 @@ resource "aws_ecs_service" "loop_runtime" {
   tags = merge({
     Name = "${var.deployment_name}-loop-runtime"
   }, local.common_tags)
+}
+
+resource "aws_eks_access_entry" "sandbox_worker_nodes" {
+  count             = var.sandbox_service == null ? 0 : 1
+  cluster_name      = var.sandbox_service.cluster_name
+  principal_arn     = aws_iam_role.task.arn
+  kubernetes_groups = ["braintrust:sandbox-worker-node-readers"]
+  type              = "STANDARD"
+  tags              = local.common_tags
 }
