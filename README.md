@@ -109,6 +109,14 @@ brainstore_automation_writer_max_capacity = 2
 
 Upgrading an enabled pool also triggers a rolling instance refresh to publish ASG-level memory metrics. Equal bounds prevent autoscaling growth, but the existing rolling refresh preferences can still temporarily double capacity to preserve availability, incurring additional EC2 costs during the rollout.
 
+### Reader autoscaling
+
+Reader autoscaling is opt-in. Set `brainstore_reader_min_capacity` and `brainstore_reader_max_capacity` together to enable it. Leave both unset to keep the existing fixed pool of `brainstore_instance_count` instances; that path plans no changes.
+
+When enabled, a target-tracking policy scales the reader ASG on average CPU utilization (`brainstore_reader_target_cpu_utilization`, default 70%, matching CloudFormation). Autoscaling owns desired capacity after creation. When there are no dedicated writers (`brainstore_writer_instance_count = 0`), this pool also serves writes and scales the same way.
+
+The Brainstore deployment gate receives the reader bounds instead of a fixed count and waits for the ASG's live desired capacity. This requires a deployment helper with autoscaled-fleet support for the selected API version. With an older helper, the gate rejects the request and the apply stops before the API updates.
+
 ### Organization access configuration
 
 Prefer ID-based organization access for new deployments:

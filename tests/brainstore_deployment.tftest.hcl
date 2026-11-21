@@ -43,12 +43,19 @@ run "complete_rollout" {
       deployment = {
         schema_version  = 1
         deployment_name = var.deployment_name
-        fleets          = var.fleets
+        fleets = [{
+          role                    = "reader"
+          asg_name                = "bt-test-brainstore-123"
+          launch_template_id      = "lt-abc123"
+          launch_template_version = "2"
+          desired_capacity        = 2
+          target_group_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/reader/abc123"
+        }]
       }
       wait_seconds      = 840
       return_on_timeout = true
     })
-    error_message = "The first invocation must allow a timeout response so Terraform can retry."
+    error_message = "The first invocation must allow a timeout response so Terraform can retry, and exact-capacity fleets must keep the original request with a numeric desired_capacity and no bound fields."
   }
   assert {
     condition     = output.completion_id == aws_lambda_invocation.retry.id && jsondecode(aws_lambda_invocation.retry.result).status == "complete"
@@ -130,4 +137,72 @@ run "changed_launch_template" {
     condition     = output.completion_id != run.complete_rollout.completion_id && jsondecode(aws_lambda_invocation.retry.input).deployment.fleets[0].launch_template_version == "3"
     error_message = "Changing the deployment must replace the final invocation and send the new launch template."
   }
+}
+
+run "autoscaled_fleet_sends_bounds" {
+  command = apply
+  module { source = "./modules/brainstore-deployment" }
+
+  variables {
+    fleets = [{
+      role                    = "reader"
+      asg_name                = "bt-test-brainstore-123"
+      launch_template_id      = "lt-abc123"
+      launch_template_version = "2"
+      min_capacity            = 2
+      max_capacity            = 6
+      target_group_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/reader/abc123"
+    }]
+  }
+
+  assert {
+    condition = jsondecode(aws_lambda_invocation.rollout.input).deployment.fleets == [{
+      role                    = "reader"
+      asg_name                = "bt-test-brainstore-123"
+      launch_template_id      = "lt-abc123"
+      launch_template_version = "2"
+      min_capacity            = 2
+      max_capacity            = 6
+      target_group_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/reader/abc123"
+    }] && strcontains(aws_lambda_invocation.rollout.input, "\"max_capacity\":6") && !strcontains(aws_lambda_invocation.rollout.input, "desired_capacity")
+    error_message = "Autoscaled fleets must send numeric bounds and no desired_capacity."
+  }
+}
+
+run "rejects_fleet_without_capacity" {
+  command = plan
+  module { source = "./modules/brainstore-deployment" }
+
+  variables {
+    fleets = [{
+      role                    = "reader"
+      asg_name                = "bt-test-brainstore-123"
+      launch_template_id      = "lt-abc123"
+      launch_template_version = "2"
+      min_capacity            = 2
+      target_group_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/reader/abc123"
+    }]
+  }
+
+  expect_failures = [var.fleets]
+}
+
+run "rejects_fleet_with_both_capacity_forms" {
+  command = plan
+  module { source = "./modules/brainstore-deployment" }
+
+  variables {
+    fleets = [{
+      role                    = "reader"
+      asg_name                = "bt-test-brainstore-123"
+      launch_template_id      = "lt-abc123"
+      launch_template_version = "2"
+      desired_capacity        = 2
+      min_capacity            = 2
+      max_capacity            = 6
+      target_group_arn        = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/reader/abc123"
+    }]
+  }
+
+  expect_failures = [var.fleets]
 }

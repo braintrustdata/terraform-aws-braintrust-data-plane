@@ -64,14 +64,16 @@ output "monitoring_targets" {
 }
 
 output "deployment_fleets" {
-  description = "Exact desired fleets for the deployment controller."
+  description = "Desired fleets for the deployment controller: an exact desired_capacity, or min_capacity and max_capacity for autoscaled fleets."
   value = concat(
     [{
       role                    = "reader"
       asg_name                = aws_autoscaling_group.brainstore.name
       launch_template_id      = aws_launch_template.brainstore.id
       launch_template_version = tostring(aws_launch_template.brainstore.latest_version)
-      desired_capacity        = var.instance_count
+      desired_capacity        = local.reader_autoscaling_enabled ? null : var.instance_count
+      min_capacity            = local.reader_autoscaling_enabled ? var.reader_min_capacity : null
+      max_capacity            = local.reader_autoscaling_enabled ? var.reader_max_capacity : null
       target_group_arn        = aws_lb_target_group.brainstore.arn
     }],
     [for group in aws_autoscaling_group.brainstore_fast_reader : {
@@ -80,6 +82,8 @@ output "deployment_fleets" {
       launch_template_id      = aws_launch_template.brainstore_fast_reader[0].id
       launch_template_version = tostring(aws_launch_template.brainstore_fast_reader[0].latest_version)
       desired_capacity        = var.fast_reader_instance_count
+      min_capacity            = null
+      max_capacity            = null
       target_group_arn        = aws_lb_target_group.brainstore_fast_reader[0].arn
     }],
   )
