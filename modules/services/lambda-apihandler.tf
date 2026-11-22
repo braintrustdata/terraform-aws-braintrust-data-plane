@@ -59,7 +59,7 @@ locals {
     TELEMETRY_DISABLE_AGGREGATION = var.disable_billing_telemetry_aggregation
     TELEMETRY_LOG_LEVEL           = var.billing_telemetry_log_level
 
-    SERVICE_TOKEN_SECRET_KEY = var.function_tools_secret_key
+    SERVICE_TOKEN_SECRET_KEY = var.service_token_secret_key == null ? var.function_tools_secret_key : var.service_token_secret_key
     CRON_OVERRIDE_SECRET_KEY = random_password.service_token_secret_key.result
     }, var.brainstore_enabled && var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != "" ? {
     BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"

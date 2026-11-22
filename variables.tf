@@ -1366,6 +1366,18 @@ variable "braintrust_api_extra_env_vars" {
   }
 }
 
+variable "function_secret_keys_secret_arn" {
+  description = "Optional Secrets Manager ARN of the JSON keyring for FUNCTION_SECRET_KEY. Defaults to the legacy key; redeploy consumers after secret updates."
+  type        = string
+  default     = null
+}
+
+variable "service_token_secret_keys_secret_arn" {
+  description = "Optional Secrets Manager ARN of the JSON keyring for SERVICE_TOKEN_SECRET_KEY. Defaults to the legacy key; redeploy consumers after secret updates."
+  type        = string
+  default     = null
+}
+
 variable "custom_ca_bundle_secret_arn" {
   description = "Optional ARN of an existing AWS Secrets Manager secret containing a PEM-encoded custom CA bundle for API ECS, Brainstore EC2, and Gateway ECS outbound HTTPS."
   type        = string

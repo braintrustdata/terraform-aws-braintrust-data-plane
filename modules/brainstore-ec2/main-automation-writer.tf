@@ -61,6 +61,7 @@ resource "aws_launch_template" "brainstore_automation_writer" {
     internal_observability_region                 = var.internal_observability_region
     datadog_agent_container_logs                  = module.datadog_agent_telemetry["automation_writer"].container_logs
     datadog_agent_otlp_env_vars                   = module.datadog_agent_telemetry["automation_writer"].otlp_env_vars
+    function_secret_arn                           = local.function_secret_arn
     service_token_secret_arn                      = var.service_token_secret_arn
     custom_ca_bundle_secret_arn                   = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script                    = var.custom_post_install_script

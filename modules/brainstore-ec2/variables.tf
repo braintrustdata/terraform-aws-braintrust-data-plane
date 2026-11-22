@@ -184,6 +184,12 @@ variable "internal_observability_region" {
   default     = "us5"
 }
 
+variable "function_secret_arn" {
+  type        = string
+  description = "Optional ARN of the Secrets Manager secret containing FUNCTION_SECRET_KEY. Defaults to service_token_secret_arn."
+  default     = null
+}
+
 variable "service_token_secret_arn" {
   type        = string
   description = "The ARN of the Secrets Manager secret containing SERVICE_TOKEN_SECRET_KEY."

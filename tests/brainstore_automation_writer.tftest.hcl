@@ -54,6 +54,7 @@ run "automation_writer_loop_config_is_rendered" {
   }
 
   variables {
+    function_secret_arn        = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-keyring"
     fast_reader_instance_count = 1
   }
 

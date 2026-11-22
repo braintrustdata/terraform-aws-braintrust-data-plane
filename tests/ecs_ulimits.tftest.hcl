@@ -142,6 +142,16 @@ run "api_ecs_containers_have_one_million_nofile_limit" {
     ])
     error_message = "API ECS REDIS_URL secrets must pin the Secrets Manager version id in valueFrom."
   }
+
+  assert {
+    condition = alltrue([
+      for task in [aws_ecs_task_definition.braintrust_api, aws_ecs_task_definition.braintrust_api_ingest, aws_ecs_task_definition.braintrust_api_background] : alltrue([
+        for name in ["FUNCTION_SECRET_KEY", "SERVICE_TOKEN_SECRET_KEY"] :
+        one([for s in jsondecode(task.container_definitions)[0].secrets : s.valueFrom if s.name == name]) == var.function_tools_secret_arn
+      ])
+    ])
+    error_message = "Without keyring overrides, ECS must retain the legacy secret for both families."
+  }
 }
 
 run "gateway_containers_have_one_million_nofile_limit" {
@@ -329,5 +339,15 @@ run "loop_runtime_containers_have_one_million_nofile_limit" {
       )
     ])
     error_message = "Loop Redis URL secrets must pin the Secrets Manager version id in valueFrom."
+  }
+
+  assert {
+    condition = alltrue([
+      for task in [aws_ecs_task_definition.loop_runtime] : alltrue([
+        for name in ["FUNCTION_SECRET_KEY", "SERVICE_TOKEN_SECRET_KEY"] :
+        one([for s in jsondecode(task.container_definitions)[0].secrets : s.valueFrom if s.name == name]) == var.function_tools_secret_arn
+      ])
+    ])
+    error_message = "Without keyring overrides, ECS must retain the legacy secret for both families."
   }
 }

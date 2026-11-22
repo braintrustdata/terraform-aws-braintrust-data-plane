@@ -43,6 +43,9 @@ run "set_values_reach_both_lambdas" {
   module { source = "./modules/services" }
 
   variables {
+    function_tools_secret_key = jsonencode({ active_key_name = "new", legacy_key_name = "old", keys = { old = { value = "legacy" }, new = { value = "function-key" } } })
+    service_token_secret_key  = jsonencode({ active_key_name = "new", legacy_key_name = "old", keys = { old = { value = "legacy" }, new = { value = "token-key" } } })
+
     unsafe_url_request_mode  = " reject "
     url_security_dns_servers = "1.1.1.1"
     url_security_allow_cidrs = "10.1.2.3/32"
@@ -65,6 +68,15 @@ run "set_values_reach_both_lambdas" {
     )
     error_message = "AIProxy should receive the same URL-security settings as APIHandler"
   }
+
+  assert {
+    condition = alltrue([
+      for fn in [aws_lambda_function.api_handler[0], aws_lambda_function.ai_proxy[0], aws_lambda_function.automation_cron] :
+      fn.environment[0].variables["FUNCTION_SECRET_KEY"] == var.function_tools_secret_key &&
+      fn.environment[0].variables["SERVICE_TOKEN_SECRET_KEY"] == var.service_token_secret_key
+    ]) && aws_lambda_function.billing_cron.environment[0].variables["SERVICE_TOKEN_SECRET_KEY"] == var.service_token_secret_key
+    error_message = "API, proxy, and automation Lambdas must receive both keyrings; billing needs the service-token keyring."
+  }
 }
 
 run "unset_values_leave_env_unchanged" {
@@ -78,5 +90,13 @@ run "unset_values_leave_env_unchanged" {
       !contains(keys(aws_lambda_function.api_handler[0].environment[0].variables), k)
     ])
     error_message = "Unset URL-security inputs must not add env vars, so existing Lambdas see no change"
+  }
+
+  assert {
+    condition = alltrue([
+      for fn in [aws_lambda_function.api_handler[0], aws_lambda_function.ai_proxy[0], aws_lambda_function.automation_cron, aws_lambda_function.billing_cron] :
+      fn.environment[0].variables["SERVICE_TOKEN_SECRET_KEY"] == var.function_tools_secret_key
+    ])
+    error_message = "Legacy Lambda service tokens must continue using the generated function-tools key."
   }
 }

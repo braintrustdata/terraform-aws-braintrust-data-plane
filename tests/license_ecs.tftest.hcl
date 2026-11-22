@@ -10,6 +10,8 @@ run "api_ecs_license" {
   command = plan
   module { source = "./modules/api-ecs" }
   variables {
+    function_secret_keys_secret_arn       = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-keyring"
+    service_token_secret_arn              = "arn:aws:secretsmanager:us-east-1:123456789012:secret:service-keyring"
     deployment_name                       = "bt-test"
     kms_key_arn                           = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                = "vpc-0123456789abcdef0"
@@ -115,6 +117,16 @@ run "api_ecs_license" {
     condition     = strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_secret_arn) && strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_kms_key_arn)
     error_message = "The execution policy must authorize the license secret and its KMS key."
   }
+
+  assert {
+    condition = alltrue([
+      for task in [aws_ecs_task_definition.braintrust_api, aws_ecs_task_definition.braintrust_api_ingest, aws_ecs_task_definition.braintrust_api_background] :
+      one([for s in jsondecode(task.container_definitions)[0].secrets : s.valueFrom if s.name == "FUNCTION_SECRET_KEY"]) == var.function_secret_keys_secret_arn &&
+      one([for s in jsondecode(task.container_definitions)[0].secrets : s.valueFrom if s.name == "SERVICE_TOKEN_SECRET_KEY"]) == var.service_token_secret_arn &&
+      alltrue([for c in jsondecode(task.container_definitions) : alltrue([for e in c.environment : !contains(["FUNCTION_SECRET_KEY", "SERVICE_TOKEN_SECRET_KEY"], e.name)])])
+    ]) && alltrue([for arn in [var.function_tools_secret_arn, var.function_secret_keys_secret_arn, var.service_token_secret_arn] : contains(jsondecode(aws_iam_role_policy.task_execution_secrets.policy).Statement[0].Resource, arn)])
+    error_message = "Keyrings must use singular ECS secrets, with access to both keyrings and the legacy secret for rollback."
+  }
 }
 
 run "gateway_ecs_license" {
@@ -158,6 +170,8 @@ run "loop_runtime_ecs_license" {
   command = plan
   module { source = "./modules/loop-runtime-ecs" }
   variables {
+    function_secret_keys_secret_arn           = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-keyring"
+    service_token_secret_arn                  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:service-keyring"
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
     vpc_id                                    = "vpc-0123456789abcdef0"
@@ -196,5 +210,15 @@ run "loop_runtime_ecs_license" {
   assert {
     condition     = strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_secret_arn) && strcontains(aws_iam_role_policy.task_execution_secrets.policy, var.brainstore_license_key_kms_key_arn)
     error_message = "The execution policy must authorize the license secret and its KMS key."
+  }
+
+  assert {
+    condition = alltrue([
+      for task in [aws_ecs_task_definition.loop_runtime] :
+      one([for s in jsondecode(task.container_definitions)[0].secrets : s.valueFrom if s.name == "FUNCTION_SECRET_KEY"]) == var.function_secret_keys_secret_arn &&
+      one([for s in jsondecode(task.container_definitions)[0].secrets : s.valueFrom if s.name == "SERVICE_TOKEN_SECRET_KEY"]) == var.service_token_secret_arn &&
+      alltrue([for c in jsondecode(task.container_definitions) : alltrue([for e in c.environment : !contains(["FUNCTION_SECRET_KEY", "SERVICE_TOKEN_SECRET_KEY"], e.name)])])
+    ]) && alltrue([for arn in [var.function_tools_secret_arn, var.function_secret_keys_secret_arn, var.service_token_secret_arn] : contains(jsondecode(aws_iam_role_policy.task_execution_secrets.policy).Statement[0].Resource, arn)])
+    error_message = "Keyrings must use singular ECS secrets, with access to both keyrings and the legacy secret for rollback."
   }
 }

@@ -381,6 +381,18 @@ locals {
           ]
         })
       }
+      "/sysadmin/{op}" = {
+        for method in ["options", "post"] : method => merge(local.snippet_api_json_method, {
+          parameters = [
+            {
+              name     = "op"
+              in       = "path"
+              required = true
+              type     = "string"
+            }
+          ]
+        })
+      }
       "/migration-status" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
