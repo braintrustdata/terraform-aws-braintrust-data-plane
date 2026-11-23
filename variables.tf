@@ -728,6 +728,14 @@ variable "ai_gateway_alb_drop_invalid_header_fields" {
   default     = false
 }
 
+variable "ai_gateway_usage_signing_key" {
+  description = "Optional KMS signing key for Gateway usage credentials. The receiving API must trust its public key; null keeps organization-scoped private ingestion."
+  type = object({
+    arn = string
+  })
+  default = null
+}
+
 variable "ai_gateway_extra_env_vars" {
   description = "Extra environment variables for the gateway ECS container"
   type        = map(string)

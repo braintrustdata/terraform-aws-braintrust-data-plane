@@ -363,3 +363,11 @@ variable "authorized_security_groups" {
   description = "Additional load balancer security groups that can access the application port."
   default     = {}
 }
+
+variable "usage_signing_key" {
+  description = "Optional KMS key for signing Gateway usage credentials accepted by the receiving API."
+  type = object({
+    arn = string
+  })
+  default = null
+}

@@ -13,7 +13,8 @@ module "braintrust-data-plane" {
 
   # This is primarily used for tagging and naming resources in your AWS account.
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "braintrust"
+  deployment_name              = "braintrust"
+  ai_gateway_usage_signing_key = null
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.

@@ -14,7 +14,8 @@ module "braintrust-data-plane" {
   # IMPORTANT: Each deployment in the same AWS account must have a unique name.
   # Use a short prefix + your name or identifier (max 18 characters).
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "bt-sandbox"
+  deployment_name              = "bt-sandbox"
+  ai_gateway_usage_signing_key = null
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.
