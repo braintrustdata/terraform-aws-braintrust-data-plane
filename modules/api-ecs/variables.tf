@@ -4,7 +4,7 @@ variable "enable_private_dataplane" {
   default     = false
 }
 
-variable "enable_ecs_voice_sessions" {
+variable "enable_voice_sessions" {
   type        = bool
   description = "Enable hosted voice routes and occupancy scaling on the background API pool."
   default     = false
@@ -16,7 +16,7 @@ variable "voice_session_ws_base_url" {
   default     = null
 
   validation {
-    condition     = !var.enable_ecs_voice_sessions || can(regex("^wss://[^/]+$", var.voice_session_ws_base_url))
+    condition     = !var.enable_voice_sessions || can(regex("^wss://[^/]+$", var.voice_session_ws_base_url))
     error_message = "Enabled voice sessions require a wss:// origin without a path."
   }
 }

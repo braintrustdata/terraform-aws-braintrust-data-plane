@@ -136,7 +136,7 @@ resource "aws_appautoscaling_policy" "braintrust_api_background_memory_target" {
 }
 
 resource "aws_appautoscaling_policy" "braintrust_api_background_voice_slots" {
-  count = var.enable_ecs_voice_sessions ? 1 : 0
+  count = var.enable_voice_sessions ? 1 : 0
 
   name               = "${var.deployment_name}-braintrust-api-background-voice-slots"
   policy_type        = "TargetTrackingScaling"

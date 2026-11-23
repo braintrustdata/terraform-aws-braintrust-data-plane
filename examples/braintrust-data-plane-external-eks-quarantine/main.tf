@@ -44,8 +44,8 @@ module "braintrust-data-plane" {
   # brainstore_automation_writer_target_memory_utilization apply only to module-managed EC2, not EKS.
 
   # Loop runtime is not supported with external EKS deployments.
-  enable_ecs_voice_sessions = false
-  enable_loop_runtime       = false
+  enable_voice_sessions = false
+  enable_loop_runtime   = false
   # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
   # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
