@@ -328,6 +328,11 @@ enable_loop_runtime    = true
 enable_sandbox_service = true
 ```
 
+Sandbox Service follows the same release version as Loop Runtime. The module's
+normal release pins select the default; `loop_runtime_version_override` overrides
+both together. The worker image, guest image, chart and bootstrap are resolved
+from that release's published metadata, without a separate Sandbox Service pin.
+
 `enable_sandbox_service` defaults to false. Setting it to true deploys the EKS
 fleet, switches Loop to Firecracker and removes the Lambda sandbox infrastructure
 in the same apply. Every chat gets a fresh Sandbox Service environment. Existing

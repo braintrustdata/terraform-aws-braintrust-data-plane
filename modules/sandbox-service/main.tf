@@ -3,7 +3,23 @@ locals {
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
-  versions          = jsondecode(file("${path.module}/VERSIONS.json"))
+  release_template = yamldecode(data.http.release.response_body)
+  release_helm_template = try(
+    local.release_template.Outputs.SandboxServiceHelmValues.Value["Fn::Sub"][0],
+    local.release_template.Outputs.SandboxServiceHelmValues.Value["Fn::Sub"],
+  )
+  # Only the image pins are used. Neutralize CloudFormation deployment tokens
+  # (including unquoted numeric parameters) before decoding the published JSON.
+  release_helm_values = jsondecode(replace(local.release_helm_template, "/\\$\\{[^}]+\\}/", "null"))
+  release_chart       = regex("^https://([^.]+)\\.s3[^/]*/(.+)$", local.release_template.Outputs.SandboxServiceChartUrl.Value)
+  release_bootstrap   = regex("^s3://([^/]+)/(.+)$", local.release_template.Resources.SandboxServiceReleaseFunction.Properties.CodeUri)
+  versions = {
+    sandbox-service  = local.release_helm_values.image
+    sandbox-image    = local.release_helm_values.prewarmTemplates[0].image
+    chart-key        = local.release_chart[1]
+    bootstrap-key    = local.release_bootstrap[1]
+    bootstrap-sha256 = local.release_template.Resources.SandboxServiceRelease.Properties.ProviderVersion
+  }
   cluster_name      = "${var.deployment_name}-sandbox"
   namespace         = "braintrust-sandbox"
   hostname          = "nodes.${var.deployment_name}.sandbox.internal"
@@ -50,6 +66,35 @@ locals {
 data "aws_region" "current" {}
 data "aws_partition" "current" {}
 data "aws_caller_identity" "current" {}
+
+# Follow the same release tag and HTTP lookup convention as the Lambda and
+# MicroVM modules, resolving all sandbox artifacts as one compatible release.
+data "http" "release" {
+  url = "https://${local.artifact_bucket}.s3.amazonaws.com/braintrust-${var.version_tag}.yaml"
+
+  retry {
+    attempts     = 5
+    min_delay_ms = 500
+    max_delay_ms = 5000
+  }
+  request_timeout_ms = 10000
+
+  lifecycle {
+    postcondition {
+      condition     = self.status_code < 400
+      error_message = "Failed to fetch Sandbox Service release ${var.version_tag} at ${self.url}: HTTP ${self.status_code}."
+    }
+    postcondition {
+      condition = (
+        can(yamldecode(self.response_body).Outputs.SandboxServiceChartUrl.Value) &&
+        can(yamldecode(self.response_body).Outputs.SandboxServiceHelmValues.Value) &&
+        can(yamldecode(self.response_body).Resources.SandboxServiceReleaseFunction.Properties.CodeUri) &&
+        can(yamldecode(self.response_body).Resources.SandboxServiceRelease.Properties.ProviderVersion)
+      )
+      error_message = "Release ${var.version_tag} does not publish the required Sandbox Service artifacts."
+    }
+  }
+}
 
 data "aws_subnet" "private" {
   for_each = { for index, id in var.private_subnet_ids : tostring(index) => id }

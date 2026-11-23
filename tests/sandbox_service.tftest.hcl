@@ -1,3 +1,41 @@
+mock_provider "http" {
+  mock_data "http" {
+    defaults = {
+      status_code   = 200
+      response_body = <<-YAML
+      # Public release metadata subset used by the Sandbox Service lookup tests.
+      # Source: https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-v2.24.0.yaml
+      Outputs:
+        SandboxServiceChartUrl:
+          Value: https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/062fbf5e1090e1f624eda6d6f9dfe7af05921e3d90a6405d330feb7866775ad2/sandbox-service-0.1.0.tgz
+        SandboxServiceHelmValues:
+          Value:
+            Fn::Sub:
+              - |
+                {
+                  "hostname": "nodes.$${AWS::StackName}.sandbox.internal",
+                  "image": "public.ecr.aws/braintrust/sandbox-service:053f8aef2ad66bb17ef868e35e0c3f9263e05c93",
+                  "prewarmTemplates": [{
+                    "image": "public.ecr.aws/braintrust/codex-runtime@sha256:6d7c649f35f335377d48fadd9b251e4ad4987d03427cc9ea730b87024c0811b5",
+                    "resources": {
+                      "vcpu_count": $${LoopRuntimeSandboxVcpuCount},
+                      "memory_mib": $${LoopRuntimeSandboxMemoryMiB}
+                    }
+                  }]
+                }
+              - {}
+      Resources:
+        SandboxServiceReleaseFunction:
+          Properties:
+            CodeUri: s3://braintrust-cf-us-east-1/e6f89a1994f5cb53a5ee7e0f7c5eea27
+        SandboxServiceRelease:
+          Properties:
+            ProviderVersion: cf3f36db527625591bfc987f7f5fd35e0c8b1e0ce5c6ae17d57ba9e9124c3a19
+      YAML
+    }
+  }
+}
+
 mock_provider "aws" {
   source = "./tests/mocks/aws"
   mock_data "aws_partition" {
@@ -41,6 +79,7 @@ mock_provider "aws" {
 }
 
 variables {
+  version_tag           = "v2.24.0"
   deployment_name       = "bt-test"
   vpc_id                = "vpc-0123456789abcdef0"
   private_subnet_ids    = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
@@ -56,6 +95,19 @@ run "private_cluster_and_safe_worker_release" {
   command = apply
   module {
     source = "./modules/sandbox-service"
+  }
+
+  assert {
+    condition = (
+      data.http.release.url == "https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-${var.version_tag}.yaml" &&
+      aws_lambda_function.tls.s3_key == "e6f89a1994f5cb53a5ee7e0f7c5eea27" &&
+      aws_lambda_function.release.s3_key == aws_lambda_function.tls.s3_key &&
+      aws_cloudformation_stack.release.parameters.ProviderVersion == "cf3f36db527625591bfc987f7f5fd35e0c8b1e0ce5c6ae17d57ba9e9124c3a19" &&
+      aws_cloudformation_stack.release.parameters.ChartUrl == "https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/062fbf5e1090e1f624eda6d6f9dfe7af05921e3d90a6405d330feb7866775ad2/sandbox-service-0.1.0.tgz" &&
+      jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).image == "public.ecr.aws/braintrust/sandbox-service:053f8aef2ad66bb17ef868e35e0c3f9263e05c93" &&
+      output.sandbox_image == "public.ecr.aws/braintrust/codex-runtime@sha256:6d7c649f35f335377d48fadd9b251e4ad4987d03427cc9ea730b87024c0811b5"
+    )
+    error_message = "The chart, worker image, guest and both bootstrap functions must come from the selected published release."
   }
 
   assert {
@@ -215,4 +267,60 @@ run "rejects_shared_application_subnet" {
     private_subnet_ids = ["subnet-main-one", "subnet-two", "subnet-three"]
   }
   expect_failures = [var.private_subnet_ids]
+}
+
+run "release_override_updates_the_whole_artifact_bundle" {
+  command = apply
+  module {
+    source = "./modules/sandbox-service"
+  }
+  variables {
+    version_tag = "v2.24.0-custom"
+  }
+  override_data {
+    target = data.http.release
+    values = {
+      status_code   = 200
+      response_body = <<-YAML
+        Outputs:
+          SandboxServiceChartUrl:
+            Value: https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/custom/chart.tgz
+          SandboxServiceHelmValues:
+            Value:
+              Fn::Sub: '{"image":"public.ecr.aws/braintrust/sandbox-service:custom","prewarmTemplates":[{"image":"public.ecr.aws/braintrust/codex-runtime:custom"}]}'
+        Resources:
+          SandboxServiceReleaseFunction:
+            Properties:
+              CodeUri: s3://braintrust-cf-us-east-1/custom-bootstrap
+          SandboxServiceRelease:
+            Properties:
+              ProviderVersion: custom-provider
+      YAML
+    }
+  }
+  assert {
+    condition = (
+      data.http.release.url == "https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-v2.24.0-custom.yaml" &&
+      aws_lambda_function.tls.s3_key == "custom-bootstrap" &&
+      aws_lambda_function.release.s3_key == "custom-bootstrap" &&
+      aws_cloudformation_stack.release.parameters.ProviderVersion == "custom-provider" &&
+      aws_cloudformation_stack.release.parameters.ChartUrl == "https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/custom/chart.tgz" &&
+      jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).image == "public.ecr.aws/braintrust/sandbox-service:custom" &&
+      output.sandbox_image == "public.ecr.aws/braintrust/codex-runtime:custom" &&
+      output.chart_object_arn == "arn:aws:s3:::braintrust-cf-us-east-1/sandbox-service/custom/chart.tgz"
+    )
+    error_message = "A release override must update the worker, guest, chart, bootstrap and endpoint-policy object together."
+  }
+}
+
+run "rejects_release_without_sandbox_artifacts" {
+  command = plan
+  module {
+    source = "./modules/sandbox-service"
+  }
+  override_data {
+    target = data.http.release
+    values = { status_code = 200, response_body = "{}" }
+  }
+  expect_failures = [data.http.release]
 }

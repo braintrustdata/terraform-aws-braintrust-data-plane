@@ -127,9 +127,8 @@ resource "aws_cloudwatch_log_group" "release" {
 
 resource "aws_lambda_function" "tls" {
   function_name                  = "${var.deployment_name}-sandbox-tls"
-  s3_bucket                      = local.artifact_bucket
+  s3_bucket                      = local.release_bootstrap[0]
   s3_key                         = local.versions["bootstrap-key"]
-  source_code_hash               = local.versions["bootstrap-code-hash"]
   role                           = aws_iam_role.tls.arn
   runtime                        = "python3.13"
   handler                        = "handler.tls_handler"
@@ -147,9 +146,8 @@ resource "aws_lambda_function" "tls" {
 
 resource "aws_lambda_function" "release" {
   function_name                  = "${var.deployment_name}-sandbox-release"
-  s3_bucket                      = local.artifact_bucket
+  s3_bucket                      = local.release_bootstrap[0]
   s3_key                         = local.versions["bootstrap-key"]
-  source_code_hash               = local.versions["bootstrap-code-hash"]
   role                           = aws_iam_role.release.arn
   runtime                        = "python3.13"
   handler                        = "handler.handler"
@@ -205,7 +203,7 @@ resource "aws_cloudformation_stack" "release" {
     ServerTlsSecretArn = aws_secretsmanager_secret.server_tls.arn
     ClientTlsSecretArn = aws_secretsmanager_secret.client_tls.arn
     Hostname           = local.hostname
-    ChartUrl           = "https://${local.artifact_bucket}.s3.amazonaws.com/${local.versions["chart-key"]}"
+    ChartUrl           = local.release_template.Outputs.SandboxServiceChartUrl.Value
     HelmValues         = jsonencode(local.helm_values)
     ProviderVersion    = local.versions["bootstrap-sha256"]
   }

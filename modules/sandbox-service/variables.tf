@@ -3,6 +3,11 @@ variable "deployment_name" {
   description = "Deployment name used for resource names and tags."
 }
 
+variable "version_tag" {
+  type        = string
+  description = "Published Braintrust release tag shared with Loop Runtime, including any caller version override."
+}
+
 variable "stack_name" {
   type        = string
   default     = null

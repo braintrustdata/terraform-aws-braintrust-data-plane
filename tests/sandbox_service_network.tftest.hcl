@@ -12,6 +12,43 @@ mock_provider "http" {
   source = "./tests/mocks/http"
 }
 
+override_data {
+  target = module.sandbox_service[0].data.http.release
+  values = {
+    status_code   = 200
+    response_body = <<-YAML
+      # Public release metadata subset used by the Sandbox Service lookup tests.
+      # Source: https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-v2.24.0.yaml
+      Outputs:
+        SandboxServiceChartUrl:
+          Value: https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/062fbf5e1090e1f624eda6d6f9dfe7af05921e3d90a6405d330feb7866775ad2/sandbox-service-0.1.0.tgz
+        SandboxServiceHelmValues:
+          Value:
+            Fn::Sub:
+              - |
+                {
+                  "hostname": "nodes.$${AWS::StackName}.sandbox.internal",
+                  "image": "public.ecr.aws/braintrust/sandbox-service:053f8aef2ad66bb17ef868e35e0c3f9263e05c93",
+                  "prewarmTemplates": [{
+                    "image": "public.ecr.aws/braintrust/codex-runtime@sha256:6d7c649f35f335377d48fadd9b251e4ad4987d03427cc9ea730b87024c0811b5",
+                    "resources": {
+                      "vcpu_count": $${LoopRuntimeSandboxVcpuCount},
+                      "memory_mib": $${LoopRuntimeSandboxMemoryMiB}
+                    }
+                  }]
+                }
+              - {}
+      Resources:
+        SandboxServiceReleaseFunction:
+          Properties:
+            CodeUri: s3://braintrust-cf-us-east-1/e6f89a1994f5cb53a5ee7e0f7c5eea27
+        SandboxServiceRelease:
+          Properties:
+            ProviderVersion: cf3f36db527625591bfc987f7f5fd35e0c8b1e0ce5c6ae17d57ba9e9124c3a19
+      YAML
+  }
+}
+
 variables {
   braintrust_org_name    = "test-org"
   primary_org_name       = "test-org"

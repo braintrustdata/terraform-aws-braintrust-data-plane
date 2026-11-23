@@ -15,8 +15,11 @@ run cluster DNS, the worker controller and autoscaler. Node CNI permissions allo
 ENI creation only in the three dedicated subnets.
 
 The release stack owns worker node groups, TLS provisioning and the Helm release.
-Its chart and bootstrap package are pinned to published content-addressed
-artifacts in `VERSIONS.json`. The VPC-local installer reaches the private EKS
+Its `version_tag` comes from the same release selection as Loop Runtime,
+including `loop_runtime_version_override`. The worker image, guest image, chart
+and bootstrap are resolved together from that release's published CloudFormation
+metadata; there is no separate Sandbox Service version file to maintain.
+The VPC-local installer reaches the private EKS
 endpoint without requiring Kubernetes access from the Terraform runner. TLS
 private keys are generated in Secrets Manager and never read into Terraform
 state. An endpoint-specific Secrets Manager URL avoids changing VPC private DNS.

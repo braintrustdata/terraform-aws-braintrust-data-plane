@@ -41,7 +41,7 @@ run "org_restricted_endpoint_allows_only_the_pinned_chart" {
   variables {
     create_sandbox_subnets           = true
     s3_vpc_endpoint_resource_org_ids = ["o-1234567890"]
-    sandbox_service_chart_object_arn = "arn:aws:s3:::braintrust-cf-us-east-1/${jsondecode(file("modules/sandbox-service/VERSIONS.json"))["chart-key"]}"
+    sandbox_service_chart_object_arn = "arn:aws:s3:::braintrust-cf-us-east-1/sandbox-service/pinned/chart.tgz"
   }
   assert {
     condition = (
@@ -73,7 +73,7 @@ run "account_restricted_endpoint_allows_the_pinned_chart" {
   variables {
     create_sandbox_subnets               = true
     s3_vpc_endpoint_resource_account_ids = ["111122223333"]
-    sandbox_service_chart_object_arn     = "arn:aws:s3:::braintrust-cf-us-east-1/${jsondecode(file("modules/sandbox-service/VERSIONS.json"))["chart-key"]}"
+    sandbox_service_chart_object_arn     = "arn:aws:s3:::braintrust-cf-us-east-1/sandbox-service/pinned/chart.tgz"
   }
   assert {
     condition = (
@@ -108,7 +108,7 @@ run "unrestricted_endpoint_needs_no_artifact_exception" {
   }
   variables {
     create_sandbox_subnets           = true
-    sandbox_service_chart_object_arn = "arn:aws:s3:::braintrust-cf-us-east-1/${jsondecode(file("modules/sandbox-service/VERSIONS.json"))["chart-key"]}"
+    sandbox_service_chart_object_arn = "arn:aws:s3:::braintrust-cf-us-east-1/sandbox-service/pinned/chart.tgz"
   }
   assert {
     condition     = jsondecode(aws_vpc_endpoint.s3.policy).Statement == [{ Effect = "Allow", Action = "s3:*", Resource = "*", Principal = "*" }]

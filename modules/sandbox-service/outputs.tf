@@ -35,7 +35,7 @@ output "sandbox_image" {
 
 output "chart_object_arn" {
   description = "Pinned chart object for S3 endpoint policies, available before the cluster is created."
-  value       = "arn:${data.aws_partition.current.partition}:s3:::${local.artifact_bucket}/${local.versions["chart-key"]}"
+  value       = "arn:${data.aws_partition.current.partition}:s3:::${local.release_chart[0]}/${local.versions["chart-key"]}"
 }
 
 output "private_subnet_ids" {

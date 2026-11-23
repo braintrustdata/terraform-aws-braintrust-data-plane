@@ -885,7 +885,7 @@ variable "sandbox_service_existing_private_subnet_3_id" {
 
 variable "loop_runtime_version_override" {
   type        = string
-  description = "Override the Loop runtime and MicroVM guest version. Restricted sandbox egress requires Loop runtime 2.16.0 or later. Null uses the module's default version."
+  description = "Override the shared Loop Runtime and sandbox release tag, including Sandbox Service images, chart and bootstrap when enabled, or the Lambda MicroVM guest otherwise. Restricted sandbox egress requires Loop runtime 2.16.0 or later. Null uses the module's default version."
   default     = null
 }
 

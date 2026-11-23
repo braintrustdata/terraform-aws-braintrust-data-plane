@@ -651,7 +651,8 @@ module "sandbox_service" {
   source = "./modules/sandbox-service"
   count  = var.enable_sandbox_service ? 1 : 0
 
-  stack_name = local.sandbox_service_stack_name
+  stack_name  = local.sandbox_service_stack_name
+  version_tag = local.loop_runtime_version
 
   deployment_name = var.deployment_name
   vpc_id          = local.main_vpc_id
