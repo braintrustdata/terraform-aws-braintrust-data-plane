@@ -728,6 +728,14 @@ variable "ai_gateway_alb_drop_invalid_header_fields" {
   default     = false
 }
 
+variable "ai_gateway_usage_signing_key" {
+  description = "Optional KMS signing key for Gateway usage credentials. The receiving API must trust its public key; null keeps organization-scoped private ingestion."
+  type = object({
+    arn = string
+  })
+  default = null
+}
+
 variable "ai_gateway_extra_env_vars" {
   description = "Extra environment variables for the gateway ECS container"
   type        = map(string)
@@ -1058,6 +1066,22 @@ variable "enable_private_dataplane" {
   validation {
     condition     = !var.enable_private_dataplane || (var.custom_domain == null && var.custom_certificate_arn == null && var.waf_acl_id == null)
     error_message = "Private mode does not support CloudFront domain, certificate, or WAF inputs. Private mode requires the API ALB domain and certificate inputs."
+  }
+}
+
+variable "enable_ecs_voice_sessions" {
+  type        = bool
+  description = "Enable hosted voice session creation and WebSocket connections on the background API ECS pool. Requires enable_ai_gateway and an API image containing braintrustdata/braintrust#25882. Not supported with external EKS."
+  default     = false
+
+  validation {
+    condition     = !var.enable_ecs_voice_sessions || !var.use_deployment_mode_external_eks
+    error_message = "This module does not configure hosted voice for external EKS."
+  }
+
+  validation {
+    condition     = !var.enable_ecs_voice_sessions || var.enable_ai_gateway
+    error_message = "enable_ecs_voice_sessions requires enable_ai_gateway to provide GATEWAY_URL."
   }
 }
 

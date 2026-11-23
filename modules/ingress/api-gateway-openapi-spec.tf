@@ -406,6 +406,9 @@ locals {
       "/realtime-url" = {
         for method in ["get", "options"] : method => local.snippet_api_json_text_method
       }
+      "/usage" = {
+        for method in ["options", "post"] : method => local.snippet_api_json_text_method
+      }
       "/v1" = {
         for method in ["get", "options"] : method => local.snippet_api_json_method
       }

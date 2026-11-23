@@ -2,6 +2,10 @@ mock_provider "aws" {
   source = "./tests/mocks/aws"
 }
 
+variables {
+  brainstore_s3_bucket_arn = "arn:aws:s3:::bt-test-brainstore"
+}
+
 run "gateway_registers_direct_customer_targets" {
   command = plan
 

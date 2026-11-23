@@ -56,6 +56,10 @@ locals {
     OTLP_HTTP_ENDPOINT = local.observability_enabled ? "http://localhost:4318" : "https://pulse.braintrust.dev/otel"
     },
     local.url_security_env_vars,
+    var.usage_signing_key != null ? {
+      GATEWAY_USAGE_SIGNING_KEY_ARN = var.usage_signing_key.arn
+      GATEWAY_USAGE_HOSTED_API_URLS = lookup(var.extra_env_vars, "OVERRIDE_BRAINTRUST_API_URL", var.braintrust_api_url)
+    } : {},
     local.observability_enabled ? {
       DD_ENV     = var.internal_observability_env_name
       DD_VERSION = local.gateway_version_tag
@@ -400,6 +404,59 @@ resource "aws_iam_role" "task" {
   }, local.iam_tags)
 }
 
+resource "aws_iam_role_policy" "usage_signing" {
+  count = var.usage_signing_key != null ? 1 : 0
+  name  = "GatewayUsageSigning"
+  role  = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:Sign"]
+      Resource = var.usage_signing_key.arn
+      Condition = {
+        StringEquals = {
+          "kms:SigningAlgorithm" = "RSASSA_PKCS1_V1_5_SHA_256"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "usage_event_wal_markers" {
+  name = "UsageEventWalMarkers"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:DeleteObjectVersion"]
+      Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/wal/active-writes/*/usage_events:*/*"]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "usage_event_kms_access" {
+  name = "GatewayUsageEventKmsAccess"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = [var.brainstore_s3_bucket_kms_key_arn != null ? var.brainstore_s3_bucket_kms_key_arn : var.kms_key_arn]
+      Condition = {
+        StringEquals = {
+          "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "customer_assume_role" {
   name = "${var.deployment_name}-gateway-customer-assume-role"
   role = aws_iam_role.task.id
@@ -439,7 +496,7 @@ resource "aws_ecs_task_definition" "gateway" {
   container_definitions = jsonencode(concat([local.gateway_container_definition], local.observability_sidecars))
 
   # Ensure GetSecretValue is granted before a revision that references secrets is registered.
-  depends_on = [aws_iam_role_policy.task_execution_secrets]
+  depends_on = [aws_iam_role_policy.task_execution_secrets, aws_iam_role_policy.usage_signing]
 
   tags = merge({
     Name = "${var.deployment_name}-gateway"

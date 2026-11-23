@@ -52,6 +52,10 @@ mock_provider "http" {
   source = "./tests/mocks/http"
 }
 
+variables {
+  brainstore_s3_bucket_arn = "arn:aws:s3:::bt-test-brainstore"
+}
+
 run "tags_services_common_iam_with_braintrust_owner" {
   command = plan
   module { source = "./modules/services-common" }

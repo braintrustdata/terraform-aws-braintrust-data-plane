@@ -135,6 +135,38 @@ resource "aws_appautoscaling_policy" "braintrust_api_background_memory_target" {
   }
 }
 
+resource "aws_appautoscaling_policy" "braintrust_api_background_voice_slots" {
+  count = var.enable_ecs_voice_sessions ? 1 : 0
+
+  name               = "${var.deployment_name}-braintrust-api-background-voice-slots"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.braintrust_api_background.resource_id
+  scalable_dimension = aws_appautoscaling_target.braintrust_api_background.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.braintrust_api_background.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    customized_metric_specification {
+      metric_name = "VoiceSlotUtilizationPercent"
+      namespace   = "Braintrust/Api"
+      statistic   = "Average"
+
+      dimensions {
+        name  = "ServiceName"
+        value = local.braintrust_api_background_name
+      }
+
+      dimensions {
+        name  = "DeploymentName"
+        value = var.deployment_name
+      }
+    }
+
+    target_value       = 60
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
 resource "aws_appautoscaling_policy" "braintrust_api_background_event_loop_target" {
   name               = "${var.deployment_name}-braintrust-api-background-event-loop-target"
   policy_type        = "TargetTrackingScaling"

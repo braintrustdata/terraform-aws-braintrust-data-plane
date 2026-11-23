@@ -14,7 +14,8 @@ module "braintrust-data-plane" {
   # IMPORTANT: Each deployment in the same AWS account must have a unique name.
   # Use a short prefix + your name or identifier (max 18 characters).
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "bt-sandbox"
+  deployment_name              = "bt-sandbox"
+  ai_gateway_usage_signing_key = null
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.
@@ -35,7 +36,8 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_loop_runtime = false
+  enable_ecs_voice_sessions = false
+  enable_loop_runtime       = false
   # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
   # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 

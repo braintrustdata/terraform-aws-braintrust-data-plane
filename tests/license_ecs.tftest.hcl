@@ -2,6 +2,10 @@ mock_provider "aws" {
   source = "./tests/mocks/aws"
 }
 
+variables {
+  brainstore_s3_bucket_arn = "arn:aws:s3:::bt-test-brainstore"
+}
+
 run "api_ecs_license" {
   command = plan
   module { source = "./modules/api-ecs" }

@@ -8,6 +8,17 @@ variable "kms_key_arn" {
   description = "KMS key ARN used to encrypt gateway resources that support customer-managed KMS keys."
 }
 
+variable "brainstore_s3_bucket_arn" {
+  type        = string
+  description = "ARN of the Brainstore S3 bucket for usage-event WAL markers."
+}
+
+variable "brainstore_s3_bucket_kms_key_arn" {
+  type        = string
+  description = "Optional KMS key ARN for a caller-provided Brainstore bucket. Defaults to kms_key_arn for the module-managed bucket."
+  default     = null
+}
+
 variable "permissions_boundary_arn" {
   type        = string
   description = "ARN of the IAM permissions boundary to apply to all IAM roles created by this module."
@@ -351,4 +362,12 @@ variable "authorized_security_groups" {
   type        = map(string)
   description = "Additional load balancer security groups that can access the application port."
   default     = {}
+}
+
+variable "usage_signing_key" {
+  description = "Optional KMS key for signing Gateway usage credentials accepted by the receiving API."
+  type = object({
+    arn = string
+  })
+  default = null
 }
