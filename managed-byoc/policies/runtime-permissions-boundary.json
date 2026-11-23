@@ -43,6 +43,8 @@
         "lambda:GetFunction",
         "lambda:GetFunctionConfiguration",
         "lambda:InvokeFunction",
+        "lambda:ListAliases",
+        "lambda:ListVersionsByFunction",
         "lambda:RunMicrovm",
         "lambda:GetMicrovm",
         "lambda:ResumeMicrovm",
@@ -76,9 +78,7 @@
         "ssmmessages:CreateDataChannel",
         "ssmmessages:OpenControlChannel",
         "ssmmessages:OpenDataChannel",
-        "sts:TagSession",
-        "lambda:ListVersionsByFunction",
-        "lambda:ListAliases"
+        "sts:TagSession"
       ],
       "Resource": "*"
     },
