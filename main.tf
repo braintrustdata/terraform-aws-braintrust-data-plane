@@ -580,6 +580,7 @@ module "gateway_ecs" {
   enable_execute_command                = var.ai_gateway_enable_execute_command
   org_name                              = var.braintrust_org_name
   allowed_org_ids                       = var.allowed_org_ids
+  usage_signing_key                     = var.ai_gateway_usage_signing_key
   braintrust_app_url                    = var.ai_gateway_braintrust_app_url
   braintrust_api_url                    = local.internal_api_url
   unsafe_url_request_mode               = var.unsafe_url_request_mode
