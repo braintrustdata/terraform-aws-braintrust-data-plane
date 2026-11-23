@@ -21,6 +21,10 @@ workload grants; it is not attached to management roles and grants no access its
 The [SCP](../guardrails/README.md) protects selected account safeguards rather
 than repeating each role's restrictions.
 
+The runtime boundary permits `lambda:ListVersionsByFunction` and
+`lambda:ListAliases` for the optional quarantine version pruner. Its workload
+policy limits those reads to functions tagged `BraintrustQuarantine=true`.
+
 Inspection uses read families where safe. EC2 user data, launch configuration
 contents, and ECS task definitions are excluded from inspection and added only
 by Diagnostics. Names, tags, stack outputs, and task overrides must not contain
@@ -149,6 +153,13 @@ Observer and activated Diagnostics can inspect source links without managing
 them. Workload roles gain no Scheduler or OAM administration from these policies.
 
 ## Naming and scope
+
+Activated Diagnostics can tune ECS Application Auto Scaling targets throughout
+the registered account and Region, including targets under other bootstrap
+prefixes. This grant is limited to the ECS desired task count; it does not check
+target ownership. Direct ECS service updates remain prefix-scoped. The account
+must be dedicated to Braintrust workloads; bootstrap prefixes do not provide
+complete isolation between data planes.
 
 Reserve one non-overlapping prefix per bootstrap, ending in a hyphen, such as
 `bt-a-`. Every managed `deployment_name` must begin with it; the module limits

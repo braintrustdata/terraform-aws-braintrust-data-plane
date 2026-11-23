@@ -1,7 +1,7 @@
 {
   "schema_version": "braintrust.byoc.aws-bootstrap-contract/v1",
   "profile": "customer",
-  "revision": "aws-customer-2026-11-18-oam-links-preview.1",
+  "revision": "aws-customer-2026-11-23-quarantine-pruner.1",
   "audience": "customer",
   "status": "reference",
   "deployment_ready": false,
@@ -51,7 +51,7 @@
     "policies/diagnostics-policy.json": "6ac7bf28ca9f05c3f8221055858b71fc33aa4514000b2a0cdbf1f494890d9a60",
     "policies/inspection-policy.json": "23840a696148890897cf6c222be3358dc42009bd43b57b0dd0e356d98db78d07",
     "policies/inspection-services-policy.json": "a6d07f1f5202a477df4856af5e9dc931f74993e71dca6b25189e774d7e6863f3",
-    "policies/runtime-permissions-boundary.json": "685d49b745b973ad114538ee10a7de00b59e5eb063652353a6735b0a5e71e597",
+    "policies/runtime-permissions-boundary.json": "5fb415d0115f0dc2561d329ead78e7e54d4b9f19ff0fa74a4aebb5fdb529e0ef",
     "trust-policies/deployment-role-trust-policy.json": "60174dd1b7ca61292ff0fafdc45910b3d4dc0406150546294e66c17b45e74baf",
     "trust-policies/diagnostics-active-trust-policy.json": "2b3ee213ab8876dfa040c079999b8686aafa457dbc85071ff01346eb55924314",
     "trust-policies/diagnostics-disabled-trust-policy.json": "aeb374ab64cd7499aec3d5a0a8a81ca028f45a9082ef2025a1b476d5378ea696",

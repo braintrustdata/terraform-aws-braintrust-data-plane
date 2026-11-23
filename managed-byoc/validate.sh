@@ -21,7 +21,7 @@ command -v rg >/dev/null
 if [[ "$package_dir" == "$source_dir" ]]; then
   command -v shasum >/dev/null
   jq -e '.profile == "customer" and .audience == "customer" and
-    .revision == "aws-customer-2026-11-18-oam-links-preview.1" and
+    .revision == "aws-customer-2026-11-23-quarantine-pruner.1" and
     .status == "reference" and .deployment_ready == false and
     .diagnostics_activation_mode == "temporary-trust" and
     .default_deprovision_mode == "retain-data" and
@@ -47,6 +47,14 @@ scp_files=("$guardrail_dir"/*service-control-policy.json)
 for file in "${policy_files[@]}" "${scp_files[@]}" "${trust_files[@]}"; do
   jq empty "$file"
 done
+
+# The opt-in quarantine version pruner needs both reads in its runtime ceiling.
+jq -e '
+  .Statement[] | select(.Sid == "AllowWorkloadServicePermissions") |
+  .Action as $a |
+  ($a | index("lambda:ListVersionsByFunction")) != null and
+  ($a | index("lambda:ListAliases")) != null
+' "$policy_dir/runtime-permissions-boundary.json" >/dev/null
 
 measure_policy() {
   local file="$1"

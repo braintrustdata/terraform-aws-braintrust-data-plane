@@ -76,7 +76,9 @@
         "ssmmessages:CreateDataChannel",
         "ssmmessages:OpenControlChannel",
         "ssmmessages:OpenDataChannel",
-        "sts:TagSession"
+        "sts:TagSession",
+        "lambda:ListVersionsByFunction",
+        "lambda:ListAliases"
       ],
       "Resource": "*"
     },

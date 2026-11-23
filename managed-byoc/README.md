@@ -109,7 +109,8 @@ flowchart TD
 | CloudWatch application log events | No direct grant | No | Matching application groups |
 | Other service content | EC2 console output, RDS logs, and SQS messages under broad lifecycle grants | No | Through permitted configuration, logs, and workloads |
 | Host/container sessions | No interactive grant | No | Managed Brainstore SSM shells and ECS Exec |
-| Infrastructure changes | Lifecycle management | No | Scoped scaling, recovery, concurrency, legacy EventBridge rule enable/disable, and database tuning |
+| Infrastructure changes | Lifecycle management | No | Scoped recovery, Auto Scaling group capacity, Lambda concurrency, legacy EventBridge rule enable/disable, and database tuning |
+| ECS service autoscaling configuration | Lifecycle management | Inspect | All ECS scalable targets in the registered account and Region, across bootstrap prefixes |
 | Scheduler schedule configuration, including input | Managed schedules | Managed schedules | Managed schedules |
 | Scheduler changes | Create, update, delete; pass bounded execution roles | No | No |
 | Cross-account CloudWatch metric sharing | Optional source-link management for a fixed receiver | Inspect source links | Inspect source links |
