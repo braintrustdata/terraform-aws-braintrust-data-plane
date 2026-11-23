@@ -437,6 +437,19 @@ variable "postgres_version" {
   default     = "15"
 }
 
+variable "postgres_parameters" {
+  description = <<-EOT
+    Additional or overriding parameters for the RDS parameter group, keyed by
+    parameter name. Values use the parameter's RDS units. Static parameters
+    need apply_method = "pending-reboot" and take effect after a reboot.
+  EOT
+  type = map(object({
+    value        = string
+    apply_method = optional(string, "immediate")
+  }))
+  default = {}
+}
+
 variable "postgres_connection_override" {
   description = <<-EOT
     Optional PostgreSQL connection override. Omitted fields continue using the

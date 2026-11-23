@@ -106,6 +106,12 @@ module "braintrust-data-plane" {
   # If false, you will need to manually upgrade the minor version of the PostgreSQL engine.
   postgres_auto_minor_version_upgrade = true
 
+  # Additional or overriding RDS parameter group values, in RDS units.
+  # Static parameters need apply_method = "pending-reboot".
+  # postgres_parameters = {
+  #   max_wal_size = { value = "16384" }
+  # }
+
   # Multi-AZ RDS instance. Enabling increases cost but provides higher availability.
   # Recommended for critical production environments. Doubles the cost of the RDS instance.
   # postgres_multi_az                     = false

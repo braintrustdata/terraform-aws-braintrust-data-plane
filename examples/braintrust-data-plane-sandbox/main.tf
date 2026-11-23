@@ -71,6 +71,12 @@ module "braintrust-data-plane" {
   postgres_version                    = "15"
   postgres_auto_minor_version_upgrade = true
 
+  # Additional or overriding RDS parameter group values, in RDS units.
+  # Static parameters need apply_method = "pending-reboot".
+  # postgres_parameters = {
+  #   max_wal_size = { value = "16384" }
+  # }
+
   # Daily window (UTC) for automated RDS backups (hh24:mi-hh24:mi) and weekly maintenance
   # window (ddd:hh24:mi-ddd:hh24:mi). Defaults shown; override to shift the schedule.
   # postgres_backup_window      = "00:00-00:30"
