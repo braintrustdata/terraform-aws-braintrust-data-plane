@@ -59,7 +59,7 @@ Seven managed policies attach to one role to stay within AWS document limits.
 | [deployment-diagnostics-policy.json](deployment-diagnostics-policy.json) | Capability-gated Diagnostics trust updates, logging verification metadata, and protection of the owning bootstrap stack |
 | [deployment-eks-policy.json](deployment-eks-policy.json) | Scoped EKS management |
 | [deployment-service-linked-roles-policy.json](deployment-service-linked-roles-policy.json) | Creation of eleven exact AWS default service-linked roles |
-| [deployment-services-policy.json](deployment-services-policy.json) | IAM ownership-tag reads, bounded Scheduler lifecycle and role passing, optional metrics-only OAM source links |
+| [deployment-services-policy.json](deployment-services-policy.json) | IAM ownership-tag reads, bounded Scheduler lifecycle and role passing, metrics-only OAM source links |
 
 When `DiagnosticsActivationEnabled=false`, bootstrap also installs
 [customer-disable-policy.json](customer-disable-policy.json) as the
@@ -103,7 +103,7 @@ recipe or Kubernetes authorization.
 
 ## Scheduler and metric sharing
 
-The bootstrap's service policies grant Scheduler and optional metric-sharing
+The bootstrap's service policies grant Scheduler and metric-sharing
 permissions. Upgrading the data-plane module does not update these grants.
 
 ### Scheduler
@@ -129,11 +129,9 @@ The module's IAM ownership tag is metadata, not a new authorization boundary.
 ### CloudWatch metric sharing
 
 The reference [Deployment services policy](deployment-services-policy.json)
-includes optional OAM source-link permissions for one designated Braintrust
-receiver account. Without a configured receiver, the bootstrap grants no
-source-link management or `cloudwatch:Link` permission. These reference files
-show the enabled configuration; the generated package supplies its final
-values and permissions.
+includes OAM source-link permissions for one designated Braintrust receiver
+account. Every bootstrap pins that receiver when it is issued, and issuance
+fails without one. The generated package supplies its final values.
 
 - Creation and updates require permission on both the customer source link
   and the pinned receiver sink, in the data-plane Region. New links can target
@@ -209,7 +207,7 @@ Scheduler permissions separately cover schedule names under the managed prefix.
 | `<STATE_BUCKET_NAME>`, `<OPERATION_LOG_BUCKET_NAME>` | Distinct customer-owned S3 buckets, outside the runtime prefix |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust software bucket for the Region |
 | `<LICENSE_SECRET_ARN>` | Exact same-account, same-Region license secret ARN, at most 128 characters |
-| `<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>` | Exact optional Braintrust receiver account, different from the source account; the generated policy omits sharing grants when no receiver is configured |
+| `<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>` | Exact Braintrust receiver account, different from the source account; every bootstrap requires one |
 
 [Trust inputs](../trust-policies/README.md) identify the Braintrust principals
 and External ID. All final identifiers must be exact; never substitute `*`

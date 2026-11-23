@@ -506,16 +506,7 @@ if [[ "$package_dir" == "$source_dir" ]]; then
       all(. != "oam:CreateSink" and . != "oam:PutSinkPolicy" and . != "oam:DeleteSink" and
           . != "logs:Link" and . != "xray:Link")'
   done
-  # Mirror the generated no-receiver variant: all sharing/lifecycle statements
-  # are omitted, while Scheduler and ownership-tag reads remain.
-  jq '.Statement |= map(select(.Sid | startswith("MetricSourceLink") | not))' \
-    "$temporary_dir/deployment-services-policy.json" >"$temporary_dir/no-metric-receiver-policy.json"
-  assert_policy no-metric-receiver-policy.json '
-    ([.Statement[].Action | if type == "array" then .[] else . end] |
-      all((startswith("oam:") or . == "cloudwatch:Link") | not)) and
-    ([.Statement[] | select(.Sid == "ManageManagedSchedules")] | length == 1) and
-    ([.Statement[] | select(.Sid == "ReadManagedIAMOwnershipTags")] | length == 1)'
-  echo 'Scheduler scope, optional metrics-only receiver and human inspection boundaries passed (static checks only).'
+  echo 'Scheduler scope, metrics-only receiver and human inspection boundaries passed (static checks only).'
   echo 'Account guardrails, positive role grants, delegation, and diagnostic boundaries passed (static checks only).'
 fi
 

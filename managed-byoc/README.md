@@ -18,7 +18,7 @@ plane may serve multiple teams. Unrelated workloads belong in other accounts.
 | Principals, session attribution, and trust | [Trust guide](trust-policies/README.md) |
 | Organization controls | [Guardrail guide](guardrails/README.md) |
 | Temporary operational access | [Diagnostics guide](diagnostics.md) |
-| Scheduler and optional cross-account metrics | [Service permissions](policies/README.md#scheduler-and-metric-sharing) |
+| Scheduler and cross-account metric sharing | [Service permissions](policies/README.md#scheduler-and-metric-sharing) |
 | Audit collection and detections | [Monitoring guide](guardrails/cloudtrail-alerting.md) |
 
 ## From review to deployment
@@ -93,7 +93,7 @@ flowchart TD
     R -->|health, metrics, alarms, metadata| I
     I --> A
     I -->|metrics| W
-    W -->|optional AWS-managed metric sharing| C
+    W -->|AWS-managed metric sharing| C
     I -->|feature-required access| X
 ```
 
@@ -113,7 +113,7 @@ flowchart TD
 | ECS service autoscaling configuration | Lifecycle management | Inspect | All ECS scalable targets in the registered account and Region, across bootstrap prefixes |
 | Scheduler schedule configuration, including input | Managed schedules | Managed schedules | Managed schedules |
 | Scheduler changes | Create, update, delete; pass bounded execution roles | No | No |
-| Cross-account CloudWatch metric sharing | Optional source-link management for a fixed receiver | Inspect source links | Inspect source links |
+| Cross-account CloudWatch metric sharing | Source-link management for a fixed receiver | Inspect source links | Inspect source links |
 | Runtime IAM management | Prefixed resources with the required boundary and limited `PassRole` | No | No |
 | Bootstrap IAM changes | Exact Diagnostics role trust during authorized activation or closure, when customer activation is enabled | No | No |
 | Deletion of SCP-protected buckets, keys, and final snapshots | Blocked for the listed actions | Blocked | Blocked |
@@ -126,9 +126,10 @@ These capabilities assume no additional identity or resource-policy grants.
 Schedule targets and inputs are readable configuration. Keep secrets and customer
 payloads out of schedule input; use the workloads' normal secret stores.
 
-Optional CloudWatch sharing makes selected metrics available to a configured
-Braintrust monitoring account. IAM restricts new links to that receiver in the data-plane
-Region and permits metrics only. The monitoring module selects namespaces and
+Braintrust shares selected CloudWatch metrics with a Braintrust monitoring
+account to operate the data plane, and every bootstrap includes these
+permissions. IAM restricts new links to that receiver in the data-plane Region
+and permits metrics only. The monitoring module selects namespaces and
 filters. This does not grant sharing of logs or traces or administration of the
 receiver. See [service permissions](policies/README.md#scheduler-and-metric-sharing).
 
