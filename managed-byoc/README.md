@@ -74,7 +74,7 @@ flowchart TD
         W[CloudWatch metrics]
     end
 
-    subgraph Monitoring["Braintrust monitoring account, if configured"]
+    subgraph Monitoring["Braintrust monitoring account"]
         C[Regional CloudWatch receiver]
     end
 
@@ -126,10 +126,10 @@ These capabilities assume no additional identity or resource-policy grants.
 Schedule targets and inputs are readable configuration. Keep secrets and customer
 payloads out of schedule input; use the workloads' normal secret stores.
 
-Braintrust shares selected CloudWatch metrics with a Braintrust monitoring
-account to operate the data plane, and every bootstrap includes these
-permissions. IAM restricts new links to that receiver in the data-plane Region
-and permits metrics only. The monitoring module selects namespaces and
+Every new bootstrap authorizes metric sharing with Braintrust's designated
+monitoring account. Metrics become available through a separately provisioned
+regional source link. IAM restricts new links to that receiver in the data-plane
+Region and permits metrics only. The monitoring module selects namespaces and
 filters. This does not grant sharing of logs or traces or administration of the
 receiver. See [service permissions](policies/README.md#scheduler-and-metric-sharing).
 
