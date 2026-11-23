@@ -1,0 +1,53 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/elasticache.amazonaws.com/AWSServiceRoleForElastiCache",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/lambda.amazonaws.com/AWSServiceRoleForLambda",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/vpcorigin.cloudfront.amazonaws.com/AWSServiceRoleForCloudFrontVPCOrigin"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "autoscaling.amazonaws.com",
+            "ecs.amazonaws.com",
+            "ecs.application-autoscaling.amazonaws.com",
+            "elasticache.amazonaws.com",
+            "elasticloadbalancing.amazonaws.com",
+            "lambda.amazonaws.com",
+            "ops.apigateway.amazonaws.com",
+            "rds.amazonaws.com",
+            "vpcorigin.cloudfront.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CreateEksServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/eks.amazonaws.com/AWSServiceRoleForAmazonEKS",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/aws-service-role/eks-nodegroup.amazonaws.com/AWSServiceRoleForAmazonEKSNodegroup"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "eks.amazonaws.com",
+            "eks-nodegroup.amazonaws.com"
+          ]
+        }
+      }
+    }
+  ]
+}

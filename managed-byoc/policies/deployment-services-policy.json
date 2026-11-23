@@ -1,0 +1,116 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadManagedIAMOwnershipTags",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListPolicyTags",
+        "iam:ListInstanceProfileTags"
+      ],
+      "Resource": [
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:policy/<MANAGED_RESOURCE_PREFIX>*",
+        "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:instance-profile/<MANAGED_RESOURCE_PREFIX>*"
+      ]
+    },
+    {
+      "Sid": "ManageManagedSchedules",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:CreateSchedule",
+        "scheduler:GetSchedule",
+        "scheduler:UpdateSchedule",
+        "scheduler:DeleteSchedule"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:scheduler:<AWS_REGION>:<AWS_ACCOUNT_ID>:schedule/*/<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "ManageManagedScheduleGroups",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:CreateScheduleGroup",
+        "scheduler:GetScheduleGroup",
+        "scheduler:DeleteScheduleGroup",
+        "scheduler:ListTagsForResource",
+        "scheduler:TagResource",
+        "scheduler:UntagResource"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:scheduler:<AWS_REGION>:<AWS_ACCOUNT_ID>:schedule-group/<MANAGED_RESOURCE_PREFIX>*"
+    },
+    {
+      "Sid": "DiscoverSchedules",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:ListSchedules",
+        "scheduler:ListScheduleGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PassSchedulerExecutionRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "scheduler.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "MetricSourceLinkLifecycle",
+      "Effect": "Allow",
+      "Action": [
+        "oam:DeleteLink",
+        "oam:GetLink",
+        "oam:ListTagsForResource",
+        "oam:TagResource",
+        "oam:UntagResource"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<AWS_ACCOUNT_ID>:link/*"
+    },
+    {
+      "Sid": "MetricSourceLinkCreate",
+      "Effect": "Allow",
+      "Action": "oam:CreateLink",
+      "Resource": [
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<AWS_ACCOUNT_ID>:link/*",
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>:sink/*"
+      ],
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "oam:ResourceTypes": "AWS::CloudWatch::Metric"
+        },
+        "Null": {
+          "oam:ResourceTypes": "false"
+        }
+      }
+    },
+    {
+      "Sid": "MetricSourceLinkUpdate",
+      "Effect": "Allow",
+      "Action": "oam:UpdateLink",
+      "Resource": [
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<AWS_ACCOUNT_ID>:link/*",
+        "arn:<AWS_PARTITION>:oam:<AWS_REGION>:<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>:sink/*"
+      ],
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "oam:ResourceTypes": "AWS::CloudWatch::Metric"
+        },
+        "Null": {
+          "oam:ResourceTypes": "false"
+        }
+      }
+    },
+    {
+      "Sid": "MetricSourceLinkDiscovery",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:Link",
+        "oam:ListLinks"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

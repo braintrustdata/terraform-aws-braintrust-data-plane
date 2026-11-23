@@ -1,0 +1,29 @@
+name: BYOC Access Model
+
+on:
+  pull_request:
+    paths:
+      - "managed-byoc/**"
+      - ".github/workflows/byoc-access-model.yml"
+  push:
+    branches:
+      - main
+      - byoc/v2-iam-foundation
+    paths:
+      - "managed-byoc/**"
+      - ".github/workflows/byoc-access-model.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate policies and trust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Install validator dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq ripgrep
+      - run: bash managed-byoc/validate.sh

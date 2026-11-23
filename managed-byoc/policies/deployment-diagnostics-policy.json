@@ -1,0 +1,46 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VerifyProtectedDiagnostics",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetDocument",
+        "ssm:DescribeDocument"
+      ],
+      "Resource": "arn:<AWS_PARTITION>:ssm:<AWS_REGION>:<AWS_ACCOUNT_ID>:document/BraintrustDiagnosticsShell-<BOOTSTRAP_NAME>"
+    },
+    {
+      "Sid": "VerifyDiagnosticAgents",
+      "Effect": "Allow",
+      "Action": "ssm:DescribeInstanceInformation",
+      "Resource": "*"
+    },
+    {
+      "Sid": "UpdateExactDiagnosticsTrust",
+      "Effect": "Allow",
+      "Action": "iam:UpdateAssumeRolePolicy",
+      "Resource": "<DIAGNOSTICS_ROLE_ARN>",
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalTag/outpost_diagnostics_capability": [
+            "diagnostics_grant",
+            "diagnostics_close"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ProtectOwningBootstrapStack",
+      "Effect": "Deny",
+      "Action": [
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:CreateChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:SetStackPolicy"
+      ],
+      "Resource": "<BOOTSTRAP_STACK_ARN>"
+    }
+  ]
+}
