@@ -59,14 +59,6 @@ locals {
       BRAINTRUST_URL_SECURITY_ALLOW_CIDRS = local.url_security_allow_cidrs
     } : {}
   )
-  btql_audit_log_env_vars = merge(
-    length(var.btql_audit_logs_strict_org_ids) > 0 ? {
-      BTQL_AUDIT_LOGS_STRICT_ORG_IDS = join(",", var.btql_audit_logs_strict_org_ids)
-    } : {},
-    length(var.btql_audit_logs_best_effort_org_ids) > 0 ? {
-      BTQL_AUDIT_LOGS_BEST_EFFORT_ORG_IDS = join(",", var.btql_audit_logs_best_effort_org_ids)
-    } : {}
-  )
 
   base_env_vars = merge({
     ORG_NAME                                          = var.braintrust_org_name
@@ -113,7 +105,6 @@ locals {
     },
     local.quarantine_proxy_env_vars,
     local.url_security_env_vars,
-    local.btql_audit_log_env_vars,
     var.brainstore_automation_writer_hostname != null && var.brainstore_automation_writer_hostname != "" ? {
       BRAINSTORE_AUTOMATION_WRITER_URL = "http://${var.brainstore_automation_writer_hostname}:${var.brainstore_port}"
     } : {},
