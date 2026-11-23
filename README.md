@@ -207,9 +207,6 @@ Use Gateway and API versions that support signed usage ingestion, and configure
 `braintrust_api_extra_env_vars` (or `service_extra_env_vars.APIHandler` for Lambda ingress)
 with the matching base64-encoded SPKI public key before enabling the signer.
 Leave this input `null` (the default) for organization-scoped private ingestion.
-Deployments that also operate the executing Gateway can set
-`GATEWAY_USAGE_SKIP_FORWARDED = "true"` through `ai_gateway_extra_env_vars` to
-record native usage only at execution; the default retains forwarded usage locally.
 
 An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
 Terraform waits for gateway ECS steady state before caller updates.
