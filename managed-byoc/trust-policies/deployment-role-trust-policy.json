@@ -1,0 +1,42 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowExactDeploymentPrincipal",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "<UNIQUE_EXTERNAL_ID>"
+        },
+        "StringLike": {
+          "sts:SourceIdentity": "byoc-operation-*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowExactDeploymentSourceIdentity",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
+      },
+      "Action": "sts:SetSourceIdentity",
+      "Condition": {
+        "StringLike": {
+          "sts:SourceIdentity": "byoc-operation-*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowExactDeploymentSessionTags",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>"
+      },
+      "Action": "sts:TagSession"
+    }
+  ]
+}

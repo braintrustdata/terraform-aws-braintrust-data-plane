@@ -7,6 +7,9 @@ For the latest guidance, always refer to the official Braintrust documentation:
 - [Upgrade your deployment](https://docs.braintrust.dev/admin/self-hosting/upgrade/routine)
 - [Data Plane 2.0 upgrade guide](https://docs.braintrust.dev/admin/self-hosting/upgrade/v2)
 
+For Braintrust-managed deployments, review the
+[AWS BYOC access model](managed-byoc/README.md).
+
 This module is used to create the VPC, Databases, Lambdas, and associated resources for the self-hosted Braintrust data plane.
 
 ## Major versions
@@ -197,6 +200,16 @@ Existing deployments require the [v7 migration procedure](MIGRATION_V7.md).
 In public mode, `enable_ecs_api = false` retains Lambda ingress with the private gateway.
 All three gateway inputs must be `false` to disable the gateway and its CloudFront origin.
 Private data planes require ECS and the gateway.
+
+`ai_gateway_usage_signing_key = { arn = "<KMS key ARN>" }` enables signed Gateway
+usage ingestion and grants the Gateway task `kms:Sign` for that key using RS256.
+Use an RSA KMS key with `SIGN_VERIFY` usage whose key policy permits the Gateway task role.
+The destination follows the data plane's API callback URL.
+Use Gateway and API versions that support signed usage ingestion, and configure
+`GATEWAY_USAGE_SIGNING_PUBLIC_KEY` on the receiving API through
+`braintrust_api_extra_env_vars` (or `service_extra_env_vars.APIHandler` for Lambda ingress)
+with the matching base64-encoded SPKI public key before enabling the signer.
+Leave this input `null` (the default) for organization-scoped private ingestion.
 
 An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
 Terraform waits for gateway ECS steady state before caller updates.

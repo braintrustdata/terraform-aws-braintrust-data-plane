@@ -2,10 +2,10 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "AllowBraintrustAssumeRole",
-      "Effect": "Allow",
+      "Sid": "CustomerDisabledDiagnostics",
+      "Effect": "Deny",
       "Principal": {
-        "AWS": "arn:aws:iam::611723957092:root"
+        "AWS": "*"
       },
       "Action": "sts:AssumeRole"
     }

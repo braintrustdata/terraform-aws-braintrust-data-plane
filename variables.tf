@@ -437,6 +437,19 @@ variable "postgres_version" {
   default     = "15"
 }
 
+variable "postgres_parameters" {
+  description = <<-EOT
+    Additional or overriding parameters for the RDS parameter group, keyed by
+    parameter name. Values use the parameter's RDS units. Static parameters
+    need apply_method = "pending-reboot" and take effect after a reboot.
+  EOT
+  type = map(object({
+    value        = string
+    apply_method = optional(string, "immediate")
+  }))
+  default = {}
+}
+
 variable "postgres_connection_override" {
   description = <<-EOT
     Optional PostgreSQL connection override. Omitted fields continue using the
@@ -726,6 +739,14 @@ variable "ai_gateway_alb_drop_invalid_header_fields" {
   description = "Whether the AI gateway ALB removes HTTP headers with invalid header names before routing requests."
   type        = bool
   default     = false
+}
+
+variable "ai_gateway_usage_signing_key" {
+  description = "Optional KMS signing key for Gateway usage credentials. The receiving API must trust its public key; null keeps organization-scoped private ingestion."
+  type = object({
+    arn = string
+  })
+  default = null
 }
 
 variable "ai_gateway_extra_env_vars" {

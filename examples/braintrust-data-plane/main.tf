@@ -13,7 +13,8 @@ module "braintrust-data-plane" {
 
   # This is primarily used for tagging and naming resources in your AWS account.
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "braintrust"
+  deployment_name              = "braintrust"
+  ai_gateway_usage_signing_key = null
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.
@@ -84,6 +85,12 @@ module "braintrust-data-plane" {
   # Note: Don't include the minor version in your postgres_version if you want to use this.
   # If false, you will need to manually upgrade the minor version of the PostgreSQL engine.
   postgres_auto_minor_version_upgrade = true
+
+  # Additional or overriding RDS parameter group values, in RDS units.
+  # Static parameters need apply_method = "pending-reboot".
+  # postgres_parameters = {
+  #   max_wal_size = { value = "16384" }
+  # }
 
   # Multi-AZ RDS instance. Enabling increases cost but provides higher availability.
   # Recommended for critical production environments. Doubles the cost of the RDS instance.

@@ -44,6 +44,15 @@ variable "postgres_version" {
   default     = "15"
 }
 
+variable "postgres_parameters" {
+  description = "Additional or overriding parameters for the RDS parameter group, keyed by parameter name. Static parameters need apply_method = \"pending-reboot\" and take effect after a reboot."
+  type = map(object({
+    value        = string
+    apply_method = optional(string, "immediate")
+  }))
+  default = {}
+}
+
 variable "database_subnet_ids" {
   description = "Subnet IDs for the RDS instance."
   type        = list(string)

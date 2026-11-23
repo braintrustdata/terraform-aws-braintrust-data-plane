@@ -14,7 +14,8 @@ module "braintrust-data-plane" {
   # IMPORTANT: Each deployment in the same AWS account must have a unique name.
   # Use a short prefix + your name or identifier (max 18 characters).
   # Do not change this after deployment. RDS and S3 resources can not be renamed.
-  deployment_name = "bt-sandbox"
+  deployment_name              = "bt-sandbox"
+  ai_gateway_usage_signing_key = null
 
   # Braintrust org to allow by name. For multi-org or ID-only access, use "*"
   # and set primary_org_name for service-token management.
@@ -79,6 +80,12 @@ module "braintrust-data-plane" {
 
   postgres_version                    = "15"
   postgres_auto_minor_version_upgrade = true
+
+  # Additional or overriding RDS parameter group values, in RDS units.
+  # Static parameters need apply_method = "pending-reboot".
+  # postgres_parameters = {
+  #   max_wal_size = { value = "16384" }
+  # }
 
   # Daily window (UTC) for automated RDS backups (hh24:mi-hh24:mi) and weekly maintenance
   # window (ddd:hh24:mi-ddd:hh24:mi). Defaults shown; override to shift the schedule.

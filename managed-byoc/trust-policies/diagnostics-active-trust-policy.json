@@ -1,0 +1,43 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "sts:AssumeRole",
+        "sts:SetSourceIdentity"
+      ],
+      "Condition": {
+        "DateLessThan": {
+          "aws:CurrentTime": "<DIAGNOSTICS_ACCESS_EXPIRES_AT>"
+        },
+        "Null": {
+          "aws:SourceIdentity": "false"
+        },
+        "StringEquals": {
+          "aws:SourceIdentity": [
+            "<ENGINEER_SOURCE_IDENTITY>"
+          ],
+          "sts:SourceIdentity": "${aws:SourceIdentity}"
+        }
+      },
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>"
+      },
+      "Sid": "AllowNamedDiagnosticsParticipants"
+    },
+    {
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringNotEquals": {
+          "sts:RoleSessionName": "${aws:SourceIdentity}"
+        }
+      },
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>"
+      },
+      "Sid": "DenyMismatchedDiagnosticsSessionName"
+    }
+  ],
+  "Version": "2012-10-17"
+}
