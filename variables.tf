@@ -760,6 +760,12 @@ variable "ai_gateway_extra_env_vars" {
   }
 }
 
+variable "ai_gateway_extra_secrets" {
+  description = "Extra Gateway environment variables injected from full Secrets Manager secret ARNs. The secret must use the AWS-managed Secrets Manager key or a KMS key already authorized for the Gateway execution role."
+  type        = map(string)
+  default     = {}
+}
+
 variable "ai_gateway_cpu_architecture" {
   description = "CPU architecture for the gateway ECS task definition."
   type        = string

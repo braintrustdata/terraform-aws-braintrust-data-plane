@@ -221,6 +221,9 @@ module "braintrust-data-plane" {
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 
+  # Inject optional Gateway credentials from Secrets Manager, using full secret ARNs.
+  # ai_gateway_extra_secrets = {}
+
   ### CloudFront TLS configuration
   # Minimum TLS protocol version CloudFront negotiates with viewers. Requires
   # custom_certificate_arn to be set (Terraform errors otherwise), defaults to

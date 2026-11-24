@@ -207,6 +207,20 @@ variable "extra_env_vars" {
   }
 }
 
+variable "extra_secrets" {
+  description = "Extra environment variables for the Gateway container, keyed by name with a full Secrets Manager secret ARN as the value."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition = alltrue([
+      for arn in values(var.extra_secrets) :
+      can(regex("^arn:[a-z0-9-]+:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]+$", arn))
+    ])
+    error_message = "Extra Gateway secrets must use full Secrets Manager secret ARNs."
+  }
+}
+
 variable "unsafe_url_request_mode" {
   description = "Controls how Braintrust backends handle outbound requests to user-supplied URLs that fail URL-security checks, such as URLs resolving to private or reserved IP ranges. Use off to allow, proxy to proxy, warn to allow with warnings, or reject to block. Leave empty to use the application default of warn."
   type        = string

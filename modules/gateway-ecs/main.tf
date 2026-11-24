@@ -102,6 +102,7 @@ locals {
         valueFrom = var.custom_ca_bundle_secret_arn
       }],
       local.gateway_redis_cache_secret_env,
+      [for name, arn in var.extra_secrets : { name = name, valueFrom = arn }],
     )
     dependsOn = [
       for dep in [
@@ -344,10 +345,10 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
         Action = [
           "secretsmanager:GetSecretValue",
         ]
-        Resource = compact([
+        Resource = compact(concat([
           local.observability_enabled ? var.internal_observability_api_key_secret_arn : "",
           var.brainstore_license_key_secret_arn,
-        ])
+        ], values(var.extra_secrets)))
       },
       {
         Effect = "Allow"
@@ -503,6 +504,13 @@ resource "aws_ecs_task_definition" "gateway" {
   }, local.common_tags)
 
   lifecycle {
+    precondition {
+      condition = length(setintersection(
+        keys(var.extra_secrets),
+        concat(keys(local.merged_env_vars), ["BRAINSTORE_LICENSE_KEY", "BRAINTRUST_CUSTOM_CA_BUNDLE", "COMPLETIONS_CACHE_REDIS_URL", "AUTH_CACHE_REDIS_URL"]),
+      )) == 0
+      error_message = "Extra Gateway secrets must use names distinct from the existing Gateway environment variables and managed secrets."
+    }
     precondition {
       condition     = contains(keys(local.valid_fargate_memory_by_cpu), tostring(var.cpu))
       error_message = "cpu must be a valid Fargate CPU value: 256, 512, 1024, 2048, 4096, 8192, or 16384."

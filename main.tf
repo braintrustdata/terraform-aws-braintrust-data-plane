@@ -570,6 +570,7 @@ module "gateway_ecs" {
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
     OVERRIDE_BRAINTRUST_API_URL = local.internal_api_url
   } : {})
+  extra_secrets                         = var.ai_gateway_extra_secrets
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
   custom_tags                           = local.all_custom_tags
