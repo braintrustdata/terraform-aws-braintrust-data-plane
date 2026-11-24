@@ -179,6 +179,20 @@
           "autoscaling:ResourceTag/BraintrustDeploymentName": "<MANAGED_RESOURCE_PREFIX>*"
         }
       }
+    },
+    {
+      "Sid": "AllowGatewayBedrockRoleAssumption",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:<AWS_PARTITION>:iam::<AWS_ACCOUNT_ID>:role/<MANAGED_RESOURCE_PREFIX>*-gateway-task"
+        },
+        "StringLike": {
+          "sts:ExternalId": "bt:*"
+        }
+      }
     }
   ]
 }
