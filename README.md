@@ -209,7 +209,9 @@ Use Gateway and API versions that support signed usage ingestion, and configure
 `GATEWAY_USAGE_SIGNING_PUBLIC_KEY` on the receiving API through
 `braintrust_api_extra_env_vars` (or `service_extra_env_vars.APIHandler` for Lambda ingress)
 with the matching base64-encoded SPKI public key before enabling the signer.
-Leave this input `null` (the default) for organization-scoped private ingestion.
+On a compatible data-plane version, existing scoped usage writes continue while
+the Gateway rolls out signing. Leave the signing key input `null` (the default)
+for organization-scoped private ingestion.
 
 An enabled gateway route requires `ai_gateway_min_capacity` of at least one.
 Terraform waits for gateway ECS steady state before caller updates.

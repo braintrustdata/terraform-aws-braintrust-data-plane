@@ -171,6 +171,9 @@ locals {
   gateway_env_vars = local.enable_ai_gateway ? {
     GATEWAY_URL = module.gateway_ecs[0].gateway_url
   } : {}
+  gateway_usage_api_env_vars = try(trimspace(var.braintrust_api_extra_env_vars["GATEWAY_USAGE_SIGNING_PUBLIC_KEY"]), "") != "" ? {
+    BRAINTRUST_HOSTED_DATA_PLANE = "false"
+  } : {}
 
   # Loop requires API ECS and Brainstore. Public mode routes CloudFront traffic
   # directly to Loop. Private mode routes the API ALB directly to Loop tasks.
@@ -233,6 +236,9 @@ locals {
   service_extra_env_vars = merge(
     var.service_extra_env_vars,
     { for svc in local.lambda_env_services : svc => merge(
+      svc == "APIHandler" && try(trimspace(var.service_extra_env_vars.APIHandler["GATEWAY_USAGE_SIGNING_PUBLIC_KEY"]), "") != "" ? {
+        BRAINTRUST_HOSTED_DATA_PLANE = "false"
+      } : {},
       lookup(var.service_extra_env_vars, svc, {}),
       local.loop_runtime_lambda_env_vars,
     ) },
@@ -816,7 +822,7 @@ module "api_ecs" {
   unsafe_url_request_mode                                      = var.unsafe_url_request_mode
   url_security_dns_servers                                     = var.url_security_dns_servers
   url_security_allow_cidrs                                     = var.url_security_allow_cidrs
-  extra_env_vars = merge(var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars, var.enable_private_dataplane ? {
+  extra_env_vars = merge(local.gateway_usage_api_env_vars, var.braintrust_api_extra_env_vars, local.gateway_env_vars, local.loop_runtime_lambda_env_vars, var.enable_private_dataplane ? {
     QUARANTINE_API_ACCESS_ENABLED = tostring(local.create_private_quarantine_api_access)
     QUARANTINE_API_URL            = local.quarantine_api_url != null ? local.quarantine_api_url : ""
     QUARANTINE_PROXY_URL          = ""

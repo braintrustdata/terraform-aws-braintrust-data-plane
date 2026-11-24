@@ -57,8 +57,9 @@ locals {
     },
     local.url_security_env_vars,
     var.usage_signing_key != null ? {
-      GATEWAY_USAGE_SIGNING_KEY_ARN = var.usage_signing_key.arn
-      GATEWAY_USAGE_HOSTED_API_URLS = lookup(var.extra_env_vars, "OVERRIDE_BRAINTRUST_API_URL", var.braintrust_api_url)
+      GATEWAY_USAGE_SIGNING_KEY_ARN       = var.usage_signing_key.arn
+      GATEWAY_USAGE_LOCAL_SIGNING_KEY_ARN = var.usage_signing_key.arn
+      GATEWAY_USAGE_HOSTED_API_URLS       = lookup(var.extra_env_vars, "OVERRIDE_BRAINTRUST_API_URL", var.braintrust_api_url)
     } : {},
     local.observability_enabled ? {
       DD_ENV     = var.internal_observability_env_name
