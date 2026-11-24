@@ -232,8 +232,8 @@ check_rendered_names() {
     exit 1
   }
   license="$(jq -er '.Statement[] | select(.Sid == "ReadLicenseSecret") | .Resource' "$data_file")"
-  local region="${license#arn:aws:secretsmanager:}"
-  region="${region%%:*}"
+  local region
+  region="$(jq -er '.Statement[] | select(.Sid == "ProtectOwningBootstrapStack") | .Resource | split(":")[3]' "$activation_file")"
   local expected_license="arn:aws:secretsmanager:${region}:${account}:secret:braintrust-byoc/${bootstrap}/licenses/*"
   [[ "$license" == "$expected_license" ]] || {
     echo 'License reads must use the exact same-account, same-Region bootstrap license path.' >&2
@@ -280,6 +280,16 @@ check_rendered_names() {
 check_rendered_names ''
 if [[ "$package_dir" == "$source_dir" ]]; then
   check_rendered_names maximum-
+  # A license ARN in another Region must fail even when its account and path match.
+  cp "$temporary_dir/deployment-data-policy.json" "$temporary_dir/license-scope-backup.json"
+  jq '(.Statement[] | select(.Sid == "ReadLicenseSecret") | .Resource) |=
+    sub(":us-east-1:"; ":us-west-2:")' "$temporary_dir/license-scope-backup.json" \
+    >"$temporary_dir/deployment-data-policy.json"
+  if (check_rendered_names '' >/dev/null 2>&1); then
+    echo 'License validation accepted a different Region.' >&2
+    exit 1
+  fi
+  mv "$temporary_dir/license-scope-backup.json" "$temporary_dir/deployment-data-policy.json"
 fi
 echo 'Bootstrap naming, protected IAM paths, input lengths, and Diagnostics trust checks passed.'
 
