@@ -206,7 +206,7 @@ Scheduler permissions separately cover schedule names under the managed prefix.
 | `<BOOTSTRAP_STACK_ARN>` | Actual owning CloudFormation stack ARN (`AWS::StackId`), independent of the stack's name |
 | `<STATE_BUCKET_NAME>`, `<OPERATION_LOG_BUCKET_NAME>` | Distinct customer-owned S3 buckets, outside the runtime prefix |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust software bucket for the Region |
-| License secret path | `braintrust-byoc/<BOOTSTRAP_NAME>/licenses/` in this account and Region; the generated package fills in the bootstrap identifier |
+| License secret path | `braintrust-byoc/licenses/` in this account and Region; use a meaningful secret name beneath this shared path |
 | `<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>` | Exact Braintrust receiver account, different from the source account; every bootstrap requires one |
 
 [Trust inputs](../trust-policies/README.md) identify the Braintrust principals
@@ -216,13 +216,13 @@ for an unused value.
 Bootstrap state and operation buckets use versioning and SSE-S3 encryption.
 No separate bootstrap KMS key is required or supported by this contract.
 Each data plane selects its own exact license secret ARN under
-`braintrust-byoc/<BOOTSTRAP_NAME>/licenses/`. Create these secrets with default
+`braintrust-byoc/licenses/`. Create these secrets with default
 AWS-managed `aws/secretsmanager` encryption. Deployment can describe and read
 secrets under that path, but has no grant to create, modify, or delete them.
 A second data plane or a changed license within the path does not require a
 bootstrap change. This path grants no direct license access to Observer,
-Diagnostics, or workload roles. It is a shared permission scope for this
-bootstrap, not isolation between its data planes.
+Diagnostics, or workload roles. New bootstrap Deployment roles in this account and Region share this permission
+scope. Secret names do not isolate licenses between bootstraps or data planes.
 
 Earlier issued bootstraps retain their exact-secret permissions. Applying a
 new data-plane module or publishing this reference does not upgrade them.

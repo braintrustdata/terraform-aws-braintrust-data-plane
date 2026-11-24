@@ -234,9 +234,9 @@ check_rendered_names() {
   license="$(jq -er '.Statement[] | select(.Sid == "ReadLicenseSecret") | .Resource' "$data_file")"
   local region
   region="$(jq -er '.Statement[] | select(.Sid == "ProtectOwningBootstrapStack") | .Resource | split(":")[3]' "$activation_file")"
-  local expected_license="arn:aws:secretsmanager:${region}:${account}:secret:braintrust-byoc/${bootstrap}/licenses/*"
+  local expected_license="arn:aws:secretsmanager:${region}:${account}:secret:braintrust-byoc/licenses/*"
   [[ "$license" == "$expected_license" ]] || {
-    echo 'License reads must use the exact same-account, same-Region bootstrap license path.' >&2
+    echo 'License reads must use the exact same-account, same-Region shared license path.' >&2
     exit 1
   }
   jq -e '[.Statement[] | select(.Sid == "ReadLicenseSecret") |
