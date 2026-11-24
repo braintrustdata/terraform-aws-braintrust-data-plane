@@ -788,6 +788,7 @@ module "api_ecs" {
   braintrust_api_memory                                        = var.braintrust_api_memory
   braintrust_api_min_count                                     = var.braintrust_api_min_count
   braintrust_api_max_count                                     = var.braintrust_api_max_count
+  braintrust_api_deployment_maximum_percent                    = var.braintrust_api_deployment_maximum_percent
   braintrust_api_cpu_autoscaling                               = var.braintrust_api_cpu_autoscaling
   braintrust_api_memory_autoscaling                            = var.braintrust_api_memory_autoscaling
   braintrust_api_event_loop_utilization_autoscaling            = var.braintrust_api_event_loop_utilization_autoscaling
@@ -796,6 +797,7 @@ module "api_ecs" {
   braintrust_api_ingest_memory                                 = var.braintrust_api_ingest_memory
   braintrust_api_ingest_min_count                              = var.braintrust_api_ingest_min_count
   braintrust_api_ingest_max_count                              = var.braintrust_api_ingest_max_count
+  braintrust_api_ingest_deployment_maximum_percent             = var.braintrust_api_ingest_deployment_maximum_percent
   braintrust_api_ingest_cpu_autoscaling                        = var.braintrust_api_ingest_cpu_autoscaling
   braintrust_api_ingest_memory_autoscaling                     = var.braintrust_api_ingest_memory_autoscaling
   braintrust_api_ingest_event_loop_utilization_autoscaling     = var.braintrust_api_ingest_event_loop_utilization_autoscaling
@@ -804,6 +806,7 @@ module "api_ecs" {
   braintrust_api_background_memory                             = var.braintrust_api_background_memory
   braintrust_api_background_min_count                          = var.braintrust_api_background_min_count
   braintrust_api_background_max_count                          = var.braintrust_api_background_max_count
+  braintrust_api_background_deployment_maximum_percent         = var.braintrust_api_background_deployment_maximum_percent
   braintrust_api_background_cpu_autoscaling                    = var.braintrust_api_background_cpu_autoscaling
   braintrust_api_background_memory_autoscaling                 = var.braintrust_api_background_memory_autoscaling
   braintrust_api_background_event_loop_utilization_autoscaling = var.braintrust_api_background_event_loop_utilization_autoscaling
