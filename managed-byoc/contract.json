@@ -1,7 +1,7 @@
 {
   "schema_version": "braintrust.byoc.aws-bootstrap-contract/v1",
   "profile": "customer",
-  "revision": "aws-customer-2026-11-23-gateway-bedrock.1",
+  "revision": "aws-customer-2026-11-23-data-plane-licenses.1",
   "audience": "customer",
   "status": "reference",
   "deployment_ready": false,
@@ -41,7 +41,7 @@
   "policy_sha256": {
     "guardrails/customer-service-control-policy.json": "9261646630ab6af17268818fd32a524ede5f34689c14fecd69bb310bf8904b94",
     "policies/customer-disable-policy.json": "722d09bac6e5d7e68d47813b0dc1051015b2f20846e7398b92ac004f7684cfc9",
-    "policies/deployment-data-policy.json": "2bda7a2294c1a73ab835885162b8b11062a24385120e4aded9de213f62922b24",
+    "policies/deployment-data-policy.json": "10ad9d735f63776c2ce2c42f2bf4b617ff0c533716ca8757006cc2ba61b71b9d",
     "policies/deployment-diagnostics-policy.json": "c6858a7b3fd08438627ea6494225e6f37b95ab2717f8457927be49e29a7a5549",
     "policies/deployment-eks-policy.json": "9f5658ddb16c24f92a90739b75a56a33170bef347a14334d19a2fc8a6922b3fa",
     "policies/deployment-infrastructure-policy.json": "6da5c260118358cb1179d9f6182209ca56c6ecee747d730745c54efef4dedf94",
@@ -58,5 +58,7 @@
     "trust-policies/diagnostics-role-trust-policy.json": "d8b97aa21cf36c3b6af94db62fc1f94eb0c04d3886d207acb82c7cab7c24ebc6",
     "trust-policies/human-role-trust-policy.json": "962297c0ac356b6210b4e203b7c1c7990dac4f32fc4c6af1120e322871db241f"
   },
-  "diagnostics_activation_mode": "temporary-trust"
+  "diagnostics_activation_mode": "temporary-trust",
+  "license_selection": "per-data-plane",
+  "license_secret_path": "braintrust-byoc/licenses/"
 }
