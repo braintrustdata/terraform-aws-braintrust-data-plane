@@ -267,11 +267,20 @@ The base boundary permits the API handler to assume only prefixed internal
 `QuarantineInvokeRole` and `AIProxyInvokeRole` targets. Module-generated target
 trust identifies that data plane's API handler.
 
-Bedrock and S3 export require exact destination roles in workload policies,
-matching boundary allowances, and destination trust for the intended workload.
+The Gateway boundary permits `sts:AssumeRole` from this bootstrap's prefixed
+`*-gateway-task` roles with the module's `bt:*` External ID convention. This is
+the ECS task role, not its `*-gateway-task-exec` execution role. Destination
+roles are intentionally not enumerated in the shared boundary: configure exact
+Bedrock role ARNs using `ai_gateway_bedrock_assume_role_arns`. The resulting
+workload policy and each destination role's trust restrict access. The destination
+role grants the required Bedrock permissions. A boundary allowance alone does
+not grant access, and this flow does not require direct Bedrock permissions on
+the Gateway task role.
+
 The module's empty feature allowlist can produce `Resource: "*"`; configure
-explicit destinations before enabling the feature. A boundary allowance alone
-does not grant access.
+explicit destinations before enabling the feature. Other integrations, including
+S3 export, still need their own workload policy, matching boundary allowance,
+and destination trust. The Gateway allowance does not authorize other workloads.
 
 Direct S3, KMS, and other service calls have no universal ownership perimeter in
 this package. Scope each integration's source and destination policies and

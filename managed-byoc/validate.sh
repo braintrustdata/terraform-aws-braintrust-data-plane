@@ -21,7 +21,7 @@ command -v rg >/dev/null
 if [[ "$package_dir" == "$source_dir" ]]; then
   command -v shasum >/dev/null
   jq -e '.profile == "customer" and .audience == "customer" and
-    .revision == "aws-customer-2026-11-23-quarantine-pruner.1" and
+    .revision == "aws-customer-2026-11-23-gateway-bedrock.1" and
     .status == "reference" and .deployment_ready == false and
     .diagnostics_activation_mode == "temporary-trust" and
     .default_deprovision_mode == "retain-data" and
@@ -377,6 +377,10 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     ([.Statement[] | select(.Sid == "AllowInternalRuntimeRoleAssumptions") |
       .Action == "sts:AssumeRole" and (.Resource | length) == 2 and
       .Condition.ArnLike."aws:PrincipalArn" == "arn:aws:iam::111122223333:role/bt-a-*-APIHandlerRole"] == [true]) and
+    ([.Statement[] | select(.Sid == "AllowGatewayBedrockRoleAssumption") |
+      .Effect == "Allow" and .Action == "sts:AssumeRole" and .Resource == "*" and
+      .Condition == {"ArnLike":{"aws:PrincipalArn":"arn:aws:iam::111122223333:role/bt-a-*-gateway-task"},
+        "StringLike":{"sts:ExternalId":"bt:*"}}] == [true]) and
     ([.Statement[] | select(.Sid == "AllowWorkloadStorageOutsideBootstrap") |
       (.NotResource | length) == 6] == [true])'
   assert_policy deployment-workload-policy.json '
