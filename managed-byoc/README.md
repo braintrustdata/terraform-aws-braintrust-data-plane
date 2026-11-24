@@ -36,7 +36,8 @@ plane may serve multiple teams. Unrelated workloads belong in other accounts.
    module version and the registered Deployment role.
 
 Upgrading the data-plane module does not update the bootstrap's permissions.
-Permission changes require customer review and a CloudFormation stack update.
+Coordinate bootstrap permission changes with Braintrust; they require customer
+review and approval and are not adopted automatically during verification.
 
 ## Roles and access
 
