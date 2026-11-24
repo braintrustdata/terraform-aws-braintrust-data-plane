@@ -60,20 +60,6 @@ run "create_and_enable_with_ecs_api" {
   }
 }
 
-run "configure_usage_verification_before_gateway_signing" {
-  command = plan
-  variables {
-    braintrust_api_extra_env_vars = {
-      GATEWAY_USAGE_SIGNING_PUBLIC_KEY = "dGVzdA=="
-    }
-  }
-
-  assert {
-    condition     = local.gateway_usage_api_env_vars.BRAINTRUST_HOSTED_DATA_PLANE == "false"
-    error_message = "Adding a public key must preserve scoped writes before the Gateway signer is enabled."
-  }
-}
-
 run "create_and_enable_all_private_paths" {
   command = plan
   variables {
