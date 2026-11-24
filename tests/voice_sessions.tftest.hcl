@@ -162,7 +162,7 @@ run "voice_uses_background_pool" {
   module { source = "./modules/api-ecs" }
   variables {
     brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
-    enable_ecs_voice_sessions         = true
+    enable_voice_sessions             = true
     voice_session_ws_base_url         = "wss://api.example.com"
     extra_env_vars                    = { WEB_CONCURRENCY = "2" }
   }
@@ -214,7 +214,7 @@ run "private_voice_routes_reach_both_listeners" {
   module { source = "./modules/api-ecs" }
   variables {
     brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
-    enable_ecs_voice_sessions         = true
+    enable_voice_sessions             = true
     voice_session_ws_base_url         = "wss://api.example.internal"
     enable_private_dataplane          = true
     alb_custom_domain                 = "api.example.internal"
@@ -257,7 +257,7 @@ run "rejects_voice_without_websocket_origin" {
   module { source = "./modules/api-ecs" }
   variables {
     brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
-    enable_ecs_voice_sessions         = true
+    enable_voice_sessions             = true
   }
   expect_failures = [var.voice_session_ws_base_url]
 }

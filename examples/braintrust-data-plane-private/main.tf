@@ -73,8 +73,8 @@ module "braintrust-data-plane" {
   # }
 
   # The optional Loop runtime is disabled by default.
-  enable_ecs_voice_sessions = false
-  enable_loop_runtime       = false
+  enable_voice_sessions = false
+  enable_loop_runtime   = false
   # Managed sandbox VPC only; accepts /16 through /21 and creates six /24 subnets.
   # loop_runtime_sandbox_vpc_cidr = "10.255.0.0/16"
 
