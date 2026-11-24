@@ -104,7 +104,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | Infrastructure health, metrics, alarms, and metadata | Yes | Yes | Yes |
 | Deployment state | Exact state prefix | No | No direct grant |
-| Secret values | License and prefixed module secrets | No | Through workloads; no direct Secrets Manager grant |
+| Secret values | Licenses under the bootstrap license path and prefixed module secrets | No | Through workloads; no direct Secrets Manager grant |
 | Sensitive workload configuration | Yes | No | Yes |
 | Application S3 objects or database rows | No direct content grant beyond state/artifacts | No | Through workload access |
 | CloudWatch application log events | No direct grant | No | Matching application groups |
@@ -261,3 +261,13 @@ Understand these boundaries:
 
 These are the trust boundaries of a managed service, not guarantees of complete
 data isolation from its operator.
+
+## Per-data-plane licenses
+
+New bootstrap packages reserve `braintrust-byoc/<BOOTSTRAP_NAME>/licenses/`
+in the customer account and Region. The customer creates each license secret
+there using default `aws/secretsmanager` encryption and supplies its exact ARN
+for the corresponding data plane. The bootstrap grants read and metadata access
+to that path; it does not choose or store one license ARN as a stack parameter.
+The generated package supplies the final path and commands. Existing issued
+bootstraps keep their original exact-license contract until explicitly replaced.
