@@ -333,6 +333,7 @@ both together. The worker image, guest image, chart and bootstrap are resolved
 from that release's published metadata, without a separate Sandbox Service pin.
 The selected application release must support retained-pool cleanup and license
 secret delivery; older installers are rejected during planning.
+Use compatible API and Loop versions when overriding release versions.
 
 `enable_sandbox_service` defaults to false. Setting it to true deploys the EKS
 fleet, switches Loop to Firecracker and removes the Lambda sandbox infrastructure
@@ -377,6 +378,10 @@ For optional private operator access, set `sandbox_service_operator_role_arn`
 and authorize the operator host through `sandbox_service_authorized_security_groups`.
 Managed subnet ACLs admit operator hosts in the application subnets; callers
 using other network paths must allow them in their subnet ACLs.
+Caller-provided permissions boundaries must allow the sandbox roles' EKS,
+autoscaling, DNS, registry and secret-provisioning permissions. The managed-BYOC
+reference permission contract does not currently support this installer: its
+EKS access restrictions and runtime boundary require a separate update.
 The module uses the published release installer through a small CloudFormation
 stack to reach the private cluster and preserve occupied worker pools during
 replacement. See [Sandbox Service](modules/sandbox-service/README.md) for ownership,
