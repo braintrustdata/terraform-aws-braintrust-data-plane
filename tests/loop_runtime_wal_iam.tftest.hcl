@@ -53,6 +53,39 @@ run "wal_markers_with_redis_locks" {
     ]) == 1
     error_message = "WAL payload objects must remain write-only."
   }
+
+  # Event and usage appends read or create WAL token files on a Redis miss and
+  # check the migration flag; without these grants they fail with AccessDenied.
+  assert {
+    condition = length([
+      for statement in jsondecode(aws_iam_role_policy.brainstore_s3_access.policy).Statement : statement
+      if statement.Resource == ["${var.brainstore_s3_bucket_arn}/brainstore/wal/wal_token/*"] &&
+      toset(statement.Action) == toset(["s3:GetObject", "s3:PutObject"])
+    ]) == 1
+    error_message = "Loop must be able to read and create WAL token files."
+  }
+
+  assert {
+    condition = length([
+      for statement in jsondecode(aws_iam_role_policy.brainstore_s3_access.policy).Statement : statement
+      if statement.Resource == ["${var.brainstore_s3_bucket_arn}/brainstore/wal/flags/wal_token_fully_migrated"] &&
+      statement.Action == ["s3:GetObject"]
+    ]) == 1
+    error_message = "Loop must be able to read the WAL token migration flag."
+  }
+
+  assert {
+    condition = length([
+      for statement in jsondecode(aws_iam_role_policy.brainstore_s3_access.policy).Statement : statement
+      if statement.Action == ["s3:ListBucket"] &&
+      try(toset(statement.Condition.StringLike["s3:prefix"]), toset([])) == toset([
+        "brainstore/wal/recently-updated/*",
+        "brainstore/wal/wal_token/*",
+        "brainstore/wal/flags/wal_token_fully_migrated",
+      ])
+    ]) == 1
+    error_message = "Missing WAL markers, token files, and migration flags must return 404 rather than 403."
+  }
 }
 
 run "wal_markers_with_object_store_locks" {
