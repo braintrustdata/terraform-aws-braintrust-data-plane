@@ -878,6 +878,15 @@ module "api_ecs" {
   custom_tags              = local.all_custom_tags
 }
 
+check "legacy_ai_proxy" {
+  assert {
+    condition = var.use_deployment_mode_external_eks || (
+      var.enable_ai_gateway && !(local.create_ingress && var.use_global_ai_proxy ? module.ingress[0].uses_legacy_ai_proxy : false)
+    )
+    error_message = "This deployment uses the deprecated legacy LLM proxy. A future release will remove the legacy proxy and require the Braintrust Gateway. To set up the Gateway, see https://docs.braintrust.dev/admin/self-hosting/configure/gateway#deploy-and-enable-the-gateway"
+  }
+}
+
 module "ingress" {
   source = "./modules/ingress"
   count  = local.create_ingress ? 1 : 0

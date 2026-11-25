@@ -324,7 +324,8 @@ run "existing_vpcs_explicit_override_wins_but_keeps_infrastructure" {
 }
 
 run "privatelink_does_not_require_other_gateway_cutover_flags" {
-  command = plan
+  command         = plan
+  expect_failures = [check.legacy_ai_proxy]
   variables {
     enable_ai_gateway             = false
     use_private_ai_gateway_origin = false
@@ -378,7 +379,7 @@ run "requires_gateway" {
     enable_ai_gateway             = false
     use_private_ai_gateway_origin = false
   }
-  expect_failures = [var.use_private_gateway_quarantine_proxy]
+  expect_failures = [var.use_private_gateway_quarantine_proxy, check.legacy_ai_proxy]
 }
 
 run "rejects_empty_main_subnet" {

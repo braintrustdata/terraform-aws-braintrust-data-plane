@@ -49,6 +49,7 @@ run "rejects_voice_without_gateway" {
 run "voice_disabled_allows_disabled_gateway" {
   command = plan
   variables { enable_ai_gateway = false }
+  expect_failures = [check.legacy_ai_proxy]
 }
 
 run "voice_custom_origin_with_lambda_ingress" {
