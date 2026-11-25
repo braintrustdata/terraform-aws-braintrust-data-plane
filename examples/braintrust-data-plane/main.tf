@@ -221,7 +221,8 @@ module "braintrust-data-plane" {
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 
-  # Inject optional Gateway credentials from Secrets Manager, using full secret ARNs.
+  # Map Gateway environment variable names to full Secrets Manager secret ARNs.
+  # Use the AWS-managed Secrets Manager key or a KMS key the Gateway execution role can use.
   # ai_gateway_extra_secrets = {}
 
   ### CloudFront TLS configuration

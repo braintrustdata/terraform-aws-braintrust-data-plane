@@ -41,6 +41,10 @@ module "braintrust-data-plane" {
   create_ai_gateway        = true
   enable_ai_gateway        = true
 
+  # Map Gateway environment variable names to full Secrets Manager secret ARNs.
+  # Use the AWS-managed Secrets Manager key or a KMS key the Gateway execution role can use.
+  # ai_gateway_extra_secrets = {}
+
   # Optional private access to both the API and AI Gateway. Defaults to false. When disabled the Quarantine workloads will not be able to access the API or AI Gateway.
   # create_quarantine_api_access = false
 
