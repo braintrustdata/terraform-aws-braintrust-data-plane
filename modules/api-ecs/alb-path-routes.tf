@@ -51,7 +51,7 @@ locals {
     { path = "/automation/trigger", method = "POST", priority = 275, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/chat/completions", priority = 280, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/proxy/responses", priority = 290, target_group = aws_lb_target_group.braintrust_api_background.arn },
-    ], var.enable_ecs_voice_sessions ? [
+    ], var.enable_voice_sessions ? [
     { path = "/v1/project/*/simulated_user/*/session", method = "POST", priority = 300, target_group = aws_lb_target_group.braintrust_api_background.arn },
     { path = "/v1/voice_session/*/connect", method = "GET", priority = 310, target_group = aws_lb_target_group.braintrust_api_background.arn },
   ] : [])

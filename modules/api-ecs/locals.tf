@@ -145,6 +145,11 @@ locals {
 
   merged_env_vars = merge(local.base_env_vars, var.extra_env_vars)
 
+  # Strip optional :json-key:version-stage:version-id so IAM Resource is the secret ARN.
+  extra_secret_arns = [
+    for s in var.extra_secrets : regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom)
+  ]
+
   api_service_names = ["braintrust-api", "braintrust-api-ingest", "braintrust-api-background"]
 
   api_log_group_names = {
@@ -159,7 +164,7 @@ locals {
       OTEL_SERVICE_NAME                  = service_name
       CLOUDWATCH_METRICS_SERVICE_NAME    = service_name
       CLOUDWATCH_METRICS_DEPLOYMENT_NAME = var.deployment_name
-      }, service_name == "braintrust-api-background" && var.enable_ecs_voice_sessions ? {
+      }, service_name == "braintrust-api-background" && var.enable_voice_sessions ? {
       VOICE_SESSION_WS_BASE_URL = var.voice_session_ws_base_url
     } : {})
   }
@@ -221,6 +226,7 @@ locals {
           valueFrom = var.custom_ca_bundle_secret_arn
         }
       ],
+      var.extra_secrets,
     )
     healthCheck = {
       command = [
@@ -378,7 +384,7 @@ locals {
             value = local.api_service_env_vars[service_name][key]
           }
         ]
-      }, service_name == "braintrust-api-background" && var.enable_ecs_voice_sessions ? { stopTimeout = 120 } : {})
+      }, service_name == "braintrust-api-background" && var.enable_voice_sessions ? { stopTimeout = 120 } : {})
     ], local.observability_sidecars[service_name]))
   }
 

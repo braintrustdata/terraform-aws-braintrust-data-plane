@@ -21,7 +21,7 @@ command -v rg >/dev/null
 if [[ "$package_dir" == "$source_dir" ]]; then
   command -v shasum >/dev/null
   jq -e '.profile == "customer" and .audience == "customer" and
-    .revision == "aws-customer-2026-11-23-quarantine-pruner.1" and
+    .revision == "aws-customer-2026-11-23-data-plane-licenses.1" and
     .status == "reference" and .deployment_ready == false and
     .diagnostics_activation_mode == "temporary-trust" and
     .default_deprovision_mode == "retain-data" and
@@ -100,7 +100,6 @@ render_policy() {
   local sample_region=us-east-1 sample_bootstrap=review sample_prefix=bt-a-
   local sample_state=customer-review-state sample_operations=customer-review-operations
   local sample_artifacts=braintrust-assets-us-east-1
-  local sample_license=arn:aws:secretsmanager:us-east-1:111122223333:secret:braintrust-license-review
   local sample_principal=arn:aws:iam::444455556666:role/braintrust-human
   local sample_external_id=review-only-external-id
   local sample_engineer=11111111-2222-3333-4444-555555555555
@@ -112,7 +111,6 @@ render_policy() {
     sample_state="$(printf '%63s' '' | tr ' ' s)"
     sample_operations="$(printf '%63s' '' | tr ' ' o)"
     sample_artifacts="$(printf '%63s' '' | tr ' ' a)"
-    sample_license="arn:aws:secretsmanager:${sample_region}:111122223333:secret:$(printf '%63s' '' | tr ' ' l)-ABC123"
     # ARN prefix plus suffix consume 36 characters, leaving 220 at the limit.
     sample_principal="arn:aws:iam::444455556666:role/$(printf '%220s' '' | tr ' ' p)/role"
     sample_external_id="$(printf '%128s' '' | tr ' ' e)"
@@ -133,7 +131,6 @@ render_policy() {
     -e "s|<STATE_BUCKET_NAME>|${sample_state}|g" \
     -e "s|<OPERATION_LOG_BUCKET_NAME>|${sample_operations}|g" \
     -e "s|<BRAINTRUST_ARTIFACT_BUCKET_NAME>|${sample_artifacts}|g" \
-    -e "s|<LICENSE_SECRET_ARN>|${sample_license}|g" \
     -e "s|<BRAINTRUST_DEPLOYMENT_PRINCIPAL_ARN>|${sample_principal}|g" \
     -e "s|<BRAINTRUST_HUMAN_PRINCIPAL_ARN>|${sample_principal}|g" \
     -e "s|<BRAINTRUST_DIAGNOSTICS_PRINCIPAL_ARN>|${sample_principal}|g" \
@@ -235,10 +232,15 @@ check_rendered_names() {
     exit 1
   }
   license="$(jq -er '.Statement[] | select(.Sid == "ReadLicenseSecret") | .Resource' "$data_file")"
-  [[ ${#license} -le 128 && "$license" != *'*'* && "$license" != *'?'* ]] || {
-    echo 'License secret ARN must be exact and at most 128 characters.' >&2
+  local region
+  region="$(jq -er '.Statement[] | select(.Sid == "ProtectOwningBootstrapStack") | .Resource | split(":")[3]' "$activation_file")"
+  local expected_license="arn:aws:secretsmanager:${region}:${account}:secret:braintrust-byoc/licenses/*"
+  [[ "$license" == "$expected_license" ]] || {
+    echo 'License reads must use the exact same-account, same-Region shared license path.' >&2
     exit 1
   }
+  jq -e '[.Statement[] | select(.Sid == "ReadLicenseSecret") |
+    .Effect == "Allow" and (.Action | sort) == (["secretsmanager:DescribeSecret", "secretsmanager:GetSecretValue"] | sort)] == [true]' "$data_file" >/dev/null
   for trust in deployment-role-trust-policy.json human-role-trust-policy.json diagnostics-active-trust-policy.json; do
     principal="$(jq -er '.Statement[0].Principal.AWS' "$temporary_dir/${fixture}${trust}")"
     role_pattern='^arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9_+=,.@/-]+$'
@@ -278,6 +280,16 @@ check_rendered_names() {
 check_rendered_names ''
 if [[ "$package_dir" == "$source_dir" ]]; then
   check_rendered_names maximum-
+  # A license ARN in another Region must fail even when its account and path match.
+  cp "$temporary_dir/deployment-data-policy.json" "$temporary_dir/license-scope-backup.json"
+  jq '(.Statement[] | select(.Sid == "ReadLicenseSecret") | .Resource) |=
+    sub(":us-east-1:"; ":us-west-2:")' "$temporary_dir/license-scope-backup.json" \
+    >"$temporary_dir/deployment-data-policy.json"
+  if (check_rendered_names '' >/dev/null 2>&1); then
+    echo 'License validation accepted a different Region.' >&2
+    exit 1
+  fi
+  mv "$temporary_dir/license-scope-backup.json" "$temporary_dir/deployment-data-policy.json"
 fi
 echo 'Bootstrap naming, protected IAM paths, input lengths, and Diagnostics trust checks passed.'
 
@@ -377,6 +389,10 @@ if [[ "$package_dir" == "$source_dir" ]]; then
     ([.Statement[] | select(.Sid == "AllowInternalRuntimeRoleAssumptions") |
       .Action == "sts:AssumeRole" and (.Resource | length) == 2 and
       .Condition.ArnLike."aws:PrincipalArn" == "arn:aws:iam::111122223333:role/bt-a-*-APIHandlerRole"] == [true]) and
+    ([.Statement[] | select(.Sid == "AllowGatewayBedrockRoleAssumption") |
+      .Effect == "Allow" and .Action == "sts:AssumeRole" and .Resource == "*" and
+      .Condition == {"ArnLike":{"aws:PrincipalArn":"arn:aws:iam::111122223333:role/bt-a-*-gateway-task"},
+        "StringLike":{"sts:ExternalId":"bt:*"}}] == [true]) and
     ([.Statement[] | select(.Sid == "AllowWorkloadStorageOutsideBootstrap") |
       (.NotResource | length) == 6] == [true])'
   assert_policy deployment-workload-policy.json '

@@ -14,8 +14,8 @@ module "braintrust-data-plane" {
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
 
   # The optional Loop runtime is disabled by default.
-  enable_ecs_voice_sessions = false
-  enable_loop_runtime       = false
+  enable_voice_sessions = false
+  enable_loop_runtime   = false
   # Hard cutover: existing chats start fresh sandboxes on Sandbox Service.
   enable_sandbox_service                     = false
   sandbox_service_instance_types             = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]

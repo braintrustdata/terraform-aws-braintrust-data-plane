@@ -218,10 +218,9 @@ The [private example](examples/braintrust-data-plane-private/README.md#private-r
 
 ## Hosted voice sessions
 
-Hosted voice sessions are disabled by default. Set `enable_ecs_voice_sessions = true`
-after deploying an API image containing [braintrustdata/braintrust#25882](https://github.com/braintrustdata/braintrust/pull/25882).
-The existing API image pin is unchanged. Use a released image containing that merge
-or set `braintrust_api_version_override` to a compatible image tag.
+Hosted voice sessions are disabled by default. Set `enable_voice_sessions = true`
+to enable them. Voice requires a local AI gateway and data plane release version
+2.24.0 or later.
 Voice also requires `enable_ai_gateway = true` to supply `GATEWAY_URL` to the API.
 
 Session creation (`POST /v1/project/*/simulated_user/*/session`) and WebSocket

@@ -105,7 +105,7 @@ locals {
 
   create_ingress                             = !var.use_deployment_mode_external_eks && !var.enable_private_dataplane
   api_url                                    = var.enable_private_dataplane ? (var.braintrust_api_alb_custom_domain == null ? null : "https://${var.braintrust_api_alb_custom_domain}") : (local.create_ingress ? module.ingress[0].api_url : null)
-  voice_session_ws_base_url                  = var.enable_ecs_voice_sessions ? replace(var.custom_domain != null ? "https://${var.custom_domain}" : local.api_url, "https://", "wss://") : null
+  voice_session_ws_base_url                  = var.enable_voice_sessions ? replace(var.custom_domain != null ? "https://${var.custom_domain}" : local.api_url, "https://", "wss://") : null
   internal_api_url                           = local.create_ecs_api ? (var.enable_private_dataplane ? module.api_ecs[0].internal_url : module.api_ecs[0].http_url) : null
   ai_proxy_url_ssm_parameter_name            = "/braintrust/${var.deployment_name}/ai-proxy-url"
   api_ecs_url_ssm_parameter_name             = "/braintrust/${var.deployment_name}/ecs-api-url"
@@ -576,6 +576,7 @@ module "gateway_ecs" {
   extra_env_vars = merge(var.ai_gateway_extra_env_vars, var.enable_private_dataplane ? {
     OVERRIDE_BRAINTRUST_API_URL = local.internal_api_url
   } : {})
+  extra_secrets                         = var.ai_gateway_extra_secrets
   custom_ca_bundle_secret_arn           = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn          = var.custom_ca_bundle_kms_key_arn
   custom_tags                           = local.all_custom_tags
@@ -800,7 +801,7 @@ module "api_ecs" {
   deployment_name      = var.deployment_name
   api_version_override = local.api_version_tag
 
-  enable_ecs_voice_sessions = var.enable_ecs_voice_sessions
+  enable_voice_sessions     = var.enable_voice_sessions
   voice_session_ws_base_url = local.voice_session_ws_base_url
 
   # Telemetry
@@ -852,6 +853,7 @@ module "api_ecs" {
   braintrust_api_memory                                        = var.braintrust_api_memory
   braintrust_api_min_count                                     = var.braintrust_api_min_count
   braintrust_api_max_count                                     = var.braintrust_api_max_count
+  braintrust_api_deployment_maximum_percent                    = var.braintrust_api_deployment_maximum_percent
   braintrust_api_cpu_autoscaling                               = var.braintrust_api_cpu_autoscaling
   braintrust_api_memory_autoscaling                            = var.braintrust_api_memory_autoscaling
   braintrust_api_event_loop_utilization_autoscaling            = var.braintrust_api_event_loop_utilization_autoscaling
@@ -860,6 +862,7 @@ module "api_ecs" {
   braintrust_api_ingest_memory                                 = var.braintrust_api_ingest_memory
   braintrust_api_ingest_min_count                              = var.braintrust_api_ingest_min_count
   braintrust_api_ingest_max_count                              = var.braintrust_api_ingest_max_count
+  braintrust_api_ingest_deployment_maximum_percent             = var.braintrust_api_ingest_deployment_maximum_percent
   braintrust_api_ingest_cpu_autoscaling                        = var.braintrust_api_ingest_cpu_autoscaling
   braintrust_api_ingest_memory_autoscaling                     = var.braintrust_api_ingest_memory_autoscaling
   braintrust_api_ingest_event_loop_utilization_autoscaling     = var.braintrust_api_ingest_event_loop_utilization_autoscaling
@@ -868,6 +871,7 @@ module "api_ecs" {
   braintrust_api_background_memory                             = var.braintrust_api_background_memory
   braintrust_api_background_min_count                          = var.braintrust_api_background_min_count
   braintrust_api_background_max_count                          = var.braintrust_api_background_max_count
+  braintrust_api_background_deployment_maximum_percent         = var.braintrust_api_background_deployment_maximum_percent
   braintrust_api_background_cpu_autoscaling                    = var.braintrust_api_background_cpu_autoscaling
   braintrust_api_background_memory_autoscaling                 = var.braintrust_api_background_memory_autoscaling
   braintrust_api_background_event_loop_utilization_autoscaling = var.braintrust_api_background_event_loop_utilization_autoscaling
@@ -885,6 +889,7 @@ module "api_ecs" {
     QUARANTINE_API_URL            = local.quarantine_api_url != null ? local.quarantine_api_url : ""
     QUARANTINE_PROXY_URL          = ""
   } : {})
+  extra_secrets = var.braintrust_api_extra_secrets
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc
@@ -958,7 +963,7 @@ module "ingress" {
   ai_proxy_function_url               = module.services[0].ai_proxy_url
   api_handler_function_arn            = module.services[0].api_handler_arn
   enable_ecs_api                      = local.enable_ecs_api
-  enable_ecs_voice_sessions           = var.enable_ecs_voice_sessions
+  enable_voice_sessions               = var.enable_voice_sessions
   api_ecs_alb_arn                     = module.api_ecs[0].alb_arn
   api_ecs_alb_domain                  = module.api_ecs[0].alb_domain
   api_ecs_alb_https_enabled           = module.api_ecs[0].alb_https_enabled

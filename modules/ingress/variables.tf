@@ -115,7 +115,7 @@ variable "enable_ecs_api" {
   default     = false
 }
 
-variable "enable_ecs_voice_sessions" {
+variable "enable_voice_sessions" {
   description = "Route hosted voice session creation and WebSocket connections to the API ECS ALB, including with Lambda ingress."
   type        = bool
   default     = false

@@ -35,8 +35,8 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_ecs_voice_sessions = false
-  enable_loop_runtime       = false
+  enable_voice_sessions = false
+  enable_loop_runtime   = false
   # Hard cutover: existing chats start fresh sandboxes on Sandbox Service.
   enable_sandbox_service                     = false
   sandbox_service_instance_types             = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
@@ -260,6 +260,24 @@ module "braintrust-data-plane" {
 
   # Uncomment these to set extra environment variables for the services.
   # Only use this when instructed to by the Braintrust team.
+  # Non-secret env only. Put Secrets Manager ARNs in *_extra_secrets.
+  # ai_gateway_extra_env_vars = {
+  #   NATIVE_INFERENCE_ENVIRONMENT = "eu"
+  # }
+  # ai_gateway_extra_secrets = [
+  #   {
+  #     name      = "NATIVE_INFERENCE_SECRET_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:native-inference-AbCdEf"
+  #     # Pin a version to roll the service on rotate:
+  #     # valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:native-inference-AbCdEf:::01234567-89ab-cdef-0123-456789abcdef"
+  #   }
+  # ]
+  # braintrust_api_extra_secrets = [
+  #   {
+  #     name      = "LAUNCHDARKLY_SDK_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:launchdarkly-XyZ123"
+  #   }
+  # ]
   # brainstore_extra_env_vars = {}
   #
   # brainstore_extra_env_vars_writer = {}

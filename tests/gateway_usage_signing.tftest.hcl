@@ -37,7 +37,7 @@ run "private_ingestion_does_not_enable_workload_signing" {
     condition = alltrue([
       for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) :
       alltrue([for env in container.environment : !contains([
-        "GATEWAY_USAGE_SIGNING_KEY_ARN", "GATEWAY_USAGE_HOSTED_API_URLS"
+        "GATEWAY_USAGE_SIGNING_KEY_ARN", "GATEWAY_USAGE_LOCAL_SIGNING_KEY_ARN", "GATEWAY_USAGE_HOSTED_API_URLS"
       ], env.name)]) if container.name == "gateway"
     ])
     error_message = "Private ingestion must not enable workload credentials by default."
@@ -58,9 +58,10 @@ run "signed_usage_uses_the_private_callback_and_scoped_key" {
   assert {
     condition = alltrue([
       for name, value in {
-        GATEWAY_USAGE_SIGNING_KEY_ARN = var.usage_signing_key.arn
-        GATEWAY_USAGE_HOSTED_API_URLS = var.braintrust_api_url
-        OVERRIDE_BRAINTRUST_API_URL   = var.braintrust_api_url
+        GATEWAY_USAGE_SIGNING_KEY_ARN       = var.usage_signing_key.arn
+        GATEWAY_USAGE_LOCAL_SIGNING_KEY_ARN = var.usage_signing_key.arn
+        GATEWAY_USAGE_HOSTED_API_URLS       = var.braintrust_api_url
+        OVERRIDE_BRAINTRUST_API_URL         = var.braintrust_api_url
       } :
       one([for container in jsondecode(aws_ecs_task_definition.gateway.container_definitions) :
         one([for env in container.environment : env.value if env.name == name])

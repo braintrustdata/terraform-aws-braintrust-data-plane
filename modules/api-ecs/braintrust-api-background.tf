@@ -51,6 +51,7 @@ resource "aws_ecs_service" "braintrust_api_background" {
   enable_execute_command            = var.enable_execute_command
   health_check_grace_period_seconds = 60
   wait_for_steady_state             = true
+  deployment_maximum_percent        = var.braintrust_api_background_deployment_maximum_percent
 
   # This causes instant rollbacks on first deploy. Must be off.
   sigint_rollback = false
@@ -136,7 +137,7 @@ resource "aws_appautoscaling_policy" "braintrust_api_background_memory_target" {
 }
 
 resource "aws_appautoscaling_policy" "braintrust_api_background_voice_slots" {
-  count = var.enable_ecs_voice_sessions ? 1 : 0
+  count = var.enable_voice_sessions ? 1 : 0
 
   name               = "${var.deployment_name}-braintrust-api-background-voice-slots"
   policy_type        = "TargetTrackingScaling"

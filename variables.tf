@@ -750,13 +750,50 @@ variable "ai_gateway_usage_signing_key" {
 }
 
 variable "ai_gateway_extra_env_vars" {
-  description = "Extra environment variables for the gateway ECS container"
+  description = "Extra non-secret environment variables for the gateway ECS container. Do not put secret values here. Use ai_gateway_extra_secrets with Secrets Manager ARNs."
   type        = map(string)
   default     = {}
 
   validation {
-    condition     = !contains(keys(var.ai_gateway_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in ai_gateway_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
+    condition = length(setintersection(keys(var.ai_gateway_extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in ai_gateway_extra_env_vars. Use ai_gateway_extra_secrets for consumer secrets, or brainstore_license_key / existing_brainstore_license_key_secret for the license."
+  }
+}
+
+variable "ai_gateway_extra_secrets" {
+  description = "Extra ECS secrets for the gateway container. Each entry is a name plus a Secrets Manager valueFrom ARN, optionally pinned as ARN:::version-id. The secret must use the deployment KMS key or the default Secrets Manager key."
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for s in var.ai_gateway_extra_secrets : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom))
+    ])
+    error_message = "ai_gateway_extra_secrets valueFrom must be a Secrets Manager secret ARN, optionally with :json-key:stage:version-id."
+  }
+
+  validation {
+    condition = length(setintersection(toset([for s in var.ai_gateway_extra_secrets : s.name]), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "DD_API_KEY",
+      "BRAINTRUST_CUSTOM_CA_BUNDLE",
+      "COMPLETIONS_CACHE_REDIS_URL",
+      "AUTH_CACHE_REDIS_URL",
+    ]))) == 0
+    error_message = "Do not reuse a module-owned secret name in ai_gateway_extra_secrets."
   }
 }
 
@@ -1170,19 +1207,19 @@ variable "enable_private_dataplane" {
   }
 }
 
-variable "enable_ecs_voice_sessions" {
+variable "enable_voice_sessions" {
   type        = bool
-  description = "Enable hosted voice session creation and WebSocket connections on the background API ECS pool. Requires enable_ai_gateway and an API image containing braintrustdata/braintrust#25882. Not supported with external EKS."
+  description = "Enable hosted voice session creation and WebSocket connections on the background API ECS pool. Requires a local AI gateway and data plane release version 2.24.0 or later. Not supported with external EKS."
   default     = false
 
   validation {
-    condition     = !var.enable_ecs_voice_sessions || !var.use_deployment_mode_external_eks
+    condition     = !var.enable_voice_sessions || !var.use_deployment_mode_external_eks
     error_message = "This module does not configure hosted voice for external EKS."
   }
 
   validation {
-    condition     = !var.enable_ecs_voice_sessions || var.enable_ai_gateway
-    error_message = "enable_ecs_voice_sessions requires enable_ai_gateway to provide GATEWAY_URL."
+    condition     = !var.enable_voice_sessions || var.enable_ai_gateway
+    error_message = "enable_voice_sessions requires enable_ai_gateway to provide GATEWAY_URL."
   }
 }
 
@@ -1237,6 +1274,22 @@ variable "braintrust_api_max_count" {
   validation {
     condition     = var.braintrust_api_max_count >= var.braintrust_api_min_count
     error_message = "braintrust_api_max_count must be greater than or equal to braintrust_api_min_count."
+  }
+}
+
+variable "braintrust_api_deployment_maximum_percent" {
+  description = "Upper limit, as a percentage of desired count, on running braintrust-api ECS tasks during a rolling deployment. Lower values reduce the extra Fargate capacity a deployment launches but slow the rollout. Must be between 101 and 200, and must allow at least one extra task at the minimum task count."
+  type        = number
+  default     = 200
+
+  validation {
+    condition     = var.braintrust_api_deployment_maximum_percent > 100 && var.braintrust_api_deployment_maximum_percent <= 200
+    error_message = "braintrust_api_deployment_maximum_percent must be greater than 100 and at most 200."
+  }
+
+  validation {
+    condition     = floor(var.braintrust_api_min_count * var.braintrust_api_deployment_maximum_percent / 100) > var.braintrust_api_min_count
+    error_message = "braintrust_api_deployment_maximum_percent must allow at least one extra braintrust-api task during a deployment at braintrust_api_min_count. Raise the percentage or the minimum count."
   }
 }
 
@@ -1326,6 +1379,22 @@ variable "braintrust_api_ingest_max_count" {
   }
 }
 
+variable "braintrust_api_ingest_deployment_maximum_percent" {
+  description = "Upper limit, as a percentage of desired count, on running braintrust-api-ingest ECS tasks during a rolling deployment. Lower values reduce the extra Fargate capacity a deployment launches but slow the rollout. Must be between 101 and 200, and must allow at least one extra task at the minimum task count."
+  type        = number
+  default     = 200
+
+  validation {
+    condition     = var.braintrust_api_ingest_deployment_maximum_percent > 100 && var.braintrust_api_ingest_deployment_maximum_percent <= 200
+    error_message = "braintrust_api_ingest_deployment_maximum_percent must be greater than 100 and at most 200."
+  }
+
+  validation {
+    condition     = floor(var.braintrust_api_ingest_min_count * var.braintrust_api_ingest_deployment_maximum_percent / 100) > var.braintrust_api_ingest_min_count
+    error_message = "braintrust_api_ingest_deployment_maximum_percent must allow at least one extra braintrust-api-ingest task during a deployment at braintrust_api_ingest_min_count. Raise the percentage or the minimum count."
+  }
+}
+
 variable "braintrust_api_ingest_cpu_autoscaling" {
   description = "CPU target tracking autoscaling for the braintrust-api-ingest ECS service."
   type = object({
@@ -1412,6 +1481,22 @@ variable "braintrust_api_background_max_count" {
   }
 }
 
+variable "braintrust_api_background_deployment_maximum_percent" {
+  description = "Upper limit, as a percentage of desired count, on running braintrust-api-background ECS tasks during a rolling deployment. Lower values reduce the extra Fargate capacity a deployment launches but slow the rollout. Must be between 101 and 200, and must allow at least one extra task at the minimum task count."
+  type        = number
+  default     = 200
+
+  validation {
+    condition     = var.braintrust_api_background_deployment_maximum_percent > 100 && var.braintrust_api_background_deployment_maximum_percent <= 200
+    error_message = "braintrust_api_background_deployment_maximum_percent must be greater than 100 and at most 200."
+  }
+
+  validation {
+    condition     = floor(var.braintrust_api_background_min_count * var.braintrust_api_background_deployment_maximum_percent / 100) > var.braintrust_api_background_min_count
+    error_message = "braintrust_api_background_deployment_maximum_percent must allow at least one extra braintrust-api-background task during a deployment at braintrust_api_background_min_count. Raise the percentage or the minimum count."
+  }
+}
+
 variable "braintrust_api_background_cpu_autoscaling" {
   description = "CPU target tracking autoscaling for the braintrust-api-background ECS service."
   type = object({
@@ -1465,13 +1550,52 @@ variable "braintrust_api_background_event_loop_delay_autoscaling" {
 }
 
 variable "braintrust_api_extra_env_vars" {
-  description = "Extra environment variables for the API ECS container."
+  description = "Extra non-secret environment variables for the API ECS container. Do not put secret values here. Use braintrust_api_extra_secrets with Secrets Manager ARNs."
   type        = map(string)
   default     = {}
 
   validation {
-    condition     = !contains(keys(var.braintrust_api_extra_env_vars), "BRAINSTORE_LICENSE_KEY")
-    error_message = "Do not set BRAINSTORE_LICENSE_KEY in braintrust_api_extra_env_vars; use brainstore_license_key or existing_brainstore_license_key_secret."
+    condition = length(setintersection(keys(var.braintrust_api_extra_env_vars), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "NATIVE_INFERENCE_SECRET_KEY",
+      "LAUNCHDARKLY_SDK_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "CRON_OVERRIDE_SECRET_KEY",
+    ]))) == 0
+    error_message = "Do not set secret-shaped keys in braintrust_api_extra_env_vars. Use braintrust_api_extra_secrets for consumer secrets, or brainstore_license_key / existing_brainstore_license_key_secret for the license."
+  }
+}
+
+variable "braintrust_api_extra_secrets" {
+  description = "Extra ECS secrets for the API containers. Each entry is a name plus a Secrets Manager valueFrom ARN, optionally pinned as ARN:::version-id. The secret must use the deployment KMS key or the default Secrets Manager key."
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for s in var.braintrust_api_extra_secrets : can(regex("^arn:[^:]+:secretsmanager:[^:]+:[^:]+:secret:[^:]+", s.valueFrom))
+    ])
+    error_message = "braintrust_api_extra_secrets valueFrom must be a Secrets Manager secret ARN, optionally with :json-key:stage:version-id."
+  }
+
+  validation {
+    condition = length(setintersection(toset([for s in var.braintrust_api_extra_secrets : s.name]), toset([
+      "BRAINSTORE_LICENSE_KEY",
+      "DD_API_KEY",
+      "FUNCTION_SECRET_KEY",
+      "SERVICE_TOKEN_SECRET_KEY",
+      "PG_URL",
+      "REDIS_URL",
+      "BRAINTRUST_CUSTOM_CA_BUNDLE",
+    ]))) == 0
+    error_message = "Do not reuse a module-owned secret name in braintrust_api_extra_secrets."
   }
 }
 

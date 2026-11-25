@@ -36,8 +36,8 @@ module "braintrust-data-plane" {
   # btql_audit_logs_best_effort_org_ids = []
 
   # The optional Loop runtime is disabled by default.
-  enable_ecs_voice_sessions = false
-  enable_loop_runtime       = false
+  enable_voice_sessions = false
+  enable_loop_runtime   = false
   # Hard cutover: existing chats start fresh sandboxes on Sandbox Service.
   enable_sandbox_service                     = false
   sandbox_service_instance_types             = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
@@ -166,6 +166,14 @@ module "braintrust-data-plane" {
 
   # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2, and Gateway ECS.
   # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
+
+  # Non-secret env only. Put Secrets Manager ARNs in *_extra_secrets.
+  # ai_gateway_extra_secrets = [
+  #   {
+  #     name      = "NATIVE_INFERENCE_SECRET_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:native-inference-AbCdEf"
+  #   }
+  # ]
 
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to

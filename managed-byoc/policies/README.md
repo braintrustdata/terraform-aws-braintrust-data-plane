@@ -206,7 +206,7 @@ Scheduler permissions separately cover schedule names under the managed prefix.
 | `<BOOTSTRAP_STACK_ARN>` | Actual owning CloudFormation stack ARN (`AWS::StackId`), independent of the stack's name |
 | `<STATE_BUCKET_NAME>`, `<OPERATION_LOG_BUCKET_NAME>` | Distinct customer-owned S3 buckets, outside the runtime prefix |
 | `<BRAINTRUST_ARTIFACT_BUCKET_NAME>` | Exact Braintrust software bucket for the Region |
-| `<LICENSE_SECRET_ARN>` | Exact same-account, same-Region license secret ARN, at most 128 characters |
+| License secret path | `braintrust-byoc/licenses/` in this account and Region; use a meaningful secret name beneath this shared path |
 | `<BRAINTRUST_METRIC_RECEIVER_ACCOUNT_ID>` | Exact Braintrust receiver account, different from the source account; every bootstrap requires one |
 
 [Trust inputs](../trust-policies/README.md) identify the Braintrust principals
@@ -215,7 +215,17 @@ for an unused value.
 
 Bootstrap state and operation buckets use versioning and SSE-S3 encryption.
 No separate bootstrap KMS key is required or supported by this contract.
-The license secret uses default AWS-managed `aws/secretsmanager` encryption.
+Each data plane selects its own exact license secret ARN under
+`braintrust-byoc/licenses/`. Create these secrets with default
+AWS-managed `aws/secretsmanager` encryption. Deployment can describe and read
+secrets under that path, but has no grant to create, modify, or delete them.
+A second data plane or a changed license within the path does not require a
+bootstrap change. This path grants no direct license access to Observer,
+Diagnostics, or workload roles. New bootstrap Deployment roles in this account and Region share this permission
+scope. Secret names do not isolate licenses between bootstraps or data planes.
+
+Earlier issued bootstraps retain their exact-secret permissions. Applying a
+new data-plane module or publishing this reference does not upgrade them.
 The module creates a separate data-plane key.
 
 State access is limited to the bootstrap root and per-deployment backend keys.
@@ -267,11 +277,20 @@ The base boundary permits the API handler to assume only prefixed internal
 `QuarantineInvokeRole` and `AIProxyInvokeRole` targets. Module-generated target
 trust identifies that data plane's API handler.
 
-Bedrock and S3 export require exact destination roles in workload policies,
-matching boundary allowances, and destination trust for the intended workload.
+The Gateway boundary permits `sts:AssumeRole` from this bootstrap's prefixed
+`*-gateway-task` roles with the module's `bt:*` External ID convention. This is
+the ECS task role, not its `*-gateway-task-exec` execution role. Destination
+roles are intentionally not enumerated in the shared boundary: configure exact
+Bedrock role ARNs using `ai_gateway_bedrock_assume_role_arns`. The resulting
+workload policy and each destination role's trust restrict access. The destination
+role grants the required Bedrock permissions. A boundary allowance alone does
+not grant access, and this flow does not require direct Bedrock permissions on
+the Gateway task role.
+
 The module's empty feature allowlist can produce `Resource: "*"`; configure
-explicit destinations before enabling the feature. A boundary allowance alone
-does not grant access.
+explicit destinations before enabling the feature. Other integrations, including
+S3 export, still need their own workload policy, matching boundary allowance,
+and destination trust. The Gateway allowance does not authorize other workloads.
 
 Direct S3, KMS, and other service calls have no universal ownership perimeter in
 this package. Scope each integration's source and destination policies and

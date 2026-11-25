@@ -27,8 +27,8 @@ run "voice_bypasses_lambda_ingress" {
   command = plan
   module { source = "./modules/ingress" }
   variables {
-    enable_ecs_api            = false
-    enable_ecs_voice_sessions = true
+    enable_ecs_api        = false
+    enable_voice_sessions = true
   }
   assert {
     condition = (
@@ -55,7 +55,7 @@ run "voice_with_ecs_https_origin" {
   module { source = "./modules/ingress" }
   variables {
     enable_ecs_api            = true
-    enable_ecs_voice_sessions = true
+    enable_voice_sessions     = true
     api_ecs_alb_https_enabled = true
     api_ecs_alb_domain        = "origin.example.com"
   }
