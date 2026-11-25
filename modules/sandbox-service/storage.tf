@@ -1,45 +1,3 @@
-resource "aws_s3_bucket" "filesystems" {
-  bucket_prefix = "${var.deployment_name}-sandbox-fs-"
-  force_destroy = false
-  tags          = local.common_tags
-}
-
-resource "aws_s3_bucket_public_access_block" "filesystems" {
-  bucket                  = aws_s3_bucket.filesystems.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_ownership_controls" "filesystems" {
-  bucket = aws_s3_bucket.filesystems.id
-  rule {
-    object_ownership = "BucketOwnerEnforced"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "filesystems" {
-  bucket = aws_s3_bucket.filesystems.id
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "filesystems" {
-  bucket = aws_s3_bucket.filesystems.id
-  rule {
-    id     = "AbortIncompleteMultipartUploads"
-    status = "Enabled"
-    filter {}
-    abort_incomplete_multipart_upload {
-      days_after_initiation = 1
-    }
-  }
-}
-
 resource "aws_iam_role" "filesystems" {
   name                 = "${var.deployment_name}-sandbox-filesystems"
   permissions_boundary = var.permissions_boundary_arn
@@ -64,11 +22,11 @@ resource "aws_iam_role_policy" "filesystems" {
   role = aws_iam_role.filesystems.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Effect   = "Allow"
         Action   = "s3:ListBucket"
-        Resource = aws_s3_bucket.filesystems.arn
+        Resource = var.checkpoint_bucket_arn
         Condition = { StringLike = {
           "s3:prefix" = ["sandbox-filesystems", "sandbox-filesystems/*"]
         } }
@@ -76,13 +34,21 @@ resource "aws_iam_role_policy" "filesystems" {
       {
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        Resource = "${aws_s3_bucket.filesystems.arn}/sandbox-filesystems/*"
+        Resource = "${var.checkpoint_bucket_arn}/sandbox-filesystems/*"
       },
-    ]
+      ], var.checkpoint_bucket_kms_key_arn == null ? [] : [{
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+        Resource = var.checkpoint_bucket_kms_key_arn
+        Condition = {
+          StringEquals = { "kms:ViaService" = "s3.${data.aws_region.current.region}.amazonaws.com" }
+          StringLike   = { "kms:EncryptionContext:aws:s3:arn" = [var.checkpoint_bucket_arn, "${var.checkpoint_bucket_arn}/sandbox-filesystems/*"] }
+        }
+    }])
   })
 }
 
 output "checkpoint_store" {
   description = "Durable filesystem checkpoint URI. Retain this bucket until its checkpoints are no longer needed."
-  value       = "s3://${aws_s3_bucket.filesystems.id}/sandbox-filesystems"
+  value       = "s3://${var.checkpoint_bucket_id}/sandbox-filesystems"
 }

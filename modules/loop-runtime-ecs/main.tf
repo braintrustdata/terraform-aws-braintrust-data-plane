@@ -95,6 +95,7 @@ locals {
   )
 
   sandbox_service_env = var.sandbox_service == null ? {} : {
+    LOOP_RUNTIME_ENABLE_SANDBOX_ADMIN               = "true"
     LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN       = "0.0.0.0:4002"
     EXO_SANDBOX_PROVIDER                            = "sandbox_service"
     EXO_SANDBOX_IMAGE                               = var.sandbox_service.image

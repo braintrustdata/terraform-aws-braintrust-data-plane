@@ -18,8 +18,11 @@ override_data {
     status_code   = 200
     response_body = <<-YAML
       # Public release metadata subset used by the Sandbox Service lookup tests.
-      # Source: https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-v2.24.0.yaml
+      # Artifact source: https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-v2.24.0.yaml
+      # Required installer capabilities are mocked independently of these pins.
       Outputs:
+        SandboxServiceBootstrapCapabilities:
+          Value: license-secret,nodegroup-cleanup
         SandboxServiceChartUrl:
           Value: https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/062fbf5e1090e1f624eda6d6f9dfe7af05921e3d90a6405d330feb7866775ad2/sandbox-service-0.1.0.tgz
         SandboxServiceHelmValues:

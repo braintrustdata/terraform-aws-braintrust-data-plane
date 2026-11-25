@@ -825,7 +825,7 @@ variable "enable_sandbox_service" {
 
 variable "sandbox_service_instance_types" {
   type        = list(string)
-  default     = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge"]
+  default     = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
   description = "Sandbox worker instance types with local NVMe and nested virtualization. Availability depends on region and AZ."
 }
 
@@ -839,6 +839,24 @@ variable "sandbox_service_memory_mib" {
   type        = number
   default     = 2048
   description = "Memory in MiB reserved per Sandbox Service sandbox."
+}
+
+variable "sandbox_checkpoint_retention_days" {
+  type        = number
+  default     = 14
+  description = "Days before Sandbox Service checkpoint objects expire. Shared base-image chunks are retained; expired checkpoints start a fresh sandbox."
+}
+
+variable "sandbox_service_operator_role_arn" {
+  type        = string
+  default     = null
+  description = "Optional trusted IAM role for administering the private sandbox EKS cluster."
+}
+
+variable "sandbox_service_authorized_security_groups" {
+  type        = map(string)
+  default     = {}
+  description = "Additional named security groups allowed to reach sandbox workers on TCP 9400 and the private Kubernetes API on TCP 443."
 }
 
 variable "sandbox_service_existing_private_subnet_1_id" {

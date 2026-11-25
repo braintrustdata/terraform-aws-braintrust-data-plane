@@ -4,8 +4,11 @@ mock_provider "http" {
       status_code   = 200
       response_body = <<-YAML
       # Public release metadata subset used by the Sandbox Service lookup tests.
-      # Source: https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-v2.24.0.yaml
+      # Artifact source: https://braintrust-cf-us-east-1.s3.amazonaws.com/braintrust-v2.24.0.yaml
+      # Required installer capabilities are mocked independently of these pins.
       Outputs:
+        SandboxServiceBootstrapCapabilities:
+          Value: license-secret,nodegroup-cleanup
         SandboxServiceChartUrl:
           Value: https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/062fbf5e1090e1f624eda6d6f9dfe7af05921e3d90a6405d330feb7866775ad2/sandbox-service-0.1.0.tgz
         SandboxServiceHelmValues:
@@ -79,11 +82,15 @@ mock_provider "aws" {
 }
 
 variables {
-  version_tag           = "v2.24.0"
-  deployment_name       = "bt-test"
-  vpc_id                = "vpc-0123456789abcdef0"
-  private_subnet_ids    = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
-  data_plane_subnet_ids = ["subnet-main-one", "subnet-main-two", "subnet-main-three"]
+  checkpoint_bucket_id                  = "bt-test-sandbox-checkpoints"
+  checkpoint_bucket_arn                 = "arn:aws:s3:::bt-test-sandbox-checkpoints"
+  brainstore_license_key_secret_arn     = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
+  brainstore_license_key_secret_version = "license-version"
+  version_tag                           = "v2.24.0"
+  deployment_name                       = "bt-test"
+  vpc_id                                = "vpc-0123456789abcdef0"
+  private_subnet_ids                    = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
+  data_plane_subnet_ids                 = ["subnet-main-one", "subnet-main-two", "subnet-main-three"]
   authorized_security_groups = {
     "Loop Runtime" = "sg-0123456789abcdef0"
   }
@@ -128,7 +135,7 @@ run "private_cluster_and_safe_worker_release" {
       aws_vpc_security_group_egress_rule.system_to_secrets_manager.referenced_security_group_id == aws_security_group.secrets_manager.id &&
       aws_lambda_function.release.environment[0].variables.AWS_ENDPOINT_URL_SECRETS_MANAGER == "https://vpce-secrets.example.internal" &&
       jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Principal.AWS == aws_iam_role.release.arn &&
-      toset(jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Resource) == toset([aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn])
+      toset(jsondecode(aws_vpc_endpoint.secrets_manager.policy).Statement[0].Resource) == toset([aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn, var.brainstore_license_key_secret_arn])
     )
     error_message = "The installer must reach only its TLS secrets through a private endpoint without changing existing VPC DNS."
   }
@@ -142,13 +149,34 @@ run "private_cluster_and_safe_worker_release" {
   }
   assert {
     condition = (
-      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.DeletionPolicy == "RetainExceptOnCreate" &&
+      yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.DeletionPolicy == "Delete" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.UpdateReplacePolicy == "Retain" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Workers.Properties.NodegroupName["Fn::Sub"] == "sandbox-$${WorkerRevision}" &&
       yamldecode(aws_cloudformation_stack.release.template_body).Resources.Release.Properties.NodeGroupName["Fn::GetAtt"] == ["Workers", "NodegroupName"] &&
       yamldecode(aws_cloudformation_stack.release.template_body).Outputs.NodeGroupName.Value["Fn::GetAtt"] == ["Workers", "NodegroupName"]
     )
-    error_message = "Worker replacement must create a new pool and retain occupied pools for controller draining."
+    error_message = "Worker replacement must retain occupied pools while stack deletion removes the current pool."
+  }
+  assert {
+    condition = (
+      toset(jsondecode(aws_iam_role_policy.release.policy).Statement[2].Action) == toset(["eks:DeleteNodegroup", "eks:UpdateNodegroupConfig"]) &&
+      jsondecode(aws_iam_role_policy.release.policy).Statement[3].Action == "autoscaling:DescribeAutoScalingGroups" &&
+      aws_lambda_function_event_invoke_config.release.maximum_event_age_in_seconds == 60 &&
+      aws_lambda_function_event_invoke_config.tls.maximum_event_age_in_seconds == 60 &&
+      length(aws_eks_access_entry.operator) == 0
+    )
+    error_message = "The installer needs scoped pool cleanup, autoscaling reads and no stale asynchronous retries; operator access is opt-in."
+  }
+  assert {
+    condition = (
+      aws_cloudformation_stack.release.parameters.LicenseKeySecretArn == var.brainstore_license_key_secret_arn &&
+      aws_cloudformation_stack.release.parameters.LicenseKeySecretVersion == var.brainstore_license_key_secret_version &&
+      !contains(keys(aws_cloudformation_stack.release.parameters), "LicenseKey") &&
+      !contains(keys(yamldecode(aws_cloudformation_stack.release.template_body).Resources.Release.Properties), "LicenseKey") &&
+      one([for env in jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).env : env if env.name == "BRAINSTORE_LICENSE_KEY"]).valueFrom.secretKeyRef.name == "sandbox-telemetry" &&
+      one([for env in jsondecode(aws_cloudformation_stack.release.parameters.HelmValues).env : env if env.name == "BRAINTRUST_ENV"]).value == "customer"
+    )
+    error_message = "Worker telemetry must use the deployment license through a Kubernetes Secret and never pass its value through Terraform."
   }
   assert {
     condition = (
@@ -192,9 +220,7 @@ run "private_cluster_and_safe_worker_release" {
         aws_secretsmanager_secret.client_tls.arn,
       ]) &&
       aws_eks_pod_identity_association.filesystems.service_account == "sandbox-service" &&
-      jsondecode(aws_iam_role_policy.filesystems.policy).Statement[1].Resource == "${aws_s3_bucket.filesystems.arn}/sandbox-filesystems/*" &&
-      aws_s3_bucket_public_access_block.filesystems.block_public_policy &&
-      !aws_s3_bucket.filesystems.force_destroy &&
+      jsondecode(aws_iam_role_policy.filesystems.policy).Statement[1].Resource == "${var.checkpoint_bucket_arn}/sandbox-filesystems/*" &&
       jsondecode(aws_iam_role_policy.release.policy).Statement[2].Condition.StringLike["aws:ResourceTag/braintrust:sandbox-stack"] == "arn:aws:cloudformation:us-east-1:123456789012:stack/bt-test-sandbox-service/*"
     )
     error_message = "TLS access, Loop service reads and node-pool updates must be scoped to this deployment."
@@ -210,6 +236,45 @@ run "private_cluster_and_safe_worker_release" {
       output.endpoint == "https://nodes.bt-test.sandbox.internal:9400"
     )
     error_message = "The installed chart must target the current pool and provision restricted sandboxes with automatic TLS."
+  }
+}
+
+run "operator_access" {
+  command = apply
+  module {
+    source = "./modules/sandbox-service"
+  }
+  variables {
+    operator_role_arn                  = "arn:aws:iam::123456789012:role/sandbox-operator"
+    brainstore_license_key_kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/license"
+    checkpoint_bucket_kms_key_arn      = "arn:aws:kms:us-east-1:123456789012:key/checkpoints"
+    internal_observability_enabled     = true
+    internal_observability_env_name    = "test"
+    monitoring_telemetry               = ""
+    authorized_security_groups = {
+      "Operator" = "sg-operator"
+    }
+  }
+  assert {
+    condition = (
+      aws_eks_access_entry.operator[0].principal_arn == var.operator_role_arn &&
+      aws_eks_access_policy_association.operator[0].access_scope[0].type == "cluster" &&
+      aws_vpc_security_group_ingress_rule.workers_from_authorized_security_groups["Operator"].from_port == 9400 &&
+      aws_vpc_security_group_ingress_rule.cluster_from_authorized_security_groups["Operator"].from_port == 443
+    )
+    error_message = "Optional operators need private network and cluster access."
+  }
+  assert {
+    condition = (
+      one([for statement in jsondecode(aws_iam_role_policy.release.policy).Statement : statement if statement.Action == "kms:Decrypt"]).Resource == var.brainstore_license_key_kms_key_arn &&
+      one([for statement in jsondecode(aws_iam_role_policy.release.policy).Statement : statement if statement.Action == "kms:Decrypt"]).Condition.StringEquals["kms:ViaService"] == "secretsmanager.us-east-1.amazonaws.com" &&
+      jsondecode(aws_iam_role_policy.filesystems.policy).Statement[2].Resource == var.checkpoint_bucket_kms_key_arn &&
+      jsondecode(aws_iam_role_policy.filesystems.policy).Statement[2].Condition.StringLike["kms:EncryptionContext:aws:s3:arn"] == [var.checkpoint_bucket_arn, "${var.checkpoint_bucket_arn}/sandbox-filesystems/*"] &&
+      one([for env in local.helm_values.env : env if env.name == "BRAINTRUST_ENV"]).value == "test" &&
+      one([for env in local.helm_values.env : env if env.name == "BRAINSTORE_PULSE_OBSERVABILITY_ONLY"]).value == "true" &&
+      one([for env in local.helm_values.env : env if env.name == "BRAINSTORE_CONTROL_PLANE_TELEMETRY"]).value == ",metrics,traces"
+    )
+    error_message = "Encrypted checkpoint and license access must stay scoped to their keys and AWS services, while worker telemetry follows the existing deployment settings."
   }
 }
 
@@ -283,6 +348,8 @@ run "release_override_updates_the_whole_artifact_bundle" {
       status_code   = 200
       response_body = <<-YAML
         Outputs:
+          SandboxServiceBootstrapCapabilities:
+            Value: license-secret,nodegroup-cleanup
           SandboxServiceChartUrl:
             Value: https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/custom/chart.tgz
           SandboxServiceHelmValues:
@@ -321,6 +388,35 @@ run "rejects_release_without_sandbox_artifacts" {
   override_data {
     target = data.http.release
     values = { status_code = 200, response_body = "{}" }
+  }
+  expect_failures = [data.http.release]
+}
+
+run "rejects_installer_without_required_capabilities" {
+  command = plan
+  module {
+    source = "./modules/sandbox-service"
+  }
+  override_data {
+    target = data.http.release
+    values = {
+      status_code   = 200
+      response_body = <<-YAML
+        Outputs:
+          SandboxServiceChartUrl:
+            Value: https://braintrust-cf-us-east-1.s3.amazonaws.com/sandbox-service/old/chart.tgz
+          SandboxServiceHelmValues:
+            Value:
+              Fn::Sub: '{"image":"public.ecr.aws/braintrust/sandbox-service:old","prewarmTemplates":[{"image":"public.ecr.aws/braintrust/codex-runtime:old"}]}'
+        Resources:
+          SandboxServiceReleaseFunction:
+            Properties:
+              CodeUri: s3://braintrust-cf-us-east-1/old-bootstrap
+          SandboxServiceRelease:
+            Properties:
+              ProviderVersion: old-provider
+        YAML
+    }
   }
   expect_failures = [data.http.release]
 }

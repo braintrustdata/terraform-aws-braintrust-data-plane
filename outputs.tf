@@ -397,8 +397,8 @@ output "sandbox_service_private_subnet_ids" {
 }
 
 output "sandbox_service_checkpoint_store" {
-  description = "Sandbox filesystem checkpoint URI. Preserve its bucket until checkpoints are no longer needed."
-  value       = var.enable_sandbox_service ? module.sandbox_service[0].checkpoint_store : null
+  description = "Sandbox checkpoint URI, retained when Sandbox Service is disabled."
+  value       = "s3://${module.storage.sandbox_filesystems_bucket_id}/sandbox-filesystems"
 }
 
 output "sandbox_service_worker_security_group_id" {

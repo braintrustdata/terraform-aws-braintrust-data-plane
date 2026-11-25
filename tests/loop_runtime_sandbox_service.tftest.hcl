@@ -66,7 +66,7 @@ run "service_uses_tls_private_egress_and_scoped_discovery" {
     }
   }
   assert {
-    condition     = local.merged_env_vars.EXO_SANDBOX_SERVICE_IMAGE == var.sandbox_service.image && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_SERVICE_EGRESS_GATEWAY_URL == var.sandbox_service.egress_gateway_url && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_KUBERNETES_API_URL == var.sandbox_service.kubernetes_api_url && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_EKS_CLUSTER == var.sandbox_service.cluster_name && local.merged_env_vars.EXO_SANDBOX_PROVIDER == "sandbox_service" && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN == "0.0.0.0:4002" && length(aws_iam_role_policy.sandbox) == 0
+    condition     = local.merged_env_vars.EXO_SANDBOX_SERVICE_IMAGE == var.sandbox_service.image && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_SERVICE_EGRESS_GATEWAY_URL == var.sandbox_service.egress_gateway_url && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_KUBERNETES_API_URL == var.sandbox_service.kubernetes_api_url && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_EKS_CLUSTER == var.sandbox_service.cluster_name && local.merged_env_vars.EXO_SANDBOX_PROVIDER == "sandbox_service" && local.merged_env_vars.LOOP_RUNTIME_SANDBOX_FORWARD_PROXY_LISTEN == "0.0.0.0:4002" && local.merged_env_vars.LOOP_RUNTIME_ENABLE_SANDBOX_ADMIN == "true" && length(aws_iam_role_policy.sandbox) == 0
     error_message = "Service connections must use private discovery and egress with explicit backend selection."
   }
   assert {

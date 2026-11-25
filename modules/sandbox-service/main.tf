@@ -32,10 +32,16 @@ locals {
     image                 = local.versions["sandbox-service"]
     replicas              = 1
     filesystemRetention   = true
-    checkpointStore       = "s3://${aws_s3_bucket.filesystems.id}/sandbox-filesystems"
+    checkpointStore       = "s3://${var.checkpoint_bucket_id}/sandbox-filesystems"
     workerEnv             = [{ name = "AWS_REGION", value = data.aws_region.current.region }]
     workerNodeReaderGroup = "braintrust:sandbox-worker-node-readers"
     gitResources          = true
+    env = [
+      { name = "BRAINSTORE_LICENSE_KEY", valueFrom = { secretKeyRef = { name = "sandbox-telemetry", key = "license-key" } } },
+      { name = "BRAINSTORE_CONTROL_PLANE_TELEMETRY", value = join(",", [var.monitoring_telemetry, "metrics", "traces"]) },
+      { name = "BRAINSTORE_PULSE_OBSERVABILITY_ONLY", value = tostring(var.internal_observability_enabled) },
+      { name = "BRAINTRUST_ENV", value = var.internal_observability_enabled ? var.internal_observability_env_name : "customer" },
+    ]
     prewarmTemplates = [{
       image                = local.versions["sandbox-image"]
       resources            = { vcpu_count = var.sandbox_vcpu_count, memory_mib = var.sandbox_memory_mib }
@@ -80,6 +86,14 @@ data "http" "release" {
   request_timeout_ms = 10000
 
   lifecycle {
+    postcondition {
+      condition = try(
+        contains(split(",", yamldecode(self.response_body).Outputs.SandboxServiceBootstrapCapabilities.Value), "license-secret") &&
+        contains(split(",", yamldecode(self.response_body).Outputs.SandboxServiceBootstrapCapabilities.Value), "nodegroup-cleanup"),
+        false,
+      )
+      error_message = "Release ${var.version_tag} must include Sandbox Service license-secret delivery and retained-nodegroup cleanup. Select a compatible Loop Runtime release."
+    }
     postcondition {
       condition     = self.status_code < 400
       error_message = "Failed to fetch Sandbox Service release ${var.version_tag} at ${self.url}: HTTP ${self.status_code}."
@@ -258,10 +272,29 @@ resource "aws_eks_node_group" "system" {
     aws_iam_role_policy_attachment.nodes,
     aws_iam_role_policy.cni,
     aws_iam_role_policy.public_registry,
+    aws_iam_role_policy.inspector,
     aws_vpc_security_group_ingress_rule.cluster_from_nodes,
     aws_vpc_security_group_ingress_rule.system_dns,
     aws_vpc_security_group_egress_rule.system_dns,
   ]
+}
+
+resource "aws_eks_access_entry" "operator" {
+  count         = var.operator_role_arn == null ? 0 : 1
+  cluster_name  = aws_eks_cluster.sandbox.name
+  principal_arn = var.operator_role_arn
+  type          = "STANDARD"
+  tags          = local.common_tags
+}
+
+resource "aws_eks_access_policy_association" "operator" {
+  count         = var.operator_role_arn == null ? 0 : 1
+  cluster_name  = aws_eks_cluster.sandbox.name
+  principal_arn = aws_eks_access_entry.operator[0].principal_arn
+  policy_arn    = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  access_scope {
+    type = "cluster"
+  }
 }
 
 resource "aws_eks_addon" "pod_identity" {
@@ -296,6 +329,7 @@ resource "aws_eks_addon" "vpc_cni" {
   addon_version               = "v1.22.4-eksbuild.3"
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
+  preserve                    = true
   configuration_values        = jsonencode({ env = { WARM_IP_TARGET = "2" } })
   tags                        = local.common_tags
   depends_on                  = [aws_eks_node_group.system]

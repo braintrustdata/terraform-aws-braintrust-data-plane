@@ -389,6 +389,7 @@ module "storage" {
   create_brainstore_s3_bucket                    = var.create_brainstore_s3_bucket
   existing_brainstore_s3_bucket_arn              = var.existing_brainstore_s3_bucket_arn
   brainstore_s3_bucket_retention_days            = var.brainstore_s3_bucket_retention_days
+  sandbox_checkpoint_retention_days              = var.sandbox_checkpoint_retention_days
   s3_additional_allowed_origins                  = var.s3_additional_allowed_origins
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
@@ -662,15 +663,25 @@ module "sandbox_service" {
     var.sandbox_service_existing_private_subnet_3_id,
   ]
   data_plane_subnet_ids = local.main_vpc_private_subnet_ids
-  authorized_security_groups = {
+  authorized_security_groups = merge(var.sandbox_service_authorized_security_groups, {
     "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
-  }
-  instance_types           = var.sandbox_service_instance_types
-  sandbox_vcpu_count       = var.sandbox_service_vcpu_count
-  sandbox_memory_mib       = var.sandbox_service_memory_mib
-  permissions_boundary_arn = var.permissions_boundary_arn
-  log_retention_days       = var.loop_runtime_log_retention_days
-  custom_tags              = local.all_custom_tags
+  })
+  operator_role_arn                     = var.sandbox_service_operator_role_arn
+  checkpoint_bucket_id                  = module.storage.sandbox_filesystems_bucket_id
+  checkpoint_bucket_arn                 = module.storage.sandbox_filesystems_bucket_arn
+  checkpoint_bucket_kms_key_arn         = local.kms_key_arn
+  instance_types                        = var.sandbox_service_instance_types
+  sandbox_vcpu_count                    = var.sandbox_service_vcpu_count
+  sandbox_memory_mib                    = var.sandbox_service_memory_mib
+  permissions_boundary_arn              = var.permissions_boundary_arn
+  log_retention_days                    = var.loop_runtime_log_retention_days
+  custom_tags                           = local.all_custom_tags
+  brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
+  brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
+  monitoring_telemetry                  = var.monitoring_telemetry
+  internal_observability_enabled        = local.enable_internal_observability
+  internal_observability_env_name       = var.internal_observability_env_name
 }
 
 module "loop_runtime_ecs" {

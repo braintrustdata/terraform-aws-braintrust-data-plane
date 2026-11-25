@@ -76,10 +76,13 @@ module "braintrust-data-plane" {
   enable_ecs_voice_sessions = false
   enable_loop_runtime       = false
   # Hard cutover: existing chats start fresh sandboxes on Sandbox Service.
-  enable_sandbox_service         = false
-  sandbox_service_instance_types = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge"]
-  sandbox_service_vcpu_count     = 1
-  sandbox_service_memory_mib     = 2048
+  enable_sandbox_service                     = false
+  sandbox_service_instance_types             = ["c8id.8xlarge", "c8id.12xlarge", "c8id.16xlarge", "c8id.4xlarge", "c8id.2xlarge"]
+  sandbox_service_vcpu_count                 = 1
+  sandbox_service_memory_mib                 = 2048
+  sandbox_checkpoint_retention_days          = 14
+  sandbox_service_operator_role_arn          = null
+  sandbox_service_authorized_security_groups = {}
   # With create_vpc = false, supply three dedicated worker subnets.
   sandbox_service_existing_private_subnet_1_id = null
   sandbox_service_existing_private_subnet_2_id = null

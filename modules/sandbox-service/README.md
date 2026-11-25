@@ -9,8 +9,9 @@ under the caller's control.
 
 Terraform owns the cluster, system node group, launch templates, security groups,
 IAM roles, Pod Identity associations, private DNS zone, bootstrap Lambdas, TLS
-secret containers, private Secrets Manager endpoint and filesystem checkpoint
-bucket. Workers use local NVMe storage and nested virtualization. System nodes
+secret containers and a private Secrets Manager endpoint. Deployment storage owns
+the filesystem checkpoint bucket independently of this fleet. Workers use local
+NVMe storage and nested virtualization. System nodes
 run cluster DNS, the worker controller and autoscaler. Node CNI permissions allow
 ENI creation only in the three dedicated subnets.
 
@@ -19,6 +20,10 @@ Its `version_tag` comes from the same release selection as Loop Runtime,
 including `loop_runtime_version_override`. The worker image, guest image, chart
 and bootstrap are resolved together from that release's published CloudFormation
 metadata; there is no separate Sandbox Service version file to maintain.
+Planning rejects releases without retained-pool cleanup and license-secret
+support. The installer reads the existing deployment license by ARN and version
+and writes a Kubernetes Secret for worker telemetry. Terraform passes only the
+secret ARN and version to the installer; Helm values reference the Kubernetes Secret.
 The VPC-local installer reaches the private EKS
 endpoint without requiring Kubernetes access from the Terraform runner. TLS
 private keys are generated in Secrets Manager and never read into Terraform
@@ -65,9 +70,11 @@ Filesystem retention uses a dedicated encrypted private S3 bucket and a worker
 Pod Identity scoped to its checkpoint prefix. Workers receive no API or
 Brainstore bucket permissions. Checkpoints restore the last completed filesystem
 state; they do not transfer Lambda files or preserve running process memory.
-The bucket has no object expiration or force-delete setting. A nonempty bucket
-blocks Terraform deletion until its contents are explicitly removed or the
-bucket is preserved outside this module.
+The bucket has no force-delete setting. A nonempty bucket
+blocks full deployment deletion until its contents are explicitly removed or the
+bucket is preserved outside the deployment. Disabling the service retains the
+bucket. Checkpoint objects expire after `sandbox_checkpoint_retention_days`
+(14 by default); shared base-image chunks do not expire.
 
 The root's `enable_sandbox_service` switch deploys the fleet and changes Loop's
 backend in one apply. Every chat starts a fresh Sandbox Service sandbox; existing
@@ -80,6 +87,7 @@ sandbox environments without recovering prior files or processes.
 
 For subsequent fleet removal, drain the service before disabling it. Deletion
 requests a drain and fails while workers remain occupied. Inspect the chart's
-`sandbox-rollout` status before retrying. Empty retained node groups must be
-removed before cluster deletion. Keep node roles, network rules and checkpoint
+`sandbox-rollout` status before retrying. The installer removes empty retained
+node groups and waits for their deletion before uninstalling the chart. The
+release stack deletes the current pool. Keep node roles, network rules and checkpoint
 storage available until draining and any required recovery are complete.

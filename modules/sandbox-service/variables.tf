@@ -56,8 +56,8 @@ variable "sandbox_vcpu_count" {
   default     = 1
 
   validation {
-    condition     = var.sandbox_vcpu_count >= 1 && floor(var.sandbox_vcpu_count) == var.sandbox_vcpu_count
-    error_message = "sandbox_vcpu_count must be a positive integer."
+    condition     = var.sandbox_vcpu_count >= 1 && var.sandbox_vcpu_count <= 32 && floor(var.sandbox_vcpu_count) == var.sandbox_vcpu_count
+    error_message = "sandbox_vcpu_count must be an integer from 1 through 32."
   }
 }
 
@@ -67,8 +67,35 @@ variable "sandbox_memory_mib" {
   default     = 2048
 
   validation {
-    condition     = var.sandbox_memory_mib >= 512 && floor(var.sandbox_memory_mib) == var.sandbox_memory_mib
-    error_message = "sandbox_memory_mib must be an integer of at least 512."
+    condition     = var.sandbox_memory_mib >= 128 && floor(var.sandbox_memory_mib) == var.sandbox_memory_mib
+    error_message = "sandbox_memory_mib must be an integer of at least 128."
+  }
+}
+
+variable "checkpoint_bucket_id" {
+  type        = string
+  description = "Deployment-owned bucket for filesystem checkpoints, kept when the fleet is disabled."
+}
+
+variable "checkpoint_bucket_arn" {
+  type        = string
+  description = "ARN of the deployment-owned filesystem checkpoint bucket."
+}
+
+variable "checkpoint_bucket_kms_key_arn" {
+  type        = string
+  default     = null
+  description = "Optional KMS key encrypting the checkpoint bucket."
+}
+
+variable "operator_role_arn" {
+  type        = string
+  default     = null
+  description = "Optional trusted IAM role with cluster administration access."
+
+  validation {
+    condition     = var.operator_role_arn == null || can(regex("^arn:[^:]+:iam::[0-9]{12}:role/.+$", var.operator_role_arn))
+    error_message = "operator_role_arn must be an IAM role ARN."
   }
 }
 
@@ -76,6 +103,40 @@ variable "permissions_boundary_arn" {
   type        = string
   description = "Optional permissions boundary for created IAM roles."
   default     = null
+}
+
+variable "brainstore_license_key_secret_arn" {
+  type        = string
+  description = "Secrets Manager ARN containing the deployment license. Read by the installer at runtime."
+}
+
+variable "brainstore_license_key_secret_version" {
+  type        = string
+  description = "License secret version to install; changing it updates worker telemetry credentials."
+}
+
+variable "brainstore_license_key_kms_key_arn" {
+  type        = string
+  default     = null
+  description = "Optional customer-managed KMS key for the license secret."
+}
+
+variable "monitoring_telemetry" {
+  type        = string
+  default     = "status,metrics,usage,traces,logs"
+  description = "Value for BRAINSTORE_CONTROL_PLANE_TELEMETRY."
+}
+
+variable "internal_observability_enabled" {
+  type        = bool
+  default     = false
+  description = "Whether internal observability delivery is enabled."
+}
+
+variable "internal_observability_env_name" {
+  type        = string
+  default     = ""
+  description = "Environment label for internal observability."
 }
 
 variable "log_retention_days" {

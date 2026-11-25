@@ -59,7 +59,7 @@ resource "aws_vpc_endpoint" "secrets_manager" {
       Effect    = "Allow"
       Principal = { AWS = aws_iam_role.release.arn }
       Action    = "secretsmanager:GetSecretValue"
-      Resource  = [aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn]
+      Resource  = [aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn, var.brainstore_license_key_secret_arn]
     }]
   })
   tags = local.common_tags

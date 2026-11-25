@@ -66,7 +66,7 @@ resource "aws_iam_role_policy" "release" {
   role = aws_iam_role.release.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       { Effect = "Allow", Action = ["eks:DescribeCluster", "eks:ListNodegroups"], Resource = aws_eks_cluster.sandbox.arn },
       {
         Effect   = "Allow"
@@ -75,10 +75,11 @@ resource "aws_iam_role_policy" "release" {
       },
       {
         Effect    = "Allow"
-        Action    = "eks:UpdateNodegroupConfig"
+        Action    = ["eks:DeleteNodegroup", "eks:UpdateNodegroupConfig"]
         Resource  = "arn:${data.aws_partition.current.partition}:eks:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:nodegroup/${local.cluster_name}/sandbox-*/*"
         Condition = { StringLike = { "aws:ResourceTag/braintrust:sandbox-stack" = local.stack_arn_pattern } }
       },
+      { Effect = "Allow", Action = "autoscaling:DescribeAutoScalingGroups", Resource = "*" },
       {
         Effect   = "Allow"
         Action   = "autoscaling:SuspendProcesses"
@@ -91,9 +92,16 @@ resource "aws_iam_role_policy" "release" {
       {
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
-        Resource = [aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn]
+        Resource = [aws_secretsmanager_secret.server_tls.arn, aws_secretsmanager_secret.client_tls.arn, var.brainstore_license_key_secret_arn]
       },
-    ]
+      ], var.brainstore_license_key_kms_key_arn == null ? [] : [{
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = var.brainstore_license_key_kms_key_arn
+        Condition = { StringEquals = {
+          "kms:ViaService" = "secretsmanager.${data.aws_region.current.region}.amazonaws.com"
+        } }
+    }])
   })
 }
 
@@ -153,7 +161,7 @@ resource "aws_lambda_function" "release" {
   handler                        = "handler.handler"
   architectures                  = ["x86_64"]
   memory_size                    = 256
-  timeout                        = 300
+  timeout                        = 600
   reserved_concurrent_executions = 1
   environment {
     variables = {
@@ -173,64 +181,70 @@ resource "aws_lambda_function" "release" {
 }
 
 resource "aws_lambda_function_event_invoke_config" "tls" {
-  function_name          = aws_lambda_function.tls.function_name
-  maximum_retry_attempts = 0
+  function_name                = aws_lambda_function.tls.function_name
+  maximum_retry_attempts       = 0
+  maximum_event_age_in_seconds = 60
 }
 
 resource "aws_lambda_function_event_invoke_config" "release" {
-  function_name          = aws_lambda_function.release.function_name
-  maximum_retry_attempts = 0
+  function_name                = aws_lambda_function.release.function_name
+  maximum_retry_attempts       = 0
+  maximum_event_age_in_seconds = 60
 }
 
 # CloudFormation retains replaced worker pools while the chart drains their
 # sandboxes. A Terraform node-group replacement would delete an occupied pool.
-# RetainExceptOnCreate deletes a pool only when the operation that created it
-# rolls back, so a failed install does not leave its name taken.
+# Delete the current pool on stack removal or failed creation; retention only
+# applies to replaced pools, which the installer cleans up after draining.
 # The same stack owns the release so retained pools carry its exact StackId.
 resource "aws_cloudformation_stack" "release" {
   name = local.stack_name
   parameters = {
-    ClusterName        = aws_eks_cluster.sandbox.name
-    NodeRoleArn        = aws_iam_role.nodes.arn
-    SubnetIds          = join(",", var.private_subnet_ids)
-    InstanceTypes      = join(",", var.instance_types)
-    LaunchTemplateId   = aws_launch_template.workers.id
-    LaunchVersion      = tostring(aws_launch_template.workers.latest_version)
-    WorkerRevision     = local.worker_revision
-    TlsFunctionArn     = aws_lambda_function.tls.arn
-    ReleaseFunctionArn = aws_lambda_function.release.arn
-    SeedSecretArn      = aws_secretsmanager_secret.tls_seed.arn
-    ServerTlsSecretArn = aws_secretsmanager_secret.server_tls.arn
-    ClientTlsSecretArn = aws_secretsmanager_secret.client_tls.arn
-    Hostname           = local.hostname
-    ChartUrl           = local.release_template.Outputs.SandboxServiceChartUrl.Value
-    HelmValues         = jsonencode(local.helm_values)
-    ProviderVersion    = local.versions["bootstrap-sha256"]
+    ClusterName             = aws_eks_cluster.sandbox.name
+    NodeRoleArn             = aws_iam_role.nodes.arn
+    SubnetIds               = join(",", var.private_subnet_ids)
+    InstanceTypes           = join(",", var.instance_types)
+    LaunchTemplateId        = aws_launch_template.workers.id
+    LaunchVersion           = tostring(aws_launch_template.workers.latest_version)
+    WorkerRevision          = local.worker_revision
+    TlsFunctionArn          = aws_lambda_function.tls.arn
+    ReleaseFunctionArn      = aws_lambda_function.release.arn
+    SeedSecretArn           = aws_secretsmanager_secret.tls_seed.arn
+    ServerTlsSecretArn      = aws_secretsmanager_secret.server_tls.arn
+    ClientTlsSecretArn      = aws_secretsmanager_secret.client_tls.arn
+    LicenseKeySecretArn     = var.brainstore_license_key_secret_arn
+    LicenseKeySecretVersion = var.brainstore_license_key_secret_version
+    Hostname                = local.hostname
+    ChartUrl                = local.release_template.Outputs.SandboxServiceChartUrl.Value
+    HelmValues              = jsonencode(local.helm_values)
+    ProviderVersion         = local.versions["bootstrap-sha256"]
   }
   template_body = yamlencode({
     AWSTemplateFormatVersion = "2010-09-09"
     Parameters = {
-      ClusterName        = { Type = "String" }
-      NodeRoleArn        = { Type = "String" }
-      SubnetIds          = { Type = "CommaDelimitedList" }
-      InstanceTypes      = { Type = "CommaDelimitedList" }
-      LaunchTemplateId   = { Type = "String" }
-      LaunchVersion      = { Type = "String" }
-      WorkerRevision     = { Type = "String" }
-      TlsFunctionArn     = { Type = "String" }
-      ReleaseFunctionArn = { Type = "String" }
-      SeedSecretArn      = { Type = "String" }
-      ServerTlsSecretArn = { Type = "String" }
-      ClientTlsSecretArn = { Type = "String" }
-      Hostname           = { Type = "String" }
-      ChartUrl           = { Type = "String" }
-      HelmValues         = { Type = "String" }
-      ProviderVersion    = { Type = "String" }
+      ClusterName             = { Type = "String" }
+      NodeRoleArn             = { Type = "String" }
+      SubnetIds               = { Type = "CommaDelimitedList" }
+      InstanceTypes           = { Type = "CommaDelimitedList" }
+      LaunchTemplateId        = { Type = "String" }
+      LaunchVersion           = { Type = "String" }
+      WorkerRevision          = { Type = "String" }
+      TlsFunctionArn          = { Type = "String" }
+      ReleaseFunctionArn      = { Type = "String" }
+      SeedSecretArn           = { Type = "String" }
+      ServerTlsSecretArn      = { Type = "String" }
+      ClientTlsSecretArn      = { Type = "String" }
+      LicenseKeySecretArn     = { Type = "String" }
+      LicenseKeySecretVersion = { Type = "String" }
+      Hostname                = { Type = "String" }
+      ChartUrl                = { Type = "String" }
+      HelmValues              = { Type = "String" }
+      ProviderVersion         = { Type = "String" }
     }
     Resources = {
       Workers = {
         Type                = "AWS::EKS::Nodegroup"
-        DeletionPolicy      = "RetainExceptOnCreate"
+        DeletionPolicy      = "Delete"
         UpdateReplacePolicy = "Retain"
         Properties = {
           ClusterName   = { Ref = "ClusterName" }
@@ -270,15 +284,17 @@ resource "aws_cloudformation_stack" "release" {
         Type = "Custom::SandboxServiceRelease"
         Properties = {
           ServiceToken   = { Ref = "ReleaseFunctionArn" }
-          ServiceTimeout = 360
+          ServiceTimeout = 660
           ClusterName    = { Ref = "ClusterName" }
           # Ref returns cluster/name; the installer needs only the group name.
-          NodeGroupName      = { "Fn::GetAtt" = ["Workers", "NodegroupName"] }
-          ChartUrl           = { Ref = "ChartUrl" }
-          HelmValues         = { Ref = "HelmValues" }
-          ServerTlsSecretArn = { "Fn::GetAtt" = ["Tls", "ServerTlsSecretArn"] }
-          ClientTlsSecretArn = { "Fn::GetAtt" = ["Tls", "ClientTlsSecretArn"] }
-          ProviderVersion    = { Ref = "ProviderVersion" }
+          NodeGroupName           = { "Fn::GetAtt" = ["Workers", "NodegroupName"] }
+          ChartUrl                = { Ref = "ChartUrl" }
+          HelmValues              = { Ref = "HelmValues" }
+          ServerTlsSecretArn      = { "Fn::GetAtt" = ["Tls", "ServerTlsSecretArn"] }
+          ClientTlsSecretArn      = { "Fn::GetAtt" = ["Tls", "ClientTlsSecretArn"] }
+          LicenseKeySecretArn     = { Ref = "LicenseKeySecretArn" }
+          LicenseKeySecretVersion = { Ref = "LicenseKeySecretVersion" }
+          ProviderVersion         = { Ref = "ProviderVersion" }
         }
       }
     }
@@ -299,9 +315,7 @@ resource "aws_cloudformation_stack" "release" {
     aws_iam_role_policy_attachment.nodes,
     aws_iam_role_policy.cni,
     aws_iam_role_policy.public_registry,
-    aws_s3_bucket_public_access_block.filesystems,
-    aws_s3_bucket_server_side_encryption_configuration.filesystems,
-    aws_s3_bucket_ownership_controls.filesystems,
+    aws_iam_role_policy.inspector,
     aws_eks_addon.vpc_cni,
     aws_lambda_function_event_invoke_config.tls,
     aws_lambda_function_event_invoke_config.release,

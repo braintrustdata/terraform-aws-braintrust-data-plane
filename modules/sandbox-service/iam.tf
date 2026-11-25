@@ -189,3 +189,26 @@ resource "aws_iam_role_policy" "public_registry" {
   role   = aws_iam_role.nodes.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["ecr-public:GetAuthorizationToken", "sts:GetServiceBearerToken"], Resource = "*" }] })
 }
+
+resource "aws_iam_role_policy" "inspector" {
+  name = "sandbox-node-inspector-inventory"
+  role = aws_iam_role.nodes.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ssm:GetParameter"
+        Resource = "arn:${data.aws_partition.current.partition}:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/inspector-aws/service/*"
+      },
+      {
+        Effect = "Allow"
+        Action = "ssm:PutInventory"
+        Resource = [
+          "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:${data.aws_partition.current.partition}:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:managed-instance-inventory/i-*",
+        ]
+      },
+    ]
+  })
+}

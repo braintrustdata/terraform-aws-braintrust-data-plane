@@ -332,6 +332,8 @@ Sandbox Service follows the same release version as Loop Runtime. The module's
 normal release pins select the default; `loop_runtime_version_override` overrides
 both together. The worker image, guest image, chart and bootstrap are resolved
 from that release's published metadata, without a separate Sandbox Service pin.
+The selected application release must support retained-pool cleanup and license
+secret delivery; older installers are rejected during planning.
 
 `enable_sandbox_service` defaults to false. Setting it to true deploys the EKS
 fleet, switches Loop to Firecracker and removes the Lambda sandbox infrastructure
@@ -366,8 +368,16 @@ unchanged in existing VPCs.
 
 The default workers use `c8id` instances with nested virtualization and local
 NVMe storage. This adds EKS, EC2 and interface endpoint costs. Filesystem
-checkpoints use a dedicated private S3 bucket; its contents prevent bucket
-deletion until explicitly removed. Drain workers before removing the fleet.
+checkpoints use a dedicated private S3 bucket owned by deployment storage. The
+bucket is created with the deployment and remains when the service is disabled;
+its contents prevent full deployment deletion until explicitly removed.
+`sandbox_checkpoint_retention_days` defaults to 14 and expires checkpoint objects
+without expiring shared base-image chunks. Expired checkpoints start fresh
+sandboxes. Drain workers before removing the fleet.
+For optional private operator access, set `sandbox_service_operator_role_arn`
+and authorize the operator host through `sandbox_service_authorized_security_groups`.
+Managed subnet ACLs admit operator hosts in the application subnets; callers
+using other network paths must allow them in their subnet ACLs.
 The module uses the published release installer through a small CloudFormation
 stack to reach the private cluster and preserve occupied worker pools during
 replacement. See [Sandbox Service](modules/sandbox-service/README.md) for ownership,
