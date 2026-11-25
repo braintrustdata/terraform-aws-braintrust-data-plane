@@ -10,12 +10,8 @@ lint = ["terraform fmt -recursive", "tflint --recursive"]
 setup = ["pre-commit install", "tflint --init"]
 precommit = ["pre-commit run --all-files"]
 
-[tasks.test]
-description = "Run static script checks and mocked Terraform plan smoke tests (no AWS credentials required)"
-run = ["mise run check-scripts", "mise run test-terraform"]
-
 [tasks.check-scripts]
-description = "Run static checks in scripts/ against the module source"
+description = "Run static checks in scripts/ (no AWS credentials required)"
 run = """
 #!/usr/bin/env bash
 set -e
@@ -26,36 +22,10 @@ uv run scripts/check-iam-ownership-tags
 uv run scripts/check-iam-ownership-tags --self-test
 """
 
-[tasks.test-terraform]
-description = "Run mocked Terraform plan smoke tests. Set TEST_SHARD_INDEX (1-based) and TEST_SHARD_COUNT to run one shard."
-run = """
-#!/usr/bin/env bash
-set -euo pipefail
-shard_index="${TEST_SHARD_INDEX:-1}"
-shard_count="${TEST_SHARD_COUNT:-1}"
-
-# Balance shards by run block count, largest test files first.
-mapfile -t test_files < <(
-  for f in tests/*.tftest.hcl; do
-    echo "$(grep -c '^run ' "$f") $f"
-  done | sort -k1,1nr -k2,2 | awk -v n="${shard_count}" -v i="${shard_index}" '
-    {
-      m = 0
-      for (s = 1; s < n; s++) if (load[s] < load[m]) m = s
-      load[m] += $1
-      if (m == i - 1) print $2
-    }'
-)
-
-if [ -z "${test_files[*]:-}" ]; then
-  echo "No test files in shard ${shard_index}/${shard_count}"
-  exit 0
-fi
-
-echo "Shard ${shard_index}/${shard_count}: ${test_files[*]}"
-terraform init -backend=false -upgrade
-terraform test "${test_files[@]/#/-filter=}"
-"""
+[tasks.test]
+description = "Run script checks and mocked Terraform plan smoke tests (no AWS credentials required)"
+depends = ["check-scripts"]
+run = "terraform test"
 
 [tasks.validate]
 description = "Validate the Terraform module and example code"

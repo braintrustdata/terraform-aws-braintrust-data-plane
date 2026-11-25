@@ -11,9 +11,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  lint:
-    name: Lint
+  check:
+    name: ${{ matrix.task }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, validate, validate-tofu, check-scripts]
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -24,55 +28,16 @@ jobs:
       - name: Run setup task
         run: mise run setup
 
-      - name: Run lint task
-        run: mise run lint
-
-  validate:
-    name: Validate (Terraform)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Setup Mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
-
-      - name: Validate module and example code with Terraform
-        run: mise run validate
-
-  validate-tofu:
-    name: Validate (OpenTofu)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Setup Mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
-
-      - name: Validate module and example code with OpenTofu
-        run: mise run validate-tofu
-
-  check-scripts:
-    name: Script checks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Setup Mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
-
-      - name: Run script checks
-        run: mise run check-scripts
+      - name: Run ${{ matrix.task }} task
+        run: mise run ${{ matrix.task }}
 
   test:
-    name: Test (shard ${{ matrix.shard }}/6)
+    name: test (shard ${{ matrix.shard }}/8)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -81,23 +46,19 @@ jobs:
         uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
 
       - name: Run tests with Terraform
-        run: mise run test-terraform
         env:
-          TEST_SHARD_INDEX: ${{ matrix.shard }}
-          TEST_SHARD_COUNT: 6
+          SHARD: ${{ matrix.shard }}
+        run: |
+          terraform init -backend=false -upgrade
+          terraform test $(ls tests/*.tftest.hcl | awk -v shard="$SHARD" 'NR % 8 == shard % 8 { print "-filter=" $0 }')
 
-  # Keeps the required status check name stable across the parallel jobs above.
+  # Single required status check for branch protection.
   terraform:
     name: Terraform Lint & Validate
     if: always()
-    needs: [lint, validate, validate-tofu, check-scripts, test]
+    needs: [check, test]
     runs-on: ubuntu-latest
     steps:
       - name: Check job results
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          echo "Job results: ${RESULTS}"
-          for result in ${RESULTS}; do
-            [ "${result}" = "success" ] || exit 1
-          done
+          [ "${{ needs.check.result }}" = success ] && [ "${{ needs.test.result }}" = success ]
