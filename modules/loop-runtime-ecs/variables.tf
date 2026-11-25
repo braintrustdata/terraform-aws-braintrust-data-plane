@@ -421,3 +421,19 @@ variable "authorized_security_groups" {
   description = "Additional load balancer security groups that can access the application port."
   default     = {}
 }
+
+variable "sandbox_service" {
+  type = object({
+    endpoint              = string
+    image                 = string
+    egress_gateway_url    = string
+    client_tls_secret_arn = string
+    cluster_name          = string
+    kubernetes_api_url    = string
+    kubernetes_ca         = string
+    vcpu_count            = number
+    memory_mib            = number
+  })
+  default     = null
+  description = "Optional Sandbox Service connection. Null keeps the Lambda backend; TLS is injected only into the ECS initialization container."
+}

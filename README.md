@@ -316,6 +316,77 @@ The flag defaults to `false`, leaving DNS policy to the caller; port 53 resolver
 Do not use the sandbox VPC for access to internal services. Untrusted code can use that access.
 The caller controls routes and, when DNS Firewall management is disabled, must restrict DNS to `loop_runtime_sandbox_egress_gateway_dns_name` before using the sandboxes.
 
+### Firecracker Sandbox Service
+
+Sandbox Service is an optional private EKS worker fleet. Loop Runtime stays on
+ECS. This module requires AWS provider 6.37.0 or later; run `terraform init -upgrade`
+when upgrading an older provider lock. Enable the service in one apply:
+
+```hcl
+enable_loop_runtime    = true
+enable_sandbox_service = true
+```
+
+Sandbox Service follows the same release version as Loop Runtime. The module's
+normal release pins select the default; `loop_runtime_version_override` overrides
+both together. The worker image, guest image, chart and bootstrap are resolved
+from that release's published metadata, without a separate Sandbox Service pin.
+The selected application release must support retained-pool cleanup and license
+secret delivery; older installers are rejected during planning.
+Use compatible API and Loop versions when overriding release versions.
+
+`enable_sandbox_service` defaults to false. Setting it to true deploys the EKS
+fleet, switches Loop to Firecracker and removes the Lambda sandbox infrastructure
+in the same apply. Every chat gets a fresh Sandbox Service environment. Existing
+files and running processes are discarded; there is no migration or drain of
+Lambda sandboxes. The service's private egress gateway is independent of Lambda.
+Selecting the Lambda backend again creates new Lambda infrastructure and fresh
+sandboxes; it cannot recover the previous environments.
+
+With `create_vpc = true`, the module creates three dedicated worker subnets in
+the main VPC, using address blocks 4, 5 and 6 of its eight equal CIDR divisions.
+They share the existing NAT route and have a separate network ACL. Existing
+application subnets keep their addresses. The ACL permits cluster traffic,
+Loop's worker API and Kubernetes discovery, the private egress proxy, public
+HTTPS and the required runtime and Lambda ephemeral return ports. Security groups further
+restrict individual callers. Guest DNS, metadata and network policy are enforced
+by the worker; subnet ACLs do not provide those controls.
+
+With `create_vpc = false`, supply three distinct dedicated private subnets in
+different availability zones of the main VPC:
+
+```hcl
+sandbox_service_existing_private_subnet_1_id = "subnet-0123456789abcdef0"
+sandbox_service_existing_private_subnet_2_id = "subnet-0123456789abcdef1"
+sandbox_service_existing_private_subnet_3_id = "subnet-0123456789abcdef2"
+```
+
+These must differ from the application subnets. The caller owns subnet routes,
+ACLs and DNS support, including private runtime connectivity and outbound HTTPS
+for images, AWS APIs and release artifacts. The module leaves these controls
+unchanged in existing VPCs.
+
+The default workers use `c8id` instances with nested virtualization and local
+NVMe storage. This adds EKS, EC2 and interface endpoint costs. Filesystem
+checkpoints use a dedicated private S3 bucket owned by deployment storage. The
+bucket is created with the deployment and remains when the service is disabled;
+its contents prevent full deployment deletion until explicitly removed.
+`sandbox_checkpoint_retention_days` defaults to 14 and expires checkpoint objects
+without expiring shared base-image chunks. Expired checkpoints start fresh
+sandboxes. Drain workers before removing the fleet.
+For optional private operator access, set `sandbox_service_operator_role_arn`
+and authorize the operator host through `sandbox_service_authorized_security_groups`.
+Managed subnet ACLs admit operator hosts in the application subnets; callers
+using other network paths must allow them in their subnet ACLs.
+Caller-provided permissions boundaries must allow the sandbox roles' EKS,
+autoscaling, DNS, registry and secret-provisioning permissions. The managed-BYOC
+reference permission contract does not currently support this installer: its
+EKS access restrictions and runtime boundary require a separate update.
+The module uses the published release installer through a small CloudFormation
+stack to reach the private cluster and preserve occupied worker pools during
+replacement. See [Sandbox Service](modules/sandbox-service/README.md) for ownership,
+upgrade and deletion behavior.
+
 ## Useful scripts
 
 ### dump-logs.sh

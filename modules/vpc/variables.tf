@@ -179,3 +179,21 @@ variable "create_secrets_manager_vpc_endpoint" {
   type    = bool
   default = false
 }
+
+variable "create_sandbox_subnets" {
+  type        = bool
+  default     = false
+  description = "Create three dedicated Sandbox Service subnets in the unused half of the VPC address range."
+}
+
+variable "sandbox_service_chart_object_arn" {
+  type        = string
+  default     = null
+  description = "Pinned Sandbox Service chart object allowed for GetObject through a restricted S3 gateway endpoint. Null adds no artifact exception."
+}
+
+variable "sandbox_service_stack_name" {
+  type        = string
+  default     = null
+  description = "Sandbox Service stack whose CloudFormation response uploads are allowed through a restricted S3 gateway endpoint. Keep this set until the stack is deleted."
+}

@@ -21,6 +21,17 @@ variable "create_brainstore_s3_bucket" {
   default     = true
 }
 
+variable "sandbox_checkpoint_retention_days" {
+  type        = number
+  default     = 14
+  description = "Days before sandbox checkpoint objects expire. Shared base-image chunks are retained."
+
+  validation {
+    condition     = var.sandbox_checkpoint_retention_days >= 1 && floor(var.sandbox_checkpoint_retention_days) == var.sandbox_checkpoint_retention_days
+    error_message = "sandbox_checkpoint_retention_days must be a positive integer."
+  }
+}
+
 variable "existing_brainstore_s3_bucket_arn" {
   type        = string
   description = "ARN of a caller-provided Brainstore S3 bucket to consume when create_brainstore_s3_bucket is false. The module reads the bucket but does not manage its lifecycle, policy, encryption, versioning, or access configuration."

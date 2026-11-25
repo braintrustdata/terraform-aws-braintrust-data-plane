@@ -10,7 +10,7 @@ terraform {
     aws = {
       source = "hashicorp/aws"
       # 6.69.0 breaks API Gateway PutRestApi (bufio.Scanner: token too long); fixed in 6.69.1.
-      version = ">= 6.23.0, != 6.69.0, < 7.0.0"
+      version = ">= 6.37.0, != 6.69.0, < 7.0.0"
     }
   }
 }

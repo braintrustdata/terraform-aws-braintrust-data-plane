@@ -18,7 +18,8 @@ locals {
   apn_partner_tags = {
     "aws-apn-id" = "pc:8ebp76p17b7i08cjqrxaoj0y8"
   }
-  all_custom_tags = merge(var.custom_tags, local.apn_partner_tags)
+  all_custom_tags            = merge(var.custom_tags, local.apn_partner_tags)
+  sandbox_service_stack_name = "${var.deployment_name}-sandbox-service"
 
   kms_key_arn = var.kms_key_arn != "" ? var.kms_key_arn : module.kms[0].key_arn
   bastion_security_group = var.enable_braintrust_support_shell_access ? {
@@ -257,9 +258,10 @@ module "main_vpc" {
   source = "./modules/vpc"
   count  = var.create_vpc ? 1 : 0
 
-  deployment_name = var.deployment_name
-  vpc_name        = "main"
-  vpc_cidr        = var.vpc_cidr
+  deployment_name        = var.deployment_name
+  vpc_name               = "main"
+  create_sandbox_subnets = var.enable_sandbox_service
+  vpc_cidr               = var.vpc_cidr
 
   public_subnet_1_cidr                 = cidrsubnet(var.vpc_cidr, 3, 0)
   public_subnet_1_az                   = local.public_subnet_1_az
@@ -274,10 +276,13 @@ module "main_vpc" {
   enable_brainstore_ec2_ssm            = var.enable_brainstore_ec2_ssm
   s3_vpc_endpoint_resource_org_ids     = var.s3_vpc_endpoint_resource_org_ids
   s3_vpc_endpoint_resource_account_ids = var.s3_vpc_endpoint_resource_account_ids
-  custom_tags                          = local.all_custom_tags
-  permissions_boundary_arn             = var.permissions_boundary_arn
-  flow_log                             = local.main_vpc_flow_log
-  manage_s3_public_access_block        = var.manage_s3_public_access_block
+  sandbox_service_chart_object_arn     = var.enable_sandbox_service ? module.sandbox_service[0].chart_object_arn : null
+  # Keep the callback path available while a disabled service's stack is deleted.
+  sandbox_service_stack_name    = local.sandbox_service_stack_name
+  custom_tags                   = local.all_custom_tags
+  permissions_boundary_arn      = var.permissions_boundary_arn
+  flow_log                      = local.main_vpc_flow_log
+  manage_s3_public_access_block = var.manage_s3_public_access_block
 }
 
 module "quarantine_vpc" {
@@ -384,6 +389,7 @@ module "storage" {
   create_brainstore_s3_bucket                    = var.create_brainstore_s3_bucket
   existing_brainstore_s3_bucket_arn              = var.existing_brainstore_s3_bucket_arn
   brainstore_s3_bucket_retention_days            = var.brainstore_s3_bucket_retention_days
+  sandbox_checkpoint_retention_days              = var.sandbox_checkpoint_retention_days
   s3_additional_allowed_origins                  = var.s3_additional_allowed_origins
   s3_code_bundle_additional_allowed_origins      = var.s3_code_bundle_additional_allowed_origins
   s3_lambda_responses_additional_allowed_origins = var.s3_lambda_responses_additional_allowed_origins
@@ -616,7 +622,7 @@ module "loop_runtime_alb" {
 
 module "loop_runtime_sandbox_aws_microvm" {
   source = "./modules/loop-runtime-sandbox-aws-microvm"
-  count  = local.create_loop_runtime ? 1 : 0
+  count  = local.create_loop_runtime && !var.enable_sandbox_service ? 1 : 0
 
   deployment_name          = var.deployment_name
   permissions_boundary_arn = var.permissions_boundary_arn
@@ -641,6 +647,42 @@ module "loop_runtime_sandbox_aws_microvm" {
 
   kms_key_arn = local.kms_key_arn
   custom_tags = local.all_custom_tags
+}
+
+module "sandbox_service" {
+  source = "./modules/sandbox-service"
+  count  = var.enable_sandbox_service ? 1 : 0
+
+  stack_name  = local.sandbox_service_stack_name
+  version_tag = local.loop_runtime_version
+
+  deployment_name = var.deployment_name
+  vpc_id          = local.main_vpc_id
+  private_subnet_ids = var.create_vpc ? module.main_vpc[0].sandbox_private_subnet_ids : [
+    var.sandbox_service_existing_private_subnet_1_id,
+    var.sandbox_service_existing_private_subnet_2_id,
+    var.sandbox_service_existing_private_subnet_3_id,
+  ]
+  data_plane_subnet_ids = local.main_vpc_private_subnet_ids
+  authorized_security_groups = merge(var.sandbox_service_authorized_security_groups, {
+    "Loop Runtime" = module.loop_runtime_ecs[0].task_security_group_id
+  })
+  operator_role_arn                     = var.sandbox_service_operator_role_arn
+  checkpoint_bucket_id                  = module.storage.sandbox_filesystems_bucket_id
+  checkpoint_bucket_arn                 = module.storage.sandbox_filesystems_bucket_arn
+  checkpoint_bucket_kms_key_arn         = local.kms_key_arn
+  instance_types                        = var.sandbox_service_instance_types
+  sandbox_vcpu_count                    = var.sandbox_service_vcpu_count
+  sandbox_memory_mib                    = var.sandbox_service_memory_mib
+  permissions_boundary_arn              = var.permissions_boundary_arn
+  log_retention_days                    = var.loop_runtime_log_retention_days
+  custom_tags                           = local.all_custom_tags
+  brainstore_license_key_secret_arn     = local.brainstore_license_key_secret_arn
+  brainstore_license_key_secret_version = local.brainstore_license_key_secret_version
+  brainstore_license_key_kms_key_arn    = local.brainstore_license_key_kms_key_arn
+  monitoring_telemetry                  = var.monitoring_telemetry
+  internal_observability_enabled        = local.enable_internal_observability
+  internal_observability_env_name       = var.internal_observability_env_name
 }
 
 module "loop_runtime_ecs" {
@@ -680,13 +722,24 @@ module "loop_runtime_ecs" {
     "API" = module.api_ecs[0].alb_security_group_id
   } : {}
 
-  sandbox_egress_gateway_target_group_arn = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_target_group_arn
+  sandbox_egress_gateway_target_group_arn = var.enable_sandbox_service ? module.sandbox_service[0].egress_gateway_target_group_arn : module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_target_group_arn
   sandbox_egress_gateway_authorized_security_groups = {
-    "Loop Sandbox Egress Gateway" = module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_security_group_id
+    "Loop Sandbox Egress Gateway" = var.enable_sandbox_service ? module.sandbox_service[0].egress_gateway_security_group_id : module.loop_runtime_sandbox_aws_microvm[0].egress_gateway_security_group_id
   }
 
-  sandbox_env_vars                 = module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
-  additional_task_role_policy_json = module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
+  sandbox_service = var.enable_sandbox_service ? {
+    endpoint              = module.sandbox_service[0].endpoint
+    image                 = module.sandbox_service[0].sandbox_image
+    egress_gateway_url    = "http://${module.sandbox_service[0].egress_gateway_dns_name}:4002"
+    client_tls_secret_arn = module.sandbox_service[0].client_tls_secret_arn
+    cluster_name          = module.sandbox_service[0].cluster_name
+    kubernetes_api_url    = module.sandbox_service[0].kubernetes_api_url
+    kubernetes_ca         = module.sandbox_service[0].kubernetes_ca
+    vcpu_count            = var.sandbox_service_vcpu_count
+    memory_mib            = var.sandbox_service_memory_mib
+  } : null
+  sandbox_env_vars                 = var.enable_sandbox_service ? {} : module.loop_runtime_sandbox_aws_microvm[0].sandbox_env_vars
+  additional_task_role_policy_json = var.enable_sandbox_service ? jsonencode({ Version = "2012-10-17", Statement = [] }) : module.loop_runtime_sandbox_aws_microvm[0].task_role_policy_json
 
   database_url_secret_arn     = local.database_url_secret_arn
   redis_url_secret_arn        = module.redis.redis_url_secret_arn
@@ -726,6 +779,17 @@ module "loop_runtime_ecs" {
   internal_observability_region                 = var.internal_observability_region
 
   custom_tags = local.all_custom_tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "sandbox_egress_gateway_to_loop" {
+  count                        = var.enable_sandbox_service ? 1 : 0
+  security_group_id            = module.sandbox_service[0].egress_gateway_security_group_id
+  referenced_security_group_id = module.loop_runtime_ecs[0].task_security_group_id
+  from_port                    = 4002
+  to_port                      = 4002
+  ip_protocol                  = "tcp"
+  description                  = "Sandbox egress gateway access to Loop runtime"
+  tags                         = merge(local.all_custom_tags, { BraintrustDeploymentName = var.deployment_name })
 }
 
 module "api_ecs" {

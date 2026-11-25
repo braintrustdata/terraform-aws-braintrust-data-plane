@@ -67,3 +67,27 @@ output "flow_log_cloudwatch_log_group_arn" {
   description = "ARN of the module-managed CloudWatch log group used for VPC Flow Logs, if created"
   value       = local.create_flow_log_log_group ? aws_cloudwatch_log_group.flow_log[0].arn : null
 }
+
+output "sandbox_private_subnet_ids" {
+  description = "Dedicated Sandbox Service subnets, empty when disabled."
+  value       = concat(aws_subnet.sandbox_private_subnet_1[*].id, aws_subnet.sandbox_private_subnet_2[*].id, aws_subnet.sandbox_private_subnet_3[*].id)
+  depends_on = [
+    aws_vpc_endpoint.s3,
+    aws_route.private_route,
+    aws_route_table_association.sandbox_private_subnet_1,
+    aws_route_table_association.sandbox_private_subnet_2,
+    aws_route_table_association.sandbox_private_subnet_3,
+    aws_network_acl_association.sandbox,
+    aws_network_acl_rule.sandbox_cluster_ingress,
+    aws_network_acl_rule.sandbox_cluster_egress,
+    aws_network_acl_rule.sandbox_runtime_ingress,
+    aws_network_acl_rule.sandbox_proxy_egress,
+    aws_network_acl_rule.sandbox_runtime_return_ingress,
+    aws_network_acl_rule.sandbox_runtime_return_egress,
+    aws_network_acl_rule.sandbox_runtime_discovery_ingress,
+    aws_network_acl_rule.sandbox_private_ingress,
+    aws_network_acl_rule.sandbox_private_egress,
+    aws_network_acl_rule.sandbox_public_https,
+    aws_network_acl_rule.sandbox_public_return,
+  ]
+}
