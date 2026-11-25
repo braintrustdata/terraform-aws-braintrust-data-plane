@@ -452,10 +452,26 @@ resource "aws_iam_role_policy" "brainstore_s3_access" {
         },
         {
           Effect   = "Allow"
+          Action   = ["s3:GetObject", "s3:PutObject"]
+          Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/wal/wal_token/*"]
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["s3:GetObject"]
+          Resource = ["${var.brainstore_s3_bucket_arn}/brainstore/wal/flags/wal_token_fully_migrated"]
+        },
+        {
+          Effect   = "Allow"
           Action   = ["s3:ListBucket"]
           Resource = [var.brainstore_s3_bucket_arn]
           Condition = {
-            StringLike = { "s3:prefix" = ["brainstore/wal/recently-updated/*"] }
+            StringLike = {
+              "s3:prefix" = [
+                "brainstore/wal/recently-updated/*",
+                "brainstore/wal/wal_token/*",
+                "brainstore/wal/flags/wal_token_fully_migrated",
+              ]
+            }
           }
         },
       ],
