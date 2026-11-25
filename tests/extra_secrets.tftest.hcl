@@ -152,6 +152,7 @@ run "gateway_ecs_extra_secret" {
   variables {
     deployment_name                           = "bt-test"
     kms_key_arn                               = "arn:aws:kms:us-east-1:123456789012:key/test"
+    brainstore_s3_bucket_arn                  = "arn:aws:s3:::bt-test-brainstore"
     vpc_id                                    = "vpc-0123456789abcdef0"
     private_subnet_ids                        = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
     ecs_cluster_arn                           = "arn:aws:ecs:us-east-1:123456789012:cluster/bt-test"
