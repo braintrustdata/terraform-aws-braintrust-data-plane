@@ -127,10 +127,6 @@ module "braintrust-data-plane" {
   redis_instance_type = "cache.t4g.small"
   redis_version       = "7.0"
 
-  # Map Gateway environment variable names to full Secrets Manager secret ARNs.
-  # Use the AWS-managed Secrets Manager key or a KMS key the Gateway execution role can use.
-  # ai_gateway_extra_secrets = {}
-
   # Only use this when instructed to by the Braintrust team.
   # use_global_ai_gateway_origin   = false
   # global_ai_gateway_origin_domain = "gateway.braintrust.dev"
@@ -157,6 +153,14 @@ module "braintrust-data-plane" {
 
   # Optional custom CA bundle for outbound HTTPS from API ECS, Brainstore EC2, and Gateway ECS.
   # custom_ca_bundle_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:braintrust-custom-ca-AbCdEf"
+
+  # Non-secret env only. Put Secrets Manager ARNs in *_extra_secrets.
+  # ai_gateway_extra_secrets = [
+  #   {
+  #     name      = "NATIVE_INFERENCE_SECRET_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:native-inference-AbCdEf"
+  #   }
+  # ]
 
   ### Network configuration
   # Defaults are fine for most sandbox deployments. Only change if you need to

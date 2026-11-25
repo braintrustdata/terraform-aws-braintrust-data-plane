@@ -825,6 +825,7 @@ module "api_ecs" {
     QUARANTINE_API_URL            = local.quarantine_api_url != null ? local.quarantine_api_url : ""
     QUARANTINE_PROXY_URL          = ""
   } : {})
+  extra_secrets = var.braintrust_api_extra_secrets
 
   # Quarantine VPC
   use_quarantine_vpc = var.enable_quarantine_vpc

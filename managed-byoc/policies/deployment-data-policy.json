@@ -150,7 +150,7 @@
         "secretsmanager:DescribeSecret",
         "secretsmanager:GetSecretValue"
       ],
-      "Resource": "<LICENSE_SECRET_ARN>"
+      "Resource": "arn:<AWS_PARTITION>:secretsmanager:<AWS_REGION>:<AWS_ACCOUNT_ID>:secret:braintrust-byoc/licenses/*"
     },
     {
       "Sid": "ReadSecretContext",

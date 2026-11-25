@@ -41,10 +41,6 @@ module "braintrust-data-plane" {
   create_ai_gateway        = true
   enable_ai_gateway        = true
 
-  # Map Gateway environment variable names to full Secrets Manager secret ARNs.
-  # Use the AWS-managed Secrets Manager key or a KMS key the Gateway execution role can use.
-  # ai_gateway_extra_secrets = {}
-
   # Optional private access to both the API and AI Gateway. Defaults to false. When disabled the Quarantine workloads will not be able to access the API or AI Gateway.
   # create_quarantine_api_access = false
 
@@ -251,6 +247,19 @@ module "braintrust-data-plane" {
 
   # Uncomment these to set extra environment variables for the services.
   # Only use this when instructed to by the Braintrust team.
+  # Non-secret env only. Put Secrets Manager ARNs in *_extra_secrets.
+  # ai_gateway_extra_secrets = [
+  #   {
+  #     name      = "NATIVE_INFERENCE_SECRET_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:native-inference-AbCdEf"
+  #   }
+  # ]
+  # braintrust_api_extra_secrets = [
+  #   {
+  #     name      = "LAUNCHDARKLY_SDK_KEY"
+  #     valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:launchdarkly-XyZ123"
+  #   }
+  # ]
   # brainstore_extra_env_vars = {}
   #
   # brainstore_extra_env_vars_writer = {}

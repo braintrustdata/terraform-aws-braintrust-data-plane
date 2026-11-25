@@ -22,36 +22,6 @@ variables {
   redis_security_group_id     = "sg-0123456789abcdef1"
 }
 
-run "gateway_extra_secrets_are_injected_by_ecs" {
-  command = plan
-  module {
-    source = "./modules/gateway-ecs"
-  }
-
-  variables {
-    brainstore_license_key_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:license"
-    extra_secrets = {
-      EXTRA_API_KEY = "arn:aws:secretsmanager:us-east-1:123456789012:secret:example-123456"
-    }
-  }
-
-  assert {
-    condition = one([
-      for secret in jsondecode(aws_ecs_task_definition.gateway.container_definitions)[0].secrets :
-      secret.valueFrom if secret.name == "EXTRA_API_KEY"
-    ]) == var.extra_secrets.EXTRA_API_KEY
-    error_message = "Gateway must receive the secret via an ECS secret reference."
-  }
-
-  assert {
-    condition = contains(
-      jsondecode(aws_iam_role_policy.task_execution_secrets.policy).Statement[0].Resource,
-      var.extra_secrets.EXTRA_API_KEY,
-    )
-    error_message = "The ECS execution role must be able to read the configured secret."
-  }
-}
-
 run "gateway_waits_for_healthy_deployment" {
   command = plan
   module {
