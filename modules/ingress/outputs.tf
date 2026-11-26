@@ -3,6 +3,11 @@ output "api_url" {
   value       = "https://${aws_cloudfront_distribution.dataplane.domain_name}"
 }
 
+output "uses_legacy_ai_proxy" {
+  description = "Whether CloudFront routes /v1/proxy to the legacy hosted Cloudflare proxy."
+  value       = local.cloudfront_proxy_origin_id == local.cloudfront_CloudflareProxy
+}
+
 output "cloudfront_distribution_domain_name" {
   description = "The domain name of the cloudfront distribution"
   value       = aws_cloudfront_distribution.dataplane.domain_name

@@ -26,7 +26,8 @@ variables {
 }
 
 run "ai_gateway_plans" {
-  command = plan
+  command         = plan
+  expect_failures = [check.legacy_ai_proxy]
 
   assert {
     condition     = length(module.gateway_ecs) == 1
@@ -108,7 +109,8 @@ run "external_eks_leaves_gateway_to_helm" {
 }
 
 run "disable_gateway_cutover" {
-  command = plan
+  command         = plan
+  expect_failures = [check.legacy_ai_proxy]
   assert {
     condition     = length(local.gateway_env_vars) == 0
     error_message = "The disabled gateway must not override API environment values."
@@ -130,7 +132,7 @@ run "reject_direct_cloudfront_without_tasks" {
     use_private_ai_gateway_origin = true
     ai_gateway_min_capacity       = 0
   }
-  expect_failures = [var.ai_gateway_min_capacity]
+  expect_failures = [var.ai_gateway_min_capacity, check.legacy_ai_proxy]
 }
 
 run "reject_privatelink_without_tasks" {
@@ -139,11 +141,12 @@ run "reject_privatelink_without_tasks" {
     use_private_gateway_quarantine_proxy = true
     ai_gateway_min_capacity              = 0
   }
-  expect_failures = [var.ai_gateway_min_capacity]
+  expect_failures = [var.ai_gateway_min_capacity, check.legacy_ai_proxy]
 }
 
 run "allow_zero_tasks_before_cutover" {
-  command = plan
+  command         = plan
+  expect_failures = [check.legacy_ai_proxy]
   variables {
     use_private_ai_gateway_origin = false
     ai_gateway_min_capacity       = 0
@@ -151,7 +154,8 @@ run "allow_zero_tasks_before_cutover" {
 }
 
 run "hosted_gateway_keeps_privatelink_noop" {
-  command = plan
+  command         = plan
+  expect_failures = [check.legacy_ai_proxy]
   variables {
     ai_gateway_min_capacity              = 0
     use_global_ai_gateway_origin         = true
@@ -166,7 +170,8 @@ run "hosted_gateway_keeps_privatelink_noop" {
 }
 
 run "quarantine_override_does_not_require_gateway_tasks" {
-  command = plan
+  command         = plan
+  expect_failures = [check.legacy_ai_proxy]
   variables {
     ai_gateway_min_capacity              = 0
     use_private_gateway_quarantine_proxy = true
@@ -183,4 +188,46 @@ run "reject_global_and_private_gateway_origins" {
   }
 
   expect_failures = [var.use_private_ai_gateway_origin]
+}
+
+run "warn_when_cloudfront_uses_cloudflare_proxy" {
+  command = plan
+  variables {
+    enable_ai_gateway             = true
+    enable_ecs_api                = false
+    use_private_ai_gateway_origin = false
+    use_global_ai_proxy           = true
+  }
+  expect_failures = [check.legacy_ai_proxy]
+}
+
+run "no_warning_when_cloudfront_uses_ecs_api" {
+  command = plan
+  variables {
+    enable_ai_gateway             = true
+    enable_ecs_api                = true
+    use_private_ai_gateway_origin = false
+    use_global_ai_proxy           = true
+  }
+}
+
+run "no_warning_when_cloudfront_uses_private_gateway" {
+  command = plan
+  variables {
+    enable_ai_gateway             = true
+    enable_ecs_api                = false
+    use_private_ai_gateway_origin = true
+    use_global_ai_proxy           = true
+  }
+}
+
+run "no_warning_when_cloudfront_uses_hosted_gateway" {
+  command = plan
+  variables {
+    enable_ai_gateway             = true
+    enable_ecs_api                = false
+    use_private_ai_gateway_origin = false
+    use_global_ai_gateway_origin  = true
+    use_global_ai_proxy           = true
+  }
 }
