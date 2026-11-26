@@ -6,11 +6,29 @@ on:
     branches:
       - main
 
-jobs:
-  terraform:
-    name: Terraform Lint & Validate
-    runs-on: ubuntu-latest
+# How this workflow is laid out:
+#   - `check` runs lint, validate, validate-tofu and check-scripts as 4 separate
+#     jobs at the same time.
+#   - `test` splits the Terraform test files into 8 groups ("shards") and runs
+#     each group as its own job at the same time.
+#   - `terraform` waits for all of the above and passes only if they all passed.
+#
+# When a new commit is pushed to a PR, cancel the CI run still going for the
+# previous commit. Runs on main are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+jobs:
+  # One job per mise task listed in `task` below. To add a check, add its
+  # mise task name to the list.
+  check:
+    name: ${{ matrix.task }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, validate, validate-tofu, check-scripts]
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -21,14 +39,52 @@ jobs:
       - name: Run setup task
         run: mise run setup
 
-      - name: Run lint task
-        run: mise run lint
+      - name: Run ${{ matrix.task }} task
+        run: mise run ${{ matrix.task }}
 
-      - name: Validate module and example code with Terraform
-        run: mise run validate
+  # The test suite is split across 8 jobs that run at the same time. Each job
+  # gets a shard number from 1 to 8 and runs only its share of the test files.
+  # To change the number of shards, update the `8` in `name`, in `shard` and in
+  # the `awk` command below.
+  test:
+    name: test (shard ${{ matrix.shard }}/8)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Validate module and example code with OpenTofu
-        run: mise run validate-tofu
+      - name: Setup Mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2.4.4
 
       - name: Run tests with Terraform
-        run: mise run test
+        env:
+          SHARD: ${{ matrix.shard }}
+        # How a job picks its test files:
+        #   1. `ls` lists every test file in alphabetical order.
+        #   2. `awk` numbers the files 1, 2, 3, ... and keeps every 8th one,
+        #      starting from this job's shard number. Shard 1 gets files 1, 9,
+        #      17, ...; shard 2 gets files 2, 10, 18, ...; and so on. Every file
+        #      lands in exactly one shard.
+        #   3. Each kept file becomes a `-filter=tests/<file>` argument, so
+        #      `terraform test` runs only those files.
+        # Adding a new test file needs no change here.
+        run: |
+          terraform init -backend=false -upgrade
+          terraform test $(ls tests/*.tftest.hcl | awk -v shard="$SHARD" 'NR % 8 == shard % 8 { print "-filter=" $0 }')
+
+  # Branch protection requires a check named "Terraform Lint & Validate".
+  # This job keeps that name and fails if any `check` or `test` job failed,
+  # so the branch protection settings don't need to change.
+  terraform:
+    name: Terraform Lint & Validate
+    if: always()
+    needs: [check, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check job results
+        run: |
+          [ "${{ needs.check.result }}" = success ] && [ "${{ needs.test.result }}" = success ]

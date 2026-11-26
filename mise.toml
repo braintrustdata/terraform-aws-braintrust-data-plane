@@ -10,8 +10,8 @@ lint = ["terraform fmt -recursive", "tflint --recursive"]
 setup = ["pre-commit install", "tflint --init"]
 precommit = ["pre-commit run --all-files"]
 
-[tasks.test]
-description = "Run mocked Terraform plan smoke tests (no AWS credentials required)"
+[tasks.check-scripts]
+description = "Run static checks in scripts/ (no AWS credentials required)"
 run = """
 #!/usr/bin/env bash
 set -e
@@ -20,8 +20,12 @@ uv run scripts/check-loop-network-dependencies
 uv run scripts/check-brainstore-autoscaling
 uv run scripts/check-iam-ownership-tags
 uv run scripts/check-iam-ownership-tags --self-test
-terraform test
 """
+
+[tasks.test]
+description = "Run script checks and mocked Terraform plan smoke tests (no AWS credentials required)"
+depends = ["check-scripts"]
+run = "terraform test"
 
 [tasks.validate]
 description = "Validate the Terraform module and example code"
