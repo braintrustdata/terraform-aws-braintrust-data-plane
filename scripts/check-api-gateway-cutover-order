@@ -49,44 +49,74 @@ def apply(workdir, config_name):
     return ANSI.sub("", result.stdout)
 
 
-def actions(log):
+START_ACTIONS = {
+    "Creating": "Creation",
+    "Modifying": "Modifications",
+    "Destroying": "Destruction",
+}
+
+
+def events(log):
     found = []
     for line in log.splitlines():
-        match = re.search(r"terraform_data\.(\w+)(?:\[\d+\])?: (Creating|Modifying|Destroying)\.\.\.", line)
-        if match:
-            found.append((match.group(1), match.group(2)))
+        if "Still " in line:
+            continue
+        started = re.search(
+            r"terraform_data\.(\w+)(?:\[\d+\])?: (Creating|Modifying|Destroying)\.\.\.",
+            line,
+        )
+        if started:
+            found.append((started.group(1), started.group(2), "start"))
+            continue
+        finished = re.search(
+            r"terraform_data\.(\w+)(?:\[\d+\])?: (Creation|Modifications|Destruction) complete",
+            line,
+        )
+        if finished:
+            found.append((finished.group(1), finished.group(2), "complete"))
     return found
 
 
-def index(found, resource, action):
+def index(found, resource, action, phase):
     for i, item in enumerate(found):
-        if item == (resource, action):
+        if item == (resource, action, phase):
             return i
-    raise SystemExit(f"missing {action} for {resource} in:\n" + "\n".join(f"{a} {b}" for a, b in found))
+    rendered = "\n".join(f"{resource_name} {action_name} {event_phase}" for resource_name, action_name, event_phase in found)
+    raise SystemExit(f"missing {phase} {action} for {resource} in:\n{rendered}")
+
+
+def finished_before(found, earlier, later):
+    earlier_resource, earlier_action = earlier
+    later_resource, later_action = later
+    done = index(found, earlier_resource, START_ACTIONS[earlier_action], "complete")
+    begin = index(found, later_resource, later_action, "start")
+    return done < begin
 
 
 def assert_cutover(log, label):
-    found = actions(log)
-    cloudfront = index(found, "cloudfront", "Modifying")
-    slow = index(found, "slow", "Modifying")
-    stage = index(found, "stage", "Destroying")
-    permission = index(found, "permission", "Destroying")
-    if not (slow < cloudfront < stage and cloudfront < permission):
+    found = events(log)
+    checks = [
+        (("slow", "Modifying"), ("cloudfront", "Modifying")),
+        (("cloudfront", "Modifying"), ("stage", "Destroying")),
+        (("cloudfront", "Modifying"), ("permission", "Destroying")),
+    ]
+    if not all(finished_before(found, earlier, later) for earlier, later in checks):
         raise SystemExit(
-            f"{label}: distribution update must follow its dependency and precede "
-            f"stage and permission destroy, got {found}"
+            f"{label}: the distribution update must finish before the stage and "
+            f"permission are destroyed, got {found}"
         )
 
 
 def assert_rollback(log):
-    found = actions(log)
-    cloudfront = index(found, "cloudfront", "Modifying")
-    stage = index(found, "stage", "Creating")
-    permission = index(found, "permission", "Creating")
-    if not (stage < cloudfront and permission < cloudfront):
+    found = events(log)
+    checks = [
+        (("stage", "Creating"), ("cloudfront", "Modifying")),
+        (("permission", "Creating"), ("cloudfront", "Modifying")),
+    ]
+    if not all(finished_before(found, earlier, later) for earlier, later in checks):
         raise SystemExit(
-            f"rollback: stage and permission must exist before the distribution "
-            f"update, got {found}"
+            f"rollback: the stage and permission must finish creating before the "
+            f"distribution update starts, got {found}"
         )
 
 
@@ -96,7 +126,7 @@ def assert_noop(log, label):
 
 
 def assert_records_lifecycle(log):
-    if actions(log):
+    if any(phase == "start" for _, _, phase in events(log)):
         raise SystemExit(
             "recording create_before_destroy must not create, update, or destroy resources:\n"
             + log
@@ -129,6 +159,26 @@ def check_module_graph():
         target = node(dependency)
         if (distribution, target) not in edges:
             raise SystemExit(f"CloudFront distribution must depend on {target}")
+    check_real_lifecycle()
+
+
+def check_real_lifecycle():
+    root = Path(__file__).resolve().parent.parent
+    source = (root / "modules" / "ingress" / "api-gateway.tf").read_text()
+    blocks = re.split(r'(?=^resource ")', source, flags=re.MULTILINE)
+    required = {
+        'resource "aws_api_gateway_stage" "api"': False,
+        'resource "aws_lambda_permission" "api_gateway"': False,
+    }
+    for block in blocks:
+        for header in required:
+            if block.startswith(header):
+                if re.search(r"create_before_destroy\s*=\s*true", block) is None:
+                    raise SystemExit(f"{header} must set create_before_destroy")
+                required[header] = True
+    missing = [header for header, found in required.items() if not found]
+    if missing:
+        raise SystemExit(f"missing API Gateway resources: {missing}")
 
 
 def main():
