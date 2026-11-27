@@ -1,5 +1,6 @@
 locals {
   brainstore_release_version = jsondecode(file("${path.module}/VERSIONS.json"))["brainstore"]
+  function_secret_arn        = var.function_secret_arn == null ? var.service_token_secret_arn : var.function_secret_arn
   common_tags = merge(var.custom_tags, {
     BraintrustDeploymentName = var.deployment_name
   })
@@ -125,6 +126,7 @@ resource "aws_launch_template" "brainstore" {
     internal_observability_region                 = var.internal_observability_region
     datadog_agent_container_logs                  = module.datadog_agent_telemetry["reader"].container_logs
     datadog_agent_otlp_env_vars                   = module.datadog_agent_telemetry["reader"].otlp_env_vars
+    function_secret_arn                           = local.function_secret_arn
     service_token_secret_arn                      = var.service_token_secret_arn
     custom_ca_bundle_secret_arn                   = var.custom_ca_bundle_secret_arn == null ? "" : var.custom_ca_bundle_secret_arn
     custom_post_install_script                    = var.custom_post_install_script

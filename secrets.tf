@@ -1,3 +1,20 @@
+data "aws_secretsmanager_secret_version" "function_secret_keys" {
+  count = !var.use_deployment_mode_external_eks ? 1 : 0
+
+  secret_id = var.function_secret_keys_secret_arn == null ? module.services_common.function_tools_secret_arn : var.function_secret_keys_secret_arn
+}
+
+data "aws_secretsmanager_secret_version" "service_token_secret_keys" {
+  count = !var.use_deployment_mode_external_eks ? 1 : 0
+
+  secret_id = var.service_token_secret_keys_secret_arn == null ? module.services_common.function_tools_secret_arn : var.service_token_secret_keys_secret_arn
+}
+
+locals {
+  function_secret_key      = !var.use_deployment_mode_external_eks && var.function_secret_keys_secret_arn != null ? data.aws_secretsmanager_secret_version.function_secret_keys[0].secret_string : module.services_common.function_tools_secret_key
+  service_token_secret_key = !var.use_deployment_mode_external_eks && var.service_token_secret_keys_secret_arn != null ? data.aws_secretsmanager_secret_version.service_token_secret_keys[0].secret_string : module.services_common.function_tools_secret_key
+}
+
 resource "aws_secretsmanager_secret" "database_url_override" {
   count = local.use_postgres_connection_override ? 1 : 0
 

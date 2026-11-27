@@ -223,6 +223,18 @@ variable "function_tools_secret_arn" {
   description = "Secrets Manager ARN of the function-tools/service-token secret (SERVICE_TOKEN_SECRET_KEY / FUNCTION_SECRET_KEY)."
 }
 
+variable "function_secret_keys_secret_arn" {
+  type        = string
+  description = "Optional function keyring secret ARN. Defaults to function_tools_secret_arn."
+  default     = null
+}
+
+variable "service_token_secret_arn" {
+  type        = string
+  description = "Optional service token secret ARN. Defaults to function_tools_secret_arn."
+  default     = null
+}
+
 variable "brainstore_s3_bucket_name" {
   type        = string
   description = "Brainstore S3 bucket name (for index/WAL/locks URIs)."

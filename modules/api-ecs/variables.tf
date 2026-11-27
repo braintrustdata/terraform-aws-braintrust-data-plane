@@ -588,6 +588,18 @@ variable "function_tools_secret_arn" {
   description = "ARN of the function tools encryption key secret."
 }
 
+variable "function_secret_keys_secret_arn" {
+  type        = string
+  description = "Optional function keyring secret ARN. Defaults to function_tools_secret_arn."
+  default     = null
+}
+
+variable "service_token_secret_arn" {
+  type        = string
+  description = "Optional service token secret ARN. Defaults to function_tools_secret_arn."
+  default     = null
+}
+
 variable "custom_ca_bundle_secret_arn" {
   type        = string
   description = "Optional ARN of the secret containing a PEM-encoded custom CA bundle."

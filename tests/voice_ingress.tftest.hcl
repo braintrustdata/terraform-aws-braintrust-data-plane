@@ -48,6 +48,19 @@ run "voice_bypasses_lambda_ingress" {
     condition     = aws_cloudfront_origin_request_policy.all_viewer_with_forwarded_proto.headers_config[0].header_behavior == "allViewerAndWhitelistCloudFront"
     error_message = "The HTTP voice origin must forward authorization and WebSocket upgrade headers."
   }
+
+  assert {
+    condition = (
+      toset(keys(jsondecode(aws_api_gateway_rest_api.api[0].body).paths["/sysadmin/{op}"])) == toset(["options", "post"]) &&
+      alltrue([
+        for method in values(jsondecode(aws_api_gateway_rest_api.api[0].body).paths["/sysadmin/{op}"]) :
+        method["x-amazon-apigateway-integration"].httpMethod == "POST" &&
+        one(method.parameters).name == "op" && one(method.parameters).in == "path" &&
+        one(method.parameters).required && one(method.parameters).type == "string"
+      ])
+    )
+    error_message = "API Gateway must forward secret-rotation POST requests and OPTIONS preflights to the API Lambda."
+  }
 }
 
 run "voice_with_ecs_https_origin" {

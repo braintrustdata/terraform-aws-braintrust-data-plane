@@ -482,7 +482,8 @@ module "services" {
   permissions_boundary_arn            = var.permissions_boundary_arn
   api_handler_role_arn                = module.services_common.api_handler_role_arn
   api_security_group_id               = module.services_common.api_security_group_id
-  function_tools_secret_key           = module.services_common.function_tools_secret_key
+  function_tools_secret_key           = local.function_secret_key
+  service_token_secret_key            = local.service_token_secret_key
   quarantine_invoke_role_arn          = module.services_common.quarantine_invoke_role_arn
   quarantine_function_role_arn        = module.services_common.quarantine_function_role_arn
   quarantine_lambda_security_group_id = module.services_common.quarantine_lambda_security_group_id
@@ -693,6 +694,9 @@ module "loop_runtime_ecs" {
   redis_url_secret_version_id = module.redis.redis_url_secret_version_id
   function_tools_secret_arn   = module.services_common.function_tools_secret_arn
 
+  function_secret_keys_secret_arn = var.function_secret_keys_secret_arn
+  service_token_secret_arn        = var.service_token_secret_keys_secret_arn
+
   brainstore_s3_bucket_name        = module.storage.brainstore_bucket_id
   brainstore_s3_bucket_arn         = module.storage.brainstore_bucket_arn
   brainstore_s3_bucket_kms_key_arn = var.existing_brainstore_s3_bucket_kms_key_arn
@@ -756,6 +760,9 @@ module "api_ecs" {
   function_tools_secret_arn    = module.services_common.function_tools_secret_arn
   custom_ca_bundle_secret_arn  = var.custom_ca_bundle_secret_arn
   custom_ca_bundle_kms_key_arn = var.custom_ca_bundle_kms_key_arn
+
+  function_secret_keys_secret_arn = var.function_secret_keys_secret_arn
+  service_token_secret_arn        = var.service_token_secret_keys_secret_arn
 
   # Brainstore
   brainstore_hostname                   = module.brainstore[0].dns_name
@@ -920,6 +927,8 @@ module "services_common" {
   vpc_id                                     = local.main_vpc_id
   kms_key_arn                                = local.kms_key_arn
   database_secret_arn                        = local.postgres_credentials_secret_arn
+  function_secret_arn                        = !var.use_deployment_mode_external_eks ? var.function_secret_keys_secret_arn : null
+  service_token_secret_arn                   = !var.use_deployment_mode_external_eks ? var.service_token_secret_keys_secret_arn : null
   brainstore_license_key_secret_arn          = local.brainstore_license_key_secret_arn
   brainstore_license_key_kms_key_arn         = local.brainstore_license_key_kms_key_arn
   internal_observability_api_key_secret_arn  = local.internal_observability_api_key_secret_arn
@@ -988,7 +997,8 @@ module "brainstore" {
   database_host                                 = local.postgres_host
   database_port                                 = module.database.postgres_database_port
   database_secret_arn                           = local.postgres_credentials_secret_arn
-  service_token_secret_arn                      = module.services_common.function_tools_secret_arn
+  function_secret_arn                           = var.function_secret_keys_secret_arn == null ? module.services_common.function_tools_secret_arn : var.function_secret_keys_secret_arn
+  service_token_secret_arn                      = var.service_token_secret_keys_secret_arn == null ? module.services_common.function_tools_secret_arn : var.service_token_secret_keys_secret_arn
   custom_ca_bundle_secret_arn                   = var.custom_ca_bundle_secret_arn
   brainstore_s3_bucket_arn                      = module.storage.brainstore_bucket_arn
   lambda_responses_s3_bucket_arn                = module.storage.lambda_responses_bucket_arn

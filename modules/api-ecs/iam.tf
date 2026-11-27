@@ -41,6 +41,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
             var.function_tools_secret_arn,
             var.redis_url_secret_arn,
           ],
+          compact([var.function_secret_keys_secret_arn, var.service_token_secret_arn]),
           var.custom_ca_bundle_secret_arn == null ? [] : [var.custom_ca_bundle_secret_arn],
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
           [var.brainstore_license_key_secret_arn],

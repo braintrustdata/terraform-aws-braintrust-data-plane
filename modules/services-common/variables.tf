@@ -29,6 +29,18 @@ variable "database_secret_arn" {
   description = "The ARN of the secret containing database credentials"
 }
 
+variable "function_secret_arn" {
+  type        = string
+  description = "Optional ARN of the function keyring secret read by Brainstore EC2."
+  default     = null
+}
+
+variable "service_token_secret_arn" {
+  type        = string
+  description = "Optional ARN of the service token keyring secret read by Brainstore EC2."
+  default     = null
+}
+
 variable "brainstore_custom_ca_bundle_secret_arn" {
   type        = string
   description = "Optional ARN of the secret containing the PEM-encoded custom CA bundle for Brainstore EC2."

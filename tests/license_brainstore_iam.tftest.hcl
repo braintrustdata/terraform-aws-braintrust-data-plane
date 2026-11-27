@@ -33,4 +33,13 @@ run "brainstore_can_read_external_license" {
     condition     = one([for statement in jsondecode(aws_iam_role_policy.brainstore_secrets_access.policy).Statement : statement if statement.Action == "kms:Decrypt"]).Resource == var.brainstore_license_key_kms_key_arn && one([for statement in jsondecode(aws_iam_role_policy.brainstore_secrets_access.policy).Statement : statement if statement.Action == "kms:Decrypt"]).Condition.StringEquals["kms:ViaService"] == "secretsmanager.us-east-1.amazonaws.com"
     error_message = "The external key grant must allow only decryption through Secrets Manager."
   }
+  variables {
+    function_secret_arn      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-keyring"
+    service_token_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:service-keyring"
+  }
+
+  assert {
+    condition     = alltrue([for arn in [var.function_secret_arn, var.service_token_secret_arn, aws_secretsmanager_secret.function_tools_secret.arn] : contains(jsondecode(aws_iam_role_policy.brainstore_secrets_access.policy).Statement[0].Resource, arn)])
+    error_message = "Brainstore must retain access to both keyrings and the legacy secret."
+  }
 }

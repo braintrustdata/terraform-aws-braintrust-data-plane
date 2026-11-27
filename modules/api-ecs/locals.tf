@@ -1,4 +1,7 @@
 locals {
+  function_secret_arn      = var.function_secret_keys_secret_arn == null ? var.function_tools_secret_arn : var.function_secret_keys_secret_arn
+  service_token_secret_arn = var.service_token_secret_arn == null ? var.function_tools_secret_arn : var.service_token_secret_arn
+
   api_version_tag = var.api_version_override != null ? var.api_version_override : jsondecode(file("${path.module}/VERSIONS.json"))["api"]
   # Use the plan-known enable flag (not the computed secret ARN) so container/IAM shape stays known during plan.
   observability_enabled = var.internal_observability_enabled
@@ -201,7 +204,7 @@ locals {
       [
         {
           name      = "FUNCTION_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
+          valueFrom = local.function_secret_arn
         },
         {
           name      = "PG_URL"
@@ -213,7 +216,7 @@ locals {
         },
         {
           name      = "SERVICE_TOKEN_SECRET_KEY"
-          valueFrom = var.function_tools_secret_arn
+          valueFrom = local.service_token_secret_arn
         }
       ],
       [{

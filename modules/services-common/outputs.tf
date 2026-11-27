@@ -47,6 +47,8 @@ output "function_tools_secret_key" {
 output "function_tools_secret_arn" {
   description = "ARN of the function tools encryption key secret."
   value       = aws_secretsmanager_secret.function_tools_secret.arn
+
+  depends_on = [aws_secretsmanager_secret_version.function_tools_secret]
 }
 
 output "quarantine_invoke_role_arn" {

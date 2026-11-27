@@ -49,6 +49,7 @@ resource "aws_lambda_function" "automation_cron" {
       BRAINSTORE_REALTIME_WAL_BUCKET            = local.brainstore_s3_bucket
       CODE_BUNDLE_BUCKET                        = local.code_bundle_bucket_id
       FUNCTION_SECRET_KEY                       = var.function_tools_secret_key
+      SERVICE_TOKEN_SECRET_KEY                  = var.service_token_secret_key == null ? var.function_tools_secret_key : var.service_token_secret_key
       CRON_OVERRIDE_SECRET_KEY                  = random_password.service_token_secret_key.result
       },
       local.redis_extra_env_vars,

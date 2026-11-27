@@ -215,9 +215,18 @@ fi
 DB_USERNAME=$(echo $DB_CREDS | jq -r .username)
 DB_PASSWORD=$(echo $DB_CREDS | jq -r .password)
 
-# Get the function tools secret used by Brainstore as SERVICE_TOKEN_SECRET_KEY from Secrets Manager
+if ! FUNCTION_SECRET_KEY=$(get_secret_value_with_retry "${function_secret_arn}"); then
+  exit 1
+fi
+if [[ "$FUNCTION_SECRET_KEY" == *$'\n'* ]]; then
+  FUNCTION_SECRET_KEY=$(jq -c . <<< "$FUNCTION_SECRET_KEY") || exit 1
+fi
+
 if ! SERVICE_TOKEN_SECRET_KEY=$(get_secret_value_with_retry "${service_token_secret_arn}"); then
   exit 1
+fi
+if [[ "$SERVICE_TOKEN_SECRET_KEY" == *$'\n'* ]]; then
+  SERVICE_TOKEN_SECRET_KEY=$(jq -c . <<< "$SERVICE_TOKEN_SECRET_KEY") || exit 1
 fi
 
 %{ if custom_ca_bundle_secret_arn != "" ~}
@@ -253,6 +262,7 @@ BRAINSTORE_CODE_BUNDLE_URI=s3://${code_bundle_bucket_id}
 BRAINSTORE_LICENSE_KEY=$BRAINSTORE_LICENSE_KEY
 BRAINSTORE_READER_ONLY_MODE=${is_dedicated_reader_node}
 BRAINSTORE_CONTROL_PLANE_TELEMETRY=${monitoring_telemetry}
+FUNCTION_SECRET_KEY=$FUNCTION_SECRET_KEY
 SERVICE_TOKEN_SECRET_KEY=$SERVICE_TOKEN_SECRET_KEY
 NO_COLOR=1
 AWS_DEFAULT_REGION=${aws_region}

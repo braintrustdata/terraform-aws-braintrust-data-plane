@@ -1,4 +1,6 @@
 locals {
+  function_secret_arn      = var.function_secret_keys_secret_arn == null ? var.function_tools_secret_arn : var.function_secret_keys_secret_arn
+  service_token_secret_arn = var.service_token_secret_arn == null ? var.function_tools_secret_arn : var.service_token_secret_arn
   common_tags = merge({
     BraintrustDeploymentName = var.deployment_name
   }, var.custom_tags)
@@ -111,8 +113,8 @@ locals {
       { name = "BRAINSTORE_WAL_URI", valueFrom = var.database_url_secret_arn },
       { name = "BRAINSTORE_XACT_MANAGER_URI", valueFrom = local.redis_url_secret_value_from },
       { name = "BRAINSTORE_REDIS_URI", valueFrom = local.redis_url_secret_value_from },
-      { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
-      { name = "FUNCTION_SECRET_KEY", valueFrom = var.function_tools_secret_arn },
+      { name = "SERVICE_TOKEN_SECRET_KEY", valueFrom = local.service_token_secret_arn },
+      { name = "FUNCTION_SECRET_KEY", valueFrom = local.function_secret_arn },
     ],
     local.use_object_store_locks ? [] : [
       { name = "BRAINSTORE_LOCKS_URI", valueFrom = local.redis_url_secret_value_from },
@@ -391,6 +393,7 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
             var.function_tools_secret_arn,
             var.redis_url_secret_arn,
           ],
+          compact([var.function_secret_keys_secret_arn, var.service_token_secret_arn]),
           local.observability_enabled ? [var.internal_observability_api_key_secret_arn] : [],
           [var.brainstore_license_key_secret_arn],
         )

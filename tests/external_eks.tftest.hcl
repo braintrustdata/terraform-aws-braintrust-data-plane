@@ -57,6 +57,15 @@ run "external_eks_plans" {
     condition     = length(module.brainstore_deployment) == 0
     error_message = "External EKS must not create an EC2 rollout controller."
   }
+  variables {
+    function_secret_keys_secret_arn      = "arn:aws:secretsmanager:us-east-1:123456789012:secret:function-keyring"
+    service_token_secret_keys_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:service-keyring"
+  }
+
+  assert {
+    condition     = length(data.aws_secretsmanager_secret_version.function_secret_keys) == 0 && length(data.aws_secretsmanager_secret_version.service_token_secret_keys) == 0
+    error_message = "External EKS must leave keyring delivery to Helm."
+  }
 }
 
 run "external_eks_ignores_gateway_flags" {

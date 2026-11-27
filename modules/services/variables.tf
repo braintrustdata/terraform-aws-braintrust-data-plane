@@ -484,6 +484,13 @@ variable "function_tools_secret_key" {
   sensitive   = true
 }
 
+variable "service_token_secret_key" {
+  type        = string
+  description = "The service token encryption key or JSON keyring. Defaults to function_tools_secret_key."
+  sensitive   = true
+  default     = null
+}
+
 variable "custom_tags" {
   description = "Custom tags to apply to all created resources"
   type        = map(string)

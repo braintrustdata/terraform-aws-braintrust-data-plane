@@ -128,6 +128,8 @@ resource "aws_iam_role_policy" "brainstore_secrets_access" {
             [
               var.database_secret_arn,
               aws_secretsmanager_secret.function_tools_secret.arn,
+              var.function_secret_arn,
+              var.service_token_secret_arn,
               var.brainstore_license_key_secret_arn,
               var.internal_observability_api_key_secret_arn,
             ],
