@@ -36,6 +36,14 @@ resource "aws_api_gateway_stage" "api" {
   tags = merge({
     Name = "${var.deployment_name}-API-Stage"
   }, local.common_tags)
+
+  # The CloudFront distribution depends on this stage. create_before_destroy
+  # makes that distribution update finish before this stage is destroyed when
+  # enable_ecs_api removes API Gateway. The stage name is fixed, so routine
+  # applies update it in place rather than replacing it.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_api_gateway_method_settings" "all" {
@@ -57,4 +65,11 @@ resource "aws_lambda_permission" "api_gateway" {
   function_name = split(":", var.api_handler_function_arn)[6]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "arn:aws:execute-api:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.api[0].id}/*/*"
+
+  # API Gateway cannot invoke APIHandler without this permission. Same cutover
+  # ordering as the stage: the statement id is stable, so this is destroyed
+  # only when enable_ecs_api removes API Gateway.
+  lifecycle {
+    create_before_destroy = true
+  }
 }

@@ -1,0 +1,168 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
+"""Apply-order check for the API Gateway to ECS CloudFront cutover.
+
+Mocked plans cannot see destroy ordering. This applies a reduced
+terraform_data model of the ingress resources (no AWS provider).
+
+Terraform stores create_before_destroy in state. The apply that first adds
+that lifecycle, with API Gateway still present, must not change those
+resources. The following apply, which removes them, must update the
+distribution before destroying the stage and invoke permission. Flipping the
+flag in the same apply that first adds the lifecycle is not ordered that way;
+this script does not treat that sequence as supported.
+"""
+
+import re
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+
+FIXTURE = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "api-gateway-cutover-order"
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def terraform_bin():
+    binary = shutil.which("terraform")
+    if binary is None:
+        raise SystemExit("terraform is not on PATH")
+    return binary
+
+
+def apply(workdir, config_name):
+    shutil.copy(FIXTURE / config_name, workdir / "main.tf")
+    result = subprocess.run(
+        [terraform_bin(), "apply", "-auto-approve", "-input=false", "-no-color"],
+        cwd=workdir,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise SystemExit(f"terraform apply {config_name} failed:\n{result.stdout}")
+    return ANSI.sub("", result.stdout)
+
+
+def actions(log):
+    found = []
+    for line in log.splitlines():
+        match = re.search(r"terraform_data\.(\w+)(?:\[\d+\])?: (Creating|Modifying|Destroying)\.\.\.", line)
+        if match:
+            found.append((match.group(1), match.group(2)))
+    return found
+
+
+def index(found, resource, action):
+    for i, item in enumerate(found):
+        if item == (resource, action):
+            return i
+    raise SystemExit(f"missing {action} for {resource} in:\n" + "\n".join(f"{a} {b}" for a, b in found))
+
+
+def assert_cutover(log, label):
+    found = actions(log)
+    cloudfront = index(found, "cloudfront", "Modifying")
+    slow = index(found, "slow", "Modifying")
+    stage = index(found, "stage", "Destroying")
+    permission = index(found, "permission", "Destroying")
+    if not (slow < cloudfront < stage and cloudfront < permission):
+        raise SystemExit(
+            f"{label}: distribution update must follow its dependency and precede "
+            f"stage and permission destroy, got {found}"
+        )
+
+
+def assert_rollback(log):
+    found = actions(log)
+    cloudfront = index(found, "cloudfront", "Modifying")
+    stage = index(found, "stage", "Creating")
+    permission = index(found, "permission", "Creating")
+    if not (stage < cloudfront and permission < cloudfront):
+        raise SystemExit(
+            f"rollback: stage and permission must exist before the distribution "
+            f"update, got {found}"
+        )
+
+
+def assert_noop(log, label):
+    if "No changes." not in log:
+        raise SystemExit(f"{label}: expected no changes, got:\n{log}")
+
+
+def assert_records_lifecycle(log):
+    if actions(log):
+        raise SystemExit(
+            "recording create_before_destroy must not create, update, or destroy resources:\n"
+            + log
+        )
+    if "No changes." not in log:
+        raise SystemExit(f"recording apply should be a no-op, got:\n{log}")
+
+
+def check_module_graph():
+    root = Path(__file__).resolve().parent.parent
+    dot = subprocess.check_output(
+        [terraform_bin(), "graph", "-type=plan"],
+        cwd=root,
+        text=True,
+    )
+    edges = set(re.findall(r'"([^"\n]+)" -> "([^"\n]+)"', dot))
+
+    def node(suffix):
+        matches = {source for source, _ in edges if source.endswith(suffix)}
+        matches.update(target for _, target in edges if target.endswith(suffix))
+        if len(matches) != 1:
+            raise SystemExit(f"expected one graph node ending in {suffix}, found {sorted(matches)}")
+        return next(iter(matches))
+
+    distribution = node("module.ingress.aws_cloudfront_distribution.dataplane (expand)")
+    for dependency in (
+        "module.ingress.aws_api_gateway_stage.api (expand)",
+        "module.ingress.aws_lambda_permission.api_gateway (expand)",
+    ):
+        target = node(dependency)
+        if (distribution, target) not in edges:
+            raise SystemExit(f"CloudFront distribution must depend on {target}")
+
+
+def main():
+    check_module_graph()
+    with tempfile.TemporaryDirectory(prefix="api-gateway-cutover-") as raw:
+        workdir = Path(raw)
+        subprocess.run(
+            [terraform_bin(), "init", "-input=false"],
+            cwd=workdir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+
+        apply(workdir, "legacy.tf")
+        assert_records_lifecycle(apply(workdir, "fixed-lambda.tf"))
+        assert_cutover(apply(workdir, "fixed-ecs.tf"), "enable_ecs_api after the lifecycle is recorded")
+        assert_rollback(apply(workdir, "fixed-lambda.tf"))
+        assert_noop(apply(workdir, "fixed-lambda.tf"), "lambda steady state")
+        assert_cutover(apply(workdir, "fixed-ecs.tf"), "second cutover")
+        assert_noop(apply(workdir, "fixed-ecs.tf"), "ecs steady state")
+
+    with tempfile.TemporaryDirectory(prefix="api-gateway-fresh-") as raw:
+        workdir = Path(raw)
+        subprocess.run(
+            [terraform_bin(), "init", "-input=false"],
+            cwd=workdir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        apply(workdir, "fixed-ecs.tf")
+        assert_noop(apply(workdir, "fixed-ecs.tf"), "fresh ecs install")
+
+    print("API Gateway cutover ordering passes. CloudFront depends on the stage and invoke permission.")
+
+
+if __name__ == "__main__":
+    main()

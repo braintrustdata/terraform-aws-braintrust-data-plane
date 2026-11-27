@@ -314,4 +314,20 @@ resource "aws_cloudfront_distribution" "dataplane" {
   }
 
   tags = local.common_tags
+
+  # The API Gateway origin block references the REST API id, not the stage or
+  # the invoke permission, and that block is removed in the same apply that
+  # destroys them. Terraform would otherwise delete the stage and permission
+  # while this distribution still targets API Gateway.
+  #
+  # depends_on keeps the edge after the origin block is gone. create_before_destroy
+  # on the stage and permission is what turns it into "update this distribution,
+  # then destroy the API Gateway path". Terraform stores that lifecycle flag in
+  # state, so it takes effect on the apply after this configuration has been
+  # applied with enable_ecs_api still false. The origin request policy is not
+  # part of this edge and stays created (INF-488).
+  depends_on = [
+    aws_api_gateway_stage.api,
+    aws_lambda_permission.api_gateway,
+  ]
 }

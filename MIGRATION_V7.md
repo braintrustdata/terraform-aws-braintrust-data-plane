@@ -23,13 +23,17 @@ For people who have not done it yet, do not start this upgrade until the v6 appl
    enable_ecs_api                = false
    ```
 
-3. Cut over together:
+3. Apply this module once more with `enable_ecs_api` still `false` before the cutover. That apply records a CloudFront dependency on the API Gateway stage and its Lambda invoke permission. It does not switch traffic. Setting `enable_ecs_api = true` in the same apply that first adds that dependency still deletes the stage before CloudFront updates, because Terraform only uses the recorded dependency on the next apply.
+
+4. Cut over together:
 
    ```hcl
    enable_ecs_api                = true
    enable_ai_gateway             = true
    use_private_ai_gateway_origin = true
    ```
+
+   CloudFront switches to the ECS origin before Terraform destroys the API Gateway stage and invoke permission. Setting the flag back to `false` creates the stage and permission before CloudFront switches back.
 
 ## Private gateway
 
