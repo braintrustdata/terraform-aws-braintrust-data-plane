@@ -456,6 +456,10 @@ The `deployment_name` variable is also used to prefix the names of the resources
 
 Release `v7.3.0` tags every IAM role, managed policy and instance profile that the module creates with `BraintrustIAMOwner = "braintrust"`. We use it to tell module-managed IAM apart from IAM that you create yourself. The module reserves the key, so it rejects `BraintrustIAMOwner` in `custom_tags` at plan time in any letter case. Don't change the tag by hand. See [Migrating to v7](MIGRATION_V7.md#v730-iam-ownership-tag) for the upgrade steps.
 
+### CloudFront origin timeouts
+
+Public deployments use `cloudfront_origin_read_timeout` for all CloudFront origins. It defaults to 120 seconds and accepts 1–600 seconds; values above your account's CloudFront quota require an approved increase. `cloudfront_origin_connection_attempts` controls the number of attempts for the same origins. It defaults to 3 and accepts 1, 2, or 3. AWS may require 1 attempt when using a higher read timeout. These settings have no effect in private data plane or external EKS mode, where the module does not create CloudFront.
+
 ### CloudFront Access Logging
 
 If you need to enable CloudFront standard access logging, you can configure it independently by referencing the `cloudfront_distribution_arn` output from the module. This approach gives you full flexibility over the logging configuration without requiring changes to the module itself.

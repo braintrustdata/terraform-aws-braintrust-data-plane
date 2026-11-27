@@ -1831,13 +1831,24 @@ variable "cloudfront_price_class" {
 }
 
 variable "cloudfront_origin_read_timeout" {
-  description = "The read timeout (in seconds) for CloudFront origins. Increase this if long-running scorers or tools hit 504 Gateway Timeout errors on /function/invoke. AWS CloudFront supports up to 180s; values above 60s may require an AWS Support ticket to raise the quota."
+  description = "The read timeout (in seconds) for CloudFront origins. Defaults to 120 seconds. Increase this if long-running scorers or tools hit 504 Gateway Timeout errors on /function/invoke. Values above your account's CloudFront quota require an approved increase. This module accepts up to 600 seconds."
   type        = number
-  default     = 60
+  default     = 120
 
   validation {
-    condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 180
-    error_message = "cloudfront_origin_read_timeout must be between 1 and 180 seconds."
+    condition     = var.cloudfront_origin_read_timeout >= 1 && var.cloudfront_origin_read_timeout <= 600
+    error_message = "cloudfront_origin_read_timeout must be between 1 and 600 seconds."
+  }
+}
+
+variable "cloudfront_origin_connection_attempts" {
+  description = "Number of times CloudFront attempts to connect to an origin. AWS may require 1 attempt for higher origin read timeouts."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.cloudfront_origin_connection_attempts >= 1 && var.cloudfront_origin_connection_attempts <= 3 && floor(var.cloudfront_origin_connection_attempts) == var.cloudfront_origin_connection_attempts
+    error_message = "cloudfront_origin_connection_attempts must be a whole number between 1 and 3."
   }
 }
 

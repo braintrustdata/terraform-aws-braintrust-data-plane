@@ -140,6 +140,11 @@ module "braintrust-data-plane" {
   # use_private_gateway_quarantine_proxy = false
   # quarantine_proxy_url                 = null
 
+  # Increase only after AWS raises the CloudFront origin response timeout quota
+  # for your account. AWS may require one connection attempt at higher timeouts.
+  # cloudfront_origin_read_timeout        = 600
+  # cloudfront_origin_connection_attempts = 1
+
   # Minimum TLS protocol version CloudFront negotiates with viewers. Requires
   # custom_certificate_arn to be set (Terraform errors otherwise) and is
   # distribution-wide. Lower this (e.g. to "TLSv1.2_2021") only if you have clients
