@@ -60,15 +60,18 @@ resource "aws_api_gateway_method_settings" "all" {
 resource "aws_lambda_permission" "api_gateway" {
   count = var.enable_ecs_api ? 0 : 1
 
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = split(":", var.api_handler_function_arn)[6]
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "arn:aws:execute-api:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.api[0].id}/*/*"
+  # Unique suffix, not a fixed statement id. create_before_destroy adds the
+  # replacement grant before deleting the previous one. Lambda rejects a
+  # second statement with the same id, which is what a REST API replacement
+  # would do while APIHandler stays.
+  statement_id_prefix = "AllowAPIGatewayInvoke"
+  action              = "lambda:InvokeFunction"
+  function_name       = split(":", var.api_handler_function_arn)[6]
+  principal           = "apigateway.amazonaws.com"
+  source_arn          = "arn:aws:execute-api:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.api[0].id}/*/*"
 
   # API Gateway cannot invoke APIHandler without this permission. Same cutover
-  # ordering as the stage: the statement id is stable, so this is destroyed
-  # only when enable_ecs_api removes API Gateway.
+  # ordering as the stage.
   lifecycle {
     create_before_destroy = true
   }

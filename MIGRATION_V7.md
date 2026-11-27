@@ -23,7 +23,7 @@ For people who have not done it yet, do not start this upgrade until the v6 appl
    enable_ecs_api                = false
    ```
 
-3. Apply this module once more with `enable_ecs_api` still `false` before the cutover. That apply records a CloudFront dependency on the API Gateway stage and its Lambda invoke permission. It does not switch traffic. Setting `enable_ecs_api = true` in the same apply that first adds that dependency still deletes the stage before CloudFront updates, because Terraform only uses the recorded dependency on the next apply.
+3. Apply this module once more with `enable_ecs_api` still `false` before the cutover. That apply records a CloudFront dependency on the API Gateway stage and its Lambda invoke permission. It does not switch traffic or change the stage. It does replace the invoke permission: Terraform adds a new `AllowAPIGatewayInvoke…` statement on APIHandler, then removes the previous `AllowAPIGatewayInvoke` statement. API Gateway can invoke the function through both statements while that replacement runs. Setting `enable_ecs_api = true` in the same apply that first adds that dependency still deletes the stage before CloudFront updates, because Terraform only uses the recorded dependency on the next apply.
 
 4. Cut over together:
 
