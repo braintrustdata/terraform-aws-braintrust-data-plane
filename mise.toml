@@ -17,6 +17,7 @@ run = """
 set -e
 terraform init -backend=false -upgrade
 uv run scripts/check-loop-network-dependencies
+uv run scripts/check-api-gateway-cutover-order
 uv run scripts/check-brainstore-autoscaling
 uv run scripts/check-iam-ownership-tags
 uv run scripts/check-iam-ownership-tags --self-test

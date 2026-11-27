@@ -23,13 +23,19 @@ For people who have not done it yet, do not start this upgrade until the v6 appl
    enable_ecs_api                = false
    ```
 
-3. Cut over together:
+3. Apply this module once more with `enable_ecs_api` still `false` before the cutover. That apply records a CloudFront dependency on the API Gateway stage and its Lambda invoke permission. It does not switch traffic or change the stage. It does replace the invoke permission: Terraform adds a new `AllowAPIGatewayInvoke…` statement on APIHandler, then removes the previous `AllowAPIGatewayInvoke` statement. API Gateway can invoke the function through both statements while that replacement runs. Setting `enable_ecs_api = true` in the same apply that first adds that dependency still deletes the stage before CloudFront updates, because Terraform only uses the recorded dependency on the next apply.
+
+4. Cut over together:
 
    ```hcl
    enable_ecs_api                = true
    enable_ai_gateway             = true
    use_private_ai_gateway_origin = true
    ```
+
+   CloudFront switches to the ECS origin before Terraform destroys the API Gateway stage and invoke permission. Setting the flag back to `false` creates the stage and permission before CloudFront switches back.
+
+Downgrading the module after step 3, while `enable_ecs_api` is still `false`, replaces the invoke permission the other way. The older configuration uses the fixed statement id `AllowAPIGatewayInvoke` and does not set `create_before_destroy` on that permission. Terraform deletes the suffixed grant first, then creates `AllowAPIGatewayInvoke`. API Gateway cannot invoke APIHandler between those two calls. CloudFront is still using that API Gateway origin, so requests fail until the new grant exists. This is a short invoke gap, not a replacement of the distribution, database, or load balancer. A new major version is the wrong place for it. Ship it in a minor release and say this in the GitHub release notes. After step 4 the Lambda path is already gone; returning to an older module recreates that path, including a new Function URL, which is the existing v7 downgrade behavior.
 
 ## Private gateway
 
